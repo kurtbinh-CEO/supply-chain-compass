@@ -3,6 +3,8 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SidebarProvider } from "@/components/SidebarContext";
+import { WorkflowProvider } from "@/components/WorkflowContext";
 import Index from "./pages/Index";
 import DesignTest from "./pages/DesignTest";
 import WorkspacePage from "./pages/WorkspacePage";
@@ -29,25 +31,29 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/workspace" element={<WorkspacePage />} />
-          <Route path="/monitoring" element={<MonitoringPage />} />
-          <Route path="/demand" element={<DemandPage />} />
-          <Route path="/sop" element={<SopPage />} />
-          <Route path="/hub" element={<HubPage />} />
-          <Route path="/supply" element={<SupplyPage />} />
-          <Route path="/demand-weekly" element={<DemandWeeklyPage />} />
-          <Route path="/drp" element={<DrpPage />} />
-          <Route path="/allocation" element={<AllocationPage />} />
-          <Route path="/orders" element={<OrdersPage />} />
-          <Route path="/supplier-portal" element={<SupplierPortalPage />} />
-          <Route path="/master-data" element={<MasterDataPage />} />
-          <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/config" element={<ConfigPage />} />
-          <Route path="/design-test" element={<DesignTest />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <SidebarProvider>
+          <WorkflowProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/workspace" element={<WorkspacePage />} />
+              <Route path="/monitoring" element={<MonitoringPage />} />
+              <Route path="/demand" element={<DemandPage />} />
+              <Route path="/sop" element={<SopPage />} />
+              <Route path="/hub" element={<HubPage />} />
+              <Route path="/supply" element={<SupplyPage />} />
+              <Route path="/demand-weekly" element={<DemandWeeklyPage />} />
+              <Route path="/drp" element={<DrpPage />} />
+              <Route path="/allocation" element={<AllocationPage />} />
+              <Route path="/orders" element={<OrdersPage />} />
+              <Route path="/supplier-portal" element={<SupplierPortalPage />} />
+              <Route path="/master-data" element={<MasterDataPage />} />
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/config" element={<ConfigPage />} />
+              <Route path="/design-test" element={<DesignTest />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </WorkflowProvider>
+        </SidebarProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
