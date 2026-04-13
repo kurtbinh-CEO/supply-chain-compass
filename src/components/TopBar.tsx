@@ -1,5 +1,6 @@
 import { Search, Bell, ChevronRight } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import { useTenant, TenantName } from "@/components/TenantContext";
 
 const routeNames: Record<string, string> = {
   "/workspace": "Workspace",
@@ -18,11 +19,10 @@ const routeNames: Record<string, string> = {
   "/config": "Config",
 };
 
-const tenants = ["UNIS Group", "TTC Agris", "Mondelez"];
-
 export function TopBar() {
   const location = useLocation();
   const pageName = routeNames[location.pathname] || "Tổng quan";
+  const { tenant, setTenant, tenants } = useTenant();
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center border-b border-surface-3 bg-surface-2 px-6 gap-4">
@@ -32,7 +32,10 @@ export function TopBar() {
       </span>
 
       {/* Tenant pill */}
-      <select className="rounded-full bg-surface-1 px-3 py-1 text-caption font-medium text-text-2 border border-surface-3 appearance-none cursor-pointer hover:border-primary/40 transition-colors pr-6 bg-no-repeat bg-[length:12px] bg-[right_8px_center]">
+      <select
+        value={tenant}
+        onChange={e => setTenant(e.target.value as TenantName)}
+        className="rounded-full bg-surface-1 px-3 py-1 text-caption font-medium text-text-2 border border-surface-3 appearance-none cursor-pointer hover:border-primary/40 transition-colors pr-6 bg-no-repeat bg-[length:12px] bg-[right_8px_center]">
         {tenants.map((t) => (
           <option key={t} value={t}>{t}</option>
         ))}
