@@ -127,6 +127,32 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
 
   const drillCnData = drillCn ? cnData.find(c => c.cn === drillCn) : null;
 
+  // SKU-first aggregation
+  const skuAggregated = useMemo(() => {
+    const skuMap: Record<string, { item: string; variant: string; totalFc: number; totalB2b: number; totalPo: number; totalDemand: number;
+      cnDetails: { cn: string; fc: number; b2b: number; po: number; total: number; vsLm: number; mape: number; source: string }[];
+    }> = {};
+    Object.entries(skuPerCn).forEach(([cnKey, skus]) => {
+      skus.forEach(sk => {
+        const key = `${sk.item}-${sk.variant}`;
+        const fc = Math.round(sk.fc * s);
+        const b2b = Math.round(sk.b2b * s);
+        const po = Math.round(sk.po * s);
+        if (!skuMap[key]) {
+          skuMap[key] = { item: sk.item, variant: sk.variant, totalFc: 0, totalB2b: 0, totalPo: 0, totalDemand: 0, cnDetails: [] };
+        }
+        skuMap[key].totalFc += fc;
+        skuMap[key].totalB2b += b2b;
+        skuMap[key].totalPo += po;
+        skuMap[key].totalDemand += fc + b2b + po;
+        skuMap[key].cnDetails.push({ cn: cnKey, fc, b2b, po, total: fc + b2b + po, vsLm: sk.vsLm, mape: sk.mape, source: sk.source });
+      });
+    });
+    return Object.values(skuMap).sort((a, b) => b.totalDemand - a.totalDemand);
+  }, [s]);
+
+  const drillSkuData = drillSku ? skuAggregated.find(sk => `${sk.item}-${sk.variant}` === drillSku) : null;
+
   // ── 12-month view ──
   const render12m = () => {
     const data12 = base12m.map(v => Math.round(v * s));
