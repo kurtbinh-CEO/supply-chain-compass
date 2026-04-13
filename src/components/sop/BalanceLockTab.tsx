@@ -215,19 +215,14 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Formula bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-        {formulaBlocks.map((b, i) => (
-          <div key={b.label} className="flex items-center gap-1.5">
-            {i > 0 && (
-              <span className="text-text-3 font-bold text-lg flex-shrink-0">{b.prefix}</span>
-            )}
-            <div className={cn("rounded-card border border-surface-3 px-4 py-2.5 flex-shrink-0 min-w-[110px]", b.bg)}>
-              <div className="text-caption text-text-3 uppercase">{b.label}</div>
-              <div className={cn("font-display text-lg font-bold tabular-nums", b.text)}>{b.value.toLocaleString()}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <FormulaBar
+        demand={totalDemand}
+        stock={totalStock}
+        pipeline={totalPipeline}
+        ssBuffer={ssBuffer}
+        stockDetail={stockDetailForBar}
+        netPerCn={netPerCnForBar}
+      />
 
       {/* Balance table */}
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
