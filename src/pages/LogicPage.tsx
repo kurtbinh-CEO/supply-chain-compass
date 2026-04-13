@@ -878,6 +878,7 @@ export default function LogicPage() {
 
       {/* Tree */}
       <div className="space-y-3 max-w-4xl animate-fade-in">
+        {activeTab === "ss" && <SSAlertIntro />}
         {current.nodes.map((node, i) => (
           <LogicTreeNode key={`${activeTab}-${i}`} node={node} />
         ))}
