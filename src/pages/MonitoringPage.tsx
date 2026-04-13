@@ -7,6 +7,7 @@ import { ChevronRight, ChevronDown, ChevronLeft, TrendingUp, TrendingDown, Minus
 import { useNavigate } from "react-router-dom";
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell as PieCell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ClickableNumber } from "@/components/ClickableNumber";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -292,15 +293,57 @@ export default function MonitoringPage() {
               { label: "Working Capital", value: "1,2 tỷ₫", target: "target 1,0B", delta: "+20% over", spark: kpiSparklines.wc, color: "#7a4100", bg: "bg-warning-bg/40", tab: "perf" },
               { label: "LCNB Savings", value: "96M₫", target: "tháng này", delta: "↗ +14M vs T3", spark: kpiSparklines.lcnb, color: "#00714d", bg: "bg-success-bg/40", tab: "perf" },
             ].map((kpi) => (
-              <button
+              <div
                 key={kpi.label}
-                onClick={() => setActiveTab(kpi.tab)}
-                className={cn("rounded-card border border-surface-3 p-4 text-left hover:shadow-md transition-shadow", kpi.bg)}
+                className={cn("rounded-card border border-surface-3 p-4 text-left", kpi.bg)}
               >
                 <div className="text-[11px] font-body uppercase tracking-wider text-text-3 mb-1">{kpi.label}</div>
                 <div className="flex items-end justify-between gap-3">
                   <div>
-                    <div className="font-display text-[24px] font-bold tabular-nums text-text-1 leading-tight">{kpi.value}</div>
+                    <ClickableNumber
+                      value={kpi.value}
+                      label={kpi.label}
+                      color="font-display text-[24px] font-bold text-text-1 leading-tight"
+                      breakdown={
+                        kpi.label === "HSTK trung bình" ? [
+                          { label: "CN-BD", value: "5,2d 🔴" }, { label: "CN-ĐN", value: "14d" },
+                          { label: "CN-HN", value: "9,5d" }, { label: "CN-CT", value: "11d" },
+                        ] : kpi.label === "Fill rate" ? [
+                          { label: "CN-BD", value: "86%" }, { label: "CN-ĐN", value: "100%" },
+                          { label: "CN-HN", value: "100%" }, { label: "CN-CT", value: "100%" },
+                        ] : kpi.label === "NM Honoring" ? [
+                          { label: "Mikado", value: "92% A" }, { label: "Toko", value: "68% C 🔴" },
+                          { label: "Phú Mỹ", value: "45% D 🔴" }, { label: "Đồng Tâm", value: "90% A" },
+                          { label: "Vigracera", value: "88% B" },
+                        ] : kpi.label === "FC Accuracy (MAPE)" ? [
+                          { label: "CN-BD", value: "88%" }, { label: "CN-ĐN", value: "78%" },
+                          { label: "CN-HN", value: "69% 🔴" }, { label: "CN-CT", value: "85%" },
+                        ] : kpi.label === "Working Capital" ? [
+                          { label: "Stock value", value: "950M" }, { label: "Pipeline value", value: "250M" },
+                        ] : kpi.label === "LCNB Savings" ? [
+                          { label: "TO-DN-BD-001", value: "220m² saved 32M₫" },
+                          { label: "TO-HN-BD-001", value: "150m² saved 18M₫" },
+                        ] : undefined
+                      }
+                      formula={
+                        kpi.label === "HSTK trung bình" ? "Weighted by demand: CN-BD demand lớn nhất nhưng HSTK thấp nhất → kéo avg xuống 8,5d" :
+                        kpi.label === "Fill rate" ? "CN-BD 86% × CN-ĐN 100% × CN-HN 100% × CN-CT 100% → weighted 95,5%" :
+                        kpi.label === "NM Honoring" ? "Weighted by committed qty → 77%. Toko + Phú Mỹ kéo xuống." :
+                        kpi.label === "FC Accuracy (MAPE)" ? "100% − MAPE_weighted = 100% − 18.4% = 81.6% ≈ 82%" :
+                        kpi.label === "Working Capital" ? "Stock 950M + Pipeline 250M = 1.200M₫. Budget 1.000M (+20%).\nOver budget do: SS CN-BD +120M, premium freight Toko +45M." :
+                        kpi.label === "LCNB Savings" ? "8 lateral transfers tháng này. Avg saving 12M₫/transfer." :
+                        undefined
+                      }
+                      links={
+                        kpi.label === "HSTK trung bình" ? [{ label: "→ tab Tồn kho", to: "/monitoring" }] :
+                        kpi.label === "Fill rate" ? [{ label: "→ /drp", to: "/drp" }] :
+                        kpi.label === "NM Honoring" ? [{ label: "→ tab Hiệu suất Section B", to: "/monitoring" }] :
+                        kpi.label === "Working Capital" ? [{ label: "→ tab Hiệu suất Section D", to: "/monitoring" }] :
+                        kpi.label === "FC Accuracy (MAPE)" ? [{ label: "→ tab Hiệu suất Section A", to: "/monitoring" }] :
+                        kpi.label === "LCNB Savings" ? [{ label: "→ /drp LCNB history", to: "/drp" }] :
+                        undefined
+                      }
+                    />
                     <div className="text-[11px] text-text-3 mt-0.5">{kpi.target}</div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
@@ -311,7 +354,7 @@ export default function MonitoringPage() {
                     </div>
                   </div>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
 

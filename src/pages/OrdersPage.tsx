@@ -348,7 +348,17 @@ export default function OrdersPage() {
                               <div className="w-16 h-1.5 bg-surface-1 rounded-full overflow-hidden">
                                 <div className="h-full bg-gradient-primary rounded-full" style={{ width: `${n.completionPct}%` }} />
                               </div>
-                              <span className="text-table tabular-nums font-medium text-text-1">{n.completionPct}%</span>
+                              <ClickableNumber
+                                value={`${n.completionPct}%`}
+                                label={`Honoring ${n.nm}`}
+                                color="text-table tabular-nums font-medium text-text-1"
+                                formula={`Delivered ${n.delivered.toLocaleString()} ÷ Released ${n.released.toLocaleString()} = ${n.completionPct}%`}
+                                breakdown={n.rpos.map(r => ({
+                                  label: r.rpo,
+                                  value: `plan ${r.qty.toLocaleString()}, actual ${r.actual.toLocaleString()}`,
+                                  detail: r.actual < r.qty ? `gap ${(r.qty - r.actual).toLocaleString()}` : "✅",
+                                }))}
+                              />
                             </div>
                           </td>
                           <td className="px-4 py-3 text-text-3"><ChevronRight className="h-4 w-4" /></td>
