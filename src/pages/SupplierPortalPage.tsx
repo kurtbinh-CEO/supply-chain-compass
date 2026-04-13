@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { toast } from "sonner";
 import { Check, X, Upload, Truck, Plus } from "lucide-react";
+import { VoiceInput } from "@/components/VoiceInput";
 import { cn } from "@/lib/utils";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 
@@ -232,8 +233,11 @@ export default function SupplierPortalPage() {
                 className="w-full h-12 rounded-button border border-surface-3 bg-surface-0 px-3 text-table text-text-1">
                 {rejectReasons.map(r => <option key={r}>{r}</option>)}
               </select>
-              <textarea value={rejectNote} onChange={e => setRejectNote(e.target.value)} placeholder="Ghi chú thêm..."
-                className="w-full h-20 rounded-button border border-surface-3 bg-surface-0 px-3 py-2 text-table text-text-1 resize-none" />
+              <div className="flex items-center gap-2">
+                <textarea value={rejectNote} onChange={e => setRejectNote(e.target.value)} placeholder="Ghi chú thêm..."
+                  className="flex-1 h-20 rounded-button border border-surface-3 bg-surface-0 px-3 py-2 text-table text-text-1 resize-none" />
+                <VoiceInput size="md" onTranscript={(t) => setRejectNote((prev) => prev + t)} />
+              </div>
               <button onClick={submitReject}
                 className="w-full h-12 rounded-button bg-danger text-primary-foreground font-medium text-table hover:opacity-90 transition-opacity">
                 Xác nhận từ chối
