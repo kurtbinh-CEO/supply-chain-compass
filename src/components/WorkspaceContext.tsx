@@ -86,7 +86,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
   }, []);
 
-  const pendingCount = approvals.length;
+  const pendingCount = approvals.length + initialExceptions.length + notifications.filter(n => !n.read).length;
   const unreadCount = notifications.filter((n) => !n.read).length;
   const criticalCount = notifications.filter((n) => n.typeColor === "danger" && !n.read).length;
 
