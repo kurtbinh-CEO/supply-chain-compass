@@ -10,7 +10,7 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useSidebarState } from "@/components/SidebarContext";
 
 const navItems = [
   { title: "Tổng quan", icon: LayoutDashboard, url: "/" },
@@ -22,7 +22,7 @@ const navItems = [
 ];
 
 export function AppSidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, toggle } = useSidebarState();
 
   return (
     <aside
@@ -31,22 +31,17 @@ export function AppSidebar() {
         collapsed ? "w-16" : "w-[260px]"
       )}
     >
-      {/* Logo area */}
       <div className="flex h-14 items-center justify-between px-4 border-b border-border">
         {!collapsed && (
           <span className="font-display text-section-header text-foreground tracking-tight">
             Smartlog
           </span>
         )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="rounded-button p-1.5 hover:bg-accent transition-colors"
-        >
+        <button onClick={toggle} className="rounded-button p-1.5 hover:bg-accent transition-colors">
           <ChevronLeft className={cn("h-4 w-4 text-muted-foreground transition-transform", collapsed && "rotate-180")} />
         </button>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
         {navItems.map((item) => (
           <NavLink
@@ -65,7 +60,6 @@ export function AppSidebar() {
         ))}
       </nav>
 
-      {/* Footer */}
       <div className="border-t border-border p-3">
         <NavLink
           to="/settings"

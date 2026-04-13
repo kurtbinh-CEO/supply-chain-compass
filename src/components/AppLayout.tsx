@@ -1,15 +1,24 @@
 import { AppSidebar } from "@/components/AppSidebar";
 import { TopBar } from "@/components/TopBar";
+import { SidebarProvider, useSidebarState } from "@/components/SidebarContext";
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+function LayoutInner({ children }: { children: React.ReactNode }) {
+  const { collapsed } = useSidebarState();
   return (
     <div className="min-h-screen">
       <AppSidebar />
-      {/* Content area offset by sidebar width — handled by ml */}
-      <div className="ml-[260px] transition-all duration-200">
+      <div className={`transition-all duration-200 ${collapsed ? "ml-16" : "ml-[260px]"}`}>
         <TopBar />
         <main className="p-6">{children}</main>
       </div>
     </div>
+  );
+}
+
+export function AppLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider>
+      <LayoutInner>{children}</LayoutInner>
+    </SidebarProvider>
   );
 }
