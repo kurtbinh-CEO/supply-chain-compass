@@ -78,7 +78,7 @@ export function Dashboard() {
             {exceptions.map((ex, i) => (
               <tr
                 key={ex.id}
-                className={`border-b border-surface-3/50 hover:bg-surface-3/50 transition-colors cursor-pointer ${
+                className={`border-b border-surface-3/50 hover:bg-primary/10 transition-colors cursor-pointer ${
                   i % 2 === 0 ? "bg-surface-0" : "bg-surface-2"
                 }`}
               >
