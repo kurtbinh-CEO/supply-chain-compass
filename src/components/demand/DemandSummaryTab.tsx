@@ -487,14 +487,35 @@ export function DemandSummaryTab({ skus, tenant }: Props) {
                           const isSel = mIdx === selectedMonth;
                           return (
                             <>
-                              <td key={`fc-${ri}-${ci}`} className={cn("px-2 py-2 text-center tabular-nums", isSel ? "font-medium text-text-1" : "text-text-3")}>{sk.fc[ci].toLocaleString()}</td>
-                              <td key={`b2b-${ri}-${ci}`} className={cn("px-2 py-2 text-center tabular-nums", isSel ? "text-text-1" : "text-text-3")}>{sk.b2b[ci].toLocaleString()}</td>
+                              {(["fc","b2b"] as const).map(type => {
+                                const oKey = `${ri}-${ci}-${type}`;
+                                const ov = overrides[oKey];
+                                const origVal = type === "fc" ? sk.fc[ci] : sk.b2b[ci];
+                                const displayVal = ov ? ov.value : origVal;
+                                return (
+                                  <td key={`${type}-${ri}-${ci}`}
+                                    onClick={(e) => { e.stopPropagation(); setOverrideModal({ sku: `${sk.item} ${sk.variant}`, cell: `${months[mIdx]} ${type.toUpperCase()}`, value: displayVal, rowIdx: ri, colIdx: ci, type }); }}
+                                    className={cn("px-2 py-2 text-center tabular-nums cursor-pointer hover:ring-1 hover:ring-warning/50 rounded-sm transition-all",
+                                      isSel ? "font-medium text-text-1" : "text-text-3",
+                                      ov && "bg-warning/10 ring-1 ring-warning/30"
+                                    )}
+                                    title={ov ? `Override: ${ov.reason} — "${ov.note}"` : `Click to override ${type.toUpperCase()}`}
+                                  >
+                                    {displayVal.toLocaleString()}
+                                    {ov && <span className="block text-[8px] text-warning font-medium">overridden</span>}
+                                  </td>
+                                );
+                              })}
                               <td key={`po-${ri}-${ci}`} className={cn("px-2 py-2 text-center tabular-nums", isSel ? "text-text-1" : "text-text-3")}>{sk.po[ci].toLocaleString()}</td>
                               <td key={`tot-${ri}-${ci}`}
                                 className={cn("px-2 py-2 text-center tabular-nums font-bold border-r border-surface-3", isSel ? "text-primary" : "text-text-2")}
                                 title={`= FC + B2B − Overlap(${Math.abs(sk.overlap[ci])})`}
                               >
-                                {total.toLocaleString()}
+                                {(() => {
+                                  const fcVal = overrides[`${ri}-${ci}-fc`]?.value ?? sk.fc[ci];
+                                  const b2bVal = overrides[`${ri}-${ci}-b2b`]?.value ?? sk.b2b[ci];
+                                  return (fcVal + b2bVal + sk.po[ci] + sk.overlap[ci]).toLocaleString();
+                                })()}
                               </td>
                             </>
                           );
