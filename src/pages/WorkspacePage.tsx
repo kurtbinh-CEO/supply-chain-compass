@@ -201,7 +201,7 @@ export default function WorkspacePage() {
           <div className="grid grid-cols-4 gap-3">
             {/* Demand */}
             <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
-              <div className="text-caption text-text-3 uppercase mb-0.5">Demand</div>
+              <div className="text-caption text-text-3 uppercase mb-0.5 flex items-center gap-1">Demand <LogicLink tab="monthly" node={0} tooltip="Logic xác định Demand" /></div>
               <ClickableNumber
                 value="7.650 m²"
                 label="Demand"
@@ -238,7 +238,7 @@ export default function WorkspacePage() {
 
             {/* HSTK */}
             <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
-              <div className="text-caption text-text-3 uppercase mb-0.5">HSTK</div>
+              <div className="text-caption text-text-3 uppercase mb-0.5 flex items-center gap-1">HSTK <LogicLink tab="ss" node={0} tooltip="Logic Safety Stock" /></div>
               <ClickableNumber
                 value="8,5d"
                 label="HSTK"
@@ -257,7 +257,7 @@ export default function WorkspacePage() {
 
             {/* FC Accuracy */}
             <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
-              <div className="text-caption text-text-3 uppercase mb-0.5">FC Accuracy</div>
+              <div className="text-caption text-text-3 uppercase mb-0.5 flex items-center gap-1">FC Accuracy <LogicLink tab="forecast" node={2} tooltip="MAPE là gì?" /></div>
               <ClickableNumber
                 value="82%"
                 label="FC Accuracy"
