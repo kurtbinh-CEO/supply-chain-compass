@@ -218,7 +218,7 @@ function TrendIcon({ trend }: { trend: string }) {
 
 const tabs = [
   { key: "overview", label: "Tổng quan" },
-  { key: "inv", label: "Tồn kho" },
+  { key: "inv", label: "Tồn kho & SS" },
   { key: "perf", label: "Hiệu suất" },
 ];
 
