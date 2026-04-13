@@ -82,6 +82,7 @@ function MoqSection({ scale, onMoqLocked }: { scale: number; onMoqLocked: () => 
   const [editingCell, setEditingCell] = useState<string | null>(null);
   const [editVal, setEditVal] = useState("");
   const [allLocked, setAllLocked] = useState(false);
+  const [bridgeKey, setBridgeKey] = useState<string | null>(null);
 
   const moqNms = baseMoqNms.map((n) => ({
     ...n,
