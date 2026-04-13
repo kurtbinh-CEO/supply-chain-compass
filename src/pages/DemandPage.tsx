@@ -1,29 +1,51 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
+import { ScreenHeader } from "@/components/ScreenShell";
 import { cn } from "@/lib/utils";
-import { DemandSummaryTab } from "@/components/demand/DemandSummaryTab";
-import { FcHierarchyTab } from "@/components/demand/FcHierarchyTab";
-import { B2BPipelineTab } from "@/components/demand/B2BPipelineTab";
-import { tenantDemandData, tenantB2BData } from "@/components/demand/demandData";
+import { DemandTotalTab } from "@/components/demand/DemandTotalTab";
+import { B2BInputTab } from "@/components/demand/B2BInputTab";
 import { useTenant } from "@/components/TenantContext";
 
 const tabs = [
-  { key: "summary", label: "Demand Summary" },
-  { key: "hierarchy", label: "FC Hierarchy" },
-  { key: "b2b", label: "B2B Pipeline" },
+  { key: "total", label: "Demand tổng" },
+  { key: "b2b", label: "B2B nhập liệu" },
 ];
 
 export default function DemandPage() {
-  const [activeTab, setActiveTab] = useState("summary");
+  const [activeTab, setActiveTab] = useState("total");
   const { tenant } = useTenant();
 
-  const skus = tenantDemandData[tenant] || tenantDemandData["UNIS Group"];
-  const deals = tenantB2BData[tenant] || tenantB2BData["UNIS Group"];
+  // B2B deals state lives here so Tab1 can read aggregated B2B per CN
+  const [b2bDeals, setB2bDeals] = useState(() => getInitialDeals(tenant));
+
+  // Re-seed deals when tenant changes
+  const [prevTenant, setPrevTenant] = useState(tenant);
+  if (tenant !== prevTenant) {
+    setPrevTenant(tenant);
+    setB2bDeals(getInitialDeals(tenant));
+  }
+
+  // Aggregate B2B weighted qty per CN for current month (Th5)
+  const b2bPerCn: Record<string, number> = {};
+  b2bDeals.forEach(d => {
+    // Only count deals that include Th5
+    if (d.deliveryMonths.includes("Th5")) {
+      d.cnList.forEach(cn => {
+        b2bPerCn[cn] = (b2bPerCn[cn] || 0) + Math.round(d.qty * (d.probability / 100) / d.cnList.length);
+      });
+    }
+  });
 
   return (
     <AppLayout>
-      <ScreenHeader title="Demand Review" subtitle="Tổng hợp Demand / Chi tiết kế hoạch" />
+      {/* Header */}
+      <div className="flex items-center justify-between mb-1">
+        <ScreenHeader title="Demand Review — Tháng 5" subtitle="" />
+        <div className="flex items-center gap-3">
+          <span className="rounded-full bg-info-bg text-info px-3 py-1 text-table-sm font-medium">AOP 2026: 60.000 m²</span>
+          <span className="rounded-full bg-success-bg text-success px-3 py-1 text-table-sm font-medium">YTD: 19.380 (32%)</span>
+        </div>
+      </div>
 
       {/* Tab bar */}
       <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
@@ -46,11 +68,32 @@ export default function DemandPage() {
         ))}
       </div>
 
-      {activeTab === "summary" && <DemandSummaryTab skus={skus} tenant={tenant} />}
-      {activeTab === "hierarchy" && <FcHierarchyTab />}
-      {activeTab === "b2b" && <B2BPipelineTab deals={deals} />}
-
-      <ScreenFooter actionCount={18} />
+      {activeTab === "total" && <DemandTotalTab tenant={tenant} b2bPerCn={b2bPerCn} />}
+      {activeTab === "b2b" && <B2BInputTab deals={b2bDeals} setDeals={setB2bDeals} tenant={tenant} />}
     </AppLayout>
   );
+}
+
+// ── Initial B2B deals per tenant ──
+export interface B2BDealInput {
+  id: string;
+  customer: string;
+  project: string;
+  cnList: string[];
+  skuMain: string;
+  qty: number;
+  probability: number;
+  deliveryMonths: string[];
+  poStatus: string | null; // null = chưa, "PO 8.500" = có
+}
+
+function getInitialDeals(tenant: string): B2BDealInput[] {
+  const s = tenant === "TTC Agris" ? 0.7 : tenant === "Mondelez" ? 1.3 : 1;
+  return [
+    { id: "B2B-001", customer: "Vingroup", project: "Grand Park Ph.3", cnList: ["BD","HN"], skuMain: "GA-600 A4", qty: Math.round(12000*s), probability: 85, deliveryMonths: ["Th5","Th6"], poStatus: `PO ${Math.round(8500*s).toLocaleString()}` },
+    { id: "B2B-002", customer: "Novaland", project: "Aqua City", cnList: ["BD"], skuMain: "GA-300 A4", qty: Math.round(5000*s), probability: 70, deliveryMonths: ["Th6","Th7"], poStatus: null },
+    { id: "B2B-003", customer: "Hưng Thịnh", project: "Moonlight", cnList: ["ĐN"], skuMain: "GA-600 B2", qty: Math.round(3000*s), probability: 90, deliveryMonths: ["Th5"], poStatus: `PO ${Math.round(2700*s).toLocaleString()}` },
+    { id: "B2B-004", customer: "Phú Đông", project: "SkyOne", cnList: ["CT"], skuMain: "GA-400 A4", qty: Math.round(2000*s), probability: 45, deliveryMonths: ["Th6","Th7"], poStatus: null },
+    { id: "B2B-005", customer: "Khang Điền", project: "Lovera Vista", cnList: ["HN"], skuMain: "GA-300 C1", qty: Math.round(1500*s), probability: 65, deliveryMonths: ["Th5","Th6"], poStatus: null },
+  ];
 }
