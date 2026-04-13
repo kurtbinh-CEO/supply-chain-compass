@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell as PieCell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClickableNumber } from "@/components/ClickableNumber";
+import { InventorySSTab } from "@/components/monitoring/InventorySSTab";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
