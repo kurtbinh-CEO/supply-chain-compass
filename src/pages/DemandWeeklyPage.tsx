@@ -82,6 +82,27 @@ export default function DemandWeeklyPage() {
   const doneCn = data.filter((r) => r.status === "Đã adjust").length;
   const activeCn = drillCn ? data.find((r) => r.cn === drillCn) : null;
 
+  // SKU-first aggregation
+  const skuAgg = useMemo(() => {
+    const map: Record<string, { item: string; variant: string; totalDuKien: number; totalAdjust: number; totalPo: number; totalFinal: number;
+      cnRows: { cn: string; duKien: number; cnAdjust: number | null; adjustNote: string; adjustStatus: string; po: number; final: number; status: string }[];
+    }> = {};
+    data.forEach(cn => {
+      cn.skus.forEach(sk => {
+        const key = `${sk.item}-${sk.variant}`;
+        if (!map[key]) map[key] = { item: sk.item, variant: sk.variant, totalDuKien: 0, totalAdjust: 0, totalPo: 0, totalFinal: 0, cnRows: [] };
+        map[key].totalDuKien += sk.duKien;
+        map[key].totalAdjust += sk.cnAdjust ?? 0;
+        map[key].totalPo += sk.po;
+        map[key].totalFinal += sk.final;
+        map[key].cnRows.push({ cn: cn.cn, duKien: sk.duKien, cnAdjust: sk.cnAdjust, adjustNote: sk.adjustNote, adjustStatus: sk.adjustStatus, po: sk.po, final: sk.final, status: cn.status });
+      });
+    });
+    return Object.values(map).sort((a, b) => b.totalFinal - a.totalFinal);
+  }, [data]);
+
+  const drillSkuData = drillSku ? skuAgg.find(sk => `${sk.item}-${sk.variant}` === drillSku) : null;
+
   const handleApprove = (item: string) => {
     toast.success(`Đã duyệt adjust ${item}`);
   };
