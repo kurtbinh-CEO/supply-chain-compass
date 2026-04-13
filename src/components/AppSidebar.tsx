@@ -70,7 +70,6 @@ export function AppSidebar() {
   const { startWorkflow } = useWorkflow();
   const { pendingCount } = useWorkspace();
   const location = useLocation();
-  const location = useLocation();
   const navigate = useNavigate();
 
   const handleStartWorkflow = (type: "daily" | "monthly") => {
