@@ -6,101 +6,86 @@ const tenantScales: Record<TenantName, number> = {
   "Mondelez": 1.35,
 };
 
-export type Freshness = "green" | "yellow" | "red" | "blocked";
-
-export interface NMRow {
-  id: string;
-  nm: string;
+export interface NMSkuRow {
   item: string;
   variant: string;
-  onHand: number | null;
-  committed: number;
-  share: number;
-  atp: number | null;
-  freshness: Freshness;
-  lastSync: string;
-  stale: boolean;
+  tonKho: number;
+  unisDung: number;
+  dangVe: number;
+  dangVeEta: string;
+  updatedAt: string;
 }
 
-const baseRows: Omit<NMRow, "atp">[] = [
-  { id: "1", nm: "Toko", item: "GA-300", variant: "A4", onHand: 1500, committed: 300, share: 0.80, freshness: "yellow", lastSync: "6h ago", stale: true },
-  { id: "2", nm: "Mikado", item: "GA-300", variant: "A4", onHand: 2500, committed: 200, share: 0.60, freshness: "green", lastSync: "45m ago", stale: false },
-  { id: "3", nm: "Phú Mỹ", item: "GA-300", variant: "A4", onHand: null, committed: 0, share: 0, freshness: "blocked", lastSync: ">24h", stale: true },
-  { id: "4", nm: "Đồng Tâm", item: "GA-300", variant: "A4", onHand: 1200, committed: 300, share: 0.50, freshness: "green", lastSync: "30m ago", stale: false },
-  { id: "5", nm: "Vigracera", item: "GA-600", variant: "A4", onHand: 800, committed: 150, share: 0.70, freshness: "green", lastSync: "1h ago", stale: false },
-  { id: "6", nm: "Long An Tech", item: "GA-300", variant: "B2", onHand: 600, committed: 100, share: 0.45, freshness: "red", lastSync: "18h ago", stale: true },
-  { id: "7", nm: "Bình Dương", item: "GA-600", variant: "A4", onHand: 3200, committed: 500, share: 0.65, freshness: "green", lastSync: "20m ago", stale: false },
-];
-
-export function getNMRows(tenant: TenantName): NMRow[] {
-  const s = tenantScales[tenant];
-  return baseRows.map((r) => {
-    const onHand = r.onHand ? Math.round(r.onHand * s) : null;
-    const committed = Math.round(r.committed * s);
-    const atp = onHand !== null ? Math.round((onHand - committed) * r.share) : null;
-    return { ...r, onHand, committed, atp };
-  });
-}
-
-export interface GanttRow {
-  nm: string;
-  item: string;
-  weeks: { week: string; status: "production" | "setup" | "idle" | "maintenance" }[];
-}
-
-export const ganttData: GanttRow[] = [
-  { nm: "Toko", item: "GA-300", weeks: [
-    { week: "W1", status: "production" }, { week: "W2", status: "production" }, { week: "W3", status: "setup" },
-    { week: "W4", status: "production" }, { week: "W5", status: "idle" }, { week: "W6", status: "production" },
-  ]},
-  { nm: "Mikado", item: "GA-300", weeks: [
-    { week: "W1", status: "setup" }, { week: "W2", status: "production" }, { week: "W3", status: "production" },
-    { week: "W4", status: "production" }, { week: "W5", status: "production" }, { week: "W6", status: "maintenance" },
-  ]},
-  { nm: "Phú Mỹ", item: "GA-300", weeks: [
-    { week: "W1", status: "idle" }, { week: "W2", status: "idle" }, { week: "W3", status: "maintenance" },
-    { week: "W4", status: "idle" }, { week: "W5", status: "setup" }, { week: "W6", status: "production" },
-  ]},
-  { nm: "Đồng Tâm", item: "GA-300", weeks: [
-    { week: "W1", status: "production" }, { week: "W2", status: "production" }, { week: "W3", status: "production" },
-    { week: "W4", status: "setup" }, { week: "W5", status: "production" }, { week: "W6", status: "production" },
-  ]},
-  { nm: "Vigracera", item: "GA-600", weeks: [
-    { week: "W1", status: "production" }, { week: "W2", status: "maintenance" }, { week: "W3", status: "production" },
-    { week: "W4", status: "production" }, { week: "W5", status: "production" }, { week: "W6", status: "setup" },
-  ]},
-  { nm: "Long An Tech", item: "GA-300", weeks: [
-    { week: "W1", status: "idle" }, { week: "W2", status: "setup" }, { week: "W3", status: "production" },
-    { week: "W4", status: "production" }, { week: "W5", status: "maintenance" }, { week: "W6", status: "idle" },
-  ]},
-  { nm: "Bình Dương", item: "GA-600", weeks: [
-    { week: "W1", status: "production" }, { week: "W2", status: "production" }, { week: "W3", status: "production" },
-    { week: "W4", status: "production" }, { week: "W5", status: "setup" }, { week: "W6", status: "production" },
-  ]},
-];
-
-export interface Shipment {
+export interface NMSummary {
   id: string;
-  from: string;
-  to: string;
-  item: string;
-  qty: number;
-  eta: string;
-  status: "in-transit" | "arrived" | "delayed" | "pending";
-  carrier: string;
-  trackingId: string;
+  nm: string;
+  tongTon: number | null;
+  unisDung: number;
+  dangVe: number;
+  dangVeNote: string;
+  updatedAt: string;
+  updatedAgo: "today" | "yesterday" | "stale";
+  share: number;
+  skus: NMSkuRow[];
 }
 
-const baseShipments: Shipment[] = [
-  { id: "s1", from: "Toko", to: "Hub HCM", item: "GA-300", qty: 2400, eta: "15/04", status: "in-transit", carrier: "VN Logistics", trackingId: "VNL-88201" },
-  { id: "s2", from: "Mikado", to: "Hub Đà Nẵng", item: "GA-300", qty: 1800, eta: "14/04", status: "arrived", carrier: "Gemadept", trackingId: "GMD-44120" },
-  { id: "s3", from: "Đồng Tâm", to: "Hub HCM", item: "GA-300", qty: 3000, eta: "16/04", status: "in-transit", carrier: "ITL Corp", trackingId: "ITL-77034" },
-  { id: "s4", from: "Vigracera", to: "Hub Hà Nội", item: "GA-600", qty: 1200, eta: "17/04", status: "delayed", carrier: "Transimex", trackingId: "TMX-55098" },
-  { id: "s5", from: "Long An Tech", to: "Hub HCM", item: "GA-300", qty: 800, eta: "18/04", status: "pending", carrier: "Saigon Cargo", trackingId: "SGC-33012" },
-  { id: "s6", from: "Bình Dương", to: "Hub HCM", item: "GA-600", qty: 4500, eta: "14/04", status: "arrived", carrier: "VN Logistics", trackingId: "VNL-88215" },
+const baseNMs: NMSummary[] = [
+  {
+    id: "mikado", nm: "Mikado", tongTon: 12500, unisDung: 7200, dangVe: 1200, dangVeNote: "1.200 (17/05)",
+    updatedAt: "Hôm nay 14:32", updatedAgo: "today", share: 0.60,
+    skus: [
+      { item: "GA-300", variant: "A4", tonKho: 2500, unisDung: 1380, dangVe: 1200, dangVeEta: "17/05", updatedAt: "14:32" },
+      { item: "GA-300", variant: "B2", tonKho: 1200, unisDung: 660, dangVe: 0, dangVeEta: "", updatedAt: "14:32" },
+      { item: "GA-600", variant: "A4", tonKho: 4200, unisDung: 2035, dangVe: 0, dangVeEta: "", updatedAt: "14:32" },
+      { item: "GA-600", variant: "B2", tonKho: 1800, unisDung: 900, dangVe: 0, dangVeEta: "", updatedAt: "14:32" },
+    ],
+  },
+  {
+    id: "toko", nm: "Toko", tongTon: 8200, unisDung: 4800, dangVe: 557, dangVeNote: "557 (09/05 trễ)",
+    updatedAt: "Hôm qua 16:00", updatedAgo: "yesterday", share: 0.80,
+    skus: [
+      { item: "GA-300", variant: "A4", tonKho: 1500, unisDung: 1200, dangVe: 557, dangVeEta: "09/05 trễ", updatedAt: "16:00" },
+      { item: "GA-600", variant: "A4", tonKho: 2800, unisDung: 960, dangVe: 0, dangVeEta: "", updatedAt: "16:00" },
+      { item: "GA-600", variant: "B2", tonKho: 1900, unisDung: 1520, dangVe: 0, dangVeEta: "", updatedAt: "16:00" },
+    ],
+  },
+  {
+    id: "phumy", nm: "Phú Mỹ", tongTon: null, unisDung: 0, dangVe: 0, dangVeNote: "0",
+    updatedAt: "3 ngày trước", updatedAgo: "stale", share: 0,
+    skus: [],
+  },
+  {
+    id: "dongtam", nm: "Đồng Tâm", tongTon: 5800, unisDung: 2900, dangVe: 0, dangVeNote: "0",
+    updatedAt: "Hôm nay 08:15", updatedAgo: "today", share: 0.50,
+    skus: [
+      { item: "GA-300", variant: "A4", tonKho: 1200, unisDung: 450, dangVe: 0, dangVeEta: "", updatedAt: "08:15" },
+      { item: "GA-600", variant: "A4", tonKho: 2200, unisDung: 1100, dangVe: 0, dangVeEta: "", updatedAt: "08:15" },
+      { item: "GA-600", variant: "B2", tonKho: 1400, unisDung: 700, dangVe: 0, dangVeEta: "", updatedAt: "08:15" },
+    ],
+  },
+  {
+    id: "vigracera", nm: "Vigracera", tongTon: 3500, unisDung: 1820, dangVe: 0, dangVeNote: "0",
+    updatedAt: "Hôm nay 09:30", updatedAgo: "today", share: 0.70,
+    skus: [
+      { item: "GA-300", variant: "A4", tonKho: 800, unisDung: 455, dangVe: 0, dangVeEta: "", updatedAt: "09:30" },
+      { item: "GA-600", variant: "A4", tonKho: 1500, unisDung: 780, dangVe: 0, dangVeEta: "", updatedAt: "09:30" },
+      { item: "GA-600", variant: "B2", tonKho: 600, unisDung: 310, dangVe: 0, dangVeEta: "", updatedAt: "09:30" },
+    ],
+  },
 ];
 
-export function getShipments(tenant: TenantName): Shipment[] {
+export function getNMSummaries(tenant: TenantName): NMSummary[] {
   const s = tenantScales[tenant];
-  return baseShipments.map((sh) => ({ ...sh, qty: Math.round(sh.qty * s) }));
+  return baseNMs.map((nm) => ({
+    ...nm,
+    tongTon: nm.tongTon !== null ? Math.round(nm.tongTon * s) : null,
+    unisDung: Math.round(nm.unisDung * s),
+    dangVe: Math.round(nm.dangVe * s),
+    skus: nm.skus.map((sku) => ({
+      ...sku,
+      tonKho: Math.round(sku.tonKho * s),
+      unisDung: Math.round(sku.unisDung * s),
+      dangVe: Math.round(sku.dangVe * s),
+    })),
+  }));
 }
