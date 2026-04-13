@@ -340,6 +340,7 @@ export default function DrpPage() {
             </table>
           </div>
         </div>
+        </div>
       )}
 
       {/* ═══ LỚP 2: Per SKU (drill into CN) ═══ */}
