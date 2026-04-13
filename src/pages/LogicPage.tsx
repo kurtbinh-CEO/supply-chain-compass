@@ -858,12 +858,48 @@ export default function LogicPage() {
   const nodeParam = searchParams.get("node");
   const initialTab = tabs.find((t) => t.key === tabParam) ? tabParam! : "monthly";
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [searchQuery, setSearchQuery] = useState("");
   const openNodeIndex = tabParam && nodeParam !== null ? parseInt(nodeParam, 10) : -1;
   const current = tabs.find((t) => t.key === activeTab)!;
+
+  // Count matches per tab for badges
+  const tabMatchCounts = useMemo(() => {
+    if (!searchQuery) return {};
+    const counts: Record<string, number> = {};
+    for (const tab of tabs) {
+      counts[tab.key] = tab.nodes.filter((n) => nodeMatchesSearch(n, searchQuery)).length;
+    }
+    return counts;
+  }, [searchQuery]);
+
+  // Auto-switch to first tab with matches
+  useEffect(() => {
+    if (searchQuery && tabMatchCounts[activeTab] === 0) {
+      const firstMatch = tabs.find((t) => (tabMatchCounts[t.key] || 0) > 0);
+      if (firstMatch) setActiveTab(firstMatch.key);
+    }
+  }, [searchQuery, tabMatchCounts]);
 
   return (
     <AppLayout>
       <ScreenHeader title="Logic vận hành SCP" subtitle="Hiểu cách hệ thống tính toán và ra quyết định" />
+
+      {/* Search */}
+      <div className="relative max-w-md mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-3" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Tìm kiếm: MOQ, SS, MAPE, forecast, netting..."
+          className="w-full h-9 pl-9 pr-8 rounded-lg border border-surface-3 bg-surface-0 text-table text-text-1 placeholder:text-text-3 focus:outline-none focus:ring-2 focus:ring-primary"
+        />
+        {searchQuery && (
+          <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-3 hover:text-text-1">
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-surface-3 overflow-x-auto">
@@ -871,22 +907,42 @@ export default function LogicPage() {
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`px-4 py-2.5 text-table-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+            className={`px-4 py-2.5 text-table-sm font-medium whitespace-nowrap border-b-2 transition-colors flex items-center gap-1.5 ${
               activeTab === tab.key
                 ? "border-primary text-primary"
                 : "border-transparent text-text-3 hover:text-text-1"
             }`}
           >
             {tab.label}
+            {searchQuery && (tabMatchCounts[tab.key] || 0) > 0 && (
+              <span className="rounded-full bg-warning/20 text-warning text-[10px] font-bold px-1.5 py-0.5 leading-none">
+                {tabMatchCounts[tab.key]}
+              </span>
+            )}
           </button>
         ))}
       </div>
+
+      {/* Search summary */}
+      {searchQuery && (
+        <div className="mb-4 text-table-sm text-text-3">
+          {Object.values(tabMatchCounts).reduce((a, b) => a + b, 0) > 0
+            ? <>Tìm thấy <span className="font-medium text-text-1">{Object.values(tabMatchCounts).reduce((a, b) => a + b, 0)} nodes</span> chứa "{searchQuery}"</>
+            : <>Không tìm thấy kết quả cho "{searchQuery}"</>
+          }
+        </div>
+      )}
 
       {/* Tree */}
       <div className="space-y-3 max-w-4xl animate-fade-in">
         {activeTab === "ss" && <SSAlertIntro />}
         {current.nodes.map((node, i) => (
-          <LogicTreeNode key={`${activeTab}-${i}`} node={node} defaultOpen={activeTab === initialTab && i === openNodeIndex} />
+          <LogicTreeNode
+            key={`${activeTab}-${i}-${searchQuery}`}
+            node={node}
+            defaultOpen={activeTab === initialTab && i === openNodeIndex}
+            searchQuery={searchQuery}
+          />
         ))}
       </div>
     </AppLayout>
