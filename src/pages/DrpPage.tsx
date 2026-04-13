@@ -193,15 +193,48 @@ export default function DrpPage() {
 
   return (
     <AppLayout>
+      {/* ── Header ── */}
       <div className="flex items-center justify-between mb-1">
-        <ScreenHeader title="DRP & Phân bổ" subtitle="Distribution Requirements Planning + Allocation" />
-        <button
-          onClick={handleRunDrp}
-          className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-4 py-2 text-table font-medium shadow-sm hover:shadow-md transition-shadow"
-        >
-          <Play className="h-4 w-4" /> Chạy DRP
-        </button>
+        <div className="flex items-center gap-3">
+          <ScreenHeader title="DRP & Phân bổ" subtitle="Distribution Requirements Planning + Allocation" />
+          {totalExc > 0 && (
+            <span className="flex items-center gap-1 rounded-full bg-danger-bg px-3 py-1 text-table-sm font-medium text-danger">
+              <AlertTriangle className="h-3.5 w-3.5" /> {totalExc} exceptions
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <span className="text-caption text-text-3 block">Lần chạy cuối: 23:02 đêm qua</span>
+            <button onClick={() => setShowDrpConfirm(true)} className="text-caption text-primary font-medium hover:underline">Chạy lại ngay</button>
+          </div>
+          <button
+            onClick={() => setShowDrpConfirm(true)}
+            className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow"
+          >
+            <Play className="h-4 w-4" /> Chạy DRP
+          </button>
+        </div>
       </div>
+
+      {/* ── DRP Progress Bar ── */}
+      {drpRunning && (
+        <div className="mb-4 rounded-card border border-primary/30 bg-primary/5 p-4 animate-fade-in">
+          <div className="flex items-center gap-6">
+            {drpStepLabels.map((label, i) => (
+              <div key={label} className="flex items-center gap-2">
+                <div className={cn("h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold transition-colors",
+                  drpStep > i ? "bg-success text-white" : drpStep === i ? "bg-primary text-white animate-pulse" : "bg-surface-3 text-text-3"
+                )}>
+                  {drpStep > i ? "✓" : i + 1}
+                </div>
+                <span className={cn("text-table-sm font-medium", drpStep >= i ? "text-text-1" : "text-text-3")}>{label}</span>
+                {i < 2 && <div className={cn("w-12 h-0.5 rounded", drpStep > i ? "bg-success" : "bg-surface-3")} />}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Persistent Breadcrumb ── */}
       <div className="flex items-center gap-1.5 text-table-sm mb-4">
@@ -226,12 +259,6 @@ export default function DrpPage() {
       </div>
 
       <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <span className="rounded-full border border-surface-3 bg-surface-2 px-3 py-1 text-table-sm text-text-2">Chạy lúc 23:02 đêm qua</span>
-        {totalExc > 0 && (
-          <span className="flex items-center gap-1 rounded-full bg-danger-bg px-3 py-1 text-table-sm font-medium text-danger">
-            <AlertTriangle className="h-3.5 w-3.5" /> {totalExc} exceptions
-          </span>
-        )}
         <button
           onClick={() => { setShowLayer3(!showLayer3); setDrillCn(null); }}
           className={cn("flex items-center gap-1.5 rounded-full border px-3 py-1 text-table-sm font-medium transition-colors",
@@ -249,41 +276,52 @@ export default function DrpPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-surface-3 bg-surface-1/50">
-                  {["CN", "Demand", "Có sẵn (stock+pipe)", "Fill rate", "Gap", "Exceptions", ""].map((h, i) => (
+                  <th className="w-10 px-3 py-2.5"></th>
+                  {["CN", "Demand (m²)", "Có sẵn", "Fill rate", "Gap", "Exceptions", "RPOs planned", "Action"].map((h, i) => (
                     <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {data.map((r) => (
-                  <tr key={r.cn} className={cn("border-b border-surface-3/50 cursor-pointer hover:bg-surface-1/30", r.gap > 0 && "bg-danger-bg/20")} onClick={() => r.exceptions > 0 && setDrillCn(r.cn)}>
+                  <tr key={r.cn} className={cn("border-b border-surface-3/50 cursor-pointer hover:bg-surface-1/30", r.gap > 0 && "bg-danger-bg/20")} onClick={() => setDrillCn(r.cn)}>
+                    <td className="px-3 py-3 text-text-3"><ChevronRight className="h-4 w-4" /></td>
                     <td className="px-4 py-3 text-table font-medium text-text-1">{r.cn}</td>
                     <td className="px-4 py-3 text-table tabular-nums text-text-1">{r.demand.toLocaleString()}</td>
                     <td className="px-4 py-3 text-table tabular-nums text-text-2">{r.available.toLocaleString()}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-16 h-2 rounded-full bg-surface-3 overflow-hidden">
-                          <div className={cn("h-full rounded-full", r.fillRate >= 100 ? "bg-success" : r.fillRate >= 90 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(r.fillRate, 100)}%` }} />
+                          <div className={cn("h-full rounded-full", r.fillRate >= 95 ? "bg-success" : r.fillRate >= 85 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(r.fillRate, 100)}%` }} />
                         </div>
-                        <span className={cn("text-table-sm font-medium", r.fillRate >= 100 ? "text-success" : r.fillRate >= 90 ? "text-warning" : "text-danger")}>{r.fillRate}%</span>
+                        <span className={cn("text-table-sm font-medium", r.fillRate >= 95 ? "text-success" : r.fillRate >= 85 ? "text-warning" : "text-danger")}>
+                          {r.fillRate}% {r.fillRate >= 95 ? "🟢" : r.fillRate >= 85 ? "🟡" : "🔴"}
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-table tabular-nums">
                       {r.gap > 0 ? <span className="text-danger font-medium">{r.gap.toLocaleString()}</span> : <span className="text-text-3">0</span>}
                     </td>
                     <td className="px-4 py-3 text-table">
-                      {r.exceptions > 0 ? <span className="text-danger font-medium">{r.exceptions}</span> : <span className="text-text-3">0</span>}
+                      {r.exceptions > 0 ? <span className="text-danger font-medium">{r.exceptions} items</span> : <span className="text-text-3">0</span>}
                     </td>
-                    <td className="px-4 py-3 text-text-3">{r.exceptions > 0 && <ChevronRight className="h-4 w-4" />}</td>
+                    <td className="px-4 py-3 text-table text-text-2">{r.rpos} RPO{r.rpos !== 1 ? "s" : ""}</td>
+                    <td className="px-4 py-3">
+                      {r.exceptions > 0 ? (
+                        <span className="text-primary text-table-sm font-medium">Chi tiết ▸</span>
+                      ) : <span className="text-text-3">—</span>}
+                    </td>
                   </tr>
                 ))}
                 <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
+                  <td></td>
                   <td className="px-4 py-3 text-table text-text-1">TOTAL</td>
                   <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalDemand.toLocaleString()}</td>
                   <td className="px-4 py-3 text-table tabular-nums text-text-2">{data.reduce((a, r) => a + r.available, 0).toLocaleString()}</td>
                   <td className="px-4 py-3 text-table-sm font-medium text-text-1">{totalFill}%</td>
                   <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalGap.toLocaleString()}</td>
                   <td className="px-4 py-3 text-table text-text-1">{totalExc}</td>
+                  <td className="px-4 py-3 text-table text-text-1">{totalRpos} RPOs</td>
                   <td></td>
                 </tr>
               </tbody>
