@@ -173,6 +173,8 @@ export default function DrpPage() {
     setExpandOptions(null);
   };
 
+  const currentLayer = showLayer3 ? 3 : activeCn ? 2 : 1;
+
   return (
     <AppLayout>
       <div className="flex items-center justify-between mb-1">
@@ -185,6 +187,28 @@ export default function DrpPage() {
         </button>
       </div>
 
+      {/* ── Persistent Breadcrumb ── */}
+      <div className="flex items-center gap-1.5 text-table-sm mb-4">
+        <button
+          onClick={() => { setDrillCn(null); setShowLayer3(false); setShowAllSkus(false); setExpandedExceptions(new Set()); setExpandOptions(null); }}
+          className={cn("transition-colors", currentLayer === 1 ? "text-text-1 font-semibold" : "text-primary hover:underline cursor-pointer")}
+        >
+          Kết quả
+        </button>
+        {currentLayer >= 2 && !showLayer3 && (
+          <>
+            <ChevronRight className="h-3.5 w-3.5 text-text-3" />
+            <span className="text-text-1 font-semibold">{activeCn?.cn} <span className="text-text-3 font-normal">(fill {activeCn?.fillRate}%, gap {activeCn?.gap.toLocaleString()})</span></span>
+          </>
+        )}
+        {showLayer3 && (
+          <>
+            <ChevronRight className="h-3.5 w-3.5 text-text-3" />
+            <span className="text-text-1 font-semibold">Tham số{ssDrillCn && <> › <span className="text-text-2">{ssDrillCn}</span></>}</span>
+          </>
+        )}
+      </div>
+
       <div className="flex items-center gap-3 mb-5 flex-wrap">
         <span className="rounded-full border border-surface-3 bg-surface-2 px-3 py-1 text-table-sm text-text-2">Chạy lúc 23:02 đêm qua</span>
         {totalExc > 0 && (
@@ -193,7 +217,7 @@ export default function DrpPage() {
           </span>
         )}
         <button
-          onClick={() => setShowLayer3(!showLayer3)}
+          onClick={() => { setShowLayer3(!showLayer3); setDrillCn(null); }}
           className={cn("flex items-center gap-1.5 rounded-full border px-3 py-1 text-table-sm font-medium transition-colors",
             showLayer3 ? "border-primary bg-primary/10 text-primary" : "border-surface-3 bg-surface-2 text-text-2 hover:text-text-1"
           )}
@@ -204,7 +228,7 @@ export default function DrpPage() {
 
       {/* ═══ LỚP 1: Per CN (default) ═══ */}
       {!activeCn && !showLayer3 && (
-        <div className="rounded-card border border-surface-3 bg-surface-2 animate-fade-in">
+        <div className="rounded-card border border-surface-3 bg-surface-2 animate-slide-in-left">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
