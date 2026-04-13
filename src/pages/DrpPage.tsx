@@ -204,6 +204,7 @@ export default function DrpPage() {
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
           <ScreenHeader title="DRP & Phân bổ" subtitle="Distribution Requirements Planning + Allocation" />
+          <LogicLink tab="daily" node={2} tooltip="Logic DRP Netting" />
           {totalExc > 0 && (
             <span className="flex items-center gap-1 rounded-full bg-danger-bg px-3 py-1 text-table-sm font-medium text-danger">
               <AlertTriangle className="h-3.5 w-3.5" /> {totalExc} exceptions
