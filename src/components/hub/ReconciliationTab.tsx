@@ -180,7 +180,7 @@ export function ReconciliationTab({ scale }: Props) {
                 <th className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">NM</th>
                 {recon[0]?.months.map((m, mi) => (
                   <th key={mi} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">
-                    {m.label} {m.closed && "🔒"}
+                    <span>{m.label}</span>{m.closed && <span> 🔒</span>}
                   </th>
                 ))}
                 <th className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">Avg honoring</th>
