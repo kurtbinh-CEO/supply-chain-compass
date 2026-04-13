@@ -5,7 +5,7 @@ import { useRbac, AppUser } from "@/components/RbacContext";
 import { useWorkspace } from "@/components/WorkspaceContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronDown, Clock, Check, X as XIcon, AlertTriangle, Info } from "lucide-react";
+import { ChevronDown, Clock, Check, X as XIcon, AlertTriangle, Info, Paperclip, AtSign, MessageSquare } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { LogicLink } from "@/components/LogicLink";
@@ -15,7 +15,7 @@ const allCns = ["CN-BD", "CN-ĐN", "CN-HN", "CN-CT"];
 
 interface SkuRow {
   item: string; variant: string; forecast: number;
-  adjust: number | null; // null = chưa adjust
+  adjust: number | null;
   reason: string;
   status: "approved" | "pending" | "blocked" | "no_change" | "not_adjusted";
 }
@@ -88,20 +88,36 @@ const baseInvData: Record<string, CnInventory[]> = {
 };
 
 /* Messages */
-interface Message { id: string; from: string; role: string; time: string; text: string; sku?: string }
+interface Message {
+  id: string; from: string; role: string; time: string; text: string;
+  sku?: string; attachment?: { name: string; type: string };
+  mentions?: string[];
+}
 
 const baseMessages: Record<string, Message[]> = {
   "CN-BD": [
-    { id: "m1", from: "Minh Trần", role: "CN_MANAGER", time: "09:15", text: "GA-300 A4 tăng 44 do nhà thầu mới xác nhận Q2. Có PO minh chứng.", sku: "GA-300 A4" },
-    { id: "m2", from: "Thúy Nguyễn", role: "SC_MANAGER", time: "09:42", text: "Đã duyệt GA-300 A4. GA-400 A4 giảm 30 — cần xác nhận lại với Sales.", sku: "GA-400 A4" },
-    { id: "m3", from: "Phong Vũ", role: "SALES", time: "10:05", text: "GA-400 A4: xác nhận dự án Sunrise delay sang tháng 6. Demand giảm hợp lý." },
+    { id: "m1", from: "Minh Trần", role: "CN_MANAGER", time: "09:15", text: "GA-300 A4: nhà thầu mới Hòa Bình Group ký Th5, tăng ~44m²/tuần", sku: "GA-300 A4" },
+    { id: "m2", from: "Thúy Nguyễn", role: "SC_MANAGER", time: "10:30", text: "OK noted. Nhà thầu nào? Có PO chưa?", sku: "GA-300 A4", mentions: ["Minh Trần"] },
+    { id: "m3", from: "Minh Trần", role: "CN_MANAGER", time: "10:45", text: "Hòa Bình Group, PO 500m²/tháng. File đính kèm.", sku: "GA-300 A4", attachment: { name: "HBG_PO_Th5.pdf", type: "pdf" } },
+    { id: "m4", from: "Tuấn Phạm", role: "SALES", time: "11:00", text: "Confirm: deal HBG pipeline 85% confidence. Đã nhập /demand tab 2.", sku: "GA-300 A4" },
+    { id: "m5", from: "Thúy Nguyễn", role: "SC_MANAGER", time: "09:42", text: "Đã duyệt GA-300 A4. GA-400 A4 giảm 30 — cần xác nhận lại với Sales.", sku: "GA-400 A4", mentions: ["Tuấn Phạm"] },
+    { id: "m6", from: "Tuấn Phạm", role: "SALES", time: "10:05", text: "GA-400 A4: xác nhận dự án Sunrise delay sang tháng 6. Demand giảm hợp lý.", sku: "GA-400 A4" },
   ],
   "CN-ĐN": [
-    { id: "m4", from: "Hà Lê", role: "CN_MANAGER", time: "08:30", text: "Chưa adjust — chờ data từ Sales team ĐN." },
+    { id: "m7", from: "Hà Lê", role: "CN_MANAGER", time: "08:30", text: "Chưa adjust — chờ data từ Sales team ĐN." },
   ],
   "CN-HN": [],
   "CN-CT": [],
 };
+
+/* Mentionable users */
+const mentionableUsers = [
+  { id: "u1", name: "Thúy Nguyễn", role: "SC_MANAGER" },
+  { id: "u2", name: "Minh Trần", role: "CN_MANAGER" },
+  { id: "u3", name: "Hà Lê", role: "CN_MANAGER" },
+  { id: "u4", name: "Tuấn Phạm", role: "SALES" },
+  { id: "u5", name: "Phong Vũ", role: "SALES" },
+];
 
 function hstkColor(d: number) { return d < 5 ? "text-danger" : d < 10 ? "text-warning" : "text-success"; }
 
@@ -127,7 +143,6 @@ function getAutoStatus(forecast: number, adjust: number | null): string {
 
 const rejectReasons = ["Không có PO", "Lệch AOP", "Cần thêm data"];
 
-/* ═══ CUTOFF ═══ */
 function getCutoffInfo() {
   const now = new Date();
   const cutoff = new Date();
@@ -139,7 +154,6 @@ function getCutoffInfo() {
   return { pastCutoff, hours, mins, label: pastCutoff ? "Đã qua cutoff ⏰" : `⏱ Cutoff 18:00 còn ${hours}h${mins > 0 ? `${mins}m` : ""}` };
 }
 
-/* ═══ ROLE BADGE ═══ */
 function RoleBadge({ role }: { role: string }) {
   const m: Record<string, { label: string; cls: string }> = {
     SC_MANAGER: { label: "SC Manager", cls: "bg-primary/10 text-primary" },
@@ -151,7 +165,22 @@ function RoleBadge({ role }: { role: string }) {
   return <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", badge.cls)}>{badge.label}</span>;
 }
 
-/* ═══ MAIN COMPONENT ═══ */
+function Avatar({ name, role }: { name: string; role: string }) {
+  const initial = name.charAt(0).toUpperCase();
+  const colors: Record<string, string> = {
+    SC_MANAGER: "bg-primary text-primary-foreground",
+    CN_MANAGER: "bg-info text-primary-foreground",
+    SALES: "bg-success text-primary-foreground",
+    VIEWER: "bg-surface-3 text-text-2",
+  };
+  return (
+    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center text-caption font-bold shrink-0", colors[role] || "bg-surface-3 text-text-2")}>
+      {initial}
+    </div>
+  );
+}
+
+/* ═══ MAIN ═══ */
 export default function CnPortalPage() {
   const { user, setUser, users, canEdit, canApprove, canViewAllCn, filterCnId } = useRbac();
   const { addApproval, addNotification } = useWorkspace();
@@ -163,18 +192,27 @@ export default function CnPortalPage() {
   const [newMsg, setNewMsg] = useState("");
   const [focusRow, setFocusRow] = useState<string | null>(null);
   const focusRef = useRef<HTMLInputElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const [threadFilter, setThreadFilter] = useState("all");
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionSearch, setMentionSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const cutoff = getCutoffInfo();
   const activeCn = filterCnId || selectedCn;
   const rows = demandData[activeCn] || [];
   const inv = baseInvData[activeCn] || [];
 
-  // Focus input when navigating from tab 2
   useEffect(() => {
     if (focusRow && focusRef.current) {
       focusRef.current.focus();
       setFocusRow(null);
     }
   }, [focusRow, activeTab]);
+
+  // Scroll chat to bottom on new message
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, activeCn, threadFilter]);
 
   const updateRow = (idx: number, field: "adjust" | "reason", value: string | number | null) => {
     setDemandData((prev) => {
@@ -209,7 +247,6 @@ export default function CnPortalPage() {
     const approved = edited.filter((r) => r.status === "approved").length;
     const pending = edited.filter((r) => r.status === "pending").length;
 
-    // Push pending items to Workspace approvals for SC_MANAGER
     const pendingRows = edited.filter((r) => r.status === "pending");
     pendingRows.forEach((r) => {
       const delta = r.adjust! - r.forecast;
@@ -225,7 +262,6 @@ export default function CnPortalPage() {
       });
     });
 
-    // Push notification
     addNotification({
       id: `NTF-CN-${Date.now()}`,
       type: "CN_ADJUST",
@@ -259,15 +295,38 @@ export default function CnPortalPage() {
     toast.info("Đã từ chối", { description: `${rows[idx].item} ${rows[idx].variant}: ${reason}` });
   };
 
-  const sendMessage = () => {
+  const sendMessage = (skuTag?: string) => {
     if (!newMsg.trim()) return;
     const msg: Message = {
       id: `m${Date.now()}`, from: user.name, role: user.role,
       time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
       text: newMsg.trim(),
+      sku: skuTag || (threadFilter !== "all" ? threadFilter : undefined),
     };
     setMessages((prev) => ({ ...prev, [activeCn]: [...(prev[activeCn] || []), msg] }));
     setNewMsg("");
+    setShowMentions(false);
+  };
+
+  const handleAttach = () => {
+    toast.info("Đính kèm file", { description: "Chọn PDF, Excel, hoặc ảnh (max 10MB)" });
+  };
+
+  const handleMentionInsert = (name: string) => {
+    setNewMsg((prev) => prev.replace(/@\w*$/, `@${name} `));
+    setShowMentions(false);
+    inputRef.current?.focus();
+  };
+
+  const handleMsgInput = (val: string) => {
+    setNewMsg(val);
+    const atMatch = val.match(/@(\w*)$/);
+    if (atMatch) {
+      setShowMentions(true);
+      setMentionSearch(atMatch[1].toLowerCase());
+    } else {
+      setShowMentions(false);
+    }
   };
 
   // Stats
@@ -280,6 +339,18 @@ export default function CnPortalPage() {
   const totalPct = totalFc > 0 ? (totalDelta / totalFc * 100).toFixed(1) : "0";
   const doneCount = rows.filter((r) => r.status !== "not_adjusted").length;
 
+  // Thread SKUs
+  const allMsgs = messages[activeCn] || [];
+  const threadSkus = Array.from(new Set(allMsgs.filter((m) => m.sku).map((m) => m.sku!)));
+  const filteredMsgs = threadFilter === "all" ? allMsgs : allMsgs.filter((m) => threadFilter === "general" ? !m.sku : m.sku === threadFilter);
+
+  // Count messages per thread
+  const getSkuMsgCount = (sku: string) => allMsgs.filter((m) => m.sku === sku).length;
+  const generalCount = allMsgs.filter((m) => !m.sku).length;
+
+  // Edited count for mobile submit
+  const editedCount = rows.filter((r) => r.adjust !== null && r.adjust !== r.forecast).length;
+
   const tabs = [
     { key: "adjust", label: "Điều chỉnh demand" },
     { key: "inv", label: "Tồn kho CN" },
@@ -289,6 +360,9 @@ export default function CnPortalPage() {
   const cnLabel: Record<string, string> = {
     "CN-BD": "CN Bình Dương", "CN-ĐN": "CN Đà Nẵng", "CN-HN": "CN Hà Nội", "CN-CT": "CN Cần Thơ",
   };
+
+  // Get inv data for a SKU
+  const getInv = (item: string, variant: string) => inv.find((r) => r.item === item && r.variant === variant);
 
   return (
     <AppLayout>
@@ -306,14 +380,12 @@ export default function CnPortalPage() {
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Cutoff */}
           <span className={cn("rounded-full px-3 py-1 text-table-sm font-medium flex items-center gap-1.5",
             cutoff.pastCutoff ? "bg-danger-bg text-danger" : "bg-warning-bg text-warning"
           )}>
             <Clock className="h-3.5 w-3.5" />
             {cutoff.label}
           </span>
-          {/* CN filter for SC_MANAGER */}
           {canViewAllCn && (
             <Select value={selectedCn} onValueChange={setSelectedCn}>
               <SelectTrigger className="w-36 h-8 text-table-sm bg-surface-0 border-surface-3">
@@ -324,7 +396,6 @@ export default function CnPortalPage() {
               </SelectContent>
             </Select>
           )}
-          {/* Role switcher (demo) */}
           <Select value={user.id} onValueChange={(id) => {
             const u = users.find((u) => u.id === id);
             if (u) setUser(u);
@@ -341,7 +412,6 @@ export default function CnPortalPage() {
         </div>
       </div>
 
-      {/* Period */}
       <div className="text-caption text-text-3 mb-4">Tháng 5 / 2025 — W17 (12-18/05)</div>
 
       {/* Tabs */}
@@ -356,9 +426,9 @@ export default function CnPortalPage() {
             )}
           >
             {tab.label}
-            {tab.key === "chat" && (messages[activeCn]?.length || 0) > 0 && (
+            {tab.key === "chat" && allMsgs.length > 0 && (
               <span className="ml-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold px-1.5 py-0.5">
-                {messages[activeCn].length}
+                {allMsgs.length}
               </span>
             )}
             {activeTab === tab.key && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t" />}
@@ -377,7 +447,6 @@ export default function CnPortalPage() {
             {notAdjusted > 0 && <span className="text-text-3">{notAdjusted} chưa adjust ⏳</span>}
           </div>
 
-          {/* SC_MANAGER: CN summary strip */}
           {canApprove && (
             <div className="flex items-center gap-3 flex-wrap text-table-sm">
               {allCns.map((c) => {
@@ -403,8 +472,8 @@ export default function CnPortalPage() {
             </div>
           )}
 
-          {/* Table */}
-          <div className="rounded-card border border-surface-3 bg-surface-2">
+          {/* Desktop Table */}
+          <div className="rounded-card border border-surface-3 bg-surface-2 hidden sm:block">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -425,7 +494,6 @@ export default function CnPortalPage() {
                     const needReason = Math.abs(pct) > 5 && !row.reason.trim();
                     const isEditable = canEdit && !cutoff.pastCutoff && (user.role !== "SALES");
                     const isFocused = focusRow === `${row.item}-${row.variant}`;
-
                     return (
                       <tr key={`${row.item}-${row.variant}`} className={cn(
                         "border-b border-surface-3/50 hover:bg-surface-1/30 transition-colors",
@@ -436,11 +504,8 @@ export default function CnPortalPage() {
                         <td className="px-3 py-2.5 text-table tabular-nums text-text-3">{row.forecast.toLocaleString()}</td>
                         <td className="px-3 py-2.5">
                           {isEditable ? (
-                            <input
-                              ref={isFocused ? focusRef : undefined}
-                              type="number"
-                              value={row.adjust ?? ""}
-                              onChange={(e) => updateRow(idx, "adjust", e.target.value)}
+                            <input ref={isFocused ? focusRef : undefined} type="number"
+                              value={row.adjust ?? ""} onChange={(e) => updateRow(idx, "adjust", e.target.value)}
                               placeholder={String(row.forecast)}
                               className="w-20 h-7 rounded border border-surface-3 bg-surface-0 px-2 text-table tabular-nums text-text-1 focus:outline-none focus:ring-2 focus:ring-primary"
                             />
@@ -453,18 +518,12 @@ export default function CnPortalPage() {
                             <span className={cn("font-medium", delta > 0 ? "text-success" : "text-danger")}>
                               {delta > 0 ? "+" : ""}{delta} ({pct > 0 ? "+" : ""}{pct.toFixed(1)}%)
                             </span>
-                          ) : (
-                            <span className="text-text-3">0</span>
-                          )}
+                          ) : <span className="text-text-3">0</span>}
                         </td>
                         <td className="px-3 py-2.5">
                           {isEditable ? (
-                            <input
-                              type="text"
-                              value={row.reason}
-                              onChange={(e) => updateRow(idx, "reason", e.target.value.slice(0, 100))}
-                              placeholder={Math.abs(pct) > 5 ? "Bắt buộc..." : "—"}
-                              maxLength={100}
+                            <input type="text" value={row.reason} onChange={(e) => updateRow(idx, "reason", e.target.value.slice(0, 100))}
+                              placeholder={Math.abs(pct) > 5 ? "Bắt buộc..." : "—"} maxLength={100}
                               className={cn("w-40 h-7 rounded border bg-surface-0 px-2 text-table text-text-1 focus:outline-none focus:ring-2 focus:ring-primary",
                                 needReason ? "border-danger" : "border-surface-3"
                               )}
@@ -474,16 +533,13 @@ export default function CnPortalPage() {
                           )}
                         </td>
                         <td className="px-3 py-2.5">
-                          <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium whitespace-nowrap", badge.cls)}>
-                            {badge.label}
-                          </span>
+                          <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium whitespace-nowrap", badge.cls)}>{badge.label}</span>
                         </td>
                         {canApprove && (
                           <td className="px-3 py-2.5">
                             {row.status === "pending" && (
                               <div className="flex items-center gap-1">
-                                <button onClick={() => handleApprove(idx)}
-                                  className="rounded-md bg-success-bg text-success p-1 hover:bg-success/20">
+                                <button onClick={() => handleApprove(idx)} className="rounded-md bg-success-bg text-success p-1 hover:bg-success/20">
                                   <Check className="h-3.5 w-3.5" />
                                 </button>
                                 <Select onValueChange={(reason) => handleReject(idx, reason)}>
@@ -501,7 +557,6 @@ export default function CnPortalPage() {
                       </tr>
                     );
                   })}
-                  {/* TOTAL row */}
                   <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
                     <td className="px-3 py-2.5 text-table text-text-1">TOTAL</td>
                     <td className="px-3 py-2.5" />
@@ -521,14 +576,89 @@ export default function CnPortalPage() {
             </div>
           </div>
 
-          {/* Submit */}
+          {/* Mobile Card Layout */}
+          <div className="sm:hidden space-y-3 pb-20">
+            {rows.map((row, idx) => {
+              const adj = row.adjust ?? row.forecast;
+              const delta = adj - row.forecast;
+              const pct = row.forecast > 0 ? (delta / row.forecast * 100) : 0;
+              const badge = statusBadge(row.status);
+              const isEditable = canEdit && !cutoff.pastCutoff && (user.role !== "SALES");
+              const isFocused = focusRow === `${row.item}-${row.variant}`;
+              const invRow = getInv(row.item, row.variant);
+              const skuMsgCount = allMsgs.filter((m) => m.sku === `${row.item} ${row.variant}`).length;
+
+              return (
+                <div key={`${row.item}-${row.variant}`} className={cn(
+                  "rounded-card border border-surface-3 bg-surface-2 p-4 space-y-3",
+                  row.status === "blocked" && "border-danger/30 bg-danger-bg/10",
+                )}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-display text-body font-semibold text-text-1">{row.item} {row.variant}</span>
+                    <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", badge.cls)}>{badge.label}</span>
+                  </div>
+                  <div className="text-table-sm text-text-3">Dự kiến: {row.forecast.toLocaleString()} m²</div>
+                  {isEditable ? (
+                    <input ref={isFocused ? focusRef : undefined} type="number"
+                      value={row.adjust ?? ""} onChange={(e) => updateRow(idx, "adjust", e.target.value)}
+                      placeholder={String(row.forecast)}
+                      className="w-full h-12 rounded-lg border border-surface-3 bg-surface-0 px-4 text-body tabular-nums text-text-1 focus:outline-none focus:ring-2 focus:ring-primary text-center font-semibold"
+                    />
+                  ) : (
+                    <div className="text-center text-body font-semibold text-text-1 py-2">{row.adjust ?? "—"}</div>
+                  )}
+                  {row.adjust !== null && delta !== 0 && (
+                    <div className="text-table-sm">
+                      Delta: <span className={cn("font-medium", delta > 0 ? "text-success" : "text-danger")}>
+                        {delta > 0 ? "+" : ""}{delta} ({pct > 0 ? "+" : ""}{pct.toFixed(1)}%)
+                      </span>
+                      {" "}
+                      <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-medium", badge.cls)}>{row.status === "approved" ? "Auto" : row.status}</span>
+                    </div>
+                  )}
+                  {isEditable && (
+                    <input type="text" value={row.reason} onChange={(e) => updateRow(idx, "reason", e.target.value.slice(0, 100))}
+                      placeholder={Math.abs(pct) > 5 ? "Lý do (bắt buộc)..." : "Lý do..."} maxLength={100}
+                      className="w-full h-9 rounded-lg border border-surface-3 bg-surface-0 px-3 text-table-sm text-text-1 placeholder:text-text-3"
+                    />
+                  )}
+                  {invRow && (
+                    <div className={cn("text-[11px] px-2 py-1 rounded bg-surface-1 flex items-center gap-2",
+                      invRow.hstk < 5 && "bg-danger-bg/30"
+                    )}>
+                      <span>Tồn: {invRow.ton.toLocaleString()}</span>
+                      <span className="text-text-3">|</span>
+                      <span>SS: {invRow.ssTarget.toLocaleString()}</span>
+                      <span className="text-text-3">|</span>
+                      <span className={hstkColor(invRow.hstk)}>HSTK: {invRow.hstk}d {invRow.hstk < 5 ? "⚠" : ""}</span>
+                    </div>
+                  )}
+                  {skuMsgCount > 0 && (
+                    <button onClick={() => { setActiveTab("chat"); setThreadFilter(`${row.item} ${row.variant}`); }}
+                      className="flex items-center gap-1.5 text-[11px] text-primary font-medium">
+                      <MessageSquare className="h-3 w-3" /> {skuMsgCount} comments
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Mobile fixed bottom bar */}
           {canEdit && user.role !== "SALES" && (
-            <div className="flex justify-end">
-              <Button
-                disabled={cutoff.pastCutoff}
-                onClick={handleSubmit}
-                className="bg-gradient-primary text-primary-foreground px-6"
-              >
+            <div className="sm:hidden fixed bottom-0 left-0 right-0 p-3 bg-surface-2 border-t border-surface-3 z-50">
+              <Button disabled={cutoff.pastCutoff} onClick={handleSubmit}
+                className="w-full h-12 bg-gradient-primary text-primary-foreground text-body font-semibold">
+                {cutoff.pastCutoff ? "Đã qua cutoff ⏰" : `Gửi điều chỉnh (${editedCount} SKU)`}
+              </Button>
+            </div>
+          )}
+
+          {/* Desktop submit */}
+          {canEdit && user.role !== "SALES" && (
+            <div className="hidden sm:flex justify-end">
+              <Button disabled={cutoff.pastCutoff} onClick={handleSubmit}
+                className="bg-gradient-primary text-primary-foreground px-6">
                 {cutoff.pastCutoff ? "Đã qua cutoff ⏰" : "Gửi điều chỉnh"}
               </Button>
             </div>
@@ -539,7 +669,6 @@ export default function CnPortalPage() {
       {/* ═══ TAB 2: Tồn kho CN ═══ */}
       {activeTab === "inv" && (
         <div className="space-y-4 animate-fade-in">
-          {/* Alert for critical items */}
           {inv.filter((r) => r.hstk < 5).length > 0 && (
             <div className="rounded-lg border border-warning/30 bg-warning-bg/50 px-4 py-3 flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
@@ -547,22 +676,14 @@ export default function CnPortalPage() {
                 {inv.filter((r) => r.hstk < 5).map((r) => (
                   <p key={`${r.item}-${r.variant}`}>
                     <strong>{r.item} {r.variant}</strong>: HSTK {r.hstk} ngày! Cân nhắc{" "}
-                    <button
-                      onClick={() => {
-                        setActiveTab("adjust");
-                        setFocusRow(`${r.item}-${r.variant}`);
-                      }}
-                      className="text-primary underline font-medium"
-                    >
-                      tăng demand tuần này
-                    </button>
+                    <button onClick={() => { setActiveTab("adjust"); setFocusRow(`${r.item}-${r.variant}`); }}
+                      className="text-primary underline font-medium">tăng demand tuần này</button>
                     {" "}để DRP đặt thêm NM.
                   </p>
                 ))}
               </div>
             </div>
           )}
-
           <div className="rounded-card border border-surface-3 bg-surface-2">
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -597,7 +718,6 @@ export default function CnPortalPage() {
               </table>
             </div>
           </div>
-
           <div className="rounded-lg border border-surface-3 bg-surface-1/50 px-4 py-2.5 flex items-center gap-2 text-table-sm text-text-3">
             <Info className="h-3.5 w-3.5 shrink-0" />
             Tồn kho từ WMS, sync 14:32. CN Manager KHÔNG sửa tồn kho (WMS quản lý).
@@ -605,30 +725,68 @@ export default function CnPortalPage() {
         </div>
       )}
 
-      {/* ═══ TAB 3: Trao đổi ═══ */}
+      {/* ═══ TAB 3: Trao đổi (Thread system) ═══ */}
       {activeTab === "chat" && (
-        <div className="space-y-4 animate-fade-in max-w-2xl">
+        <div className="space-y-4 animate-fade-in max-w-3xl">
+          {/* Thread filter */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => setThreadFilter("all")}
+              className={cn("rounded-full px-3 py-1.5 text-caption font-medium transition-colors border",
+                threadFilter === "all" ? "border-primary bg-primary/10 text-primary" : "border-surface-3 text-text-2 hover:bg-surface-1"
+              )}>
+              Tất cả ({allMsgs.length})
+            </button>
+            {threadSkus.map((sku) => (
+              <button key={sku} onClick={() => setThreadFilter(sku)}
+                className={cn("rounded-full px-3 py-1.5 text-caption font-medium transition-colors border",
+                  threadFilter === sku ? "border-primary bg-primary/10 text-primary" : "border-surface-3 text-text-2 hover:bg-surface-1"
+                )}>
+                {sku} ({getSkuMsgCount(sku)})
+              </button>
+            ))}
+            <button onClick={() => setThreadFilter("general")}
+              className={cn("rounded-full px-3 py-1.5 text-caption font-medium transition-colors border",
+                threadFilter === "general" ? "border-primary bg-primary/10 text-primary" : "border-surface-3 text-text-2 hover:bg-surface-1"
+              )}>
+              General ({generalCount})
+            </button>
+          </div>
+
           <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
             {/* Messages */}
-            <div className="max-h-[400px] overflow-y-auto p-4 space-y-3">
-              {(messages[activeCn] || []).length === 0 ? (
-                <p className="text-table-sm text-text-3 text-center py-8">Chưa có tin nhắn cho {activeCn}.</p>
+            <div className="max-h-[420px] overflow-y-auto p-4 space-y-4">
+              {filteredMsgs.length === 0 ? (
+                <p className="text-table-sm text-text-3 text-center py-8">
+                  {threadFilter === "all" ? `Chưa có tin nhắn cho ${activeCn}.` : `Chưa có tin nhắn trong thread "${threadFilter}".`}
+                </p>
               ) : (
-                (messages[activeCn] || []).map((msg) => (
+                filteredMsgs.map((msg) => (
                   <div key={msg.id} className={cn("flex gap-3", msg.from === user.name && "flex-row-reverse")}>
-                    <div className={cn("rounded-lg px-3 py-2 max-w-[75%]",
+                    <Avatar name={msg.from} role={msg.role} />
+                    <div className={cn("rounded-xl px-4 py-2.5 max-w-[75%]",
                       msg.from === user.name ? "bg-primary/10 border border-primary/20" : "bg-surface-1 border border-surface-3"
                     )}>
-                      <div className="flex items-center gap-2 mb-0.5">
+                      <div className="flex items-center gap-2 mb-1">
                         <span className="text-caption font-semibold text-text-1">{msg.from}</span>
                         <RoleBadge role={msg.role} />
                         <span className="text-[10px] text-text-3">{msg.time}</span>
                       </div>
-                      <p className="text-table-sm text-text-1 leading-relaxed">{msg.text}</p>
+                      <p className="text-table-sm text-text-1 leading-relaxed">
+                        {msg.text.split(/(@\w+\s?\w*)/g).map((part, i) =>
+                          part.startsWith("@") ? <span key={i} className="text-primary font-medium">{part}</span> : part
+                        )}
+                      </p>
+                      {msg.attachment && (
+                        <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-surface-0 border border-surface-3 px-2.5 py-1.5 text-caption text-text-2 w-fit">
+                          <Paperclip className="h-3 w-3 text-text-3" />
+                          <span className="font-medium">{msg.attachment.name}</span>
+                          <span className="text-[10px] text-text-3 uppercase">{msg.attachment.type}</span>
+                        </div>
+                      )}
                       {msg.sku && (
                         <button
                           onClick={() => { setActiveTab("adjust"); setFocusRow(msg.sku!.replace(" ", "-")); }}
-                          className="text-[10px] text-primary font-medium underline mt-1"
+                          className="text-[10px] text-primary font-medium underline mt-1.5 block"
                         >
                           → {msg.sku}
                         </button>
@@ -637,20 +795,49 @@ export default function CnPortalPage() {
                   </div>
                 ))
               )}
+              <div ref={chatEndRef} />
             </div>
+
             {/* Input */}
             {(user.role !== "VIEWER") && (
-              <div className="border-t border-surface-3 p-3 flex gap-2">
-                <input
-                  value={newMsg}
-                  onChange={(e) => setNewMsg(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                  placeholder="Nhập tin nhắn..."
-                  className="flex-1 h-9 rounded-lg border border-surface-3 bg-surface-0 px-3 text-table text-text-1 placeholder:text-text-3 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-                <Button onClick={sendMessage} className="bg-gradient-primary text-primary-foreground px-4">
-                  Gửi
-                </Button>
+              <div className="border-t border-surface-3 p-3">
+                {/* Mention dropdown */}
+                {showMentions && (
+                  <div className="mb-2 rounded-lg border border-surface-3 bg-surface-0 shadow-lg overflow-hidden">
+                    {mentionableUsers
+                      .filter((u) => u.name.toLowerCase().includes(mentionSearch))
+                      .map((u) => (
+                        <button key={u.id} onClick={() => handleMentionInsert(u.name)}
+                          className="w-full px-3 py-2 text-left text-table-sm text-text-1 hover:bg-surface-1 flex items-center gap-2">
+                          <Avatar name={u.name} role={u.role} />
+                          <span className="font-medium">{u.name}</span>
+                          <RoleBadge role={u.role} />
+                        </button>
+                      ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button onClick={handleAttach}
+                    className="h-9 w-9 rounded-lg border border-surface-3 bg-surface-0 flex items-center justify-center text-text-3 hover:text-text-1 hover:bg-surface-1 transition-colors shrink-0">
+                    <Paperclip className="h-4 w-4" />
+                  </button>
+                  <div className="relative flex-1">
+                    <input ref={inputRef}
+                      value={newMsg}
+                      onChange={(e) => handleMsgInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter" && !showMentions) sendMessage(); }}
+                      placeholder="Nhập tin nhắn... (@ để mention)"
+                      className="w-full h-9 rounded-lg border border-surface-3 bg-surface-0 px-3 pr-8 text-table text-text-1 placeholder:text-text-3 focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <button onClick={() => { setShowMentions(!showMentions); setMentionSearch(""); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-text-3 hover:text-primary">
+                      <AtSign className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <Button onClick={() => sendMessage()} className="bg-gradient-primary text-primary-foreground px-4 shrink-0">
+                    Gửi
+                  </Button>
+                </div>
               </div>
             )}
           </div>

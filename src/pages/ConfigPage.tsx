@@ -27,7 +27,15 @@ interface FeatureToggle {
   mdlz: boolean;
 }
 
-/* ── Demo data ── */
+interface RbacRow {
+  screen: string;
+  cn_manager: string;
+  sc_manager: string;
+  sales: string;
+  buyer: string;
+  viewer: string;
+}
+
 const planningKeys: ConfigKey[] = [
   { key: "sop.lock_day", value: "7", desc: "Ngày lock consensus trong tháng", type: "number" },
   { key: "sop.compare_versions", value: "4", desc: "Số versions so sánh (v0-v3)", type: "number" },
@@ -76,6 +84,21 @@ const notifTypes: NotifType[] = [
   { type: "NM_STALE", channel: "Push", urgency: "Low", recipients: "Planner" },
   { type: "LCNB_TRIGGER", channel: "Push", urgency: "Medium", recipients: "SC Manager" },
   { type: "FC_LOCK", channel: "Email", urgency: "Low", recipients: "All stakeholders" },
+];
+
+const rbacMatrix: RbacRow[] = [
+  { screen: "/cn-portal Tab 1 Điều chỉnh", cn_manager: "✅ Sửa CN mình", sc_manager: "✅ Sửa all + duyệt", sales: "👁 Read-only", buyer: "❌", viewer: "❌" },
+  { screen: "/cn-portal Tab 2 Tồn kho", cn_manager: "👁 CN mình", sc_manager: "👁 All CN", sales: "❌", buyer: "👁 All", viewer: "❌" },
+  { screen: "/cn-portal Tab 3 Trao đổi", cn_manager: "✅ CN mình", sc_manager: "✅ All", sales: "✅ Threads mình", buyer: "👁", viewer: "❌" },
+  { screen: "/demand", cn_manager: "❌", sc_manager: "✅ Full", sales: "✅ B2B tab only", buyer: "❌", viewer: "👁" },
+  { screen: "/sop", cn_manager: "❌", sc_manager: "✅ Full", sales: "👁 Tab 1 only", buyer: "❌", viewer: "👁" },
+  { screen: "/hub", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "✅ Full", viewer: "👁" },
+  { screen: "/supply", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "✅ Full", viewer: "❌" },
+  { screen: "/orders", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "✅ Full", viewer: "👁" },
+  { screen: "/drp", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "❌", viewer: "👁" },
+  { screen: "/monitoring", cn_manager: "👁 CN mình", sc_manager: "✅ Full", sales: "❌", buyer: "❌", viewer: "👁" },
+  { screen: "/supplier-portal", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "❌", viewer: "❌" },
+  { screen: "/config", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "❌", viewer: "❌" },
 ];
 
 const featureToggles: FeatureToggle[] = [
@@ -249,6 +272,37 @@ export default function ConfigPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* RBAC Permission Matrix */}
+          <h3 className="font-display text-body font-semibold text-text-1 mt-6 mb-3">Phân quyền RBAC</h3>
+          <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-table">
+                <thead>
+                  <tr className="bg-surface-1">
+                    <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">Feature / Screen</th>
+                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">CN Manager</th>
+                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">SC Manager</th>
+                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">Sales</th>
+                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">Buyer</th>
+                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">Viewer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rbacMatrix.map((r, i) => (
+                    <tr key={r.screen} className={i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"}>
+                      <td className="px-4 py-2 font-medium text-text-1 whitespace-nowrap text-table-sm">{r.screen}</td>
+                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.cn_manager}</td>
+                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.sc_manager}</td>
+                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.sales}</td>
+                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.buyer}</td>
+                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.viewer}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </TabsContent>
       </Tabs>
