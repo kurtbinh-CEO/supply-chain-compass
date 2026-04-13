@@ -51,12 +51,12 @@ export function ClickableNumber({
 
   const close = useCallback(() => setOpen(false), []);
 
-  const toggle = useCallback(() => {
+  const toggle = useCallback((e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (open) {
       setOpen(false);
       globalClose = null;
     } else {
-      // Close any other open popover
       if (globalClose) globalClose();
       setOpen(true);
       setHasClicked(true);
