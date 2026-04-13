@@ -622,8 +622,8 @@ export default function DrpPage() {
                         <td className="px-4 py-3 text-table font-medium text-text-1">{r.cn}</td>
                         <td className="px-4 py-3 text-table tabular-nums text-text-1">{r.ssTotal.toLocaleString()}</td>
                         <td className="px-4 py-3 text-table tabular-nums">
-                          <span className={cn("font-medium", r.adequate < 80 ? "text-danger" : "text-success")}>{r.adequate}%</span>
-                          {r.adequate < 80 && " 🔴"}
+                          <span className={cn("font-medium", r.adequate < 80 ? "text-danger" : "text-success")}>{r.adequate}% {r.adequate < 80 ? "🔴" : "🟢"}</span>
+                          
                         </td>
                         <td className="px-4 py-3 text-table tabular-nums text-text-2">{r.breaches}x</td>
                         <td className="px-4 py-3 text-table text-text-2">{r.wc}</td>
@@ -672,7 +672,7 @@ export default function DrpPage() {
                           <td className="px-4 py-2.5">
                             {sk.delta !== 0 && (
                               <button
-                                onClick={() => toast.success("SS change gửi Workspace duyệt", { description: `${sk.item} ${sk.variant}: ${sk.ssCurrent}→${sk.ssProposed}` })}
+                                onClick={() => toast.success("SS change gửi Workspace duyệt", { description: `${sk.item} ${sk.variant}: ${sk.ssCurrent}→${sk.ssProposed}. DRP đêm nay dùng SS mới.` })}
                                 className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium"
                               >
                                 Áp dụng
@@ -710,8 +710,8 @@ export default function DrpPage() {
                         <input
                           defaultValue={p.value}
                           autoFocus
-                          onBlur={() => { setEditingParam(null); toast.success(`${p.key} đã lưu`); }}
-                          onKeyDown={(e) => { if (e.key === "Enter") { setEditingParam(null); toast.success(`${p.key} đã lưu`); } }}
+                          onBlur={() => { setEditingParam(null); toast.success("Tham số cập nhật", { description: "Chạy lại DRP để áp dụng." }); }}
+                          onKeyDown={(e) => { if (e.key === "Enter") { setEditingParam(null); toast.success("Tham số cập nhật", { description: "Chạy lại DRP để áp dụng." }); } }}
                           className="w-32 h-7 rounded border border-primary bg-surface-0 px-2 text-table text-text-1 focus:outline-none focus:ring-1 focus:ring-primary"
                         />
                       ) : p.value}
