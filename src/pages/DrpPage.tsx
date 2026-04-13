@@ -759,7 +759,8 @@ export default function DrpPage() {
                   <td className="px-4 py-2.5 text-caption text-text-3">Scan lateral trước PO</td>
                   <td className="px-4 py-2.5" />
                 </tr>
-                {/* LCNB cost threshold - inline edit */}
+                {/* LCNB cost threshold - inline edit, disabled when LCNB off */}
+                {paramLcnb && (
                 <tr className="border-b border-surface-3/50 hover:bg-surface-1/30">
                   <td className="px-4 py-2.5 text-table font-medium text-text-1">LCNB cost threshold</td>
                   <td className="px-4 py-2.5 text-table tabular-nums text-text-1">
@@ -774,6 +775,7 @@ export default function DrpPage() {
                   <td className="px-4 py-2.5 text-caption text-text-3">Chỉ lateral nếu rẻ hơn X% vs PO</td>
                   <td className="px-4 py-2.5"><button onClick={() => setEditingParam("LCNB cost threshold")} className="text-primary text-caption font-medium hover:underline">Sửa</button></td>
                 </tr>
+                )}
                 {/* MOQ round - dropdown */}
                 <tr className="border-b border-surface-3/50 hover:bg-surface-1/30">
                   <td className="px-4 py-2.5 text-table font-medium text-text-1">MOQ round</td>
