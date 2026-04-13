@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenShell";
-import { LogicTreeNode, LogicNodeData } from "@/components/logic/LogicTreeNode";
+import { LogicTreeNode, LogicNodeData, nodeMatchesSearch } from "@/components/logic/LogicTreeNode";
 import { CodeBlock, Note } from "@/components/logic/CodeBlock";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Alert, AlertDescription } from "@/components/ui/alert";
