@@ -2,6 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Lock, CheckCircle, ChevronRight, ChevronLeft, AlertTriangle, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { ViewPivotToggle, usePivotMode, WorstCnCell, CnGapBadge, LcnbBadge } from "@/components/ViewPivotToggle";
 import { SkuNmPanel } from "./SkuNmPanel";
 import { toast } from "sonner";
 import { FormulaBar } from "@/components/FormulaBar";
@@ -58,7 +59,9 @@ const decisionLog = [
 export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant }: Props) {
   const navigate = useNavigate();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
+  const [pivotMode, setPivotMode] = usePivotMode("sop-balance");
   const [drillCn, setDrillCn] = useState<number | null>(null);
+  const [drillSku, setDrillSku] = useState<string | null>(null);
   const [showLockModal, setShowLockModal] = useState(false);
 
   // Use consensus data for demand, scale balance data
@@ -114,8 +117,116 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   const [expandedSku, setExpandedSku] = useState<number | null>(null);
   const [bridgeSku, setBridgeSku] = useState<number | null>(null);
 
-  // Drill down view
-  if (drillCn !== null) {
+  /* ═══ SKU-first pivot ═══ */
+  interface BalSkuPivot {
+    item: string; variant: string; demand: number; stock: number; pipeline: number; netReq: number;
+    worstCn: string; worstCover: number; cnGapCount: number; lcnb: string | null;
+    cnBreakdown: { cn: string; demand: number; stock: number; pipeline: number; cover: number; ssTarget: number; ssGap: number; netReq: number; status: string }[];
+  }
+
+  const skuPivotData: BalSkuPivot[] = (() => {
+    if (pivotMode !== "sku") return [];
+    const map = new Map<string, BalSkuPivot>();
+    balRows.forEach(row => {
+      row.skus.forEach(sk => {
+        const key = `${sk.item}|${sk.variant}`;
+        if (!map.has(key)) {
+          map.set(key, { item: sk.item, variant: sk.variant, demand: 0, stock: 0, pipeline: 0, netReq: 0, worstCn: "", worstCover: Infinity, cnGapCount: 0, lcnb: null, cnBreakdown: [] });
+        }
+        const r = map.get(key)!;
+        r.demand += sk.demand; r.stock += sk.stock; r.pipeline += sk.pipeline; r.netReq += sk.netReq;
+        const avail = sk.stock + sk.pipeline;
+        const cover = sk.demand > 0 ? sk.stock / (sk.demand / 30) : 99;
+        const rowNet = Math.max(0, sk.demand - avail);
+        if (cover < r.worstCover) { r.worstCover = cover; r.worstCn = row.cn; }
+        if (rowNet > 0) r.cnGapCount++;
+        const ssGap = sk.stock - sk.ss;
+        r.cnBreakdown.push({ cn: row.cn, demand: sk.demand, stock: sk.stock, pipeline: sk.pipeline, cover: +cover.toFixed(1), ssTarget: sk.ss, ssGap, netReq: rowNet, status: rowNet > 0 ? "CRITICAL" : ssGap > 0 ? "EXCESS" : "OK" });
+      });
+    });
+    // detect LCNB
+    map.forEach(r => {
+      const excess = r.cnBreakdown.filter(c => c.status === "EXCESS");
+      const short = r.cnBreakdown.filter(c => c.status === "CRITICAL");
+      if (excess.length > 0 && short.length > 0) {
+        r.lcnb = `${excess[0].cn}→${short[0].cn} ${Math.min(Math.abs(excess[0].ssGap), short[0].netReq)}m²`;
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => b.demand - a.demand);
+  })();
+
+  /* ═══ SKU-first drill ═══ */
+  if (pivotMode === "sku" && drillSku) {
+    const skuRow = skuPivotData.find(r => `${r.item}|${r.variant}` === drillSku);
+    if (!skuRow) return null;
+    return (
+      <div className="space-y-5 animate-fade-in">
+        <FormulaBar demand={totalDemand} stock={totalStock} pipeline={totalPipeline} ssBuffer={ssBuffer} stockDetail={stockDetailForBar} netPerCn={netPerCnForBar} />
+        <div className="flex items-center gap-2 text-table-sm">
+          <button onClick={() => setDrillSku(null)} className="text-primary font-medium hover:underline flex items-center gap-1">
+            <ChevronLeft className="h-3.5 w-3.5" /> Per SKU
+          </button>
+          <span className="text-text-3">/</span>
+          <span className="text-text-1 font-medium">{skuRow.item} {skuRow.variant} (demand {skuRow.demand.toLocaleString()}m²)</span>
+        </div>
+        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-table-sm">
+              <thead>
+                <tr className="border-b border-surface-3 bg-surface-1/50">
+                  {["CN", "Demand", "Stock", "Pipeline", "Cover", "SS target", "SS gap", "Net req", "Status"].map(h => (
+                    <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {skuRow.cnBreakdown.map((cb, i) => (
+                  <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-primary/5", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
+                    <td className="px-3 py-2.5 font-medium text-text-1">{cb.cn}</td>
+                    <td className="px-3 py-2.5 tabular-nums text-text-1">{cb.demand.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 tabular-nums text-text-1">{cb.stock.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 tabular-nums text-text-2">{cb.pipeline.toLocaleString()}</td>
+                    <td className="px-3 py-2.5">
+                      <span className={cn("tabular-nums font-medium text-table-sm", cb.cover < 7 ? "text-danger" : "text-success")}>
+                        {cb.cover}d {cb.cover < 7 ? "🔴" : "🟢"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 tabular-nums text-text-3">{cb.ssTarget.toLocaleString()}</td>
+                    <td className={cn("px-3 py-2.5 tabular-nums font-medium", cb.ssGap < 0 ? "text-danger" : "text-success")}>
+                      {cb.ssGap > 0 ? "+" : ""}{cb.ssGap.toLocaleString()}
+                    </td>
+                    <td className="px-3 py-2.5 tabular-nums font-medium text-text-1">{cb.netReq.toLocaleString()}</td>
+                    <td className="px-3 py-2.5">
+                      <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
+                        cb.status === "CRITICAL" ? "bg-danger-bg text-danger" : cb.status === "EXCESS" ? "bg-info-bg text-info" : "bg-success-bg text-success"
+                      )}>{cb.status}</span>
+                    </td>
+                  </tr>
+                ))}
+                <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
+                  <td className="px-3 py-2.5 text-text-1">TOTAL</td>
+                  <td className="px-3 py-2.5 tabular-nums text-text-1">{skuRow.demand.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 tabular-nums text-text-1">{skuRow.stock.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 tabular-nums text-text-1">{skuRow.pipeline.toLocaleString()}</td>
+                  <td colSpan={3} />
+                  <td className="px-3 py-2.5 tabular-nums text-text-1">{skuRow.netReq.toLocaleString()}</td>
+                  <td />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {skuRow.lcnb && (
+          <div className="rounded-card border border-info/30 bg-info-bg p-3 text-table-sm">
+            <span className="font-medium text-info">💡 LCNB opportunity: {skuRow.lcnb}</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // CN-first drill down view
+  if (pivotMode === "cn" && drillCn !== null) {
     const row = balRows[drillCn];
     const avail = row.stock + row.pipeline;
     const cover = row.demand > 0 ? +(row.stock / (row.demand / 30)).toFixed(1) : 0;
@@ -254,7 +365,55 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
         netPerCn={netPerCnForBar}
       />
 
+      {/* Pivot toggle */}
+      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setDrillCn(null); setDrillSku(null); }} />
+
       {/* Balance table */}
+      {pivotMode === "sku" ? (
+        /* ═══ SKU-FIRST Layer 1 ═══ */
+        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+          <div className="px-5 py-3 border-b border-surface-3">
+            <h3 className="font-display text-section-header text-text-1">Per SKU — Tháng 5</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-table-sm">
+              <thead>
+                <tr className="border-b border-surface-3 bg-surface-1/50">
+                  {["Item", "Variant", "Demand", "Stock", "Pipeline", "Net req", "Worst CN", "# CN gap", "LCNB", ""].map(h => (
+                    <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {skuPivotData.map((row, i) => (
+                  <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors cursor-pointer", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
+                    onClick={() => setDrillSku(`${row.item}|${row.variant}`)}>
+                    <td className="px-3 py-2.5 font-medium text-text-1">{row.item}</td>
+                    <td className="px-3 py-2.5 text-text-2">{row.variant}</td>
+                    <td className="px-3 py-2.5 tabular-nums text-text-1 font-medium">{row.demand.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 tabular-nums text-text-1">{row.stock.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 tabular-nums text-text-2">{row.pipeline.toLocaleString()}</td>
+                    <td className={cn("px-3 py-2.5 tabular-nums font-medium", row.netReq > 0 ? "text-danger" : "text-success")}>{row.netReq.toLocaleString()}</td>
+                    <td className="px-3 py-2.5"><WorstCnCell cnName={row.worstCn} hstk={row.worstCover} /></td>
+                    <td className="px-3 py-2.5"><CnGapBadge count={row.cnGapCount} /></td>
+                    <td className="px-3 py-2.5">{row.lcnb ? <LcnbBadge text={row.lcnb} /> : <span className="text-text-3">—</span>}</td>
+                    <td className="px-3 py-2.5"><ChevronRight className="h-3.5 w-3.5 text-text-3" /></td>
+                  </tr>
+                ))}
+                <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
+                  <td className="px-3 py-2.5 text-text-1">TOTAL</td>
+                  <td />
+                  <td className="px-3 py-2.5 tabular-nums text-text-1">{totalDemand.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 tabular-nums text-text-1">{totalStock.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 tabular-nums text-text-1">{totalPipeline.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 tabular-nums text-text-1">{netReq.toLocaleString()}</td>
+                  <td colSpan={4} />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
         <div className="px-5 py-3 border-b border-surface-3 flex items-center justify-between">
           <h3 className="font-display text-section-header text-text-1">Per Location — Tháng 5</h3>
@@ -337,6 +496,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
           </table>
         </div>
       </div>
+      )}
 
       {/* Alert cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
