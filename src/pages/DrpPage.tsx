@@ -353,6 +353,8 @@ export default function DrpPage() {
                   {activeCn.exceptionList.map((ex, i) => {
                     const exKey = `${ex.item}-${ex.variant}`;
                     const isExpanded = expandedExceptions.has(exKey);
+                    const isResolved = !!resolvedExceptions[exKey];
+                    const resolvedLabel = resolvedExceptions[exKey];
                     return (
                       <>
                         <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", isExpanded && "bg-surface-1/20")}>
@@ -360,13 +362,24 @@ export default function DrpPage() {
                           <td className="px-4 py-3 text-table text-text-2">{ex.variant}</td>
                           <td className="px-4 py-3 text-table tabular-nums text-text-1">{ex.demand.toLocaleString()}</td>
                           <td className="px-4 py-3 text-table tabular-nums text-text-2">{ex.allocated.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-table tabular-nums font-medium text-danger">{ex.gap.toLocaleString()} {ex.type === "SHORTAGE" ? "🔴" : "🟡"}</td>
-                          <td className="px-4 py-3">
-                            <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
-                              ex.type === "SHORTAGE" ? "bg-danger-bg text-danger" : "bg-warning-bg text-warning"
-                            )}>{ex.type}</span>
+                          <td className="px-4 py-3 text-table tabular-nums font-medium">
+                            {isResolved
+                              ? <span className="text-text-3 line-through">{ex.gap.toLocaleString()}</span>
+                              : <span className="text-danger">{ex.gap.toLocaleString()} {ex.type === "SHORTAGE" ? "🔴" : "🟡"}</span>
+                            }
                           </td>
-                          <td className="px-4 py-3 text-caption text-text-2 max-w-[200px]">{ex.suggestion}</td>
+                          <td className="px-4 py-3">
+                            {isResolved ? (
+                              <span className="rounded-full px-2 py-0.5 text-caption font-medium bg-info-bg text-info">ĐANG XỬ LÝ</span>
+                            ) : (
+                              <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
+                                ex.type === "SHORTAGE" ? "bg-danger-bg text-danger" : "bg-warning-bg text-warning"
+                              )}>{ex.type}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-caption text-text-2 max-w-[200px]">
+                            {isResolved ? <span className="text-info">{resolvedLabel}</span> : ex.suggestion}
+                          </td>
                           <td className="px-4 py-3">
                             <div className="flex gap-1.5">
                               <button
