@@ -484,10 +484,7 @@ export default function DrpPage() {
 
       {/* ═══ LỚP 3: ĐIỀU CHỈNH ═══ */}
       {showLayer3 && (
-        <div className="animate-fade-in space-y-4">
-          <button onClick={() => setShowLayer3(false)} className="text-table-sm text-primary hover:underline flex items-center gap-1">
-            <ChevronLeft className="h-3.5 w-3.5" /> Kết quả DRP
-          </button>
+        <div className="animate-slide-in-right space-y-4">
 
           {/* SECTION A: Safety Stock */}
           <div className="rounded-card border border-surface-3 bg-surface-2">
