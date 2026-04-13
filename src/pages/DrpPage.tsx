@@ -125,6 +125,8 @@ export default function DrpPage() {
   const [ssDrillCn, setSsDrillCn] = useState<string | null>(null);
   const [showSimModal, setShowSimModal] = useState(false);
   const [simZ, setSimZ] = useState(1.65);
+  const [simCn, setSimCn] = useState("CN-BD");
+  const [simSku, setSimSku] = useState("GA-300 A4");
   const [showChangeLog, setShowChangeLog] = useState(false);
   const [editingParam, setEditingParam] = useState<string | null>(null);
   const [showDrpConfirm, setShowDrpConfirm] = useState(false);
