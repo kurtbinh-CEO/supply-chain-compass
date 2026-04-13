@@ -509,7 +509,21 @@ export default function DrpPage() {
                                     </div>
                                     <div className="border-t border-surface-3/50 my-1"></div>
                                     <div>
-                                      <span>= Net req:{" ".repeat(5)}<span className={cn("font-bold", ex.netting.netReq > 0 ? "text-danger" : "text-success")}>{ex.netting.netReq.toLocaleString()}</span> m²</span>
+                                      <span>= Net req:{" ".repeat(5)}</span>
+                                      <ClickableNumber
+                                        value={`${ex.netting.netReq.toLocaleString()} m²`}
+                                        label={`Net req ${ex.item} ${ex.variant}`}
+                                        color={cn("font-bold", ex.netting.netReq > 0 ? "text-danger" : "text-success")}
+                                        formula={`Demand ${ex.demand.toLocaleString()} − On-hand ${ex.netting.onHand.toLocaleString()} − Pipeline ${ex.netting.pipeline.toLocaleString()} + SS ${ex.netting.ssTarget.toLocaleString()} = ${ex.netting.netReq.toLocaleString()}`}
+                                        breakdown={[
+                                          { label: "FC phased", value: ex.netting.fcPhased.toLocaleString(), detail: "Từ S&OP consensus" },
+                                          { label: "− On-hand", value: `−${ex.netting.onHand.toLocaleString()}`, detail: "WMS sync" },
+                                          { label: "− In-transit", value: `−${ex.netting.pipeline.toLocaleString()}`, detail: "RPO đang về" },
+                                          { label: "+ SS buffer", value: `+${ex.netting.ssTarget.toLocaleString()}`, color: "text-warning", detail: "z×σ×√LT" },
+                                          { label: "= Net req", value: ex.netting.netReq.toLocaleString(), color: ex.netting.netReq > 0 ? "text-danger" : "text-success" },
+                                        ]}
+                                        note={ex.netting.netReq > 0 ? "Cần bổ sung hàng để đáp ứng demand + SS" : "Đủ hàng cover demand + SS"}
+                                      />
                                     </div>
                                     {ex.type === "SHORTAGE" && (
                                       <>
