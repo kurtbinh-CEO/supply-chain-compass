@@ -201,7 +201,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
                 const cover = row.demand > 0 ? +(row.stock / (row.demand / 30)).toFixed(1) : 0;
                 const ssGap = row.stock - row.ssTarget;
                 const rowNet = Math.max(0, row.demand - avail);
-                const isCrit = cover < 5;
+                const isCrit = cover < 7;
                 const isExcess = cover > 12 && ssGap > 0;
                 const status = isCrit ? "CRITICAL" : isExcess ? "EXCESS" : "OK";
                 const coverPct = Math.min(100, (cover / 15) * 100);
