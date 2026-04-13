@@ -125,7 +125,8 @@ export function DemandSummaryTab({ skus, tenant }: Props) {
   const [level, setLevel] = useState<1|2|3>(1);
   const [selectedMonth, setSelectedMonth] = useState(CURRENT); // index in months[]
   const [expandedRow, setExpandedRow] = useState<number|null>(null);
-  const [overrideModal, setOverrideModal] = useState<{sku:string;cell:string;value:number}|null>(null);
+  const [overrideModal, setOverrideModal] = useState<{sku:string;cell:string;value:number;rowIdx:number;colIdx:number;type:"fc"|"b2b"}|null>(null);
+  const [overrides, setOverrides] = useState<Record<string, {value:number;reason:string;note:string}>>({}); // key: "ri-ci-type"
   const [l3Month, setL3Month] = useState(CURRENT);
 
   const d = useMemo(() => getScaledData(tenant), [tenant]);
