@@ -33,7 +33,7 @@ const RbacContext = createContext<RbacContextType>(null!);
 export const useRbac = () => useContext(RbacContext);
 
 export function RbacProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AppUser>(defaultUsers[1]); // default CN_MANAGER
+  const [user, setUser] = useState<AppUser>(defaultUsers[0]); // default SC_MANAGER
 
   const canEdit = user.role === "CN_MANAGER" || user.role === "SC_MANAGER";
   const canApprove = user.role === "SC_MANAGER";
