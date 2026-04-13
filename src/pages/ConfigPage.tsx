@@ -273,7 +273,37 @@ export default function ConfigPage() {
               </tbody>
             </table>
           </div>
-        </TabsContent>
+
+          {/* RBAC Permission Matrix */}
+          <h3 className="font-display text-body font-semibold text-text-1 mt-6 mb-3">Phân quyền RBAC</h3>
+          <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-table">
+                <thead>
+                  <tr className="bg-surface-1">
+                    <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">Feature / Screen</th>
+                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">CN Manager</th>
+                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">SC Manager</th>
+                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">Sales</th>
+                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">Buyer</th>
+                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">Viewer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rbacMatrix.map((r, i) => (
+                    <tr key={r.screen} className={i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"}>
+                      <td className="px-4 py-2 font-medium text-text-1 whitespace-nowrap text-table-sm">{r.screen}</td>
+                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.cn_manager}</td>
+                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.sc_manager}</td>
+                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.sales}</td>
+                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.buyer}</td>
+                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.viewer}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
       </Tabs>
     </AppLayout>
   );
