@@ -130,6 +130,7 @@ export default function DrpPage() {
   const [showDrpConfirm, setShowDrpConfirm] = useState(false);
   const [drpRunning, setDrpRunning] = useState(false);
   const [drpStep, setDrpStep] = useState(0);
+  const [resolvedExceptions, setResolvedExceptions] = useState<Record<string, string>>({}); // key → chosen label
 
   const data = baseData.map((r) => ({
     ...r,
@@ -178,14 +179,15 @@ export default function DrpPage() {
     }, 2400);
   };
 
-  const handleChooseOption = (opt: typeof baseData[0]["exceptionList"][0]["options"][0]) => {
+  const handleChooseOption = (exKey: string, opt: typeof baseData[0]["exceptionList"][0]["options"][0]) => {
     if (opt.recommended) {
-      toast.success(`Đã chọn: ${opt.label}`, { description: "TO + RPO tạo → Workspace duyệt" });
+      toast.success("TO + RPO tạo", { description: "TO-DN-BD-2605-001 (220m²) + RPO-MKD-2605-W17-003 (125m²). Cả 2 gửi Workspace." });
     } else if (opt.label.includes("Lateral")) {
-      toast.success(`Đã chọn: ${opt.label}`, { description: "Transfer Order tạo → Workspace duyệt" });
+      toast.success("Transfer Order gửi Workspace duyệt", { description: "TO-DN-BD-2605-001 (220m²)" });
     } else {
-      toast.success(`Đã chọn: ${opt.label}`, { description: "RPO draft tạo → /orders" });
+      toast.success("RPO draft tạo. Xem tại /orders.", { description: "RPO-MKD-2605-W17-003 (345m²)" });
     }
+    setResolvedExceptions(prev => ({ ...prev, [exKey]: opt.label }));
     setExpandOptions(null);
   };
 
@@ -351,6 +353,8 @@ export default function DrpPage() {
                   {activeCn.exceptionList.map((ex, i) => {
                     const exKey = `${ex.item}-${ex.variant}`;
                     const isExpanded = expandedExceptions.has(exKey);
+                    const isResolved = !!resolvedExceptions[exKey];
+                    const resolvedLabel = resolvedExceptions[exKey];
                     return (
                       <>
                         <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", isExpanded && "bg-surface-1/20")}>
@@ -358,13 +362,24 @@ export default function DrpPage() {
                           <td className="px-4 py-3 text-table text-text-2">{ex.variant}</td>
                           <td className="px-4 py-3 text-table tabular-nums text-text-1">{ex.demand.toLocaleString()}</td>
                           <td className="px-4 py-3 text-table tabular-nums text-text-2">{ex.allocated.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-table tabular-nums font-medium text-danger">{ex.gap.toLocaleString()} {ex.type === "SHORTAGE" ? "🔴" : "🟡"}</td>
-                          <td className="px-4 py-3">
-                            <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
-                              ex.type === "SHORTAGE" ? "bg-danger-bg text-danger" : "bg-warning-bg text-warning"
-                            )}>{ex.type}</span>
+                          <td className="px-4 py-3 text-table tabular-nums font-medium">
+                            {isResolved
+                              ? <span className="text-text-3 line-through">{ex.gap.toLocaleString()}</span>
+                              : <span className="text-danger">{ex.gap.toLocaleString()} {ex.type === "SHORTAGE" ? "🔴" : "🟡"}</span>
+                            }
                           </td>
-                          <td className="px-4 py-3 text-caption text-text-2 max-w-[200px]">{ex.suggestion}</td>
+                          <td className="px-4 py-3">
+                            {isResolved ? (
+                              <span className="rounded-full px-2 py-0.5 text-caption font-medium bg-info-bg text-info">ĐANG XỬ LÝ</span>
+                            ) : (
+                              <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
+                                ex.type === "SHORTAGE" ? "bg-danger-bg text-danger" : "bg-warning-bg text-warning"
+                              )}>{ex.type}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-caption text-text-2 max-w-[200px]">
+                            {isResolved ? <span className="text-info">{resolvedLabel}</span> : ex.suggestion}
+                          </td>
                           <td className="px-4 py-3">
                             <div className="flex gap-1.5">
                               <button
@@ -373,7 +388,7 @@ export default function DrpPage() {
                               >
                                 Xem cách tính {isExpanded ? "▴" : "▾"}
                               </button>
-                              {ex.type === "SHORTAGE" && ex.options.length > 0 && (
+                              {ex.type === "SHORTAGE" && ex.options.length > 0 && !isResolved && (
                                 <button
                                   onClick={() => setExpandOptions(expandOptions === exKey ? null : exKey)}
                                   className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium"
@@ -471,47 +486,56 @@ export default function DrpPage() {
                                   </div>
                                 </div>
 
-                                {/* SECTION C: Options (expand on Xử lý click) */}
-                                {expandOptions === exKey && ex.options.length > 0 && (
-                                  <div>
-                                    <h4 className="text-caption font-medium text-text-3 uppercase mb-2">Options xử lý</h4>
-                                    <table className="w-full">
-                                      <thead>
-                                        <tr className="border-b border-surface-3/50">
-                                          {["Option", "Source", "Qty (m²)", "Cost", "Time", "Savings vs B", ""].map((h, j) => (
-                                            <th key={j} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
-                                          ))}
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {ex.options.map((opt, j) => (
-                                          <tr key={j} className={cn("border-b border-surface-3/30", opt.recommended && "bg-success/5")}>
-                                            <td className="px-3 py-2.5 text-table font-medium text-text-1">{opt.recommended && "★ "}{opt.label}</td>
-                                            <td className="px-3 py-2.5 text-table text-text-2">{opt.source}</td>
-                                            <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{opt.qty.toLocaleString()}</td>
-                                            <td className="px-3 py-2.5 text-table text-text-2">{opt.cost}</td>
-                                            <td className="px-3 py-2.5 text-table text-text-2">{opt.time}</td>
-                                            <td className="px-3 py-2.5 text-table text-text-2">{opt.savingVsB}</td>
-                                            <td className="px-3 py-2.5">
-                                              <button
-                                                onClick={() => handleChooseOption(opt)}
-                                                className={cn("rounded-button px-2.5 py-1 text-caption font-medium",
-                                                  opt.recommended ? "bg-gradient-primary text-primary-foreground" : "border border-surface-3 text-text-2 hover:text-text-1"
-                                                )}
-                                              >
-                                                Chọn {opt.label.charAt(0)}
-                                              </button>
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                    {ex.options.find(o => o.recommended) && (
-                                      <p className="text-caption text-success italic mt-2 px-3">
-                                        ★ Recommend: kết hợp. LCNB cover 64%, PO cover 36%.
-                                      </p>
-                                    )}
-                                  </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+
+                        {/* ── Options panel (separate from netting) ── */}
+                        {expandOptions === exKey && ex.options.length > 0 && (
+                          <tr key={`options-${i}`}>
+                            <td colSpan={8} className="p-0">
+                              <div className="border-t border-primary/20 px-6 py-4 bg-primary/[0.02]">
+                                <h4 className="text-table font-semibold text-text-1 mb-3">
+                                  {ex.item} {ex.variant} {activeCn.cn} — Gap {ex.gap.toLocaleString()}m². Chọn cách xử lý:
+                                </h4>
+                                <table className="w-full">
+                                  <thead>
+                                    <tr className="border-b border-surface-3/50">
+                                      {["Option", "Source", "Qty (m²)", "Cost", "Thời gian", "Savings", ""].map((h, j) => (
+                                        <th key={j} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {ex.options.map((opt, j) => (
+                                      <tr key={j} className={cn("border-b border-surface-3/30", opt.recommended && "border-l-2 border-l-success bg-success/5")}>
+                                        <td className="px-3 py-2.5 text-table font-medium text-text-1">
+                                          {opt.recommended && <span className="text-success mr-1">★</span>}{opt.label}
+                                        </td>
+                                        <td className="px-3 py-2.5 text-table text-text-2">{opt.source}</td>
+                                        <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{opt.qty.toLocaleString()}</td>
+                                        <td className="px-3 py-2.5 text-table text-text-2">{opt.cost}</td>
+                                        <td className="px-3 py-2.5 text-table text-text-2">{opt.time}</td>
+                                        <td className="px-3 py-2.5 text-table text-text-2">{opt.savingVsB}</td>
+                                        <td className="px-3 py-2.5">
+                                          <button
+                                            onClick={() => handleChooseOption(exKey, opt)}
+                                            className={cn("rounded-button px-2.5 py-1 text-caption font-medium",
+                                              opt.recommended ? "bg-gradient-primary text-primary-foreground" : "border border-surface-3 text-text-2 hover:text-text-1"
+                                            )}
+                                          >
+                                            Chọn {opt.label.charAt(0)}
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                                {ex.options.find(o => o.recommended) && (
+                                  <p className="text-caption text-success italic mt-2 px-3">
+                                    ★ Recommend: Kết hợp LCNB cover 64%, PO cover 36%. Tiết kiệm 31,9M₫.
+                                  </p>
                                 )}
                               </div>
                             </td>
