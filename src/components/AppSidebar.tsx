@@ -8,6 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/components/SidebarContext";
 import { useWorkflow } from "@/components/WorkflowContext";
+import { useWorkspace } from "@/components/WorkspaceContext";
 import { useLocation, useNavigate } from "react-router-dom";
 
 interface NavItem {
@@ -26,7 +27,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Nơi làm việc",
     items: [
-      { title: "Workspace", icon: ClipboardCheck, url: "/workspace", badge: "3" },
+      { title: "Workspace", icon: ClipboardCheck, url: "/workspace" },
     ],
   },
   {
@@ -67,6 +68,8 @@ const navGroups: NavGroup[] = [
 export function AppSidebar() {
   const { collapsed, toggle } = useSidebarState();
   const { startWorkflow } = useWorkflow();
+  const { pendingCount } = useWorkspace();
+  const location = useLocation();
   const location = useLocation();
   const navigate = useNavigate();
 
