@@ -165,6 +165,43 @@ export default function DrpPage() {
   const totalFill = totalDemand > 0 ? Math.round(((totalDemand - totalGap) / totalDemand) * 1000) / 10 : 100;
   const activeCn = drillCn ? data.find((r) => r.cn === drillCn) : null;
 
+  // SKU-first aggregation for DRP
+  const skuAggDrp = useMemo(() => {
+    const map: Record<string, { item: string; variant: string; totalDemand: number; totalAllocated: number; totalGap: number; fillPct: number;
+      worstCn: string; worstHstk: number; cnGapCount: number; lcnb: string | null;
+      cnRows: { cn: string; demand: number; allocated: number; fillPct: number; gap: number; status: string }[];
+    }> = {};
+    data.forEach(cn => {
+      cn.allSkus.forEach(sk => {
+        const key = `${sk.item}-${sk.variant}`;
+        if (!map[key]) map[key] = { item: sk.item, variant: sk.variant, totalDemand: 0, totalAllocated: 0, totalGap: 0, fillPct: 0,
+          worstCn: "", worstHstk: 99, cnGapCount: 0, lcnb: null, cnRows: [] };
+        map[key].totalDemand += sk.demand;
+        map[key].totalAllocated += sk.allocated;
+        const gap = sk.demand - sk.allocated;
+        map[key].totalGap += gap;
+        if (gap > 0) map[key].cnGapCount++;
+        map[key].cnRows.push({ cn: cn.cn, demand: sk.demand, allocated: sk.allocated, fillPct: sk.fillPct, gap, status: sk.status });
+      });
+    });
+    Object.values(map).forEach(sk => {
+      sk.fillPct = sk.totalDemand > 0 ? Math.round((sk.totalAllocated / sk.totalDemand) * 100) : 100;
+      const hasExcess = sk.cnRows.some(c => c.gap < 0);
+      const hasShort = sk.cnRows.some(c => c.gap > 0);
+      if (hasExcess && hasShort) {
+        const excessCn = sk.cnRows.find(c => c.gap < 0);
+        const shortCn = sk.cnRows.find(c => c.gap > 0);
+        if (excessCn && shortCn) sk.lcnb = `${excessCn.cn}→${shortCn.cn} ${Math.abs(excessCn.gap)}m²`;
+      }
+      if (sk.cnRows.length > 0) {
+        const worst = sk.cnRows.reduce((a, b) => a.fillPct < b.fillPct ? a : b);
+        sk.worstCn = worst.cn;
+        sk.worstHstk = worst.fillPct;
+      }
+    });
+    return Object.values(map).sort((a, b) => a.fillPct - b.fillPct);
+  }, [data]);
+
   const toggleException = (key: string) => {
     setExpandedExceptions((prev) => {
       const next = new Set(prev);
