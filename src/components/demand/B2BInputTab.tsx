@@ -50,15 +50,15 @@ function DealModal({ deal, onClose, onSave, title }: {
           <div>
             <label className="text-table-header uppercase text-text-3 mb-1 block">CN giao</label>
             <div className="flex gap-2 flex-wrap">
-              {cnOptions.map(cn => (
-                <button key={cn} onClick={() => {
-                  const list = form.cnList.includes(cn) ? form.cnList.filter(c => c !== cn) : [...form.cnList, cn];
+              {cnOptions.map(opt => (
+                <button key={opt} onClick={() => {
+                  const list = form.cnList.includes(opt) ? form.cnList.filter(c => c !== opt) : [...form.cnList, opt];
                   if (list.length > 0) set("cnList", list);
                 }}
                   className={cn(
                     "px-3 py-1.5 rounded-button text-table-sm border transition-colors",
-                    form.cnList.includes(cn) ? "border-primary bg-primary/10 text-primary" : "border-surface-3 text-text-2 hover:border-primary/30"
-                  )}>{cn}</button>
+                    form.cnList.includes(opt) ? "border-primary bg-primary/10 text-primary" : "border-surface-3 text-text-2 hover:border-primary/30"
+                  )}>{opt}</button>
               ))}
             </div>
           </div>
