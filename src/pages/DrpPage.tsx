@@ -541,20 +541,13 @@ export default function DrpPage() {
                             </td>
                           </tr>
                         )}
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                    {ex.options.find(o => o.recommended) && (
-                                      <p className="text-caption text-success italic mt-2 px-3">
-                                        ★ Recommend: kết hợp. LCNB cover 64%, PO cover 36%.
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
+                      </>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
                       </>
                     );
                   })}
