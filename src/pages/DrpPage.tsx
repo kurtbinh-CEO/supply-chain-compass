@@ -300,8 +300,40 @@ export default function DrpPage() {
                   <tr key={r.cn} className={cn("border-b border-surface-3/50 cursor-pointer hover:bg-surface-1/30", r.gap > 0 && "bg-danger-bg/20")} onClick={() => setDrillCn(r.cn)}>
                     <td className="px-3 py-3 text-text-3"><ChevronRight className="h-4 w-4" /></td>
                     <td className="px-4 py-3 text-table font-medium text-text-1">{r.cn}</td>
-                    <td className="px-4 py-3 text-table tabular-nums text-text-1">{r.demand.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-table tabular-nums text-text-2">{r.available.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-table tabular-nums text-text-1">
+                      <ClickableNumber
+                        value={r.demand}
+                        label={`Demand ${r.cn}`}
+                        color="text-text-1"
+                        formula={r.cn === "CN-BD"
+                          ? `FC phased ${Math.round(2142 * s).toLocaleString()} + CN adjust +${Math.round(94 * s)} + PO ${Math.round(757 * s).toLocaleString()} − overlap = ${r.demand.toLocaleString()}`
+                          : `Demand ${r.cn} = ${r.demand.toLocaleString()} m² (từ S&OP consensus)`}
+                        breakdown={r.cn === "CN-BD" ? r.allSkus.map(sk => ({
+                          label: `${sk.item} ${sk.variant}`,
+                          value: sk.demand,
+                          pct: `${Math.round(sk.demand / r.demand * 100)}%`,
+                        })) : undefined}
+                        links={[{ label: "→ /demand-weekly", to: "/demand-weekly" }, { label: "→ /sop Cân đối", to: "/sop" }]}
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-table tabular-nums text-text-2">
+                      <ClickableNumber
+                        value={r.available}
+                        label={`Có sẵn ${r.cn}`}
+                        color="text-text-2"
+                        formula={r.cn === "CN-BD"
+                          ? `On-hand ${Math.round(450 * s).toLocaleString()} + Pipeline ${Math.round(557 * s).toLocaleString()} = ${r.available.toLocaleString()} (available after SS guard)`
+                          : `Stock + Pipeline = ${r.available.toLocaleString()} m²`}
+                        breakdown={r.cn === "CN-BD" ? [
+                          { label: "On-hand tổng", value: Math.round(1800 * s), detail: "Tồn kho hiện tại" },
+                          { label: "− SS target", value: Math.round(-900 * s), color: "text-warning", detail: "Safety stock reserve" },
+                          { label: "+ Pipeline (RPO in-transit)", value: Math.round(557 * s), detail: "ETA W17-W18" },
+                          { label: "− Reserved/locked", value: Math.round(-450 * s), detail: "Đã allocate trước" },
+                          { label: "= Available", value: r.available, color: "text-text-1" },
+                        ] : undefined}
+                        links={[{ label: "→ /monitoring tab Tồn kho", to: "/monitoring" }]}
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-16 h-2 rounded-full bg-surface-3 overflow-hidden">
@@ -330,13 +362,21 @@ export default function DrpPage() {
                     <td className="px-4 py-3 text-table text-text-2">
                       <ClickableNumber
                         value={`${r.rpos} RPO${r.rpos !== 1 ? "s" : ""}`}
-                        label="RPOs planned"
+                        label={`RPOs planned ${r.cn}`}
                         color="text-text-2"
                         breakdown={r.cn === "CN-BD" ? [
                           { label: "RPO-MKD-W17-002", value: "1.000m² GA-300 A4", detail: "MOQ round" },
                           { label: "RPO-MKD-W17-003", value: "1.000m² GA-600 A4" },
                           { label: "RPO-DTM-W17-001", value: "500m² GA-300 B2" },
-                        ] : undefined}
+                        ] : r.cn === "CN-ĐN" ? [
+                          { label: "RPO-MKD-W18-001", value: `${Math.round(800 * s).toLocaleString()}m² GA-600 A4` },
+                        ] : r.cn === "CN-HN" ? [
+                          { label: "RPO-VGR-W17-001", value: `${Math.round(600 * s).toLocaleString()}m² GA-300 A4` },
+                          { label: "RPO-DTM-W18-001", value: `${Math.round(500 * s).toLocaleString()}m² GA-400 A4` },
+                        ] : [
+                          { label: "RPO-PMY-W18-001", value: `${Math.round(450 * s).toLocaleString()}m² GA-600 B2` },
+                        ]}
+                        formula={`Net req → MOQ round → ${r.rpos} RPO(s). Total ${r.cn === "CN-BD" ? "2.500" : r.cn === "CN-ĐN" ? Math.round(800 * s).toLocaleString() : r.cn === "CN-HN" ? Math.round(1100 * s).toLocaleString() : Math.round(450 * s).toLocaleString()}m²`}
                         links={[{ label: "→ /orders tab 1 DRAFT", to: "/orders" }]}
                       />
                     </td>
