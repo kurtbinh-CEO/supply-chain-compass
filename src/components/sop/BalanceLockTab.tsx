@@ -5,6 +5,7 @@ import { Lock, CheckCircle, ChevronRight, ChevronLeft, AlertTriangle, ArrowRight
 import { SkuNmPanel } from "./SkuNmPanel";
 import { toast } from "sonner";
 import { FormulaBar } from "@/components/FormulaBar";
+import { DemandToOrderBridge, type BridgeStep } from "@/components/DemandToOrderBridge";
 import type { ConsensusRow } from "@/pages/SopPage";
 
 interface Props {
