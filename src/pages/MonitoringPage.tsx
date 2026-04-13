@@ -36,27 +36,70 @@ const finKpis = [
 /* ═══ TAB 2 (Tồn kho) DATA ═══ */
 interface CnInvSku {
   item: string; variant: string; ton: number; dangVe: string; available: number;
-  ssTarget: number; ssGap: number; hstk: number; status: string;
+  ssTarget: number; ssGap: number; hstk: number; status: string; aging?: string;
 }
 interface CnInvRow {
   cn: string; ton: number; dangVe: string; available: number; hstk: number;
-  duoiSs: number; xauNhat: string; skus: CnInvSku[];
+  duoiSs: number; xauNhat: string; excess: number; turnover: number; skus: CnInvSku[];
 }
 const baseCnInv: CnInvRow[] = [
   {
-    cn: "CN-BD", ton: 2100, dangVe: "557 (Toko 17/05)", available: 1350, hstk: 5.2, duoiSs: 3, xauNhat: "GA-300 A4 (1,2d)",
+    cn: "CN-BD", ton: 2100, dangVe: "557 (Toko 17/05)", available: 1350, hstk: 5.2, duoiSs: 3, xauNhat: "GA-300 A4 (1,2d)", excess: 0, turnover: 4.8,
     skus: [
-      { item: "GA-300", variant: "A4", ton: 450, dangVe: "557 (Toko 17/05)", available: 200, ssTarget: 900, ssGap: -700, hstk: 1.2, status: "CRITICAL" },
-      { item: "GA-300", variant: "B2", ton: 380, dangVe: "—", available: 300, ssTarget: 700, ssGap: -400, hstk: 3.5, status: "LOW" },
-      { item: "GA-300", variant: "C1", ton: 320, dangVe: "—", available: 280, ssTarget: 150, ssGap: 130, hstk: 8, status: "OK" },
-      { item: "GA-400", variant: "A4", ton: 800, dangVe: "—", available: 600, ssTarget: 600, ssGap: 0, hstk: 7, status: "OK" },
-      { item: "GA-600", variant: "A4", ton: 2100, dangVe: "—", available: 1800, ssTarget: 1000, ssGap: 800, hstk: 12, status: "EXCESS" },
-      { item: "GA-600", variant: "B2", ton: 650, dangVe: "—", available: 520, ssTarget: 500, ssGap: 20, hstk: 7.5, status: "OK" },
+      { item: "GA-300", variant: "A4", ton: 450, dangVe: "557 (Toko 17/05)", available: 200, ssTarget: 900, ssGap: -700, hstk: 1.2, status: "CRITICAL", aging: "15d" },
+      { item: "GA-300", variant: "B2", ton: 380, dangVe: "—", available: 300, ssTarget: 700, ssGap: -400, hstk: 3.5, status: "LOW", aging: "22d" },
+      { item: "GA-300", variant: "C1", ton: 320, dangVe: "—", available: 280, ssTarget: 150, ssGap: 130, hstk: 8, status: "OK", aging: "45d" },
+      { item: "GA-400", variant: "A4", ton: 800, dangVe: "—", available: 600, ssTarget: 600, ssGap: 0, hstk: 7, status: "OK", aging: "30d" },
+      { item: "GA-600", variant: "A4", ton: 2100, dangVe: "—", available: 1800, ssTarget: 1000, ssGap: 800, hstk: 12, status: "EXCESS", aging: "95d" },
+      { item: "GA-600", variant: "B2", ton: 650, dangVe: "—", available: 520, ssTarget: 500, ssGap: 20, hstk: 7.5, status: "OK", aging: "18d" },
     ],
   },
-  { cn: "CN-ĐN", ton: 4500, dangVe: "400", available: 3800, hstk: 14, duoiSs: 0, xauNhat: "—", skus: [] },
-  { cn: "CN-HN", ton: 3200, dangVe: "500", available: 2500, hstk: 9, duoiSs: 0, xauNhat: "—", skus: [] },
-  { cn: "CN-CT", ton: 2800, dangVe: "300", available: 2100, hstk: 11, duoiSs: 0, xauNhat: "—", skus: [] },
+  { cn: "CN-ĐN", ton: 4500, dangVe: "400", available: 3800, hstk: 14, duoiSs: 0, xauNhat: "—", excess: 400, turnover: 2.1, skus: [] },
+  { cn: "CN-HN", ton: 3200, dangVe: "500", available: 2500, hstk: 9, duoiSs: 0, xauNhat: "—", excess: 0, turnover: 3.5, skus: [] },
+  { cn: "CN-CT", ton: 2800, dangVe: "300", available: 2100, hstk: 11, duoiSs: 0, xauNhat: "—", excess: 0, turnover: 2.8, skus: [] },
+];
+
+/* ═══ Inventory trend data (30 days) ═══ */
+const invTrendBase = Array.from({ length: 30 }, (_, i) => {
+  const day = i + 1;
+  const dateStr = `${String(day).padStart(2, "0")}/05`;
+  return {
+    date: dateStr,
+    "CN-BD": { onHand: 2000 + Math.round(Math.sin(i / 5) * 300), ss: 2900, available: 1200 + Math.round(Math.sin(i / 4) * 200) },
+    "CN-ĐN": { onHand: 4200 + Math.round(Math.cos(i / 6) * 400), ss: 2400, available: 3500 + Math.round(Math.cos(i / 5) * 300) },
+    "CN-HN": { onHand: 3000 + Math.round(Math.sin(i / 7) * 250), ss: 2100, available: 2300 + Math.round(Math.sin(i / 6) * 200) },
+    "CN-CT": { onHand: 2600 + Math.round(Math.cos(i / 5) * 200), ss: 1500, available: 1900 + Math.round(Math.cos(i / 4) * 150) },
+  };
+});
+
+function getInvTrend(filter: string) {
+  return invTrendBase.map((d) => {
+    if (filter === "all") {
+      return {
+        date: d.date,
+        onHand: d["CN-BD"].onHand + d["CN-ĐN"].onHand + d["CN-HN"].onHand + d["CN-CT"].onHand,
+        ss: d["CN-BD"].ss + d["CN-ĐN"].ss + d["CN-HN"].ss + d["CN-CT"].ss,
+        available: d["CN-BD"].available + d["CN-ĐN"].available + d["CN-HN"].available + d["CN-CT"].available,
+      };
+    }
+    const cn = d[filter as keyof typeof d] as { onHand: number; ss: number; available: number };
+    return { date: d.date, onHand: cn.onHand, ss: cn.ss, available: cn.available };
+  });
+}
+
+/* Aging distribution */
+const agingData = [
+  { name: "<30d", value: 65, fill: "#00714d" },
+  { name: "30-60d", value: 25, fill: "#7a4100" },
+  { name: "60-90d", value: 8, fill: "#dc2626" },
+  { name: ">90d", value: 2, fill: "#991b1b" },
+];
+
+/* Stockout log */
+const stockoutLog = [
+  { date: "08/05", cn: "CN-BD", item: "GA-300 A4", duration: "6h", impact: "120m²", cause: "Toko trễ 4d", resolution: "LCNB CN-ĐN 100m²" },
+  { date: "03/05", cn: "CN-BD", item: "GA-300 B2", duration: "12h", impact: "80m²", cause: "Demand spike", resolution: "Emergency PO Mikado" },
+  { date: "28/04", cn: "CN-HN", item: "GA-400 A4", duration: "3h", impact: "45m²", cause: "SS breach", resolution: "Auto-restock" },
 ];
 
 /* ═══ TAB 1 (Tổng quan) CHART DATA ═══ */
