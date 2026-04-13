@@ -5,16 +5,19 @@ import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/TenantContext";
 import { tenantSopData } from "@/components/sop/sopData";
 import { NhapDemandTab } from "@/components/sop/NhapDemandTab";
-import { PhasingTab } from "@/components/sop/PhasingTab";
 import { ComparisonTab } from "@/components/sop/ComparisonTab";
-import { StatusTab, FvaTab } from "@/components/sop/StatusFvaTab";
+import { PhasingTab } from "@/components/sop/PhasingTab";
+import { BalanceTab } from "@/components/sop/BalanceTab";
+import { AopFinanceTab } from "@/components/sop/AopFinanceTab";
+import { LockLogTab } from "@/components/sop/LockLogTab";
 
 const tabs = [
-  { key: "nhap", label: "Nhập demand" },
-  { key: "phasing", label: "Phasing M→W" },
-  { key: "compare", label: "So sánh" },
-  { key: "status", label: "Trạng thái" },
-  { key: "fva", label: "FVA" },
+  { key: "nhap", label: "① Nhập demand" },
+  { key: "compare", label: "② So sánh versions" },
+  { key: "phasing", label: "③ Phasing M→W" },
+  { key: "balance", label: "④ Cân đối" },
+  { key: "aop", label: "⑤ AOP & Tài chính" },
+  { key: "lock", label: "⑥ Lock & Log" },
 ];
 
 export default function SopPage() {
@@ -33,7 +36,7 @@ export default function SopPage() {
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={cn(
-              "px-5 py-3 text-body font-medium transition-colors relative",
+              "px-4 py-3 text-table-sm font-medium transition-colors relative whitespace-nowrap",
               activeTab === tab.key
                 ? "text-primary"
                 : "text-text-2 hover:text-text-1"
@@ -53,10 +56,11 @@ export default function SopPage() {
       </div>
 
       {activeTab === "nhap" && <NhapDemandTab skus={data.skus} aop={data.aop} />}
-      {activeTab === "phasing" && <PhasingTab rows={data.phasingRows} totalVolume={data.versions[3]?.value || 7650} />}
       {activeTab === "compare" && <ComparisonTab versions={data.versions} variants={data.variants} />}
-      {activeTab === "status" && <StatusTab decisionLog={data.decisionLog} />}
-      {activeTab === "fva" && <FvaTab fvaNodes={data.fvaNodes} />}
+      {activeTab === "phasing" && <PhasingTab rows={data.phasingRows} totalVolume={data.versions[3]?.value || 7650} />}
+      {activeTab === "balance" && <BalanceTab tenant={tenant} consensusVolume={data.versions[3]?.value || 7650} />}
+      {activeTab === "aop" && <AopFinanceTab tenant={tenant} />}
+      {activeTab === "lock" && <LockLogTab decisionLog={data.decisionLog} fvaNodes={data.fvaNodes} />}
 
       <ScreenFooter actionCount={12} />
     </AppLayout>
