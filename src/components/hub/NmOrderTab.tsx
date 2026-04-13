@@ -181,7 +181,14 @@ function MoqSection({ scale, onMoqLocked }: { scale: number; onMoqLocked: () => 
                       <tr key={n.nm} className="border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer" onClick={() => setDrillNm(n.nm)}>
                         <td className="px-4 py-2.5 font-medium text-text-1">{n.nm}</td>
                         <td className="px-4 py-2.5 tabular-nums text-text-2">{n.netReqTotal.toLocaleString()}</td>
-                        <td className="px-4 py-2.5 tabular-nums font-medium text-text-1">{n.afterMoq.toLocaleString()}</td>
+                        <td className="px-4 py-2.5 tabular-nums font-medium text-text-1">
+                          <ClickableNumber
+                            value={n.afterMoq}
+                            label={`Sau round ${n.nm}`}
+                            color="text-text-1"
+                            formula={`Net req ${n.netReqTotal.toLocaleString()} → MOQ round → ${n.afterMoq.toLocaleString()}\nSurplus +${n.surplus.toLocaleString()}`}
+                          />
+                        </td>
                         <td className="px-4 py-2.5 tabular-nums text-warning font-medium">+{n.surplus.toLocaleString()}</td>
                         <td className="px-4 py-2.5">
                           <span className={cn("tabular-nums font-medium", n.pctIncrease > 20 ? "text-warning" : "text-text-2")}>+{n.pctIncrease}%</span>
