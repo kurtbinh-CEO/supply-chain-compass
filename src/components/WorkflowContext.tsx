@@ -9,10 +9,9 @@ export interface WorkflowStep {
 }
 
 const dailySteps: Omit<WorkflowStep, "status">[] = [
-  { label: "NM Sync", routes: ["/supply"] },
+  { label: "NM Supply", routes: ["/supply"] },
   { label: "Demand & Adjust", routes: ["/demand-weekly"] },
-  { label: "DRP & Allocation", routes: ["/drp", "/allocation"] },
-  { label: "Orders & Tracking", routes: ["/orders"] },
+  { label: "DRP & Orders", routes: ["/drp", "/orders"] },
 ];
 
 const monthlySteps: Omit<WorkflowStep, "status">[] = [
