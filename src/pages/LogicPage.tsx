@@ -3,6 +3,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenShell";
 import { LogicTreeNode, LogicNodeData } from "@/components/logic/LogicTreeNode";
 import { CodeBlock, Note } from "@/components/logic/CodeBlock";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 /* ═══ CSS accent vars mapping ═══ */
 // accent colors use design token CSS vars
@@ -323,89 +324,228 @@ Loop 6: Stockout → Auto-adjust SS
 ];
 
 /* ═══ TAB 3: Forecast & Độ tin cậy ═══ */
+const confidenceData = [
+  { period: "1 tuần", confidence: 85, fill: "#1e40af" },
+  { period: "2 tuần", confidence: 78, fill: "#2563eb" },
+  { period: "1 tháng", confidence: 70, fill: "#3b82f6" },
+  { period: "2 tháng", confidence: 60, fill: "#eab308" },
+  { period: "3 tháng", confidence: 45, fill: "#f97316" },
+  { period: "6 tháng", confidence: 35, fill: "#ef4444" },
+  { period: "12 tháng", confidence: 20, fill: "#991b1b" },
+];
+
 const tab3Nodes: LogicNodeData[] = [
   {
-    label: "FC Accuracy (MAPE)",
-    formulaHeader: "MAPE = avg(|FC − Actual| ÷ Actual) × 100%",
+    label: "Forecast là gì?",
     accent: "blue",
     content: (
       <div className="space-y-3">
-        <CodeBlock>{`MAPE = 1/n × Σ |FC − Actual| ÷ Actual × 100%
-
-VD tháng 4:
-  FC = 7.650, Actual = 7.280
-  |7.650 − 7.280| ÷ 7.280 = 5,1%
-  
-Per SKU MAPE khác nhau → weighted by demand.
-FC Accuracy = 100% − MAPE = 100% − 18,4% = 81,6% ≈ 82%`}</CodeBlock>
         <Note>
-          <strong>Target:</strong> MAPE &lt; 15%. Hiện tại 18,4% → cần cải thiện.
+          Forecast = <strong>DỰ ĐOÁN</strong> tương lai dựa trên quá khứ.
+        </Note>
+        <Note>
+          Hệ thống xem 24 tháng bán hàng → tìm:
+          <br />• <strong>Xu hướng:</strong> doanh số tăng hay giảm theo thời gian?
+          <br />• <strong>Mùa vụ:</strong> tháng nào bán nhiều, tháng nào ít? (xây dựng: mùa khô bán nhiều)
+          <br />• <strong>Chu kỳ:</strong> có pattern lặp lại?
+        </Note>
+        <Note>
+          Rồi chiếu về phía trước: <em>"Nếu 2 năm qua tháng 5 luôn bán 5.000, tháng 5 năm nay có thể ~5.300 (tăng trưởng 6%)."</em>
+        </Note>
+        <div className="bg-warning-bg border border-warning/30 rounded-lg p-3">
+          <p className="text-caption text-text-1 font-medium">
+            ⚠️ QUAN TRỌNG: Forecast KHÔNG BAO GIỜ chính xác 100%.
+          </p>
+          <p className="text-caption text-text-2 mt-1">
+            Sai số là <strong>BẢN CHẤT</strong> của dự đoán, không phải lỗi hệ thống.
+            Vì vậy cần Safety Stock để dự phòng phần sai.
+          </p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    label: "2 loại model",
+    accent: "blue",
+    content: (
+      <div className="space-y-3">
+        <div className="overflow-x-auto">
+          <table className="w-full text-table-sm border border-surface-3 rounded-lg overflow-hidden">
+            <thead>
+              <tr className="bg-surface-1/50">
+                <th className="px-3 py-2 text-left text-table-header uppercase text-text-3">Model</th>
+                <th className="px-3 py-2 text-left text-table-header uppercase text-text-3">Khi nào dùng</th>
+                <th className="px-3 py-2 text-left text-table-header uppercase text-text-3">Ưu điểm</th>
+                <th className="px-3 py-2 text-left text-table-header uppercase text-text-3">Nhược điểm</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-t border-surface-3/50">
+                <td className="px-3 py-2 font-medium text-text-1">Holt-Winters</td>
+                <td className="px-3 py-2 text-text-2">≥ 12 tháng history, có mùa vụ rõ</td>
+                <td className="px-3 py-2 text-success">Đơn giản, ổn định, giải thích được</td>
+                <td className="px-3 py-2 text-text-3">Không bắt pattern phức tạp</td>
+              </tr>
+              <tr className="border-t border-surface-3/50">
+                <td className="px-3 py-2 font-medium text-text-1">XGBoost (ML)</td>
+                <td className="px-3 py-2 text-text-2">≥ 36 tháng history, nhiều biến</td>
+                <td className="px-3 py-2 text-success">Chính xác hơn với data lớn</td>
+                <td className="px-3 py-2 text-text-3">Khó giải thích, cần nhiều data</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <Note>
+          Hệ thống <strong>tự chọn</strong> model có MAPE thấp nhất cho mỗi SKU × CN.
+          <br /><br />
+          GA-300 A4 CN-BD: HW MAPE 18%, XGBoost MAPE 16% → chọn <strong>XGBoost</strong>.
           <br />
-          Cải thiện bằng: (1) thêm data, (2) Sales input tốt hơn, (3) CN adjust chính xác hơn.
+          GA-600 A4 CN-HN: HW MAPE 14%, XGBoost MAPE 19% → chọn <strong>HW</strong>.
+          <br /><br />
+          Planner không cần chọn model — hệ thống tự tối ưu.
         </Note>
       </div>
     ),
   },
   {
-    label: "FVA (Forecast Value Add)",
-    formulaHeader: "Ai dự báo tốt nhất?",
+    label: "MAPE là gì?",
+    formulaHeader: "Chỉ số quan trọng nhất",
     accent: "green",
     content: (
       <div className="space-y-3">
-        <CodeBlock>{`FVA = MAPE_baseline − MAPE_version
+        <CodeBlock>{`MAPE = Mean Absolute Percentage Error
+     = Trung bình phần trăm sai số
 
-v0 Statistical MAPE: 18,4% (baseline)
-v1 Sales MAPE:       22,0% → FVA = −3,6% (tệ hơn!)
-v2 CN Input MAPE:    12,0% → FVA = +6,4% (tốt hơn!)
+VD 4 tuần:
+  Tuần 1: Forecast 1.000, Actual 850  → |1000−850|÷850 = 17,6%
+  Tuần 2: Forecast 1.000, Actual 1.100 → |1000−1100|÷1100 = 9,1%
+  Tuần 3: Forecast 1.200, Actual 1.150 → |1200−1150|÷1150 = 4,3%
+  Tuần 4: Forecast 1.000, Actual 750  → |1000−750|÷750 = 33,3%
 
-Kết luận: CN Input v2 add value → nên dùng cho consensus.`}</CodeBlock>
+  MAPE = (17,6 + 9,1 + 4,3 + 33,3) ÷ 4 = 16,1%
+
+Nghĩa: trung bình sai khoảng 16%.
+FC Accuracy = 100% − MAPE = 83,9%`}</CodeBlock>
+        {/* Color scale */}
+        <div className="space-y-1.5">
+          <p className="text-caption font-medium text-text-2">Thang đánh giá MAPE:</p>
+          {[
+            { range: "< 10%", label: "Xuất sắc 🟢", note: "SS thấp, tiết kiệm vốn", bg: "bg-success/10 border-success/30" },
+            { range: "10-20%", label: "Tốt 🟢", note: "SS vừa phải", bg: "bg-success/5 border-success/20" },
+            { range: "20-30%", label: "Chấp nhận 🟡", note: "SS cao, review model", bg: "bg-warning/10 border-warning/30" },
+            { range: "> 30%", label: "Cần cải thiện 🔴", note: "SS rất cao, xem lại data + model", bg: "bg-danger/10 border-danger/30" },
+          ].map((row) => (
+            <div key={row.range} className={`flex items-center gap-3 px-3 py-1.5 rounded-lg border ${row.bg}`}>
+              <span className="font-mono text-[11px] font-semibold text-text-1 w-16">{row.range}</span>
+              <span className="text-caption font-medium text-text-1 w-32">{row.label}</span>
+              <span className="text-caption text-text-2">{row.note}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+  {
+    label: "Độ tin cậy GIẢM theo thời gian",
+    formulaHeader: "Càng xa → càng không chính xác",
+    accent: "amber",
+    content: (
+      <div className="space-y-3">
+        {/* Bar chart */}
+        <div className="h-[200px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={confidenceData} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+              <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} fontSize={10} />
+              <YAxis type="category" dataKey="period" fontSize={10} width={55} />
+              <Tooltip formatter={(v: number) => [`${v}%`, "Confidence"]} />
+              <Bar dataKey="confidence" radius={[0, 4, 4, 0]}>
+                {confidenceData.map((entry, i) => (
+                  <Cell key={i} fill={entry.fill} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
         <Note>
-          FVA giúp đo lường <strong>ai thực sự cải thiện</strong> forecast.
+          Càng xa tương lai → càng khó đoán chính xác.
+        </Note>
+        <div className="bg-surface-1 border border-surface-3 rounded-lg p-3">
+          <p className="text-caption font-medium text-text-1 mb-2">VÌ VẬY hệ thống dùng số khác nhau cho mỗi tầng:</p>
+          <Note>
+            • <strong>Tuần này (M):</strong> S&OP consensus + CN adjust → chính xác nhất
+            <br />• <strong>M+1:</strong> S&OP forecast → khá tin cậy
+            <br />• <strong>M+2, M+3:</strong> FC commitment tiers:
+          </Note>
+          <CodeBlock className="mt-2">{`Hard M+1: ±5% tolerance  (cam kết chắc)
+Firm M+2: ±15%           (cam kết tương đối)
+Soft M+3: ±30%           (chỉ tham khảo)`}</CodeBlock>
+          <Note>
+            • <strong>&gt; M+3:</strong> AOP/Budget → chỉ indicative, không dùng cho SS.
+          </Note>
+        </div>
+      </div>
+    ),
+  },
+  {
+    label: "FVA — Ai dự báo chính xác nhất?",
+    formulaHeader: "FVA = MAPE(v0) − MAPE(version)",
+    accent: "green",
+    content: (
+      <div className="space-y-3">
+        <Note>
+          FVA = Forecast Value Add = người nhập có làm <strong>TỐT HƠN</strong> model tự động không?
+        </Note>
+        <CodeBlock>{`Cách tính:
+FVA = MAPE(v0 statistical) − MAPE(version đang xét)
+
+v0 Statistical (model): MAPE 18,4%
+v1 Sales (Anh Tuấn):   MAPE 22%  → FVA = 18,4 − 22 = −3,6% (xấu hơn model!)
+v2 CN (Chị Thúy):      MAPE 12%  → FVA = 18,4 − 12 = +6,4% (tốt hơn model!)`}</CodeBlock>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="bg-success/10 border border-success/30 rounded-lg p-2.5">
+            <p className="text-caption font-semibold text-success">FVA dương ✅</p>
+            <p className="text-caption text-text-2">Input có giá trị → nên tin</p>
+          </div>
+          <div className="bg-danger/10 border border-danger/30 rounded-lg p-2.5">
+            <p className="text-caption font-semibold text-danger">FVA âm ❌</p>
+            <p className="text-caption text-text-2">Input làm tệ hơn → dùng model thay</p>
+          </div>
+        </div>
+        <Note>
+          Hệ thống tracking FVA mỗi tháng → biết tin ai, không tin ai.
           <br />
-          Nếu FVA âm → version đó làm forecast tệ hơn → cân nhắc bỏ.
+          Đây là cơ sở để SC Manager chọn version nào trong S&OP meeting.
         </Note>
       </div>
     ),
   },
   {
-    label: "Trust Score (CN)",
-    formulaHeader: "Trust = f(accuracy, bias, timeliness)",
+    label: "Seasonal σ — Mùa vụ ảnh hưởng",
+    formulaHeader: "σ theo mùa, không rolling",
     accent: "amber",
     content: (
       <div className="space-y-3">
-        <CodeBlock>{`Trust Score = w1 × Accuracy + w2 × (1−Bias) + w3 × Timeliness
+        <Note>
+          UNIS bán vật liệu xây dựng → <strong>mùa khô bán nhiều, mùa mưa bán ít</strong>.
+        </Note>
+        <div className="bg-danger/10 border border-danger/30 rounded-lg p-3">
+          <p className="text-caption text-text-1">
+            <strong>Vấn đề:</strong> Nếu tính σ từ 90 ngày gần nhất (rolling): tháng 10 sẽ gồm data tháng 7-9 (mùa mưa) → σ thấp → SS thấp → <span className="text-danger font-semibold">stockout mùa xây!</span>
+          </p>
+        </div>
+        <div className="bg-success/10 border border-success/30 rounded-lg p-3">
+          <p className="text-caption text-text-1">
+            <strong>Giải pháp:</strong> Seasonal σ = dùng data <strong>cùng kỳ năm trước</strong>.
+            <br />Tháng 10/2026 dùng σ từ tháng 10/2025, 10/2024.
+          </p>
+        </div>
+        <CodeBlock>{`Config:
+UNIS:     seasonal_method = 'same_period_ly' (default)
+          → Dùng data tháng 10 năm trước cho tháng 10 năm nay
 
-Accuracy:  |adjust − actual| < 10% → score cao
-Bias:      luôn adjust lên (hoặc xuống) → bias → giảm trust
-Timeliness: adjust trước cutoff → điểm cao
-
-VD CN-BD:  Accuracy 88%, Bias 5%, On-time 95%
-  Trust = 0.5×88 + 0.3×95 + 0.2×95 = 91.5
-
-Trust → Tolerance:
-  > 90: tolerance 30% (tin tưởng cao)
-  70-90: tolerance 20%
-  < 70: tolerance 10% (kiểm soát chặt)`}</CodeBlock>
-      </div>
-    ),
-  },
-  {
-    label: "NM Honoring & ATP Discount",
-    formulaHeader: "Honoring% = Delivered ÷ Committed",
-    accent: "red",
-    content: (
-      <div className="space-y-3">
-        <CodeBlock>{`Honoring% = Actual delivered ÷ Plan committed
-
-VD Toko: delivered 4.080 ÷ committed 6.000 = 68%
-
-Grade: A ≥90% | B 80-90% | C 70-80% | D <70%
-Toko = 68% → Grade D
-
-ATP Discount:
-  Lần sau DRP dùng: NM_stock × honoring% = adjusted ATP
-  Toko stock 5.000 × 0.68 = 3.400 (thay vì tin 5.000)
-  → Hệ thống TỰ GIẢM tin tưởng NM yếu.`}</CodeBlock>
+FMCG:     seasonal_method = 'rolling'
+(Mondelez) → Demand ổn định hơn, rolling 90d OK`}</CodeBlock>
       </div>
     ),
   },
