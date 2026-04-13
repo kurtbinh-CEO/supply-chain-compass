@@ -239,6 +239,7 @@ export default function CnPortalPage() {
     toast.success("Đã gửi điều chỉnh", {
       description: `${edited.length} SKU. ${approved} auto-approved, ${pending} chờ duyệt.`,
     });
+  };
 
   const handleApprove = (idx: number) => {
     setDemandData((prev) => {
