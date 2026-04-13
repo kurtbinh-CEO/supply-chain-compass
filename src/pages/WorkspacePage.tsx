@@ -1,21 +1,30 @@
 import { PlaceholderPage } from "@/components/PlaceholderPage";
 import { useWorkflow } from "@/components/WorkflowContext";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 export default function WorkspacePage() {
   const { startWorkflow } = useWorkflow();
+  const navigate = useNavigate();
+
+  const handleStart = (type: "daily" | "monthly") => {
+    startWorkflow(type);
+    const firstRoute = type === "daily" ? "/supply" : "/demand";
+    navigate(firstRoute);
+  };
+
   return (
     <PlaceholderPage title="Workspace" subtitle="Phê duyệt và theo dõi quy trình">
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-card border border-surface-3 bg-surface-2 p-6 space-y-4">
           <h2 className="font-display text-section-header text-text-1">Quy trình hàng ngày</h2>
           <p className="text-table text-text-2">4 bước: NM Sync → Demand → DRP → Orders</p>
-          <Button onClick={() => startWorkflow("daily")}>▶ Bắt đầu quy trình ngày</Button>
+          <Button onClick={() => handleStart("daily")}>▶ Bắt đầu quy trình ngày</Button>
         </div>
         <div className="rounded-card border border-surface-3 bg-surface-2 p-6 space-y-4">
           <h2 className="font-display text-section-header text-text-1">Quy trình hàng tháng</h2>
           <p className="text-table text-text-2">3 bước: Demand Review → S&OP → Hub</p>
-          <Button onClick={() => startWorkflow("monthly")}>▶ Bắt đầu quy trình tháng</Button>
+          <Button onClick={() => handleStart("monthly")}>▶ Bắt đầu quy trình tháng</Button>
         </div>
       </div>
       <div className="mt-4 rounded-card border border-surface-3 bg-surface-2 p-5">
