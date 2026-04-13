@@ -1,0 +1,38 @@
+/* ===== Smartlog SCP/DRP — Design Tokens ===== */
+:root {
+  /* Primary */
+  --color-primary: #2563EB;
+  --color-primary-dark: #004AC6;
+
+  /* Surface layers */
+  --color-surface-0: #f8f9ff;
+  --color-surface-1: #e8eeff;
+  --color-surface-2: #ffffff;
+  --color-surface-3: #e0e9ff;
+
+  /* Text hierarchy */
+  --color-text-1: #0b1c30;
+  --color-text-2: #434655;
+  --color-text-3: #94a3b8;
+
+  /* Status — tonal (dark text on light bg) */
+  --color-success-text: #00714d;
+  --color-success-bg: #e6f9ed;
+  --color-warning-text: #7a4100;
+  --color-warning-bg: #fff4e0;
+  --color-danger-text: #991b1b;
+  --color-danger-bg: #fde8e8;
+  --color-info-text: #0c4a6e;
+  --color-info-bg: #e8f4fd;
+
+  /* Typography */
+  --font-display: 'Manrope', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}

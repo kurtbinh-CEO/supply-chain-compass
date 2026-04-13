@@ -1,97 +1,37 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import './design-tokens.css';
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  :root {
-    /* Surface layers */
-    --background: 230 60% 98%;        /* #f8f9ff */
-    --foreground: 213 55% 12%;        /* #0b1c30 */
-
-    --card: 228 100% 93%;             /* #e8eeff */
-    --card-foreground: 213 55% 12%;
-
-    --card-elevated: 0 0% 100%;       /* #ffffff */
-    --card-elevated-foreground: 213 55% 12%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 213 55% 12%;
-
-    /* Primary blue gradient endpoints */
-    --primary: 220 100% 39%;          /* #004AC6 */
-    --primary-foreground: 0 0% 100%;
-    --primary-end: 221 83% 53%;       /* #2563EB */
-
-    /* Secondary = outline style */
-    --secondary: 228 100% 93%;        /* #e8eeff */
-    --secondary-foreground: 221 83% 53%;
-
-    --muted: 228 100% 93%;
-    --muted-foreground: 230 11% 30%;  /* #434655 */
-
-    --accent: 224 100% 94%;           /* #e0e9ff */
-    --accent-foreground: 213 55% 12%;
-
-    --destructive: 0 72% 35%;         /* #991b1b */
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 224 100% 94%;           /* #e0e9ff */
-    --input: 224 100% 94%;
-    --ring: 221 83% 53%;
-
-    --radius: 0.5rem;
-
-    /* Status tonal */
-    --success: 160 100% 22%;          /* #00714d */
-    --success-bg: 147 68% 94%;        /* #e6f9ed */
-    --warning: 30 100% 24%;           /* #7a4100 */
-    --warning-bg: 38 100% 94%;        /* #fff4e0 */
-    --danger: 0 68% 35%;              /* #991b1b */
-    --danger-bg: 0 82% 95%;           /* #fde8e8 */
-    --info: 200 80% 17%;              /* #0c4a6e */
-    --info-bg: 204 74% 94%;           /* #e8f4fd */
-
-    /* Tertiary text */
-    --tertiary: 215 25% 62%;          /* #94a3b8 */
-
-    /* Sidebar */
-    --sidebar-background: 230 60% 98%;
-    --sidebar-foreground: 230 11% 30%;
-    --sidebar-primary: 220 100% 39%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 224 100% 94%;
-    --sidebar-accent-foreground: 213 55% 12%;
-    --sidebar-border: 224 100% 94%;
-    --sidebar-ring: 221 83% 53%;
-  }
-}
-
-@layer base {
   * {
-    @apply border-border;
+    @apply border-surface-3;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    font-family: var(--font-body);
+    background-color: var(--color-surface-0);
+    color: var(--color-text-1);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display;
+    font-family: var(--font-display);
+  }
+  code, pre, kbd {
+    font-family: var(--font-mono);
   }
 }
 
 @layer utilities {
-  .text-tertiary {
-    color: hsl(var(--tertiary));
-  }
   .bg-gradient-primary {
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-end)));
-  }
-  .tabular-nums {
-    font-variant-numeric: tabular-nums;
+    background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
   }
   .frosted-glass {
     backdrop-filter: blur(12px);
-    background: hsla(230, 60%, 98%, 0.85);
+    background: rgba(248, 249, 255, 0.85);
+  }
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
