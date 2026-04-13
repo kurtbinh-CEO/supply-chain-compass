@@ -27,6 +27,7 @@ interface SkuFull {
 interface CnRow {
   cn: string; demand: number; available: number; fillRate: number; gap: number; exceptions: number;
   exceptionList: SkuException[]; allSkus: SkuFull[];
+  rpos: number;
 }
 
 /* ═══ SS DATA ═══ */
