@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider } from "@/components/SidebarContext";
 import { WorkflowProvider } from "@/components/WorkflowContext";
+import { WorkspaceProvider } from "@/components/WorkspaceContext";
 import Index from "./pages/Index";
 import DesignTest from "./pages/DesignTest";
 import WorkspacePage from "./pages/WorkspacePage";
@@ -32,6 +33,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <SidebarProvider>
+          <WorkspaceProvider>
           <WorkflowProvider>
             <Routes>
               <Route path="/" element={<Index />} />
@@ -53,6 +55,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </WorkflowProvider>
+          </WorkspaceProvider>
         </SidebarProvider>
       </BrowserRouter>
     </TooltipProvider>
