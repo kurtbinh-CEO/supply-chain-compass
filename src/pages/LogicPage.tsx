@@ -19,11 +19,11 @@ const tab1Nodes: LogicNodeData[] = [
   {
     label: "Xác định Demand",
     formulaHeader: "= FC + B2B + PO − Overlap = 7.650",
-    accent: "color-info",
+    accent: "blue",
     children: [
       {
         label: "FC Statistical: 4.800 (63%)",
-        accent: "color-info",
+        accent: "blue",
         content: (
           <Note>
             Hệ thống xem <strong>24 tháng</strong> bán hàng quá khứ → tìm pattern (mùa vụ, tăng trưởng) → dự đoán tháng tới.
@@ -38,7 +38,7 @@ const tab1Nodes: LogicNodeData[] = [
       },
       {
         label: "B2B Weighted: 2.200 (29%)",
-        accent: "color-info",
+        accent: "blue",
         content: (
           <Note>
             Tổng deals B2B × xác suất thành công = weighted demand.
@@ -53,7 +53,7 @@ const tab1Nodes: LogicNodeData[] = [
       },
       {
         label: "PO Confirmed: 1.100 (14%)",
-        accent: "color-info",
+        accent: "blue",
         content: (
           <Note>
             PO đã ký chính thức trong ERP Bravo. Sync mỗi 30 phút.
@@ -64,7 +64,7 @@ const tab1Nodes: LogicNodeData[] = [
       },
       {
         label: "Overlap: −450 (−6%)",
-        accent: "color-info",
+        accent: "blue",
         content: (
           <Note>
             Khi B2B deal chuyển Committed → PO Confirmed, qty đó đã có trong cả B2B lẫn PO → trùng lặp.
@@ -89,7 +89,7 @@ const tab1Nodes: LogicNodeData[] = [
   {
     label: "S&OP Consensus → Lock",
     formulaHeader: "4 phiên bản → chọn → 7.650 locked",
-    accent: "color-success",
+    accent: "green",
     content: (
       <div className="space-y-3">
         <Note>
@@ -114,7 +114,7 @@ v3 Consensus:   7.650 — SC Manager quyết định cuối cùng.`}</CodeBlock>
   {
     label: "Cân đối: Demand − Supply = Gap",
     formulaHeader: "7.650 − 3.200 − 1.757 = 2.693 → +SS 1.200 = FC Min 3.893",
-    accent: "color-warning",
+    accent: "amber",
     content: (
       <div className="space-y-3">
         <CodeBlock>{`Demand:      7.650  ← S&OP locked
@@ -140,7 +140,7 @@ v3 Consensus:   7.650 — SC Manager quyết định cuối cùng.`}</CodeBlock>
   {
     label: "MOQ Round → Commit NM → BPO",
     formulaHeader: "FC Min 3.893 → MOQ → 5.000 → share% → 18.500 → BPO",
-    accent: "color-danger",
+    accent: "red",
     content: (
       <div className="space-y-3">
         <Note>
@@ -177,7 +177,7 @@ ASN-{NM}-{YYMM}-{seq}:         NM giao hàng`}</CodeBlock>
 const tab2Nodes: LogicNodeData[] = [
   {
     label: "Cập nhật tồn NM (sáng)",
-    accent: "color-info",
+    accent: "blue",
     content: (
       <Note>
         Planner upload file Excel tồn kho NM hoặc nhập tay.
@@ -192,7 +192,7 @@ const tab2Nodes: LogicNodeData[] = [
   },
   {
     label: "CN điều chỉnh demand tuần",
-    accent: "color-info",
+    accent: "blue",
     content: (
       <div className="space-y-3">
         <Note>
@@ -212,7 +212,7 @@ const tab2Nodes: LogicNodeData[] = [
   },
   {
     label: "DRP Netting (chạy đêm 23:00)",
-    accent: "color-success",
+    accent: "green",
     content: (
       <div className="space-y-3">
         <CodeBlock>{`Per SKU per CN per tuần:
@@ -235,7 +235,7 @@ const tab2Nodes: LogicNodeData[] = [
   },
   {
     label: "Phân bổ 6 lớp",
-    accent: "color-success",
+    accent: "green",
     content: (
       <div className="space-y-3">
         <Note>
@@ -267,7 +267,7 @@ L6 Lateral:    CN khác thừa?               → scan CN-ĐN +220`}</CodeBlock>
   },
   {
     label: "PO Release: BPO → RPO → ASN",
-    accent: "color-warning",
+    accent: "amber",
     content: (
       <div className="space-y-3">
         <CodeBlock>{`Monthly: BPO (cam kết)
@@ -290,7 +290,7 @@ ASN = Goods Receipt`}</CodeBlock>
   },
   {
     label: "Closed-loop (cuối tháng)",
-    accent: "color-info",
+    accent: "blue",
     content: (
       <div className="space-y-3">
         <div className="bg-surface-1 border border-surface-3 rounded-lg p-3 mb-2">
@@ -327,7 +327,7 @@ const tab3Nodes: LogicNodeData[] = [
   {
     label: "FC Accuracy (MAPE)",
     formulaHeader: "MAPE = avg(|FC − Actual| ÷ Actual) × 100%",
-    accent: "color-info",
+    accent: "blue",
     content: (
       <div className="space-y-3">
         <CodeBlock>{`MAPE = 1/n × Σ |FC − Actual| ÷ Actual × 100%
@@ -349,7 +349,7 @@ FC Accuracy = 100% − MAPE = 100% − 18,4% = 81,6% ≈ 82%`}</CodeBlock>
   {
     label: "FVA (Forecast Value Add)",
     formulaHeader: "Ai dự báo tốt nhất?",
-    accent: "color-success",
+    accent: "green",
     content: (
       <div className="space-y-3">
         <CodeBlock>{`FVA = MAPE_baseline − MAPE_version
@@ -370,7 +370,7 @@ Kết luận: CN Input v2 add value → nên dùng cho consensus.`}</CodeBlock>
   {
     label: "Trust Score (CN)",
     formulaHeader: "Trust = f(accuracy, bias, timeliness)",
-    accent: "color-warning",
+    accent: "amber",
     content: (
       <div className="space-y-3">
         <CodeBlock>{`Trust Score = w1 × Accuracy + w2 × (1−Bias) + w3 × Timeliness
@@ -392,7 +392,7 @@ Trust → Tolerance:
   {
     label: "NM Honoring & ATP Discount",
     formulaHeader: "Honoring% = Delivered ÷ Committed",
-    accent: "color-danger",
+    accent: "red",
     content: (
       <div className="space-y-3">
         <CodeBlock>{`Honoring% = Actual delivered ÷ Plan committed
@@ -415,7 +415,7 @@ ATP Discount:
 const tab4Nodes: LogicNodeData[] = [
   {
     label: "Safety Stock là gì?",
-    accent: "color-info",
+    accent: "blue",
     content: (
       <Note>
         Safety Stock = hàng dự phòng để <strong>không bao giờ hết hàng</strong> khi forecast sai hoặc NM giao trễ.
@@ -429,7 +429,7 @@ const tab4Nodes: LogicNodeData[] = [
   {
     label: "Công thức SS",
     formulaHeader: "SS = z × σ_fc_error × √LT",
-    accent: "color-success",
+    accent: "green",
     content: (
       <div className="space-y-3">
         <CodeBlock>{`SS = z × σ_fc_error × √LT
@@ -456,7 +456,7 @@ z          = hệ số phục vụ (service level)
   {
     label: "SS ↔ Working Capital",
     formulaHeader: "Tăng SS = tốn vốn, giảm SS = rủi ro",
-    accent: "color-warning",
+    accent: "amber",
     content: (
       <div className="space-y-3">
         <CodeBlock>{`WC impact = SS_qty × unit_cost
@@ -477,7 +477,7 @@ Mục tiêu: tìm điểm CÂN BẰNG.
   {
     label: "Auto-adjust SS (Closed-loop)",
     formulaHeader: "Hệ thống tự điều chỉnh SS",
-    accent: "color-danger",
+    accent: "red",
     content: (
       <div className="space-y-3">
         <CodeBlock>{`Trigger tăng SS:
