@@ -5,6 +5,7 @@ import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronRight, Bell, Clock, Filter } from "lucide-react";
+import { ClickableNumber } from "@/components/ClickableNumber";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -115,9 +116,34 @@ export default function DemandWeeklyPage() {
                   <tr key={r.cn} className="border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer" onClick={() => setDrillCn(r.cn)}>
                     <td className="px-4 py-3 text-table font-medium text-text-1">{r.cn}</td>
                     <td className="px-4 py-3 text-table tabular-nums text-text-2">{r.duKien.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-table text-text-1">{r.cnAdjust}</td>
+                    <td className="px-4 py-3 text-table text-text-1">
+                      <ClickableNumber
+                        value={r.cnAdjust}
+                        label={`CN adjust ${r.cn}`}
+                        color="text-text-1"
+                        breakdown={r.skus.filter(sk => sk.cnAdjust !== null).map(sk => ({
+                          label: `${sk.item} ${sk.variant}: ${sk.cnAdjust! >= 0 ? "+" : ""}${sk.cnAdjust}`,
+                          value: sk.adjustNote,
+                          detail: sk.adjustStatus === "approved" ? "✅ Approved" : "🟡 Pending",
+                        }))}
+                        note={r.adjustDelta !== 0 ? `${r.skus.filter(sk => sk.cnAdjust !== null).length} SKU adjusted` : undefined}
+                      />
+                    </td>
                     <td className="px-4 py-3 text-table tabular-nums text-text-2">{r.po.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-table tabular-nums font-semibold text-text-1">{r.final.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-table tabular-nums font-semibold text-text-1">
+                      <ClickableNumber
+                        value={r.final}
+                        label={`Final ${r.cn}`}
+                        color="font-semibold text-text-1"
+                        formula={`Dự kiến ${r.duKien.toLocaleString()} + CN adjust ${r.adjustDelta >= 0 ? "+" : ""}${r.adjustDelta} + PO ${r.po.toLocaleString()} − overlap = ${r.final.toLocaleString()}`}
+                        breakdown={r.skus.map(sk => ({
+                          label: `${sk.item} ${sk.variant}`,
+                          value: sk.final,
+                          detail: `${sk.duKien} ${sk.cnAdjust !== null ? (sk.cnAdjust >= 0 ? "+" : "") + sk.cnAdjust : ""} ${sk.po > 0 ? "+ PO " + sk.po : ""}`,
+                        }))}
+                        links={[{ label: `→ /demand tab 1 ${r.cn}`, to: "/demand" }]}
+                      />
+                    </td>
                     <td className={cn("px-4 py-3 text-table font-medium", r.statusColor)}>{r.status}</td>
                     <td className="px-4 py-3 text-text-3"><ChevronRight className="h-4 w-4" /></td>
                   </tr>

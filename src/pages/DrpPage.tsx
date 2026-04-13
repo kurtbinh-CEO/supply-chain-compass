@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronRight, ChevronDown, AlertTriangle, ArrowRight, Play, Settings, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { ClickableNumber } from "@/components/ClickableNumber";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormulaBar } from "@/components/FormulaBar";
@@ -306,9 +307,18 @@ export default function DrpPage() {
                         <div className="w-16 h-2 rounded-full bg-surface-3 overflow-hidden">
                           <div className={cn("h-full rounded-full", r.fillRate >= 95 ? "bg-success" : r.fillRate >= 85 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(r.fillRate, 100)}%` }} />
                         </div>
-                        <span className={cn("text-table-sm font-medium", r.fillRate >= 95 ? "text-success" : r.fillRate >= 85 ? "text-warning" : "text-danger")}>
-                          {r.fillRate}% {r.fillRate >= 95 ? "🟢" : r.fillRate >= 85 ? "🟡" : "🔴"}
-                        </span>
+                        <ClickableNumber
+                          value={`${r.fillRate}%`}
+                          label={`Fill rate ${r.cn}`}
+                          color={cn("text-table-sm font-medium", r.fillRate >= 95 ? "text-success" : r.fillRate >= 85 ? "text-warning" : "text-danger")}
+                          formula={`Allocated ${r.available.toLocaleString()} ÷ Demand ${r.demand.toLocaleString()} = ${r.fillRate}%`}
+                          breakdown={r.exceptionList.length > 0 ? r.exceptionList.map(e => ({
+                            label: `${e.item} ${e.variant}`,
+                            value: `demand ${e.demand.toLocaleString()}, allocated ${e.allocated.toLocaleString()}, gap ${e.gap.toLocaleString()}`,
+                            detail: e.type,
+                          })) : [{ label: "Tất cả SKU", value: "100% allocated" }]}
+                          note={r.fillRate < 100 ? `${r.fillRate >= 95 ? "🟢" : r.fillRate >= 85 ? "🟡" : "🔴"}` : undefined}
+                        />
                       </div>
                     </td>
                     <td className="px-4 py-3 text-table tabular-nums">
@@ -317,7 +327,19 @@ export default function DrpPage() {
                     <td className="px-4 py-3 text-table">
                       {r.exceptions > 0 ? <span className="text-danger font-medium">{r.exceptions} items</span> : <span className="text-text-3">0</span>}
                     </td>
-                    <td className="px-4 py-3 text-table text-text-2">{r.rpos} RPO{r.rpos !== 1 ? "s" : ""}</td>
+                    <td className="px-4 py-3 text-table text-text-2">
+                      <ClickableNumber
+                        value={`${r.rpos} RPO${r.rpos !== 1 ? "s" : ""}`}
+                        label="RPOs planned"
+                        color="text-text-2"
+                        breakdown={r.cn === "CN-BD" ? [
+                          { label: "RPO-MKD-W17-002", value: "1.000m² GA-300 A4", detail: "MOQ round" },
+                          { label: "RPO-MKD-W17-003", value: "1.000m² GA-600 A4" },
+                          { label: "RPO-DTM-W17-001", value: "500m² GA-300 B2" },
+                        ] : undefined}
+                        links={[{ label: "→ /orders tab 1 DRAFT", to: "/orders" }]}
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       {r.exceptions > 0 ? (
                         <span className="text-primary text-table-sm font-medium">Chi tiết ▸</span>
