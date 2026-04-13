@@ -242,38 +242,67 @@ function MoqSection({ scale, onMoqLocked }: { scale: number; onMoqLocked: () => 
                       const isConfirmed = confirmed.has(key);
                       const isEditing = editingCell === key;
                       return (
-                        <tr key={key} className={cn("border-b border-surface-3/50", isConfirmed ? "bg-success/5" : "hover:bg-surface-1/30")}>
-                          <td className="px-4 py-2.5 font-medium text-text-1">{sk.item}</td>
-                          <td className="px-4 py-2.5 text-text-2">{sk.variant}</td>
-                          <td className="px-4 py-2.5 tabular-nums text-text-2">{sk.netReq.toLocaleString()}</td>
-                          <td className="px-4 py-2.5 tabular-nums text-text-3">{sk.moq.toLocaleString()}</td>
-                          <td className="px-4 py-2.5">
-                            {isEditing ? (
-                              <input autoFocus type="number" value={editVal}
-                                onChange={(e) => setEditVal(e.target.value)}
-                                onBlur={() => commitEdit(key, sk.moq)}
-                                onKeyDown={(e) => e.key === "Enter" && commitEdit(key, sk.moq)}
-                                className="w-20 rounded border border-primary bg-surface-0 px-2 py-1 text-table-sm tabular-nums text-text-1 outline-none"
-                              />
-                            ) : (
-                              <button onClick={() => handleEditOrder(key, sk.order)} className="tabular-nums font-medium text-primary hover:underline">{sk.order.toLocaleString()}</button>
-                            )}
-                          </td>
-                          <td className="px-4 py-2.5 tabular-nums text-warning font-medium">{sk.surplus > 0 ? `+${sk.surplus.toLocaleString()}` : "0"}</td>
-                          <td className="px-4 py-2.5 text-caption text-text-3 max-w-[220px]">{sk.poqOption || "—"}</td>
-                          <td className="px-4 py-2.5">
-                            {isConfirmed ? (
-                              <span className="text-success text-caption font-medium flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Đã chọn</span>
-                            ) : (
-                              <div className="flex gap-1.5">
-                                <button onClick={() => handleConfirmSku(activeNm.nm, sk.item, sk.variant, "moq")} className="rounded-button bg-gradient-primary text-primary-foreground px-2 py-1 text-caption font-medium">Chọn {sk.order.toLocaleString()}</button>
-                                {sk.poqQty && (
-                                  <button onClick={() => handleConfirmSku(activeNm.nm, sk.item, sk.variant, "poq")} className="rounded-button border border-info text-info px-2 py-1 text-caption font-medium hover:bg-info/10">POQ {sk.poqQty.toLocaleString()}</button>
+                        <React.Fragment key={key}>
+                          <tr className={cn("border-b border-surface-3/50", isConfirmed ? "bg-success/5" : "hover:bg-surface-1/30")}>
+                            <td className="px-4 py-2.5 font-medium text-text-1">{sk.item}</td>
+                            <td className="px-4 py-2.5 text-text-2">{sk.variant}</td>
+                            <td className="px-4 py-2.5 tabular-nums text-text-2">{sk.netReq.toLocaleString()}</td>
+                            <td className="px-4 py-2.5 tabular-nums text-text-3">{sk.moq.toLocaleString()}</td>
+                            <td className="px-4 py-2.5">
+                              {isEditing ? (
+                                <input autoFocus type="number" value={editVal}
+                                  onChange={(e) => setEditVal(e.target.value)}
+                                  onBlur={() => commitEdit(key, sk.moq)}
+                                  onKeyDown={(e) => e.key === "Enter" && commitEdit(key, sk.moq)}
+                                  className="w-20 rounded border border-primary bg-surface-0 px-2 py-1 text-table-sm tabular-nums text-text-1 outline-none"
+                                />
+                              ) : (
+                                <button onClick={() => handleEditOrder(key, sk.order)} className="tabular-nums font-medium text-primary hover:underline">{sk.order.toLocaleString()}</button>
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5 tabular-nums text-warning font-medium">{sk.surplus > 0 ? `+${sk.surplus.toLocaleString()}` : "0"}</td>
+                            <td className="px-4 py-2.5 text-caption text-text-3 max-w-[220px]">{sk.poqOption || "—"}</td>
+                            <td className="px-4 py-2.5">
+                              <div className="flex items-center gap-2">
+                                {isConfirmed ? (
+                                  <span className="text-success text-caption font-medium flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Đã chọn</span>
+                                ) : (
+                                  <div className="flex gap-1.5">
+                                    <button onClick={() => handleConfirmSku(activeNm.nm, sk.item, sk.variant, "moq")} className="rounded-button bg-gradient-primary text-primary-foreground px-2 py-1 text-caption font-medium">Chọn {sk.order.toLocaleString()}</button>
+                                    {sk.poqQty && (
+                                      <button onClick={() => handleConfirmSku(activeNm.nm, sk.item, sk.variant, "poq")} className="rounded-button border border-info text-info px-2 py-1 text-caption font-medium hover:bg-info/10">POQ {sk.poqQty.toLocaleString()}</button>
+                                    )}
+                                  </div>
                                 )}
+                                <button
+                                  onClick={() => setBridgeKey(bridgeKey === key ? null : key)}
+                                  className="text-info text-[10px] font-medium hover:underline"
+                                >
+                                  {bridgeKey === key ? "▴" : "▾"}
+                                </button>
                               </div>
-                            )}
-                          </td>
-                        </tr>
+                            </td>
+                          </tr>
+                          {bridgeKey === key && (
+                            <tr>
+                              <td colSpan={8} className="p-3 bg-surface-1/20 border-b border-surface-3/50">
+                                <DemandToOrderBridge
+                                  item={sk.item}
+                                  variant={sk.variant}
+                                  cn={`4 CN → ${activeNm.nm}`}
+                                  steps={buildMiniBridgeSteps({
+                                    netReq: sk.netReq,
+                                    moq: sk.moq,
+                                    moqNm: activeNm.nm,
+                                    finalOrder: sk.order,
+                                    rpoNum: `RPO-${getNmCode(activeNm.nm)}-2605-W17`,
+                                  })}
+                                  fromStep={0}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
