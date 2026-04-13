@@ -59,9 +59,11 @@ interface WorkspaceContextType {
   approvals: Approval[];
   pendingCount: number;
   removeApproval: (id: string) => void;
+  addApproval: (a: Approval) => void;
   exceptions: ExceptionCard[];
   notifications: Notification[];
   markNotificationRead: (id: string) => void;
+  addNotification: (n: Notification) => void;
   unreadCount: number;
   criticalCount: number;
 }
