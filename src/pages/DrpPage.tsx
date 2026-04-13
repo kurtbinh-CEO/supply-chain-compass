@@ -65,7 +65,7 @@ const changeLog = [
 /* ═══ LAYER 1 DATA ═══ */
 const baseData: CnRow[] = [
   {
-    cn: "CN-BD", demand: 2550, available: 1007, fillRate: 86, gap: 345, exceptions: 2,
+    cn: "CN-BD", demand: 2550, available: 1007, fillRate: 86, gap: 345, exceptions: 2, rpos: 3,
     exceptionList: [
       {
         item: "GA-300", variant: "A4", demand: 617, allocated: 272, gap: 345, type: "SHORTAGE",
