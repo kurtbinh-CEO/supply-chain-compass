@@ -127,6 +127,9 @@ export default function DrpPage() {
   const [simZ, setSimZ] = useState(1.65);
   const [showChangeLog, setShowChangeLog] = useState(false);
   const [editingParam, setEditingParam] = useState<string | null>(null);
+  const [showDrpConfirm, setShowDrpConfirm] = useState(false);
+  const [drpRunning, setDrpRunning] = useState(false);
+  const [drpStep, setDrpStep] = useState(0);
 
   const data = baseData.map((r) => ({
     ...r,
@@ -148,6 +151,7 @@ export default function DrpPage() {
   const totalDemand = data.reduce((a, r) => a + r.demand, 0);
   const totalGap = data.reduce((a, r) => a + r.gap, 0);
   const totalExc = data.reduce((a, r) => a + r.exceptions, 0);
+  const totalRpos = data.reduce((a, r) => a + r.rpos, 0);
   const totalFill = totalDemand > 0 ? Math.round(((totalDemand - totalGap) / totalDemand) * 1000) / 10 : 100;
   const activeCn = drillCn ? data.find((r) => r.cn === drillCn) : null;
 
@@ -159,8 +163,19 @@ export default function DrpPage() {
     });
   };
 
+  const drpStepLabels = ["Netting", "Allocation", "PO generation"];
+
   const handleRunDrp = () => {
-    toast.success("DRP đang chạy...", { description: "Kết quả sẽ cập nhật trong 2-3 phút" });
+    setShowDrpConfirm(false);
+    setDrpRunning(true);
+    setDrpStep(0);
+    setTimeout(() => setDrpStep(1), 800);
+    setTimeout(() => setDrpStep(2), 1600);
+    setTimeout(() => {
+      setDrpRunning(false);
+      setDrpStep(0);
+      toast.success("DRP hoàn tất", { description: `${totalExc} exceptions. ${totalRpos} RPOs.` });
+    }, 2400);
   };
 
   const handleChooseOption = (opt: typeof baseData[0]["exceptionList"][0]["options"][0]) => {
