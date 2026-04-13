@@ -486,38 +486,61 @@ export default function DrpPage() {
                                   </div>
                                 </div>
 
-                                {/* SECTION C: Options (expand on Xử lý click) */}
-                                {expandOptions === exKey && ex.options.length > 0 && (
-                                  <div>
-                                    <h4 className="text-caption font-medium text-text-3 uppercase mb-2">Options xử lý</h4>
-                                    <table className="w-full">
-                                      <thead>
-                                        <tr className="border-b border-surface-3/50">
-                                          {["Option", "Source", "Qty (m²)", "Cost", "Time", "Savings vs B", ""].map((h, j) => (
-                                            <th key={j} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
-                                          ))}
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {ex.options.map((opt, j) => (
-                                          <tr key={j} className={cn("border-b border-surface-3/30", opt.recommended && "bg-success/5")}>
-                                            <td className="px-3 py-2.5 text-table font-medium text-text-1">{opt.recommended && "★ "}{opt.label}</td>
-                                            <td className="px-3 py-2.5 text-table text-text-2">{opt.source}</td>
-                                            <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{opt.qty.toLocaleString()}</td>
-                                            <td className="px-3 py-2.5 text-table text-text-2">{opt.cost}</td>
-                                            <td className="px-3 py-2.5 text-table text-text-2">{opt.time}</td>
-                                            <td className="px-3 py-2.5 text-table text-text-2">{opt.savingVsB}</td>
-                                            <td className="px-3 py-2.5">
-                                              <button
-                                                onClick={() => handleChooseOption(opt)}
-                                                className={cn("rounded-button px-2.5 py-1 text-caption font-medium",
-                                                  opt.recommended ? "bg-gradient-primary text-primary-foreground" : "border border-surface-3 text-text-2 hover:text-text-1"
-                                                )}
-                                              >
-                                                Chọn {opt.label.charAt(0)}
-                                              </button>
-                                            </td>
-                                          </tr>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+
+                        {/* ── Options panel (separate from netting) ── */}
+                        {expandOptions === exKey && ex.options.length > 0 && (
+                          <tr key={`options-${i}`}>
+                            <td colSpan={8} className="p-0">
+                              <div className="border-t border-primary/20 px-6 py-4 bg-primary/[0.02]">
+                                <h4 className="text-table font-semibold text-text-1 mb-3">
+                                  {ex.item} {ex.variant} {activeCn.cn} — Gap {ex.gap.toLocaleString()}m². Chọn cách xử lý:
+                                </h4>
+                                <table className="w-full">
+                                  <thead>
+                                    <tr className="border-b border-surface-3/50">
+                                      {["Option", "Source", "Qty (m²)", "Cost", "Thời gian", "Savings", ""].map((h, j) => (
+                                        <th key={j} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {ex.options.map((opt, j) => (
+                                      <tr key={j} className={cn("border-b border-surface-3/30", opt.recommended && "border-l-2 border-l-success bg-success/5")}>
+                                        <td className="px-3 py-2.5 text-table font-medium text-text-1">
+                                          {opt.recommended && <span className="text-success mr-1">★</span>}{opt.label}
+                                        </td>
+                                        <td className="px-3 py-2.5 text-table text-text-2">{opt.source}</td>
+                                        <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{opt.qty.toLocaleString()}</td>
+                                        <td className="px-3 py-2.5 text-table text-text-2">{opt.cost}</td>
+                                        <td className="px-3 py-2.5 text-table text-text-2">{opt.time}</td>
+                                        <td className="px-3 py-2.5 text-table text-text-2">{opt.savingVsB}</td>
+                                        <td className="px-3 py-2.5">
+                                          <button
+                                            onClick={() => handleChooseOption(exKey, opt)}
+                                            className={cn("rounded-button px-2.5 py-1 text-caption font-medium",
+                                              opt.recommended ? "bg-gradient-primary text-primary-foreground" : "border border-surface-3 text-text-2 hover:text-text-1"
+                                            )}
+                                          >
+                                            Chọn {opt.label.charAt(0)}
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                                {ex.options.find(o => o.recommended) && (
+                                  <p className="text-caption text-success italic mt-2 px-3">
+                                    ★ Recommend: Kết hợp LCNB cover 64%, PO cover 36%. Tiết kiệm 31,9M₫.
+                                  </p>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                                         ))}
                                       </tbody>
                                     </table>
