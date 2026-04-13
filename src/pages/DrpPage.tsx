@@ -388,7 +388,7 @@ export default function DrpPage() {
                               >
                                 Xem cách tính {isExpanded ? "▴" : "▾"}
                               </button>
-                              {ex.type === "SHORTAGE" && ex.options.length > 0 && (
+                              {ex.type === "SHORTAGE" && ex.options.length > 0 && !isResolved && (
                                 <button
                                   onClick={() => setExpandOptions(expandOptions === exKey ? null : exKey)}
                                   className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium"
