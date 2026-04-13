@@ -5,7 +5,7 @@ import { ChevronRight } from "lucide-react";
 export interface LogicNodeData {
   label: string;
   formulaHeader?: string;
-  accent: string; // tailwind border color class
+  accent: string; // "blue" | "green" | "amber" | "red" | "teal"
   content?: React.ReactNode;
   children?: LogicNodeData[];
 }
@@ -19,15 +19,23 @@ export function LogicTreeNode({ node, depth = 0 }: LogicTreeNodeProps) {
   const [open, setOpen] = useState(false);
   const hasContent = !!(node.content || (node.children && node.children.length > 0));
 
+  const accentColors: Record<string, string> = {
+    blue: "hsl(var(--info))",
+    green: "hsl(var(--success))",
+    amber: "hsl(var(--warning))",
+    red: "hsl(var(--danger))",
+    teal: "hsl(var(--info))",
+  };
+  const borderColor = accentColors[node.accent] || accentColors.blue;
+
   return (
     <div className={cn("relative", depth > 0 && "ml-6 border-l border-dashed border-surface-3 pl-0")}>
       <div
         className={cn(
           "rounded-lg bg-white dark:bg-surface-2 border border-surface-3 overflow-hidden transition-shadow",
           open && "shadow-md",
-          depth > 0 && "ml-0"
         )}
-        style={{ borderLeftWidth: "3px", borderLeftColor: `var(--${node.accent})`, borderLeftStyle: "solid" }}
+        style={{ borderLeftWidth: "3px", borderLeftColor: borderColor, borderLeftStyle: "solid" }}
       >
         {/* Header */}
         <button
