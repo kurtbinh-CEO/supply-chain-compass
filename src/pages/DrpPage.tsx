@@ -50,14 +50,6 @@ const ssBdSkus: SsSkuRow[] = [
   { item: "GA-600", variant: "A4", ssCurrent: 1000, z: 1.65, sigma: 32.0, lt: 10, ssProposed: 950, delta: -50, wcImpact: "−9M₫/tháng" },
 ];
 
-const drpParams = [
-  { key: "Horizon", value: "6 tuần", desc: "DRP nhìn trước bao xa" },
-  { key: "Run time", value: "23:00", desc: "Nightly auto-run" },
-  { key: "Service level", value: "95% (z=1.65)", desc: "Target availability" },
-  { key: "Lot sizing", value: "MOQ round ceil", desc: "Cách round đơn hàng" },
-  { key: "LCNB enabled", value: "✅", desc: "Scan lateral trước PO" },
-  { key: "LCNB cost threshold", value: "70%", desc: "Chỉ lateral nếu rẻ hơn 70% vs PO" },
-];
 
 const changeLog = [
   { time: "12/05 14:30", who: "Thúy", change: "SS GA-300 A4 CN-BD: 900→1.035", reason: "Stockout 2x tháng qua" },
