@@ -68,6 +68,12 @@ export function AppSidebar() {
   const { collapsed, toggle } = useSidebarState();
   const { startWorkflow } = useWorkflow();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleStartWorkflow = (type: "daily" | "monthly") => {
+    startWorkflow(type);
+    navigate(type === "daily" ? "/supply" : "/demand");
+  };
 
   return (
     <aside
