@@ -8,6 +8,7 @@ import { ChevronRight, ChevronDown, AlertTriangle, ArrowRight, Play, Settings, C
 import { LogicLink } from "@/components/LogicLink";
 import { useNavigate } from "react-router-dom";
 import { ClickableNumber } from "@/components/ClickableNumber";
+import { DemandToOrderBridge, buildFullBridgeSteps } from "@/components/DemandToOrderBridge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormulaBar } from "@/components/FormulaBar";
