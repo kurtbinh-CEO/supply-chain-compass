@@ -1,4 +1,4 @@
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { Navigate } from "react-router-dom";
 export default function AllocationPage() {
-  return <PlaceholderPage title="Allocation" subtitle="Vận hành ngày — Phân bổ hàng cho chi nhánh" />;
+  return <Navigate to="/drp" replace />;
 }
