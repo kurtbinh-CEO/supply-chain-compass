@@ -15,7 +15,8 @@ export default function HubPage() {
   const [activeTab, setActiveTab] = useState("hub-stock");
 
   return (
-    <ScreenShell title="Hub & Commitment" subtitle="Kế hoạch tháng — Cam kết nhà máy & phân bổ hub">
+    <div className="p-6">
+      <ScreenHeader title="Hub & Commitment" subtitle="Kế hoạch tháng — Cam kết nhà máy & phân bổ hub" />
       {/* Context bar */}
       <div className="flex items-center gap-4 mb-6 rounded-card border border-surface-3 bg-surface-2 px-5 py-3">
         <div>
@@ -51,6 +52,6 @@ export default function HubPage() {
       {activeTab === "hub-stock" && <HubStockTab />}
       {activeTab === "fc-commitment" && <FCCommitmentTab />}
       {activeTab === "gap-monitor" && <GapMonitorTab />}
-    </ScreenShell>
+    </div>
   );
 }
