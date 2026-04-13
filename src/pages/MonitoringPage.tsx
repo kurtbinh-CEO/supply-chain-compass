@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronRight, ChevronDown, ChevronLeft, TrendingUp, TrendingDown, Minus, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell as PieCell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -35,27 +36,70 @@ const finKpis = [
 /* ═══ TAB 2 (Tồn kho) DATA ═══ */
 interface CnInvSku {
   item: string; variant: string; ton: number; dangVe: string; available: number;
-  ssTarget: number; ssGap: number; hstk: number; status: string;
+  ssTarget: number; ssGap: number; hstk: number; status: string; aging?: string;
 }
 interface CnInvRow {
   cn: string; ton: number; dangVe: string; available: number; hstk: number;
-  duoiSs: number; xauNhat: string; skus: CnInvSku[];
+  duoiSs: number; xauNhat: string; excess: number; turnover: number; skus: CnInvSku[];
 }
 const baseCnInv: CnInvRow[] = [
   {
-    cn: "CN-BD", ton: 2100, dangVe: "557 (Toko 17/05)", available: 1350, hstk: 5.2, duoiSs: 3, xauNhat: "GA-300 A4 (1,2d)",
+    cn: "CN-BD", ton: 2100, dangVe: "557 (Toko 17/05)", available: 1350, hstk: 5.2, duoiSs: 3, xauNhat: "GA-300 A4 (1,2d)", excess: 0, turnover: 4.8,
     skus: [
-      { item: "GA-300", variant: "A4", ton: 450, dangVe: "557 (Toko 17/05)", available: 200, ssTarget: 900, ssGap: -700, hstk: 1.2, status: "CRITICAL" },
-      { item: "GA-300", variant: "B2", ton: 380, dangVe: "—", available: 300, ssTarget: 700, ssGap: -400, hstk: 3.5, status: "LOW" },
-      { item: "GA-300", variant: "C1", ton: 320, dangVe: "—", available: 280, ssTarget: 150, ssGap: 130, hstk: 8, status: "OK" },
-      { item: "GA-400", variant: "A4", ton: 800, dangVe: "—", available: 600, ssTarget: 600, ssGap: 0, hstk: 7, status: "OK" },
-      { item: "GA-600", variant: "A4", ton: 2100, dangVe: "—", available: 1800, ssTarget: 1000, ssGap: 800, hstk: 12, status: "EXCESS" },
-      { item: "GA-600", variant: "B2", ton: 650, dangVe: "—", available: 520, ssTarget: 500, ssGap: 20, hstk: 7.5, status: "OK" },
+      { item: "GA-300", variant: "A4", ton: 450, dangVe: "557 (Toko 17/05)", available: 200, ssTarget: 900, ssGap: -700, hstk: 1.2, status: "CRITICAL", aging: "15d" },
+      { item: "GA-300", variant: "B2", ton: 380, dangVe: "—", available: 300, ssTarget: 700, ssGap: -400, hstk: 3.5, status: "LOW", aging: "22d" },
+      { item: "GA-300", variant: "C1", ton: 320, dangVe: "—", available: 280, ssTarget: 150, ssGap: 130, hstk: 8, status: "OK", aging: "45d" },
+      { item: "GA-400", variant: "A4", ton: 800, dangVe: "—", available: 600, ssTarget: 600, ssGap: 0, hstk: 7, status: "OK", aging: "30d" },
+      { item: "GA-600", variant: "A4", ton: 2100, dangVe: "—", available: 1800, ssTarget: 1000, ssGap: 800, hstk: 12, status: "EXCESS", aging: "95d" },
+      { item: "GA-600", variant: "B2", ton: 650, dangVe: "—", available: 520, ssTarget: 500, ssGap: 20, hstk: 7.5, status: "OK", aging: "18d" },
     ],
   },
-  { cn: "CN-ĐN", ton: 4500, dangVe: "400", available: 3800, hstk: 14, duoiSs: 0, xauNhat: "—", skus: [] },
-  { cn: "CN-HN", ton: 3200, dangVe: "500", available: 2500, hstk: 9, duoiSs: 0, xauNhat: "—", skus: [] },
-  { cn: "CN-CT", ton: 2800, dangVe: "300", available: 2100, hstk: 11, duoiSs: 0, xauNhat: "—", skus: [] },
+  { cn: "CN-ĐN", ton: 4500, dangVe: "400", available: 3800, hstk: 14, duoiSs: 0, xauNhat: "—", excess: 400, turnover: 2.1, skus: [] },
+  { cn: "CN-HN", ton: 3200, dangVe: "500", available: 2500, hstk: 9, duoiSs: 0, xauNhat: "—", excess: 0, turnover: 3.5, skus: [] },
+  { cn: "CN-CT", ton: 2800, dangVe: "300", available: 2100, hstk: 11, duoiSs: 0, xauNhat: "—", excess: 0, turnover: 2.8, skus: [] },
+];
+
+/* ═══ Inventory trend data (30 days) ═══ */
+const invTrendBase = Array.from({ length: 30 }, (_, i) => {
+  const day = i + 1;
+  const dateStr = `${String(day).padStart(2, "0")}/05`;
+  return {
+    date: dateStr,
+    "CN-BD": { onHand: 2000 + Math.round(Math.sin(i / 5) * 300), ss: 2900, available: 1200 + Math.round(Math.sin(i / 4) * 200) },
+    "CN-ĐN": { onHand: 4200 + Math.round(Math.cos(i / 6) * 400), ss: 2400, available: 3500 + Math.round(Math.cos(i / 5) * 300) },
+    "CN-HN": { onHand: 3000 + Math.round(Math.sin(i / 7) * 250), ss: 2100, available: 2300 + Math.round(Math.sin(i / 6) * 200) },
+    "CN-CT": { onHand: 2600 + Math.round(Math.cos(i / 5) * 200), ss: 1500, available: 1900 + Math.round(Math.cos(i / 4) * 150) },
+  };
+});
+
+function getInvTrend(filter: string) {
+  return invTrendBase.map((d) => {
+    if (filter === "all") {
+      return {
+        date: d.date,
+        onHand: d["CN-BD"].onHand + d["CN-ĐN"].onHand + d["CN-HN"].onHand + d["CN-CT"].onHand,
+        ss: d["CN-BD"].ss + d["CN-ĐN"].ss + d["CN-HN"].ss + d["CN-CT"].ss,
+        available: d["CN-BD"].available + d["CN-ĐN"].available + d["CN-HN"].available + d["CN-CT"].available,
+      };
+    }
+    const cn = d[filter as keyof typeof d] as { onHand: number; ss: number; available: number };
+    return { date: d.date, onHand: cn.onHand, ss: cn.ss, available: cn.available };
+  });
+}
+
+/* Aging distribution */
+const agingData = [
+  { name: "<30d", value: 65, fill: "#00714d" },
+  { name: "30-60d", value: 25, fill: "#7a4100" },
+  { name: "60-90d", value: 8, fill: "#dc2626" },
+  { name: ">90d", value: 2, fill: "#991b1b" },
+];
+
+/* Stockout log */
+const stockoutLog = [
+  { date: "08/05", cn: "CN-BD", item: "GA-300 A4", duration: "6h", impact: "120m²", cause: "Toko trễ 4d", resolution: "LCNB CN-ĐN 100m²" },
+  { date: "03/05", cn: "CN-BD", item: "GA-300 B2", duration: "12h", impact: "80m²", cause: "Demand spike", resolution: "Emergency PO Mikado" },
+  { date: "28/04", cn: "CN-HN", item: "GA-400 A4", duration: "3h", impact: "45m²", cause: "SS breach", resolution: "Auto-restock" },
 ];
 
 /* ═══ TAB 1 (Tổng quan) CHART DATA ═══ */
@@ -183,6 +227,9 @@ export default function MonitoringPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [drillCn, setDrillCn] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["fc"]));
+  const [invChartFilter, setInvChartFilter] = useState("all");
+  const [showStockoutLog, setShowStockoutLog] = useState(false);
+  const showAging = tenant === "TTC Agris" || tenant === "Mondelez";
 
   const toggleSection = (key: string) => {
     setExpandedSections((prev) => {
@@ -355,7 +402,45 @@ export default function MonitoringPage() {
 
       {/* ═══ TAB 2: Tồn kho ═══ */}
       {activeTab === "inv" && (
-        <div className="animate-fade-in">
+        <div className="space-y-6 animate-fade-in">
+          {/* Section A: Inventory Trend Chart */}
+          <div className="rounded-card border border-surface-3 bg-surface-2 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-display text-body font-semibold text-text-1">Inventory Trend (30 ngày)</h3>
+              <Select value={invChartFilter} onValueChange={setInvChartFilter}>
+                <SelectTrigger className="w-36 h-8 text-table-sm bg-surface-0 border-surface-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả CN</SelectItem>
+                  <SelectItem value="CN-BD">CN-BD</SelectItem>
+                  <SelectItem value="CN-ĐN">CN-ĐN</SelectItem>
+                  <SelectItem value="CN-HN">CN-HN</SelectItem>
+                  <SelectItem value="CN-CT">CN-CT</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={getInvTrend(invChartFilter)}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-3)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--color-text-3)" }} interval={4} />
+                  <YAxis tick={{ fontSize: 10, fill: "var(--color-text-3)" }} />
+                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(value: number) => `${value.toLocaleString()} m²`} />
+                  <Area type="monotone" dataKey="onHand" name="On-hand" stroke="#2563EB" fill="#2563EB" fillOpacity={0.1} strokeWidth={2} />
+                  <Area type="monotone" dataKey="ss" name="SS Target" stroke="#991b1b" fill="none" strokeWidth={1.5} strokeDasharray="6 3" />
+                  <Area type="monotone" dataKey="available" name="Available" stroke="#00714d" fill="#00714d" fillOpacity={0.08} strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex items-center gap-5 mt-2 text-[10px] text-text-3">
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#2563EB] rounded" /> On-hand</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#991b1b] rounded border-dashed" style={{ borderTop: "1.5px dashed #991b1b", background: "none" }} /> SS Target</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#00714d] rounded" /> Available</span>
+            </div>
+          </div>
+
+          {/* Section B: 2-layer table */}
           {!activeCnInv ? (
             <div className="rounded-card border border-surface-3 bg-surface-2">
               <div className="overflow-x-auto">
@@ -363,8 +448,8 @@ export default function MonitoringPage() {
                   <thead>
                     <tr className="border-b border-surface-3 bg-surface-1/50">
                       <th className="w-10 px-3 py-2.5"></th>
-                      {["CN", "Tồn (m²)", "Đang về", "Available", "HSTK", "Dưới SS", "Xấu nhất", ""].map((h, i) => (
-                        <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
+                      {["CN", "Tồn (m²)", "Đang về", "Available", "HSTK", "Dưới SS", "Excess", "Turnover", ""].map((h, i) => (
+                        <th key={i} className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -373,11 +458,11 @@ export default function MonitoringPage() {
                       <tr key={r.cn} className={cn("border-b border-surface-3/50 cursor-pointer hover:bg-surface-1/30", r.duoiSs > 0 && "bg-danger-bg/20")}
                         onClick={() => r.skus.length > 0 && setDrillCn(r.cn)}>
                         <td className="px-3 py-3 text-text-3">{r.skus.length > 0 && <ChevronRight className="h-4 w-4" />}</td>
-                        <td className="px-4 py-3 text-table font-medium text-text-1">{r.cn}</td>
-                        <td className="px-4 py-3 text-table tabular-nums text-text-1">{r.ton.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-table text-text-2">{r.dangVe}</td>
-                        <td className="px-4 py-3 text-table tabular-nums text-text-2">{r.available.toLocaleString()}</td>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3 text-table font-medium text-text-1">{r.cn}</td>
+                        <td className="px-3 py-3 text-table tabular-nums text-text-1">{r.ton.toLocaleString()}</td>
+                        <td className="px-3 py-3 text-table text-text-2">{r.dangVe}</td>
+                        <td className="px-3 py-3 text-table tabular-nums text-text-2">{r.available.toLocaleString()}</td>
+                        <td className="px-3 py-3">
                           <div className="flex items-center gap-2">
                             <div className="w-14 h-2 rounded-full bg-surface-3 overflow-hidden">
                               <div className={cn("h-full rounded-full", hstkBg(r.hstk))} style={{ width: `${Math.min((r.hstk / 20) * 100, 100)}%` }} />
@@ -385,28 +470,38 @@ export default function MonitoringPage() {
                             <span className={cn("text-table-sm font-medium tabular-nums", hstkColor(r.hstk))}>{r.hstk}d</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-table tabular-nums">
+                        <td className="px-3 py-3 text-table tabular-nums">
                           {r.duoiSs > 0 ? <span className="text-danger font-medium">{r.duoiSs} SKU</span> : <span className="text-text-3">0</span>}
                         </td>
-                        <td className="px-4 py-3 text-table text-text-2">{r.xauNhat}</td>
-                        <td className="px-4 py-3">{r.skus.length > 0 && <span className="text-primary text-table-sm font-medium">Xem ▸</span>}</td>
+                        <td className="px-3 py-3 text-table tabular-nums">
+                          {r.excess > 0 ? <span className="text-info font-medium">{r.excess.toLocaleString()} excess</span> : <span className="text-text-3">0</span>}
+                        </td>
+                        <td className="px-3 py-3 text-table tabular-nums">
+                          <span className={cn("font-medium", r.turnover < 3 ? "text-warning" : r.turnover > 5 ? "text-success" : "text-text-1")}>
+                            {r.turnover}x/năm {r.turnover < 3 ? "🟡" : r.turnover > 5 ? "🟢" : ""}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3">{r.skus.length > 0 && <span className="text-primary text-table-sm font-medium">Detail ▸</span>}</td>
                       </tr>
                     ))}
                     <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
                       <td></td>
-                      <td className="px-4 py-3 text-table text-text-1">TOTAL</td>
-                      <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalTon.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-table text-text-2">1.757</td>
-                      <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalAvail.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-table-sm font-medium text-text-1">8,5d</td>
-                      <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalDuoiSs}</td>
-                      <td colSpan={2}></td>
+                      <td className="px-3 py-3 text-table text-text-1">TOTAL</td>
+                      <td className="px-3 py-3 text-table tabular-nums text-text-1">{totalTon.toLocaleString()}</td>
+                      <td className="px-3 py-3 text-table text-text-2">1.757</td>
+                      <td className="px-3 py-3 text-table tabular-nums text-text-1">{totalAvail.toLocaleString()}</td>
+                      <td className="px-3 py-3 text-table-sm font-medium text-text-1">8,5d</td>
+                      <td className="px-3 py-3 text-table tabular-nums text-text-1">{totalDuoiSs}</td>
+                      <td className="px-3 py-3 text-table tabular-nums text-info font-medium">400</td>
+                      <td className="px-3 py-3 text-table tabular-nums text-text-1">3,3x</td>
+                      <td></td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
           ) : (
+            /* Lớp 2: Per SKU with Aging */
             <div className="space-y-3">
               <button onClick={() => setDrillCn(null)} className="text-table-sm text-primary hover:underline flex items-center gap-1">
                 <ChevronLeft className="h-3.5 w-3.5" /> Tồn kho
@@ -417,39 +512,115 @@ export default function MonitoringPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-surface-3 bg-surface-1/50">
-                        {["Item", "Variant", "Tồn", "Đang về (ETA)", "Available", "SS target", "SS gap", "HSTK", "Status"].map((h, i) => (
+                        {["Item", "Variant", "Tồn", "Đang về (ETA)", "Available", "SS target", "SS gap", "HSTK", "Aging", "Status"].map((h, i) => (
                           <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {activeCnInv.skus.sort((a, b) => a.hstk - b.hstk).map((sk, i) => (
-                        <tr key={i} className="border-b border-surface-3/50 hover:bg-surface-1/30">
-                          <td className="px-4 py-2.5 text-table font-medium text-text-1">{sk.item}</td>
-                          <td className="px-4 py-2.5 text-table text-text-2">{sk.variant}</td>
-                          <td className="px-4 py-2.5 text-table tabular-nums text-text-1">{sk.ton.toLocaleString()}</td>
-                          <td className="px-4 py-2.5 text-table text-text-2">{sk.dangVe}</td>
-                          <td className="px-4 py-2.5 text-table tabular-nums text-text-2">{sk.available.toLocaleString()}</td>
-                          <td className="px-4 py-2.5 text-table tabular-nums text-text-3">{sk.ssTarget.toLocaleString()}</td>
-                          <td className="px-4 py-2.5 text-table tabular-nums">
-                            <span className={cn("font-medium", sk.ssGap < 0 ? "text-danger" : "text-success")}>
-                              {sk.ssGap >= 0 ? "+" : ""}{sk.ssGap.toLocaleString()}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <span className={cn("text-table-sm font-medium tabular-nums", hstkColor(sk.hstk))}>{sk.hstk}d</span>
-                          </td>
-                          <td className="px-4 py-2.5">
-                            <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", statusBadge(sk.status))}>{sk.status}</span>
-                          </td>
-                        </tr>
-                      ))}
+                      {activeCnInv.skus.sort((a, b) => a.hstk - b.hstk).map((sk, i) => {
+                        const agingDays = parseInt(sk.aging || "0");
+                        return (
+                          <tr key={i} className="border-b border-surface-3/50 hover:bg-surface-1/30">
+                            <td className="px-4 py-2.5 text-table font-medium text-text-1">{sk.item}</td>
+                            <td className="px-4 py-2.5 text-table text-text-2">{sk.variant}</td>
+                            <td className="px-4 py-2.5 text-table tabular-nums text-text-1">{sk.ton.toLocaleString()}</td>
+                            <td className="px-4 py-2.5 text-table text-text-2">{sk.dangVe}</td>
+                            <td className="px-4 py-2.5 text-table tabular-nums text-text-2">{sk.available.toLocaleString()}</td>
+                            <td className="px-4 py-2.5 text-table tabular-nums text-text-3">{sk.ssTarget.toLocaleString()}</td>
+                            <td className="px-4 py-2.5 text-table tabular-nums">
+                              <span className={cn("font-medium", sk.ssGap < 0 ? "text-danger" : "text-success")}>
+                                {sk.ssGap >= 0 ? "+" : ""}{sk.ssGap.toLocaleString()}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <span className={cn("text-table-sm font-medium tabular-nums", hstkColor(sk.hstk))}>{sk.hstk}d</span>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              {sk.aging && (
+                                <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
+                                  agingDays > 90 ? "bg-danger-bg text-danger" : agingDays > 60 ? "bg-warning-bg text-warning" : "text-text-3"
+                                )}>
+                                  {sk.aging}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", statusBadge(sk.status))}>{sk.status}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               </div>
             </div>
           )}
+
+          {/* Section C: Aging Distribution (only for TTC/MDLZ) */}
+          {showAging && (
+            <div className="rounded-card border border-surface-3 bg-surface-2 p-5">
+              <h3 className="font-display text-body font-semibold text-text-1 mb-3">Aging Distribution</h3>
+              <div className="flex items-center gap-8">
+                <div className="w-[160px] h-[160px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={agingData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={2}>
+                        {agingData.map((entry, index) => (
+                          <PieCell key={index} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(value: number) => `${value}%`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {agingData.map((a) => (
+                    <div key={a.name} className="flex items-center gap-2 text-table-sm">
+                      <span className="w-3 h-3 rounded" style={{ backgroundColor: a.fill }} />
+                      <span className="text-text-2 w-16">{a.name}</span>
+                      <span className="font-medium tabular-nums text-text-1">{a.value}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Section D: Stockout Log */}
+          <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+            <button onClick={() => setShowStockoutLog(!showStockoutLog)} className="w-full px-5 py-3 flex items-center justify-between hover:bg-surface-1/30 transition-colors">
+              <span className="font-display text-body font-semibold text-text-1">Lịch sử stockout</span>
+              {showStockoutLog ? <ChevronDown className="h-4 w-4 text-text-3" /> : <ChevronRight className="h-4 w-4 text-text-3" />}
+            </button>
+            {showStockoutLog && (
+              <div className="border-t border-surface-3 overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-surface-3 bg-surface-1/50">
+                      {["Date", "CN", "Item", "Duration", "Impact (m²)", "Cause", "Resolution"].map((h, i) => (
+                        <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stockoutLog.map((r, i) => (
+                      <tr key={i} className="border-b border-surface-3/50 hover:bg-surface-1/30">
+                        <td className="px-4 py-2.5 text-table tabular-nums text-text-1">{r.date}</td>
+                        <td className="px-4 py-2.5 text-table font-medium text-text-1">{r.cn}</td>
+                        <td className="px-4 py-2.5 text-table text-text-2">{r.item}</td>
+                        <td className="px-4 py-2.5 text-table tabular-nums text-text-2">{r.duration}</td>
+                        <td className="px-4 py-2.5 text-table tabular-nums text-danger font-medium">{r.impact}</td>
+                        <td className="px-4 py-2.5 text-table text-text-2">{r.cause}</td>
+                        <td className="px-4 py-2.5 text-table text-text-2">{r.resolution}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
