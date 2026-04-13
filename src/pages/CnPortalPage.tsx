@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useRbac, AppUser } from "@/components/RbacContext";
+import { useWorkspace } from "@/components/WorkspaceContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronDown, Clock, Check, X as XIcon, AlertTriangle, Info } from "lucide-react";
@@ -153,6 +154,7 @@ function RoleBadge({ role }: { role: string }) {
 /* ═══ MAIN COMPONENT ═══ */
 export default function CnPortalPage() {
   const { user, setUser, users, canEdit, canApprove, canViewAllCn, filterCnId } = useRbac();
+  const { addApproval, addNotification } = useWorkspace();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("adjust");
   const [selectedCn, setSelectedCn] = useState(filterCnId || "CN-BD");
@@ -206,6 +208,34 @@ export default function CnPortalPage() {
     }
     const approved = edited.filter((r) => r.status === "approved").length;
     const pending = edited.filter((r) => r.status === "pending").length;
+
+    // Push pending items to Workspace approvals for SC_MANAGER
+    const pendingRows = edited.filter((r) => r.status === "pending");
+    pendingRows.forEach((r) => {
+      const delta = r.adjust! - r.forecast;
+      const pct = ((delta / r.forecast) * 100).toFixed(1);
+      const sign = delta > 0 ? "+" : "";
+      addApproval({
+        id: `APR-CN-${Date.now()}-${r.item}-${r.variant}`,
+        type: "CN Adjust",
+        typeColor: "warning",
+        description: `${activeCn} ${sign}${delta} (${sign}${pct}%) ${r.item} ${r.variant} — "${r.reason.slice(0, 40)}"`,
+        submitter: user.name,
+        timeAgo: "vừa xong",
+      });
+    });
+
+    // Push notification
+    addNotification({
+      id: `NTF-CN-${Date.now()}`,
+      type: "CN_ADJUST",
+      typeColor: pending > 0 ? "warning" : "success",
+      message: `${user.name} (${activeCn}) gửi điều chỉnh ${edited.length} SKU. ${approved} auto-approved, ${pending} chờ duyệt.`,
+      timeAgo: "vừa xong",
+      read: false,
+      url: "/cn-portal",
+    });
+
     toast.success("Đã gửi điều chỉnh", {
       description: `${edited.length} SKU. ${approved} auto-approved, ${pending} chờ duyệt.`,
     });

@@ -59,9 +59,11 @@ interface WorkspaceContextType {
   approvals: Approval[];
   pendingCount: number;
   removeApproval: (id: string) => void;
+  addApproval: (a: Approval) => void;
   exceptions: ExceptionCard[];
   notifications: Notification[];
   markNotificationRead: (id: string) => void;
+  addNotification: (n: Notification) => void;
   unreadCount: number;
   criticalCount: number;
 }
@@ -82,8 +84,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setApprovals((prev) => prev.filter((a) => a.id !== id));
   }, []);
 
+  const addApproval = useCallback((a: Approval) => {
+    setApprovals((prev) => [a, ...prev]);
+  }, []);
+
   const markNotificationRead = useCallback((id: string) => {
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+  }, []);
+
+  const addNotification = useCallback((n: Notification) => {
+    setNotifications((prev) => [n, ...prev]);
   }, []);
 
   const pendingCount = approvals.length + initialExceptions.length + notifications.filter(n => !n.read).length;
@@ -91,7 +101,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const criticalCount = notifications.filter((n) => n.typeColor === "danger" && !n.read).length;
 
   return (
-    <WorkspaceContext.Provider value={{ approvals, pendingCount, removeApproval, exceptions: initialExceptions, notifications, markNotificationRead, unreadCount, criticalCount }}>
+    <WorkspaceContext.Provider value={{ approvals, pendingCount, removeApproval, addApproval, exceptions: initialExceptions, notifications, markNotificationRead, addNotification, unreadCount, criticalCount }}>
       {children}
     </WorkspaceContext.Provider>
   );

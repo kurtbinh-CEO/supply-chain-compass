@@ -24,7 +24,7 @@ interface ActionItem {
 const initialItems: ActionItem[] = [
   { id: "1", type: "approve", priority: "danger", description: "Force-release Toko stale 28h — 3 cấp", time: "15m" },
   { id: "2", type: "exception", priority: "danger", description: "SHORTAGE GA-300 CN-BD 345m² · Risk 120M₫", time: "23:02", navigateTo: "/drp", actionLabel: "Xử lý" },
-  { id: "3", type: "approve", priority: "warning", description: "CN Adjust CN-BD +12,5% GA-300 A4", time: "45m" },
+  { id: "3", type: "approve", priority: "warning", description: "CN Adjust CN-BD +12,5% GA-300 A4", time: "45m", navigateTo: "/cn-portal" },
   { id: "4", type: "exception", priority: "warning", description: "PO_OVERDUE Toko 557m² 8 ngày · Risk 85M₫", time: "2h", navigateTo: "/orders", actionLabel: "Xử lý" },
   { id: "5", type: "approve", priority: "warning", description: "PO Release PO-BD-W16 Mikado 1.200m²", time: "30m" },
   { id: "6", type: "notify", priority: "info", description: "Phú Mỹ chưa cập nhật tồn kho 3 ngày", time: "1d", actionLabel: "Nhắc NM" },
