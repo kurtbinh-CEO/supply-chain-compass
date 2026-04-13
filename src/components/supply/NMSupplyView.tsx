@@ -259,7 +259,6 @@ export function NMSupplyView() {
                         />
                       ) : "—"}
                     </td>
-                    </td>
                     <td className="px-4 py-3 text-table text-text-2">
                       {nm.dangVe > 0 ? (
                         <span className={cn(nm.dangVeNote.includes("trễ") && "text-danger font-medium")}>
