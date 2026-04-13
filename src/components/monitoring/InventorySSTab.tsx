@@ -182,7 +182,147 @@ export function InventorySSTab({ scale: s }: Props) {
       </div>
 
       {/* ═══ SECTION B: 2-layer table ═══ */}
-      {!activeCn ? (
+      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setDrillCn(null); setDrillSku(null); }} />
+
+      {(() => {
+        /* ═══ SKU-first pivot data ═══ */
+        interface InvSkuPivot {
+          item: string; variant: string; totalTon: number; totalAvail: number; totalSsTarget: number; totalSsGap: number;
+          worstCn: string; worstHstk: number; cnGapCount: number; lcnb: string | null;
+          cnBreakdown: { cn: string; ton: number; available: number; ssTarget: number; ssActual: number; ssGap: number; hstk: number; replenish: number; status: string }[];
+        }
+
+        if (pivotMode === "sku") {
+          // Build SKU pivot from all CN data
+          const skuMap = new Map<string, InvSkuPivot>();
+          cnData.forEach(r => {
+            // For CNs with SKU data, use per-sku. For others, create a single aggregate entry.
+            if (r.skus.length > 0) {
+              r.skus.forEach(sk => {
+                const key = `${sk.item}|${sk.variant}`;
+                if (!skuMap.has(key)) {
+                  skuMap.set(key, { item: sk.item, variant: sk.variant, totalTon: 0, totalAvail: 0, totalSsTarget: 0, totalSsGap: 0, worstCn: "", worstHstk: Infinity, cnGapCount: 0, lcnb: null, cnBreakdown: [] });
+                }
+                const p = skuMap.get(key)!;
+                p.totalTon += sk.ton; p.totalAvail += sk.ton; // approximate
+                p.totalSsTarget += sk.ssTarget; p.totalSsGap += sk.ssGap;
+                const hstk = sk.demand > 0 ? (sk.ton / (sk.demand / 30)) : 30;
+                if (hstk < p.worstHstk) { p.worstHstk = +hstk.toFixed(1); p.worstCn = r.cn; }
+                if (sk.ssGap < 0) p.cnGapCount++;
+                p.cnBreakdown.push({ cn: r.cn, ton: sk.ton, available: sk.ton, ssTarget: sk.ssTarget, ssActual: sk.ton, ssGap: sk.ssGap, hstk: +hstk.toFixed(1), replenish: sk.netReq, status: sk.ssGap < 0 ? "THIẾU SS" : sk.ssGap > 200 ? "THỪA" : "OK" });
+              });
+            }
+          });
+          // detect LCNB
+          skuMap.forEach(p => {
+            const excess = p.cnBreakdown.filter(c => c.ssGap > 0);
+            const short = p.cnBreakdown.filter(c => c.ssGap < 0);
+            if (excess.length > 0 && short.length > 0) {
+              p.lcnb = `${excess[0].cn}→${short[0].cn} ${Math.min(excess[0].ssGap, Math.abs(short[0].ssGap))}m²`;
+            }
+          });
+          const skuRows = Array.from(skuMap.values()).sort((a, b) => Math.abs(b.totalSsGap) - Math.abs(a.totalSsGap));
+
+          if (drillSku) {
+            const skuRow = skuRows.find(r => `${r.item}|${r.variant}` === drillSku);
+            if (!skuRow) return null;
+            return (
+              <div className="space-y-3">
+                <button onClick={() => setDrillSku(null)} className="text-table-sm text-primary hover:underline flex items-center gap-1">
+                  <ChevronLeft className="h-3.5 w-3.5" /> Per SKU
+                </button>
+                <p className="text-caption text-text-3">
+                  Per SKU › <span className="text-text-1 font-medium">{skuRow.item} {skuRow.variant}</span>
+                  {" "}(SS gap <span className={cn("font-medium", skuRow.totalSsGap < 0 ? "text-danger" : "text-success")}>{skuRow.totalSsGap >= 0 ? "+" : ""}{skuRow.totalSsGap.toLocaleString()}</span>)
+                </p>
+                <div className="rounded-card border border-surface-3 bg-surface-2">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-surface-3 bg-surface-1/50">
+                          {["CN", "Tồn", "SS target", "SS gap", "HSTK", "Replenish", "Status"].map(h => (
+                            <th key={h} className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {skuRow.cnBreakdown.map((cb, i) => (
+                          <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", cb.ssGap < 0 && "bg-danger-bg/10")}>
+                            <td className="px-3 py-2.5 text-table font-medium text-text-1">{cb.cn}</td>
+                            <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{cb.ton.toLocaleString()}</td>
+                            <td className="px-3 py-2.5 text-table tabular-nums text-text-3">{cb.ssTarget.toLocaleString()}</td>
+                            <td className="px-3 py-2.5 text-table tabular-nums">
+                              <span className={cn("font-medium", cb.ssGap < 0 ? "text-danger" : "text-success")}>
+                                {cb.ssGap >= 0 ? "+" : ""}{cb.ssGap.toLocaleString()} {cb.ssGap < 0 ? "🔴" : "🟢"}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <span className={cn("text-table-sm font-medium tabular-nums", hstkColor(cb.hstk))}>{cb.hstk}d</span>
+                            </td>
+                            <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{cb.replenish.toLocaleString()} m²</td>
+                            <td className="px-3 py-2.5">
+                              <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
+                                cb.status === "THIẾU SS" ? "bg-danger-bg text-danger" : cb.status === "THỪA" ? "bg-info-bg text-info" : "bg-success-bg text-success"
+                              )}>{cb.status}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                {skuRow.lcnb && (
+                  <div className="rounded-card border border-info/30 bg-info-bg p-3 text-table-sm">
+                    <span className="font-medium text-info">💡 LCNB opportunity: {skuRow.lcnb}</span>
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <div className="rounded-card border border-surface-3 bg-surface-2">
+              <div className="px-5 py-3 border-b border-surface-3 flex items-center justify-between">
+                <h3 className="font-display text-body font-semibold text-text-1">Tồn kho & SS per SKU → per CN</h3>
+                <LogicLink tab="ss" node={0} tooltip="Công thức SS" />
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-surface-3 bg-surface-1/50">
+                      {["Item", "Variant", "Tồn total", "SS target", "SS gap", "Worst CN", "# CN gap", "LCNB", ""].map(h => (
+                        <th key={h} className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {skuRows.map((r, i) => (
+                      <tr key={i} className={cn("border-b border-surface-3/50 cursor-pointer hover:bg-surface-1/30 transition-colors", r.totalSsGap < 0 && "bg-danger-bg/20")}
+                        onClick={() => setDrillSku(`${r.item}|${r.variant}`)}>
+                        <td className="px-3 py-3 text-table font-medium text-text-1">{r.item}</td>
+                        <td className="px-3 py-3 text-table text-text-2">{r.variant}</td>
+                        <td className="px-3 py-3 text-table tabular-nums text-text-1">{r.totalTon.toLocaleString()}</td>
+                        <td className="px-3 py-3 text-table tabular-nums text-text-3">{r.totalSsTarget.toLocaleString()}</td>
+                        <td className="px-3 py-3 text-table tabular-nums">
+                          <span className={cn("font-medium", r.totalSsGap < 0 ? "text-danger" : "text-success")}>
+                            {r.totalSsGap >= 0 ? "+" : ""}{r.totalSsGap.toLocaleString()} {r.totalSsGap < 0 ? "🔴" : "🟢"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3"><WorstCnCell cnName={r.worstCn} hstk={r.worstHstk} /></td>
+                        <td className="px-3 py-3"><CnGapBadge count={r.cnGapCount} /></td>
+                        <td className="px-3 py-3">{r.lcnb ? <LcnbBadge text={r.lcnb} /> : <span className="text-text-3">—</span>}</td>
+                        <td className="px-3 py-3"><ChevronRight className="h-4 w-4 text-text-3" /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        }
+
+        /* ═══ CN-FIRST (existing) ═══ */
+        return !activeCn ? (
         <div className="rounded-card border border-surface-3 bg-surface-2">
           <div className="px-5 py-3 border-b border-surface-3 flex items-center justify-between">
             <h3 className="font-display text-body font-semibold text-text-1">Tồn kho & SS per CN → per SKU</h3>
