@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenShell";
 import { useTenant } from "@/components/TenantContext";
@@ -12,6 +12,7 @@ import { DemandToOrderBridge, buildFullBridgeSteps } from "@/components/DemandTo
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormulaBar } from "@/components/FormulaBar";
+import { ViewPivotToggle, usePivotMode, WorstCnCell, CnGapBadge, LcnbBadge } from "@/components/ViewPivotToggle";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -116,7 +117,9 @@ export default function DrpPage() {
   const s = tenantScales[tenant] || 1;
   const navigate = useNavigate();
   const [drillCn, setDrillCn] = useState<string | null>(null);
+  const [drillSku, setDrillSku] = useState<string | null>(null);
   const [showAllSkus, setShowAllSkus] = useState(false);
+  const [pivotMode, setPivotMode] = usePivotMode("drp");
   const [expandedExceptions, setExpandedExceptions] = useState<Set<string>>(new Set());
   const [expandOptions, setExpandOptions] = useState<string | null>(null);
   const [showLayer3, setShowLayer3] = useState(false);
@@ -161,6 +164,43 @@ export default function DrpPage() {
   const totalRpos = data.reduce((a, r) => a + r.rpos, 0);
   const totalFill = totalDemand > 0 ? Math.round(((totalDemand - totalGap) / totalDemand) * 1000) / 10 : 100;
   const activeCn = drillCn ? data.find((r) => r.cn === drillCn) : null;
+
+  // SKU-first aggregation for DRP
+  const skuAggDrp = useMemo(() => {
+    const map: Record<string, { item: string; variant: string; totalDemand: number; totalAllocated: number; totalGap: number; fillPct: number;
+      worstCn: string; worstHstk: number; cnGapCount: number; lcnb: string | null;
+      cnRows: { cn: string; demand: number; allocated: number; fillPct: number; gap: number; status: string }[];
+    }> = {};
+    data.forEach(cn => {
+      cn.allSkus.forEach(sk => {
+        const key = `${sk.item}-${sk.variant}`;
+        if (!map[key]) map[key] = { item: sk.item, variant: sk.variant, totalDemand: 0, totalAllocated: 0, totalGap: 0, fillPct: 0,
+          worstCn: "", worstHstk: 99, cnGapCount: 0, lcnb: null, cnRows: [] };
+        map[key].totalDemand += sk.demand;
+        map[key].totalAllocated += sk.allocated;
+        const gap = sk.demand - sk.allocated;
+        map[key].totalGap += gap;
+        if (gap > 0) map[key].cnGapCount++;
+        map[key].cnRows.push({ cn: cn.cn, demand: sk.demand, allocated: sk.allocated, fillPct: sk.fillPct, gap, status: sk.status });
+      });
+    });
+    Object.values(map).forEach(sk => {
+      sk.fillPct = sk.totalDemand > 0 ? Math.round((sk.totalAllocated / sk.totalDemand) * 100) : 100;
+      const hasExcess = sk.cnRows.some(c => c.gap < 0);
+      const hasShort = sk.cnRows.some(c => c.gap > 0);
+      if (hasExcess && hasShort) {
+        const excessCn = sk.cnRows.find(c => c.gap < 0);
+        const shortCn = sk.cnRows.find(c => c.gap > 0);
+        if (excessCn && shortCn) sk.lcnb = `${excessCn.cn}→${shortCn.cn} ${Math.abs(excessCn.gap)}m²`;
+      }
+      if (sk.cnRows.length > 0) {
+        const worst = sk.cnRows.reduce((a, b) => a.fillPct < b.fillPct ? a : b);
+        sk.worstCn = worst.cn;
+        sk.worstHstk = worst.fillPct;
+      }
+    });
+    return Object.values(map).sort((a, b) => a.fillPct - b.fillPct);
+  }, [data]);
 
   const toggleException = (key: string) => {
     setExpandedExceptions((prev) => {
@@ -276,6 +316,9 @@ export default function DrpPage() {
         >
           <Settings className="h-3.5 w-3.5" /> Tham số
         </button>
+        {!showLayer3 && !activeCn && (
+          <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setDrillCn(null); setDrillSku(null); }} />
+        )}
       </div>
 
       {/* ═══ LỚP 1: Per CN (default) ═══ */}

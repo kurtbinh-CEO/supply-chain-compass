@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenShell";
 import { useTenant } from "@/components/TenantContext";
@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ChevronRight, Bell, Clock, Filter } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
+import { ViewPivotToggle, usePivotMode, CnGapBadge } from "@/components/ViewPivotToggle";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -61,6 +62,8 @@ export default function DemandWeeklyPage() {
   const { tenant } = useTenant();
   const s = tenantScales[tenant] || 1;
   const [drillCn, setDrillCn] = useState<string | null>(null);
+  const [drillSku, setDrillSku] = useState<string | null>(null);
+  const [pivotMode, setPivotMode] = usePivotMode("demand-weekly");
 
   const data = baseCnData.map((r) => ({
     ...r,
@@ -78,6 +81,27 @@ export default function DemandWeeklyPage() {
   const totalFinal = data.reduce((a, r) => a + r.final, 0);
   const doneCn = data.filter((r) => r.status === "Đã adjust").length;
   const activeCn = drillCn ? data.find((r) => r.cn === drillCn) : null;
+
+  // SKU-first aggregation
+  const skuAgg = useMemo(() => {
+    const map: Record<string, { item: string; variant: string; totalDuKien: number; totalAdjust: number; totalPo: number; totalFinal: number;
+      cnRows: { cn: string; duKien: number; cnAdjust: number | null; adjustNote: string; adjustStatus: string; po: number; final: number; status: string }[];
+    }> = {};
+    data.forEach(cn => {
+      cn.skus.forEach(sk => {
+        const key = `${sk.item}-${sk.variant}`;
+        if (!map[key]) map[key] = { item: sk.item, variant: sk.variant, totalDuKien: 0, totalAdjust: 0, totalPo: 0, totalFinal: 0, cnRows: [] };
+        map[key].totalDuKien += sk.duKien;
+        map[key].totalAdjust += sk.cnAdjust ?? 0;
+        map[key].totalPo += sk.po;
+        map[key].totalFinal += sk.final;
+        map[key].cnRows.push({ cn: cn.cn, duKien: sk.duKien, cnAdjust: sk.cnAdjust, adjustNote: sk.adjustNote, adjustStatus: sk.adjustStatus, po: sk.po, final: sk.final, status: cn.status });
+      });
+    });
+    return Object.values(map).sort((a, b) => b.totalFinal - a.totalFinal);
+  }, [data]);
+
+  const drillSkuData = drillSku ? skuAgg.find(sk => `${sk.item}-${sk.variant}` === drillSku) : null;
 
   const handleApprove = (item: string) => {
     toast.success(`Đã duyệt adjust ${item}`);
@@ -100,8 +124,90 @@ export default function DemandWeeklyPage() {
         </button>
       </div>
 
-      {!activeCn ? (
-        /* ─── Lớp 1: Per CN ─── */
+      {/* Pivot toggle */}
+      <div className="flex items-center gap-3 mb-4">
+        <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setDrillCn(null); setDrillSku(null); }} />
+      </div>
+
+      {drillSku && drillSkuData ? (
+        /* SKU-first drill: per CN for selected SKU */
+        <div className="animate-fade-in">
+          <button onClick={() => setDrillSku(null)} className="text-table-sm text-primary hover:underline mb-3 flex items-center gap-1">← Per SKU</button>
+          <p className="text-caption text-text-3 mb-3">Per SKU › <span className="text-text-1 font-medium">{drillSkuData.item} {drillSkuData.variant}</span> (final {drillSkuData.totalFinal.toLocaleString()} m²)</p>
+          <div className="rounded-card border border-surface-3 bg-surface-2">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-surface-3 bg-surface-1/50">
+                    {["CN", "Dự kiến", "CN adjust", "PO", "Final", "Status"].map(h => (
+                      <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {drillSkuData.cnRows.map((c, i) => (
+                    <tr key={c.cn} className="border-b border-surface-3/50 hover:bg-surface-1/30">
+                      <td className="px-4 py-3 text-table font-medium text-text-1">{c.cn}</td>
+                      <td className="px-4 py-3 text-table tabular-nums text-text-2">{c.duKien.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-table tabular-nums">
+                        {c.cnAdjust !== null ? (
+                          <span className={cn(c.adjustStatus === "approved" ? "text-success" : "text-warning", "font-medium")}>
+                            {c.cnAdjust >= 0 ? "+" : ""}{c.cnAdjust} {c.adjustStatus === "approved" ? "✅" : "🟡"}
+                          </span>
+                        ) : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-table tabular-nums text-text-2">{c.po.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-table tabular-nums font-semibold text-text-1">{c.final.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-table text-text-2">{c.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : pivotMode === "sku" && !activeCn ? (
+        /* SKU-first Lớp 1 */
+        <div className="rounded-card border border-surface-3 bg-surface-2 animate-fade-in">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-surface-3 bg-surface-1/50">
+                  {["Item", "Variant", "Dự kiến total", "Total adjust", "Total PO", "Final total", "# CN", ""].map(h => (
+                    <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {skuAgg.map(sk => (
+                  <tr key={`${sk.item}-${sk.variant}`} className="border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer" onClick={() => setDrillSku(`${sk.item}-${sk.variant}`)}>
+                    <td className="px-4 py-3 text-table font-medium text-text-1">{sk.item}</td>
+                    <td className="px-4 py-3 text-table text-text-2">{sk.variant}</td>
+                    <td className="px-4 py-3 text-table tabular-nums text-text-2">{sk.totalDuKien.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-table tabular-nums">
+                      <span className={cn("font-medium", sk.totalAdjust > 0 ? "text-success" : sk.totalAdjust < 0 ? "text-danger" : "text-text-3")}>
+                        {sk.totalAdjust > 0 ? "+" : ""}{sk.totalAdjust}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-table tabular-nums text-text-2">{sk.totalPo.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-table tabular-nums font-semibold text-text-1">{sk.totalFinal.toLocaleString()}</td>
+                    <td className="px-4 py-3"><CnGapBadge count={sk.cnRows.length} /></td>
+                    <td className="px-4 py-3 text-text-3"><ChevronRight className="h-4 w-4" /></td>
+                  </tr>
+                ))}
+                <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
+                  <td className="px-4 py-3 text-table text-text-1" colSpan={2}>TOTAL</td>
+                  <td className="px-4 py-3 text-table tabular-nums">{skuAgg.reduce((a, s) => a + s.totalDuKien, 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-table tabular-nums">{skuAgg.reduce((a, s) => a + s.totalAdjust, 0)}</td>
+                  <td className="px-4 py-3 text-table tabular-nums">{skuAgg.reduce((a, s) => a + s.totalPo, 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-table tabular-nums">{skuAgg.reduce((a, s) => a + s.totalFinal, 0).toLocaleString()}</td>
+                  <td colSpan={2} />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : !activeCn ? (
         <div className="rounded-card border border-surface-3 bg-surface-2 animate-fade-in">
           <div className="overflow-x-auto">
             <table className="w-full">
