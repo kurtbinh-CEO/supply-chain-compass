@@ -4,6 +4,7 @@ import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronRight, ChevronDown, ChevronLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
