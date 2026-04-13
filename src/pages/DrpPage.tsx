@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronRight, ChevronDown, AlertTriangle, ArrowRight, Play, Settings, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -48,14 +50,6 @@ const ssBdSkus: SsSkuRow[] = [
   { item: "GA-600", variant: "A4", ssCurrent: 1000, z: 1.65, sigma: 32.0, lt: 10, ssProposed: 950, delta: -50, wcImpact: "−9M₫/tháng" },
 ];
 
-const drpParams = [
-  { key: "Horizon", value: "6 tuần", desc: "DRP nhìn trước bao xa" },
-  { key: "Run time", value: "23:00", desc: "Nightly auto-run" },
-  { key: "Service level", value: "95% (z=1.65)", desc: "Target availability" },
-  { key: "Lot sizing", value: "MOQ round ceil", desc: "Cách round đơn hàng" },
-  { key: "LCNB enabled", value: "✅", desc: "Scan lateral trước PO" },
-  { key: "LCNB cost threshold", value: "70%", desc: "Chỉ lateral nếu rẻ hơn 70% vs PO" },
-];
 
 const changeLog = [
   { time: "12/05 14:30", who: "Thúy", change: "SS GA-300 A4 CN-BD: 900→1.035", reason: "Stockout 2x tháng qua" },
@@ -129,6 +123,12 @@ export default function DrpPage() {
   const [simSku, setSimSku] = useState("GA-300 A4");
   const [showChangeLog, setShowChangeLog] = useState(false);
   const [editingParam, setEditingParam] = useState<string | null>(null);
+  const [paramHorizon, setParamHorizon] = useState("6 tuần");
+  const [paramRunTime, setParamRunTime] = useState("23:00");
+  const [paramServiceLevel, setParamServiceLevel] = useState("95% (z=1.65)");
+  const [paramMoq, setParamMoq] = useState("ceil");
+  const [paramLcnb, setParamLcnb] = useState(true);
+  const [paramLcnbThreshold, setParamLcnbThreshold] = useState("70%");
   const [showDrpConfirm, setShowDrpConfirm] = useState(false);
   const [drpRunning, setDrpRunning] = useState(false);
   const [drpStep, setDrpStep] = useState(0);
@@ -702,26 +702,96 @@ export default function DrpPage() {
                 </tr>
               </thead>
               <tbody>
-                {drpParams.map((p) => (
-                  <tr key={p.key} className="border-b border-surface-3/50 hover:bg-surface-1/30">
-                    <td className="px-4 py-2.5 text-table font-medium text-text-1">{p.key}</td>
-                    <td className="px-4 py-2.5 text-table tabular-nums text-text-1">
-                      {editingParam === p.key ? (
-                        <input
-                          defaultValue={p.value}
-                          autoFocus
-                          onBlur={() => { setEditingParam(null); toast.success("Tham số cập nhật", { description: "Chạy lại DRP để áp dụng." }); }}
-                          onKeyDown={(e) => { if (e.key === "Enter") { setEditingParam(null); toast.success("Tham số cập nhật", { description: "Chạy lại DRP để áp dụng." }); } }}
-                          className="w-32 h-7 rounded border border-primary bg-surface-0 px-2 text-table text-text-1 focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
-                      ) : p.value}
-                    </td>
-                    <td className="px-4 py-2.5 text-caption text-text-3">{p.desc}</td>
-                    <td className="px-4 py-2.5">
-                      <button onClick={() => setEditingParam(p.key)} className="text-primary text-caption font-medium hover:underline">Sửa</button>
-                    </td>
-                  </tr>
-                ))}
+                {/* Horizon - inline edit */}
+                <tr className="border-b border-surface-3/50 hover:bg-surface-1/30">
+                  <td className="px-4 py-2.5 text-table font-medium text-text-1">Horizon</td>
+                  <td className="px-4 py-2.5 text-table tabular-nums text-text-1">
+                    {editingParam === "Horizon" ? (
+                      <input defaultValue={paramHorizon} autoFocus
+                        onBlur={(e) => { setParamHorizon(e.target.value); setEditingParam(null); toast.success("Tham số cập nhật", { description: "Chạy lại DRP để áp dụng." }); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") { setParamHorizon((e.target as HTMLInputElement).value); setEditingParam(null); toast.success("Tham số cập nhật", { description: "Chạy lại DRP để áp dụng." }); } }}
+                        className="w-32 h-7 rounded border border-primary bg-surface-0 px-2 text-table text-text-1 focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    ) : paramHorizon}
+                  </td>
+                  <td className="px-4 py-2.5 text-caption text-text-3">DRP nhìn trước bao xa</td>
+                  <td className="px-4 py-2.5"><button onClick={() => setEditingParam("Horizon")} className="text-primary text-caption font-medium hover:underline">Sửa</button></td>
+                </tr>
+                {/* Run time - inline edit */}
+                <tr className="border-b border-surface-3/50 hover:bg-surface-1/30">
+                  <td className="px-4 py-2.5 text-table font-medium text-text-1">Run time</td>
+                  <td className="px-4 py-2.5 text-table tabular-nums text-text-1">
+                    {editingParam === "Run time" ? (
+                      <input defaultValue={paramRunTime} autoFocus
+                        onBlur={(e) => { setParamRunTime(e.target.value); setEditingParam(null); toast.success("Tham số cập nhật", { description: "Chạy lại DRP để áp dụng." }); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") { setParamRunTime((e.target as HTMLInputElement).value); setEditingParam(null); toast.success("Tham số cập nhật", { description: "Chạy lại DRP để áp dụng." }); } }}
+                        className="w-32 h-7 rounded border border-primary bg-surface-0 px-2 text-table text-text-1 focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    ) : paramRunTime}
+                  </td>
+                  <td className="px-4 py-2.5 text-caption text-text-3">Nightly auto-run</td>
+                  <td className="px-4 py-2.5"><button onClick={() => setEditingParam("Run time")} className="text-primary text-caption font-medium hover:underline">Sửa</button></td>
+                </tr>
+                {/* Service level - dropdown */}
+                <tr className="border-b border-surface-3/50 hover:bg-surface-1/30">
+                  <td className="px-4 py-2.5 text-table font-medium text-text-1">Service level</td>
+                  <td className="px-4 py-2.5">
+                    <Select value={paramServiceLevel} onValueChange={(v) => { setParamServiceLevel(v); toast.success("Tham số cập nhật", { description: "Chạy lại DRP để áp dụng." }); }}>
+                      <SelectTrigger className="w-44 h-8 text-table bg-surface-0 border-surface-3">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="90% (z=1.28)">90% (z=1.28)</SelectItem>
+                        <SelectItem value="95% (z=1.65)">95% (z=1.65)</SelectItem>
+                        <SelectItem value="99% (z=2.33)">99% (z=2.33)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="px-4 py-2.5 text-caption text-text-3">Target availability</td>
+                  <td className="px-4 py-2.5" />
+                </tr>
+                {/* LCNB enabled - switch */}
+                <tr className="border-b border-surface-3/50 hover:bg-surface-1/30">
+                  <td className="px-4 py-2.5 text-table font-medium text-text-1">LCNB enabled</td>
+                  <td className="px-4 py-2.5">
+                    <Switch checked={paramLcnb} onCheckedChange={(v) => { setParamLcnb(v); toast.success("Tham số cập nhật", { description: `LCNB ${v ? "bật" : "tắt"}. Chạy lại DRP để áp dụng.` }); }} />
+                  </td>
+                  <td className="px-4 py-2.5 text-caption text-text-3">Scan lateral trước PO</td>
+                  <td className="px-4 py-2.5" />
+                </tr>
+                {/* LCNB cost threshold - inline edit */}
+                <tr className="border-b border-surface-3/50 hover:bg-surface-1/30">
+                  <td className="px-4 py-2.5 text-table font-medium text-text-1">LCNB cost threshold</td>
+                  <td className="px-4 py-2.5 text-table tabular-nums text-text-1">
+                    {editingParam === "LCNB cost threshold" ? (
+                      <input defaultValue={paramLcnbThreshold} autoFocus
+                        onBlur={(e) => { setParamLcnbThreshold(e.target.value); setEditingParam(null); toast.success("Tham số cập nhật", { description: "Chạy lại DRP để áp dụng." }); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") { setParamLcnbThreshold((e.target as HTMLInputElement).value); setEditingParam(null); toast.success("Tham số cập nhật", { description: "Chạy lại DRP để áp dụng." }); } }}
+                        className="w-24 h-7 rounded border border-primary bg-surface-0 px-2 text-table text-text-1 focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    ) : paramLcnbThreshold}
+                  </td>
+                  <td className="px-4 py-2.5 text-caption text-text-3">Chỉ lateral nếu rẻ hơn X% vs PO</td>
+                  <td className="px-4 py-2.5"><button onClick={() => setEditingParam("LCNB cost threshold")} className="text-primary text-caption font-medium hover:underline">Sửa</button></td>
+                </tr>
+                {/* MOQ round - dropdown */}
+                <tr className="border-b border-surface-3/50 hover:bg-surface-1/30">
+                  <td className="px-4 py-2.5 text-table font-medium text-text-1">MOQ round</td>
+                  <td className="px-4 py-2.5">
+                    <Select value={paramMoq} onValueChange={(v) => { setParamMoq(v); toast.success("Tham số cập nhật", { description: `MOQ round: ${v}. Chạy lại DRP để áp dụng.` }); }}>
+                      <SelectTrigger className="w-36 h-8 text-table bg-surface-0 border-surface-3">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ceil">ceil</SelectItem>
+                        <SelectItem value="nearest">nearest</SelectItem>
+                        <SelectItem value="manual">manual</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="px-4 py-2.5 text-caption text-text-3">Cách round đơn hàng</td>
+                  <td className="px-4 py-2.5" />
+                </tr>
               </tbody>
             </table>
             <div className="px-5 py-2 text-caption text-text-3 italic">Shortcut /config. Config chính tại <button onClick={() => navigate("/config")} className="text-primary hover:underline">/config</button>.</div>
