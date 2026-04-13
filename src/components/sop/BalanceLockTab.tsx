@@ -365,7 +365,55 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
         netPerCn={netPerCnForBar}
       />
 
+      {/* Pivot toggle */}
+      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setDrillCn(null); setDrillSku(null); }} />
+
       {/* Balance table */}
+      {pivotMode === "sku" ? (
+        /* ═══ SKU-FIRST Layer 1 ═══ */
+        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+          <div className="px-5 py-3 border-b border-surface-3">
+            <h3 className="font-display text-section-header text-text-1">Per SKU — Tháng 5</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-table-sm">
+              <thead>
+                <tr className="border-b border-surface-3 bg-surface-1/50">
+                  {["Item", "Variant", "Demand", "Stock", "Pipeline", "Net req", "Worst CN", "# CN gap", "LCNB", ""].map(h => (
+                    <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {skuPivotData.map((row, i) => (
+                  <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors cursor-pointer", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
+                    onClick={() => setDrillSku(`${row.item}|${row.variant}`)}>
+                    <td className="px-3 py-2.5 font-medium text-text-1">{row.item}</td>
+                    <td className="px-3 py-2.5 text-text-2">{row.variant}</td>
+                    <td className="px-3 py-2.5 tabular-nums text-text-1 font-medium">{row.demand.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 tabular-nums text-text-1">{row.stock.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 tabular-nums text-text-2">{row.pipeline.toLocaleString()}</td>
+                    <td className={cn("px-3 py-2.5 tabular-nums font-medium", row.netReq > 0 ? "text-danger" : "text-success")}>{row.netReq.toLocaleString()}</td>
+                    <td className="px-3 py-2.5"><WorstCnCell cnName={row.worstCn} hstk={row.worstCover} /></td>
+                    <td className="px-3 py-2.5"><CnGapBadge count={row.cnGapCount} /></td>
+                    <td className="px-3 py-2.5">{row.lcnb ? <LcnbBadge text={row.lcnb} /> : <span className="text-text-3">—</span>}</td>
+                    <td className="px-3 py-2.5"><ChevronRight className="h-3.5 w-3.5 text-text-3" /></td>
+                  </tr>
+                ))}
+                <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
+                  <td className="px-3 py-2.5 text-text-1">TOTAL</td>
+                  <td />
+                  <td className="px-3 py-2.5 tabular-nums text-text-1">{totalDemand.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 tabular-nums text-text-1">{totalStock.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 tabular-nums text-text-1">{totalPipeline.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 tabular-nums text-text-1">{netReq.toLocaleString()}</td>
+                  <td colSpan={4} />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
         <div className="px-5 py-3 border-b border-surface-3 flex items-center justify-between">
           <h3 className="font-display text-section-header text-text-1">Per Location — Tháng 5</h3>
