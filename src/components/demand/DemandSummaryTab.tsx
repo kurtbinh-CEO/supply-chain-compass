@@ -755,6 +755,8 @@ export function DemandSummaryTab({ skus, tenant }: Props) {
           value={overrideModal.value}
           onClose={() => setOverrideModal(null)}
           onSave={(newVal, reason, note) => {
+            const oKey = `${overrideModal.rowIdx}-${overrideModal.colIdx}-${overrideModal.type}`;
+            setOverrides(prev => ({ ...prev, [oKey]: { value: newVal, reason, note } }));
             toast.success("Override applied", { description: `${overrideModal.sku} ${overrideModal.cell}: → ${newVal.toLocaleString()} (${reason})` });
             setOverrideModal(null);
           }}
