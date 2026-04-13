@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Lock, CheckCircle, ChevronRight, ChevronLeft, AlertTriangle, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { SkuNmPanel } from "./SkuNmPanel";
 import { toast } from "sonner";
+import { FormulaBar } from "@/components/FormulaBar";
 import type { ConsensusRow } from "@/pages/SopPage";
 
 interface Props {
@@ -84,14 +85,23 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   const ssBuffer = Math.round(1200 * scale);
   const fcMin = netReq + ssBuffer;
 
-  const formulaBlocks = [
-    { label: "Demand", value: totalDemand, bg: "bg-info-bg", text: "text-info" },
-    { label: "Stock", value: totalStock, bg: "bg-success-bg", text: "text-success", prefix: "−" },
-    { label: "Pipeline", value: totalPipeline, bg: "bg-info-bg/50", text: "text-info", prefix: "−" },
-    { label: "Net", value: netReq, bg: "bg-warning-bg", text: "text-warning", prefix: "=" },
-    { label: "SS buffer", value: ssBuffer, bg: "bg-accent/10", text: "text-accent-foreground", prefix: "+" },
-    { label: "FC min", value: fcMin, bg: "bg-danger-bg", text: "text-danger", prefix: "=" },
-  ];
+  // FormulaBar data derived from balance rows
+  const stockDetailForBar = balRows.map(r => ({
+    cn: r.cn,
+    onHand: Math.round(r.stock * 4.5), // approximate full on-hand
+    reserved: Math.round(r.stock * 3.5),
+    available: r.stock,
+    hstk: r.cn === "CN-BD" ? 5.2 : r.cn === "CN-ĐN" ? 14 : r.cn === "CN-HN" ? 9 : 11,
+    updated: "14:32 WMS",
+  }));
+
+  const netPerCnForBar = balRows.map(r => ({
+    cn: r.cn,
+    demand: r.demand,
+    stock: r.stock,
+    pipeline: r.pipeline,
+    net: Math.max(0, r.demand - r.stock - r.pipeline),
+  }));
 
   const handleLock = () => {
     onLock();
@@ -205,19 +215,14 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Formula bar */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-        {formulaBlocks.map((b, i) => (
-          <div key={b.label} className="flex items-center gap-1.5">
-            {i > 0 && (
-              <span className="text-text-3 font-bold text-lg flex-shrink-0">{b.prefix}</span>
-            )}
-            <div className={cn("rounded-card border border-surface-3 px-4 py-2.5 flex-shrink-0 min-w-[110px]", b.bg)}>
-              <div className="text-caption text-text-3 uppercase">{b.label}</div>
-              <div className={cn("font-display text-lg font-bold tabular-nums", b.text)}>{b.value.toLocaleString()}</div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <FormulaBar
+        demand={totalDemand}
+        stock={totalStock}
+        pipeline={totalPipeline}
+        ssBuffer={ssBuffer}
+        stockDetail={stockDetailForBar}
+        netPerCn={netPerCnForBar}
+      />
 
       {/* Balance table */}
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
