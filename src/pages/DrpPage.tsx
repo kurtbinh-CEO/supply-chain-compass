@@ -130,6 +130,7 @@ export default function DrpPage() {
   const [showDrpConfirm, setShowDrpConfirm] = useState(false);
   const [drpRunning, setDrpRunning] = useState(false);
   const [drpStep, setDrpStep] = useState(0);
+  const [resolvedExceptions, setResolvedExceptions] = useState<Record<string, string>>({}); // key → chosen label
 
   const data = baseData.map((r) => ({
     ...r,
