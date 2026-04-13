@@ -29,9 +29,6 @@ export function VoiceInput({
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const silenceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Don't render if not supported
-  if (!SpeechRecognitionAPI) return null;
-
   const stop = useCallback(() => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
@@ -44,6 +41,7 @@ export function VoiceInput({
   }, []);
 
   const start = useCallback(() => {
+    if (!SpeechRecognitionAPI) return;
     try {
       const recognition = new SpeechRecognitionAPI();
       recognition.lang = language;
@@ -51,7 +49,6 @@ export function VoiceInput({
       recognition.interimResults = true;
 
       recognition.onresult = (event: any) => {
-        // Reset silence timer on any result
         if (silenceRef.current) clearTimeout(silenceRef.current);
         silenceRef.current = setTimeout(() => stop(), 2000);
 
@@ -91,9 +88,7 @@ export function VoiceInput({
       recognitionRef.current = recognition;
       setIsListening(true);
 
-      // Max duration
       timeoutRef.current = setTimeout(() => stop(), maxDuration * 1000);
-      // Silence auto-stop
       silenceRef.current = setTimeout(() => stop(), 2000);
     } catch {
       toast.error("Không thể khởi tạo nhận dạng giọng nói.");
@@ -105,8 +100,10 @@ export function VoiceInput({
     else start();
   }, [isListening, start, stop]);
 
-  // Cleanup on unmount
   useEffect(() => () => stop(), [stop]);
+
+  // Don't render if not supported
+  if (!SpeechRecognitionAPI) return null;
 
   const sizeClasses = size === "sm"
     ? "h-7 w-7 sm:h-7 sm:w-7"
