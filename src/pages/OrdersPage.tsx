@@ -8,6 +8,7 @@ import { ChevronRight, Send, Truck, Upload } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 import { useNavigate } from "react-router-dom";
 import { ClickableNumber } from "@/components/ClickableNumber";
+import { LogicLink } from "@/components/LogicLink";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 

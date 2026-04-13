@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronRight, Bell, Clock, Filter } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
+import { LogicLink } from "@/components/LogicLink";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 

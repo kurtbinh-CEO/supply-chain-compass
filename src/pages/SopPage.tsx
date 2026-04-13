@@ -6,6 +6,7 @@ import { useTenant } from "@/components/TenantContext";
 import { ConsensusTab } from "@/components/sop/ConsensusTab";
 import { BalanceLockTab } from "@/components/sop/BalanceLockTab";
 import { FileText } from "lucide-react";
+import { LogicLink } from "@/components/LogicLink";
 
 const tabs = [
   { key: "consensus", label: "Consensus" },
