@@ -112,6 +112,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   };
 
   const [expandedSku, setExpandedSku] = useState<number | null>(null);
+  const [bridgeSku, setBridgeSku] = useState<number | null>(null);
 
   // Drill down view
   if (drillCn !== null) {
