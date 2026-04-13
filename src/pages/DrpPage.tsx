@@ -118,6 +118,7 @@ export default function DrpPage() {
   const navigate = useNavigate();
   const [drillCn, setDrillCn] = useState<string | null>(null);
   const [drillSku, setDrillSku] = useState<string | null>(null);
+  const [showAllSkus, setShowAllSkus] = useState(false);
   const [pivotMode, setPivotMode] = usePivotMode("drp");
   const [expandedExceptions, setExpandedExceptions] = useState<Set<string>>(new Set());
   const [expandOptions, setExpandOptions] = useState<string | null>(null);
