@@ -2,6 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Lock, CheckCircle, ChevronRight, ChevronLeft, AlertTriangle, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { ViewPivotToggle, usePivotMode, WorstCnCell, CnGapBadge, LcnbBadge } from "@/components/ViewPivotToggle";
 import { SkuNmPanel } from "./SkuNmPanel";
 import { toast } from "sonner";
 import { FormulaBar } from "@/components/FormulaBar";
@@ -58,7 +59,9 @@ const decisionLog = [
 export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant }: Props) {
   const navigate = useNavigate();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
+  const [pivotMode, setPivotMode] = usePivotMode("sop-balance");
   const [drillCn, setDrillCn] = useState<number | null>(null);
+  const [drillSku, setDrillSku] = useState<string | null>(null);
   const [showLockModal, setShowLockModal] = useState(false);
 
   // Use consensus data for demand, scale balance data
