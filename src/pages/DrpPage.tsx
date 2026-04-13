@@ -342,7 +342,7 @@ export default function DrpPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
-                    {["", "Item", "Variant", "Demand", "Allocated", "Gap", "Loại", "Gợi ý", "Action"].map((h, i) => (
+                    {["Item", "Variant", "Demand", "Allocated", "Gap", "Exception", "Gợi ý", "Action"].map((h, i) => (
                       <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
                     ))}
                   </tr>
@@ -353,90 +353,120 @@ export default function DrpPage() {
                     const isExpanded = expandedExceptions.has(exKey);
                     return (
                       <>
-                        <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer", isExpanded && "bg-surface-1/20")} onClick={() => toggleException(exKey)}>
-                          <td className="px-3 py-3 text-text-3">{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</td>
+                        <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", isExpanded && "bg-surface-1/20")}>
                           <td className="px-4 py-3 text-table font-medium text-text-1">{ex.item}</td>
                           <td className="px-4 py-3 text-table text-text-2">{ex.variant}</td>
                           <td className="px-4 py-3 text-table tabular-nums text-text-1">{ex.demand.toLocaleString()}</td>
                           <td className="px-4 py-3 text-table tabular-nums text-text-2">{ex.allocated.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-table tabular-nums font-medium text-danger">{ex.gap.toLocaleString()} 🔴</td>
+                          <td className="px-4 py-3 text-table tabular-nums font-medium text-danger">{ex.gap.toLocaleString()} {ex.type === "SHORTAGE" ? "🔴" : "🟡"}</td>
                           <td className="px-4 py-3">
                             <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
                               ex.type === "SHORTAGE" ? "bg-danger-bg text-danger" : "bg-warning-bg text-warning"
                             )}>{ex.type}</span>
                           </td>
                           <td className="px-4 py-3 text-caption text-text-2 max-w-[200px]">{ex.suggestion}</td>
-                          <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                            {ex.type === "SHORTAGE" && ex.options.length > 0 && (
+                          <td className="px-4 py-3">
+                            <div className="flex gap-1.5">
                               <button
-                                onClick={() => setExpandOptions(expandOptions === exKey ? null : exKey)}
-                                className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium"
+                                onClick={() => toggleException(exKey)}
+                                className="rounded-button border border-surface-3 px-2.5 py-1 text-caption font-medium text-text-2 hover:text-text-1"
                               >
-                                Xử lý ▸
+                                Xem cách tính {isExpanded ? "▴" : "▾"}
                               </button>
-                            )}
-                            {ex.type === "WATCH" && (
-                              <button onClick={() => toast.info("Đang chờ ETA cover")} className="rounded-button border border-surface-3 px-2.5 py-1 text-caption font-medium text-text-3">Chờ</button>
-                            )}
+                              {ex.type === "SHORTAGE" && ex.options.length > 0 && (
+                                <button
+                                  onClick={() => setExpandOptions(expandOptions === exKey ? null : exKey)}
+                                  className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium"
+                                >
+                                  Xử lý ▸
+                                </button>
+                              )}
+                              {ex.type === "WATCH" && (
+                                <button onClick={() => toast.info("Đang chờ ETA cover")} className="rounded-button border border-surface-3 px-2.5 py-1 text-caption font-medium text-text-3">Chờ</button>
+                              )}
+                            </div>
                           </td>
                         </tr>
 
-                        {/* ── Expanded: Section A (Netting) + Section B (Allocation) ── */}
+                        {/* ── Expanded: Netting code block + Allocation chips ── */}
                         {isExpanded && (
                           <tr key={`detail-${i}`}>
-                            <td colSpan={9} className="p-0">
-                              <div className="bg-surface-1/40 border-t border-surface-3 px-6 py-4 space-y-4">
-                                {/* SECTION A: Netting Formula */}
+                            <td colSpan={8} className="p-0">
+                              <div className="border-t border-surface-3 px-6 py-4 space-y-4 bg-surface-1/30">
+
+                                {/* SECTION A: Netting — code block */}
                                 <div>
-                                  <h4 className="text-caption font-medium text-text-3 uppercase mb-2">Netting Formula</h4>
-                                  <div className="flex items-center gap-2 flex-wrap font-mono text-table text-text-1">
-                                    <button onClick={() => navigate("/demand")} className="rounded bg-info-bg/50 border border-info/20 px-2 py-1 hover:bg-info-bg transition-colors cursor-pointer" title="→ /demand tab 1">
-                                      FC phased <span className="font-bold">{ex.netting.fcPhased.toLocaleString()}</span>
-                                    </button>
-                                    <span className="text-text-3">−</span>
-                                    <button onClick={() => navigate("/monitoring")} className="rounded bg-success-bg/50 border border-success/20 px-2 py-1 hover:bg-success-bg transition-colors cursor-pointer" title="→ /monitoring tab 1">
-                                      On-hand <span className="font-bold">{ex.netting.onHand.toLocaleString()}</span>
-                                    </button>
-                                    <span className="text-text-3">−</span>
-                                    <span className="rounded bg-warning-bg/50 border border-warning/20 px-2 py-1">
-                                      Pipeline <span className="font-bold">{ex.netting.pipeline.toLocaleString()}</span>
-                                    </span>
-                                    <span className="text-text-3">+</span>
-                                    <span className="rounded bg-surface-3/50 border border-surface-3 px-2 py-1">
-                                      SS <span className="font-bold">{ex.netting.ssTarget.toLocaleString()}</span>
-                                    </span>
-                                    <span className="text-text-3">=</span>
-                                    <span className={cn("rounded px-2 py-1 font-bold", ex.netting.netReq > 0 ? "bg-danger-bg text-danger" : "bg-success-bg text-success")}>
-                                      Net req {ex.netting.netReq.toLocaleString()}
-                                    </span>
+                                  <h4 className="text-caption font-medium text-text-3 uppercase mb-2">Netting</h4>
+                                  <div className="bg-[#f8f9ff] rounded-lg border border-surface-3 p-3 font-mono text-[12px] leading-6 text-text-1 overflow-x-auto">
+                                    <div className="text-text-3 mb-1">{ex.item} {ex.variant} {activeCn.cn} — Netting W17:</div>
+                                    <div className="flex justify-between">
+                                      <span>{"  "}Demand:{" ".repeat(8)}<span className="font-bold">{ex.demand.toLocaleString()}</span> m²</span>
+                                      <button onClick={() => navigate("/demand")} className="text-primary hover:underline cursor-pointer">← FC {ex.netting.fcPhased.toLocaleString()} + CN adj +{Math.round((ex.demand - ex.netting.fcPhased) * 0.47)} + PO {Math.round((ex.demand - ex.netting.fcPhased) * 0.53 + 151)} − overlap 151</button>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>− On-hand:{" ".repeat(6)}<span className="font-bold">−{ex.netting.onHand.toLocaleString()}</span> m²</span>
+                                      <button onClick={() => navigate("/monitoring")} className="text-primary hover:underline cursor-pointer">← WMS sync 14:32</button>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>− In-transit:{" ".repeat(3)}<span className="font-bold">−{ex.netting.pipeline.toLocaleString()}</span> m²</span>
+                                      <span className="text-text-3">← Toko RPO-TKO-2605-W16-001, ETA 17/05</span>
+                                    </div>
+                                    <div className="border-t border-surface-3/50 my-1"></div>
+                                    <div>
+                                      <span>= Gross gap:{" ".repeat(3)}<span className="font-bold">{(ex.demand - ex.netting.onHand - ex.netting.pipeline) > 0 ? "" : "−"}{Math.abs(ex.demand - ex.netting.onHand - ex.netting.pipeline).toLocaleString()}</span> m²</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>+ SS buffer:{" ".repeat(3)}<span className="font-bold text-warning">+{ex.netting.ssTarget.toLocaleString()}</span> m²</span>
+                                      <button onClick={() => { setShowLayer3(true); setDrillCn(null); }} className="text-primary hover:underline cursor-pointer">← z(1.65) × σ(28.5) × √LT(14d)</button>
+                                    </div>
+                                    <div className="border-t border-surface-3/50 my-1"></div>
+                                    <div>
+                                      <span>= Net req:{" ".repeat(5)}<span className={cn("font-bold", ex.netting.netReq > 0 ? "text-danger" : "text-success")}>{ex.netting.netReq.toLocaleString()}</span> m²</span>
+                                    </div>
+                                    {ex.type === "SHORTAGE" && (
+                                      <>
+                                        <div>
+                                          <span>÷ MOQ round:{" ".repeat(3)}<span className="font-bold">1.000</span>{" ".repeat(5)}</span>
+                                          <span className="text-text-3">← Mikado MOQ</span>
+                                        </div>
+                                        <div>
+                                          <span>= Planned RPO:{" "}<span className="font-bold text-primary">1.000</span> m²</span>
+                                          <span className="text-text-3 ml-2">→ RPO-MKD-2605-W17-002</span>
+                                        </div>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
 
-                                {/* SECTION B: Allocation 6-layer trace */}
+                                {/* SECTION B: Allocation 6-layer trace — inline chips */}
                                 <div>
-                                  <h4 className="text-caption font-medium text-text-3 uppercase mb-2">Allocation Trace (6 layers)</h4>
+                                  <h4 className="text-caption font-medium text-text-3 uppercase mb-2">Allocation 6 layers</h4>
                                   <div className="flex items-center gap-1 flex-wrap">
                                     {ex.allocLayers.map((layer, li) => (
                                       <div key={li} className="flex items-center gap-1">
                                         <div className="group relative">
                                           <span className={cn(
-                                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium cursor-help border",
-                                            layer.pass ? "bg-success-bg text-success border-success/20" : "bg-danger-bg text-danger border-danger/20"
+                                            "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium cursor-help border",
+                                            layer.pass
+                                              ? "bg-success-bg text-success border-success/20"
+                                              : "bg-danger-bg text-danger border-danger/20"
                                           )}>
-                                            {layer.name.split(" ")[0]} {layer.pass ? "✓" : "✗"}{layer.qty}
-                                            {layer.delta && <span>({layer.delta > 0 ? "+" : ""}{layer.delta})</span>}
+                                            {layer.name} {layer.pass ? "✓" : "✗"}{layer.qty}
+                                            {layer.delta != null && layer.delta !== 0 && (
+                                              <span className="ml-0.5">({layer.delta > 0 ? "+" : ""}{layer.delta})</span>
+                                            )}
                                           </span>
-                                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-surface-0 border border-surface-3 rounded-lg p-3 text-caption text-text-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-20">
+                                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 bg-surface-0 border border-surface-3 rounded-lg p-3 text-caption text-text-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-20">
                                             <strong className="text-text-1 block mb-1">{layer.name}</strong>
                                             {layer.explain}
                                           </div>
                                         </div>
-                                        {li < ex.allocLayers.length - 1 && <span className="text-text-3 text-[10px]">→</span>}
+                                        {li < ex.allocLayers.length - 1 && <span className="text-text-3 text-[11px]">→</span>}
                                       </div>
                                     ))}
-                                    <span className="text-text-3 text-[10px]">→</span>
-                                    <span className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-bold border border-primary/20">
-                                      Final: {ex.allocated.toLocaleString()}
+                                    <span className="text-text-3 text-[11px]">→</span>
+                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-2.5 py-1 text-[11px] font-bold border border-primary/20">
+                                      Final: {ex.allocated.toLocaleString()} <span className="text-danger">Gap: {ex.gap.toLocaleString()}</span>
                                     </span>
                                   </div>
                                 </div>
