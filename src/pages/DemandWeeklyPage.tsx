@@ -107,8 +107,21 @@ export default function DemandWeeklyPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-surface-3 bg-surface-1/50">
-                  {["CN", "Dự kiến (m²)", "CN điều chỉnh", "PO xác nhận", "Final demand", "Status", ""].map((h, i) => (
-                    <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
+                  {[
+                    { h: "CN", logic: null },
+                    { h: "Dự kiến (m²)", logic: null },
+                    { h: "CN điều chỉnh", logic: { tab: "daily" as const, node: 1, tip: "Logic CN điều chỉnh & tolerance" } },
+                    { h: "PO xác nhận", logic: null },
+                    { h: "Final demand", logic: { tab: "monthly" as const, node: 0, tip: "Logic xác định Demand" } },
+                    { h: "Status", logic: null },
+                    { h: "", logic: null },
+                  ].map((col, i) => (
+                    <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
+                      <span className="flex items-center gap-1">
+                        {col.h}
+                        {col.logic && <LogicLink tab={col.logic.tab} node={col.logic.node} tooltip={col.logic.tip} />}
+                      </span>
+                    </th>
                   ))}
                 </tr>
               </thead>
