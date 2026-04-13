@@ -23,6 +23,7 @@ import SupplierPortalPage from "./pages/SupplierPortalPage";
 import MasterDataPage from "./pages/MasterDataPage";
 import ReportsPage from "./pages/ReportsPage";
 import ConfigPage from "./pages/ConfigPage";
+import LogicPage from "./pages/LogicPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/master-data" element={<MasterDataPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/config" element={<ConfigPage />} />
+              <Route path="/logic" element={<LogicPage />} />
               <Route path="/design-test" element={<DesignTest />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

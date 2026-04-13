@@ -3,7 +3,7 @@ import {
   ClipboardCheck, Activity, BarChart3, Handshake, Boxes,
   Package, CalendarDays, GitBranch,
   ShoppingCart, Users, Database, FileBarChart, Settings,
-  ChevronLeft, Play,
+  ChevronLeft, Play, BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/components/SidebarContext";
@@ -59,6 +59,12 @@ const navGroups: NavGroup[] = [
       { title: "Master Data", icon: Database, url: "/master-data" },
       { title: "Reports", icon: FileBarChart, url: "/reports" },
       { title: "Config", icon: Settings, url: "/config" },
+    ],
+  },
+  {
+    label: "Hỗ trợ",
+    items: [
+      { title: "Logic vận hành", icon: BookOpen, url: "/logic" },
     ],
   },
 ];
