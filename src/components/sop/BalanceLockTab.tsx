@@ -496,6 +496,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
           </table>
         </div>
       </div>
+      )}
 
       {/* Alert cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
