@@ -278,12 +278,7 @@ export default function DrpPage() {
 
       {/* ═══ LỚP 2: Per SKU (drill into CN) ═══ */}
       {activeCn && !showLayer3 && (
-        <div className="animate-fade-in space-y-4">
-          <button onClick={() => { setDrillCn(null); setShowAllSkus(false); setExpandedExceptions(new Set()); setExpandOptions(null); }} className="text-table-sm text-primary hover:underline flex items-center gap-1">
-            <ChevronLeft className="h-3.5 w-3.5" /> Per CN
-          </button>
-          <p className="text-caption text-text-3">Per CN › <span className="text-text-1 font-medium">{activeCn.cn}</span> (fill {activeCn.fillRate}%, gap {activeCn.gap.toLocaleString()})</p>
-
+        <div className="animate-slide-in-right space-y-4">
           {/* Section A: Exceptions with expandable netting + allocation */}
           <div className="rounded-card border border-surface-3 bg-surface-2">
             <div className="px-5 py-3 border-b border-surface-3">
