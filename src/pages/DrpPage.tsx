@@ -27,6 +27,7 @@ interface SkuFull {
 interface CnRow {
   cn: string; demand: number; available: number; fillRate: number; gap: number; exceptions: number;
   exceptionList: SkuException[]; allSkus: SkuFull[];
+  rpos: number;
 }
 
 /* ═══ SS DATA ═══ */
@@ -64,7 +65,7 @@ const changeLog = [
 /* ═══ LAYER 1 DATA ═══ */
 const baseData: CnRow[] = [
   {
-    cn: "CN-BD", demand: 2550, available: 1007, fillRate: 86, gap: 345, exceptions: 2,
+    cn: "CN-BD", demand: 2550, available: 1007, fillRate: 86, gap: 345, exceptions: 2, rpos: 3,
     exceptionList: [
       {
         item: "GA-300", variant: "A4", demand: 617, allocated: 272, gap: 345, type: "SHORTAGE",
@@ -107,9 +108,9 @@ const baseData: CnRow[] = [
       { item: "GA-600", variant: "B2", demand: 527, allocated: 527, fillPct: 100, status: "OK" },
     ],
   },
-  { cn: "CN-ĐN", demand: 1800, available: 1600, fillRate: 100, gap: 0, exceptions: 0, exceptionList: [], allSkus: [], },
-  { cn: "CN-HN", demand: 2100, available: 1300, fillRate: 100, gap: 0, exceptions: 0, exceptionList: [], allSkus: [], },
-  { cn: "CN-CT", demand: 1200, available: 1050, fillRate: 100, gap: 0, exceptions: 0, exceptionList: [], allSkus: [], },
+  { cn: "CN-ĐN", demand: 1800, available: 1600, fillRate: 100, gap: 0, exceptions: 0, rpos: 1, exceptionList: [], allSkus: [] },
+  { cn: "CN-HN", demand: 2100, available: 1300, fillRate: 100, gap: 0, exceptions: 0, rpos: 2, exceptionList: [], allSkus: [] },
+  { cn: "CN-CT", demand: 1200, available: 1050, fillRate: 100, gap: 0, exceptions: 0, rpos: 1, exceptionList: [], allSkus: [] },
 ];
 
 export default function DrpPage() {
@@ -126,6 +127,9 @@ export default function DrpPage() {
   const [simZ, setSimZ] = useState(1.65);
   const [showChangeLog, setShowChangeLog] = useState(false);
   const [editingParam, setEditingParam] = useState<string | null>(null);
+  const [showDrpConfirm, setShowDrpConfirm] = useState(false);
+  const [drpRunning, setDrpRunning] = useState(false);
+  const [drpStep, setDrpStep] = useState(0);
 
   const data = baseData.map((r) => ({
     ...r,
@@ -147,6 +151,7 @@ export default function DrpPage() {
   const totalDemand = data.reduce((a, r) => a + r.demand, 0);
   const totalGap = data.reduce((a, r) => a + r.gap, 0);
   const totalExc = data.reduce((a, r) => a + r.exceptions, 0);
+  const totalRpos = data.reduce((a, r) => a + r.rpos, 0);
   const totalFill = totalDemand > 0 ? Math.round(((totalDemand - totalGap) / totalDemand) * 1000) / 10 : 100;
   const activeCn = drillCn ? data.find((r) => r.cn === drillCn) : null;
 
@@ -158,8 +163,19 @@ export default function DrpPage() {
     });
   };
 
+  const drpStepLabels = ["Netting", "Allocation", "PO generation"];
+
   const handleRunDrp = () => {
-    toast.success("DRP đang chạy...", { description: "Kết quả sẽ cập nhật trong 2-3 phút" });
+    setShowDrpConfirm(false);
+    setDrpRunning(true);
+    setDrpStep(0);
+    setTimeout(() => setDrpStep(1), 800);
+    setTimeout(() => setDrpStep(2), 1600);
+    setTimeout(() => {
+      setDrpRunning(false);
+      setDrpStep(0);
+      toast.success("DRP hoàn tất", { description: `${totalExc} exceptions. ${totalRpos} RPOs.` });
+    }, 2400);
   };
 
   const handleChooseOption = (opt: typeof baseData[0]["exceptionList"][0]["options"][0]) => {
@@ -177,15 +193,48 @@ export default function DrpPage() {
 
   return (
     <AppLayout>
+      {/* ── Header ── */}
       <div className="flex items-center justify-between mb-1">
-        <ScreenHeader title="DRP & Phân bổ" subtitle="Distribution Requirements Planning + Allocation" />
-        <button
-          onClick={handleRunDrp}
-          className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-4 py-2 text-table font-medium shadow-sm hover:shadow-md transition-shadow"
-        >
-          <Play className="h-4 w-4" /> Chạy DRP
-        </button>
+        <div className="flex items-center gap-3">
+          <ScreenHeader title="DRP & Phân bổ" subtitle="Distribution Requirements Planning + Allocation" />
+          {totalExc > 0 && (
+            <span className="flex items-center gap-1 rounded-full bg-danger-bg px-3 py-1 text-table-sm font-medium text-danger">
+              <AlertTriangle className="h-3.5 w-3.5" /> {totalExc} exceptions
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <span className="text-caption text-text-3 block">Lần chạy cuối: 23:02 đêm qua</span>
+            <button onClick={() => setShowDrpConfirm(true)} className="text-caption text-primary font-medium hover:underline">Chạy lại ngay</button>
+          </div>
+          <button
+            onClick={() => setShowDrpConfirm(true)}
+            className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow"
+          >
+            <Play className="h-4 w-4" /> Chạy DRP
+          </button>
+        </div>
       </div>
+
+      {/* ── DRP Progress Bar ── */}
+      {drpRunning && (
+        <div className="mb-4 rounded-card border border-primary/30 bg-primary/5 p-4 animate-fade-in">
+          <div className="flex items-center gap-6">
+            {drpStepLabels.map((label, i) => (
+              <div key={label} className="flex items-center gap-2">
+                <div className={cn("h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold transition-colors",
+                  drpStep > i ? "bg-success text-white" : drpStep === i ? "bg-primary text-white animate-pulse" : "bg-surface-3 text-text-3"
+                )}>
+                  {drpStep > i ? "✓" : i + 1}
+                </div>
+                <span className={cn("text-table-sm font-medium", drpStep >= i ? "text-text-1" : "text-text-3")}>{label}</span>
+                {i < 2 && <div className={cn("w-12 h-0.5 rounded", drpStep > i ? "bg-success" : "bg-surface-3")} />}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Persistent Breadcrumb ── */}
       <div className="flex items-center gap-1.5 text-table-sm mb-4">
@@ -210,12 +259,6 @@ export default function DrpPage() {
       </div>
 
       <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <span className="rounded-full border border-surface-3 bg-surface-2 px-3 py-1 text-table-sm text-text-2">Chạy lúc 23:02 đêm qua</span>
-        {totalExc > 0 && (
-          <span className="flex items-center gap-1 rounded-full bg-danger-bg px-3 py-1 text-table-sm font-medium text-danger">
-            <AlertTriangle className="h-3.5 w-3.5" /> {totalExc} exceptions
-          </span>
-        )}
         <button
           onClick={() => { setShowLayer3(!showLayer3); setDrillCn(null); }}
           className={cn("flex items-center gap-1.5 rounded-full border px-3 py-1 text-table-sm font-medium transition-colors",
@@ -233,41 +276,52 @@ export default function DrpPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-surface-3 bg-surface-1/50">
-                  {["CN", "Demand", "Có sẵn (stock+pipe)", "Fill rate", "Gap", "Exceptions", ""].map((h, i) => (
+                  <th className="w-10 px-3 py-2.5"></th>
+                  {["CN", "Demand (m²)", "Có sẵn", "Fill rate", "Gap", "Exceptions", "RPOs planned", "Action"].map((h, i) => (
                     <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {data.map((r) => (
-                  <tr key={r.cn} className={cn("border-b border-surface-3/50 cursor-pointer hover:bg-surface-1/30", r.gap > 0 && "bg-danger-bg/20")} onClick={() => r.exceptions > 0 && setDrillCn(r.cn)}>
+                  <tr key={r.cn} className={cn("border-b border-surface-3/50 cursor-pointer hover:bg-surface-1/30", r.gap > 0 && "bg-danger-bg/20")} onClick={() => setDrillCn(r.cn)}>
+                    <td className="px-3 py-3 text-text-3"><ChevronRight className="h-4 w-4" /></td>
                     <td className="px-4 py-3 text-table font-medium text-text-1">{r.cn}</td>
                     <td className="px-4 py-3 text-table tabular-nums text-text-1">{r.demand.toLocaleString()}</td>
                     <td className="px-4 py-3 text-table tabular-nums text-text-2">{r.available.toLocaleString()}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-16 h-2 rounded-full bg-surface-3 overflow-hidden">
-                          <div className={cn("h-full rounded-full", r.fillRate >= 100 ? "bg-success" : r.fillRate >= 90 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(r.fillRate, 100)}%` }} />
+                          <div className={cn("h-full rounded-full", r.fillRate >= 95 ? "bg-success" : r.fillRate >= 85 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(r.fillRate, 100)}%` }} />
                         </div>
-                        <span className={cn("text-table-sm font-medium", r.fillRate >= 100 ? "text-success" : r.fillRate >= 90 ? "text-warning" : "text-danger")}>{r.fillRate}%</span>
+                        <span className={cn("text-table-sm font-medium", r.fillRate >= 95 ? "text-success" : r.fillRate >= 85 ? "text-warning" : "text-danger")}>
+                          {r.fillRate}% {r.fillRate >= 95 ? "🟢" : r.fillRate >= 85 ? "🟡" : "🔴"}
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-table tabular-nums">
                       {r.gap > 0 ? <span className="text-danger font-medium">{r.gap.toLocaleString()}</span> : <span className="text-text-3">0</span>}
                     </td>
                     <td className="px-4 py-3 text-table">
-                      {r.exceptions > 0 ? <span className="text-danger font-medium">{r.exceptions}</span> : <span className="text-text-3">0</span>}
+                      {r.exceptions > 0 ? <span className="text-danger font-medium">{r.exceptions} items</span> : <span className="text-text-3">0</span>}
                     </td>
-                    <td className="px-4 py-3 text-text-3">{r.exceptions > 0 && <ChevronRight className="h-4 w-4" />}</td>
+                    <td className="px-4 py-3 text-table text-text-2">{r.rpos} RPO{r.rpos !== 1 ? "s" : ""}</td>
+                    <td className="px-4 py-3">
+                      {r.exceptions > 0 ? (
+                        <span className="text-primary text-table-sm font-medium">Chi tiết ▸</span>
+                      ) : <span className="text-text-3">—</span>}
+                    </td>
                   </tr>
                 ))}
                 <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
+                  <td></td>
                   <td className="px-4 py-3 text-table text-text-1">TOTAL</td>
                   <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalDemand.toLocaleString()}</td>
                   <td className="px-4 py-3 text-table tabular-nums text-text-2">{data.reduce((a, r) => a + r.available, 0).toLocaleString()}</td>
                   <td className="px-4 py-3 text-table-sm font-medium text-text-1">{totalFill}%</td>
                   <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalGap.toLocaleString()}</td>
                   <td className="px-4 py-3 text-table text-text-1">{totalExc}</td>
+                  <td className="px-4 py-3 text-table text-text-1">{totalRpos} RPOs</td>
                   <td></td>
                 </tr>
               </tbody>
@@ -646,6 +700,24 @@ export default function DrpPage() {
                 </table>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ DRP Confirm Modal ═══ */}
+      {showDrpConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDrpConfirm(false)}>
+          <div className="bg-surface-0 rounded-card border border-surface-3 p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-section-header text-text-1 mb-2">Chạy DRP</h3>
+            <p className="text-table text-text-2 mb-5">Chạy DRP với data hiện tại? Quá trình gồm 3 bước: Netting → Allocation → PO generation.</p>
+            <div className="flex gap-3">
+              <button onClick={handleRunDrp} className="flex-1 rounded-button bg-gradient-primary text-primary-foreground py-2 text-table font-medium">
+                Xác nhận
+              </button>
+              <button onClick={() => setShowDrpConfirm(false)} className="flex-1 rounded-button border border-surface-3 py-2 text-table font-medium text-text-2">
+                Hủy
+              </button>
+            </div>
           </div>
         </div>
       )}
