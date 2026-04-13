@@ -1,58 +1,61 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { ScreenHeader } from "@/components/ScreenShell";
-import { HubStockTab } from "@/components/hub/HubStockTab";
-import { FCCommitmentTab } from "@/components/hub/FCCommitmentTab";
-import { GapMonitorTab } from "@/components/hub/GapMonitorTab";
 import { cn } from "@/lib/utils";
+import { useTenant } from "@/components/TenantContext";
+import { NmOrderTab } from "@/components/hub/NmOrderTab";
+import { ReconciliationTab } from "@/components/hub/ReconciliationTab";
 
 const tabs = [
-  { key: "hub-stock", label: "Hub Stock (mỗi ngày)" },
-  { key: "fc-commitment", label: "Đặt hàng NM (Day 8-10)" },
-  { key: "gap-monitor", label: "Gap Monitor (Day 20+)" },
+  { key: "order", label: "Đặt hàng NM" },
+  { key: "recon", label: "Đối chiếu" },
 ];
 
 export default function HubPage() {
-  const [activeTab, setActiveTab] = useState("hub-stock");
+  const [activeTab, setActiveTab] = useState("order");
+  const { tenant } = useTenant();
+  const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
 
   return (
     <AppLayout>
-      <ScreenHeader title="Hub & Commitment" subtitle="Kế hoạch tháng — Cam kết nhà máy & phân bổ hub" />
-      {/* Context bar */}
-      <div className="flex items-center gap-4 mb-6 rounded-card border border-surface-3 bg-surface-2 px-5 py-3">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-1">
         <div>
-          <span className="text-table-header uppercase text-text-3">CONTEXT</span>
-          <div className="text-body font-semibold text-text-1">Monthly T5 — Day 16/30</div>
-        </div>
-        <div className="flex-1 mx-4">
-          <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
-            <div className="h-full rounded-full bg-primary" style={{ width: "53%" }} />
-          </div>
-        </div>
-        <span className="text-table-sm tabular-nums text-text-2">53%</span>
-
-        {/* Tab pills */}
-        <div className="flex items-center gap-1 ml-4 rounded-full border border-surface-3 bg-surface-0 p-0.5">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-table-sm font-medium transition-colors whitespace-nowrap",
-                activeTab === tab.key
-                  ? "bg-gradient-primary text-primary-foreground"
-                  : "text-text-2 hover:text-text-1"
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
+          <h1 className="font-display text-screen-title text-text-1">Hub & Commitment — Tháng 5</h1>
+          <p className="text-table text-text-2">Cam kết nhà máy & theo dõi giao hàng</p>
         </div>
       </div>
 
-      {activeTab === "hub-stock" && <HubStockTab />}
-      {activeTab === "fc-commitment" && <FCCommitmentTab />}
-      {activeTab === "gap-monitor" && <GapMonitorTab />}
+      {/* Status strip */}
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-success-bg text-success text-table-sm font-medium px-3 py-1">
+          ✅ S&OP locked: {Math.round(7650 * scale).toLocaleString()} m²
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-info-bg text-info text-table-sm font-medium px-3 py-1">
+          Day 8/30
+        </span>
+      </div>
+
+      {/* Tab bar */}
+      <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={cn(
+              "px-5 py-3 text-table font-medium transition-colors relative whitespace-nowrap",
+              activeTab === tab.key ? "text-primary" : "text-text-2 hover:text-text-1"
+            )}
+          >
+            {tab.label}
+            {activeTab === tab.key && (
+              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "order" && <NmOrderTab scale={scale} />}
+      {activeTab === "recon" && <ReconciliationTab scale={scale} />}
     </AppLayout>
   );
 }
