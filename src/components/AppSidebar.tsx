@@ -15,7 +15,6 @@ interface NavItem {
   title: string;
   icon: React.ElementType;
   url: string;
-  badge?: string;
 }
 
 interface NavGroup {
