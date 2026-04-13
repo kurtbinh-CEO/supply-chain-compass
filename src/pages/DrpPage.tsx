@@ -179,14 +179,15 @@ export default function DrpPage() {
     }, 2400);
   };
 
-  const handleChooseOption = (opt: typeof baseData[0]["exceptionList"][0]["options"][0]) => {
+  const handleChooseOption = (exKey: string, opt: typeof baseData[0]["exceptionList"][0]["options"][0]) => {
     if (opt.recommended) {
-      toast.success(`Đã chọn: ${opt.label}`, { description: "TO + RPO tạo → Workspace duyệt" });
+      toast.success("TO + RPO tạo", { description: "TO-DN-BD-2605-001 (220m²) + RPO-MKD-2605-W17-003 (125m²). Cả 2 gửi Workspace." });
     } else if (opt.label.includes("Lateral")) {
-      toast.success(`Đã chọn: ${opt.label}`, { description: "Transfer Order tạo → Workspace duyệt" });
+      toast.success("Transfer Order gửi Workspace duyệt", { description: "TO-DN-BD-2605-001 (220m²)" });
     } else {
-      toast.success(`Đã chọn: ${opt.label}`, { description: "RPO draft tạo → /orders" });
+      toast.success("RPO draft tạo. Xem tại /orders.", { description: "RPO-MKD-2605-W17-003 (345m²)" });
     }
+    setResolvedExceptions(prev => ({ ...prev, [exKey]: opt.label }));
     setExpandOptions(null);
   };
 
