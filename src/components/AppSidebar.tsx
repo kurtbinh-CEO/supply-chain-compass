@@ -128,9 +128,9 @@ export function AppSidebar() {
                     {!collapsed && (
                       <>
                         <span className="flex-1 truncate">{item.title}</span>
-                        {item.badge && (
+                        {item.url === "/workspace" && pendingCount > 0 && (
                           <span className="rounded-full bg-danger-bg text-danger text-caption font-semibold px-1.5 py-0.5 min-w-[20px] text-center">
-                            {item.badge}
+                            {pendingCount}
                           </span>
                         )}
                       </>
