@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 const tabs = [
   { key: "hub-stock", label: "Hub Stock (mỗi ngày)" },
-  { key: "fc-commitment", label: "FC Commitment (Day 8-10)" },
+  { key: "fc-commitment", label: "Đặt hàng NM (Day 8-10)" },
   { key: "gap-monitor", label: "Gap Monitor (Day 20+)" },
 ];
 
