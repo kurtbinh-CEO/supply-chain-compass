@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ScreenShell } from "@/components/ScreenShell";
+import { ScreenHeader } from "@/components/ScreenShell";
 import { HubStockTab } from "@/components/hub/HubStockTab";
 import { FCCommitmentTab } from "@/components/hub/FCCommitmentTab";
 import { GapMonitorTab } from "@/components/hub/GapMonitorTab";
