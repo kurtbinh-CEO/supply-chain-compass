@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenShell";
 import { useTenant } from "@/components/TenantContext";
@@ -12,6 +12,7 @@ import { DemandToOrderBridge, buildFullBridgeSteps } from "@/components/DemandTo
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormulaBar } from "@/components/FormulaBar";
+import { ViewPivotToggle, usePivotMode, WorstCnCell, CnGapBadge, LcnbBadge } from "@/components/ViewPivotToggle";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -116,7 +117,8 @@ export default function DrpPage() {
   const s = tenantScales[tenant] || 1;
   const navigate = useNavigate();
   const [drillCn, setDrillCn] = useState<string | null>(null);
-  const [showAllSkus, setShowAllSkus] = useState(false);
+  const [drillSku, setDrillSku] = useState<string | null>(null);
+  const [pivotMode, setPivotMode] = usePivotMode("drp");
   const [expandedExceptions, setExpandedExceptions] = useState<Set<string>>(new Set());
   const [expandOptions, setExpandOptions] = useState<string | null>(null);
   const [showLayer3, setShowLayer3] = useState(false);
