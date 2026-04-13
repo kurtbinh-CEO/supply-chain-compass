@@ -154,6 +154,7 @@ function RoleBadge({ role }: { role: string }) {
 /* ═══ MAIN COMPONENT ═══ */
 export default function CnPortalPage() {
   const { user, setUser, users, canEdit, canApprove, canViewAllCn, filterCnId } = useRbac();
+  const { addApproval, addNotification } = useWorkspace();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("adjust");
   const [selectedCn, setSelectedCn] = useState(filterCnId || "CN-BD");
