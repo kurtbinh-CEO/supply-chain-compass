@@ -146,14 +146,14 @@ export function AppSidebar() {
         {!collapsed ? (
           <div className="space-y-1">
             <button
-              onClick={() => startWorkflow("daily")}
+              onClick={() => handleStartWorkflow("daily")}
               className="flex w-full items-center gap-2 rounded-button px-3 py-2 text-body text-primary font-medium hover:bg-info-bg transition-colors"
             >
               <Play className="h-4 w-4" />
               <span>Quy trình ngày</span>
             </button>
             <button
-              onClick={() => startWorkflow("monthly")}
+              onClick={() => handleStartWorkflow("monthly")}
               className="flex w-full items-center gap-2 rounded-button px-3 py-2 text-body text-primary font-medium hover:bg-info-bg transition-colors"
             >
               <Play className="h-4 w-4" />
@@ -162,7 +162,7 @@ export function AppSidebar() {
           </div>
         ) : (
           <button
-            onClick={() => startWorkflow("daily")}
+            onClick={() => handleStartWorkflow("daily")}
             className="flex w-full justify-center rounded-button p-2 text-primary hover:bg-info-bg transition-colors"
           >
             <Play className="h-[18px] w-[18px]" />
