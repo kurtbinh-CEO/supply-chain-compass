@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, ChevronLeft, CheckCircle, AlertTriangle, Package, Send } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
+import { DemandToOrderBridge, buildMiniBridgeSteps } from "@/components/DemandToOrderBridge";
 import { toast } from "sonner";
 import { getNmCode, getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 
