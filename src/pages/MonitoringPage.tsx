@@ -227,6 +227,9 @@ export default function MonitoringPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [drillCn, setDrillCn] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["fc"]));
+  const [invChartFilter, setInvChartFilter] = useState("all");
+  const [showStockoutLog, setShowStockoutLog] = useState(false);
+  const showAging = tenant === "TTC Agris" || tenant === "Mondelez";
 
   const toggleSection = (key: string) => {
     setExpandedSections((prev) => {
