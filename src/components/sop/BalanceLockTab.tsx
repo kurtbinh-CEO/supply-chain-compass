@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Lock, CheckCircle, ChevronRight, ChevronLeft, AlertTriangle, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { SkuNmPanel } from "./SkuNmPanel";
 import { toast } from "sonner";
+import { FormulaBar } from "@/components/FormulaBar";
 import type { ConsensusRow } from "@/pages/SopPage";
 
 interface Props {
@@ -84,14 +85,23 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   const ssBuffer = Math.round(1200 * scale);
   const fcMin = netReq + ssBuffer;
 
-  const formulaBlocks = [
-    { label: "Demand", value: totalDemand, bg: "bg-info-bg", text: "text-info" },
-    { label: "Stock", value: totalStock, bg: "bg-success-bg", text: "text-success", prefix: "−" },
-    { label: "Pipeline", value: totalPipeline, bg: "bg-info-bg/50", text: "text-info", prefix: "−" },
-    { label: "Net", value: netReq, bg: "bg-warning-bg", text: "text-warning", prefix: "=" },
-    { label: "SS buffer", value: ssBuffer, bg: "bg-accent/10", text: "text-accent-foreground", prefix: "+" },
-    { label: "FC min", value: fcMin, bg: "bg-danger-bg", text: "text-danger", prefix: "=" },
-  ];
+  // FormulaBar data derived from balance rows
+  const stockDetailForBar = balRows.map(r => ({
+    cn: r.cn,
+    onHand: Math.round(r.stock * 4.5), // approximate full on-hand
+    reserved: Math.round(r.stock * 3.5),
+    available: r.stock,
+    hstk: r.cn === "CN-BD" ? 5.2 : r.cn === "CN-ĐN" ? 14 : r.cn === "CN-HN" ? 9 : 11,
+    updated: "14:32 WMS",
+  }));
+
+  const netPerCnForBar = balRows.map(r => ({
+    cn: r.cn,
+    demand: r.demand,
+    stock: r.stock,
+    pipeline: r.pipeline,
+    net: Math.max(0, r.demand - r.stock - r.pipeline),
+  }));
 
   const handleLock = () => {
     onLock();
