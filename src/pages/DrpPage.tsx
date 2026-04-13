@@ -8,6 +8,7 @@ import { ChevronRight, ChevronDown, AlertTriangle, ArrowRight, Play, Settings, C
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FormulaBar } from "@/components/FormulaBar";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -275,7 +276,14 @@ export default function DrpPage() {
 
       {/* ═══ LỚP 1: Per CN (default) ═══ */}
       {!activeCn && !showLayer3 && (
-        <div className="rounded-card border border-surface-3 bg-surface-2 animate-slide-in-left">
+        <div className="space-y-5 animate-slide-in-left">
+          <FormulaBar
+            demand={totalDemand}
+            stock={Math.round(3200 * s)}
+            pipeline={Math.round(1757 * s)}
+            ssBuffer={Math.round(1200 * s)}
+          />
+          <div className="rounded-card border border-surface-3 bg-surface-2">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
