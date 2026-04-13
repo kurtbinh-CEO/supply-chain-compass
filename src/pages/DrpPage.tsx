@@ -108,9 +108,9 @@ const baseData: CnRow[] = [
       { item: "GA-600", variant: "B2", demand: 527, allocated: 527, fillPct: 100, status: "OK" },
     ],
   },
-  { cn: "CN-ĐN", demand: 1800, available: 1600, fillRate: 100, gap: 0, exceptions: 0, exceptionList: [], allSkus: [], },
-  { cn: "CN-HN", demand: 2100, available: 1300, fillRate: 100, gap: 0, exceptions: 0, exceptionList: [], allSkus: [], },
-  { cn: "CN-CT", demand: 1200, available: 1050, fillRate: 100, gap: 0, exceptions: 0, exceptionList: [], allSkus: [], },
+  { cn: "CN-ĐN", demand: 1800, available: 1600, fillRate: 100, gap: 0, exceptions: 0, rpos: 1, exceptionList: [], allSkus: [] },
+  { cn: "CN-HN", demand: 2100, available: 1300, fillRate: 100, gap: 0, exceptions: 0, rpos: 2, exceptionList: [], allSkus: [] },
+  { cn: "CN-CT", demand: 1200, available: 1050, fillRate: 100, gap: 0, exceptions: 0, rpos: 1, exceptionList: [], allSkus: [] },
 ];
 
 export default function DrpPage() {
