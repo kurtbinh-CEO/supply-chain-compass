@@ -440,7 +440,7 @@ export function InventorySSTab({ scale: s }: Props) {
                 <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-center">
                   <div className="text-[10px] uppercase text-primary">After</div>
                   <div className="font-mono font-bold text-[18px] text-primary">
-                    {Math.round(simSku.sigma * simZ * Math.sqrt(simSku.lt)).toLocaleString()}
+                    {Math.round(simSku.ssCurrent * (simZ / simSku.z)).toLocaleString()}
                   </div>
                   <div className="text-caption text-text-3">z={simZ.toFixed(2)}</div>
                 </div>
@@ -449,7 +449,7 @@ export function InventorySSTab({ scale: s }: Props) {
                 <div className="flex justify-between text-text-2">
                   <span>WC impact</span>
                   {(() => {
-                    const newSs = Math.round(simSku.sigma * simZ * Math.sqrt(simSku.lt));
+                    const newSs = Math.round(simSku.ssCurrent * (simZ / simSku.z));
                     const delta = newSs - simSku.ssCurrent;
                     return <span className={cn("font-medium", delta > 0 ? "text-danger" : "text-success")}>{delta > 0 ? "+" : ""}{Math.round(delta * 18.5 / 1000)}M₫</span>;
                   })()}
@@ -461,7 +461,7 @@ export function InventorySSTab({ scale: s }: Props) {
               </div>
               <Button className="w-full bg-gradient-primary text-primary-foreground"
                 onClick={() => {
-                  toast.success("Gửi Workspace duyệt", { description: `z=${simZ.toFixed(2)} → SS ${Math.round(simSku.sigma * simZ * Math.sqrt(simSku.lt)).toLocaleString()}` });
+                  toast.success("Gửi Workspace duyệt", { description: `z=${simZ.toFixed(2)} → SS ${Math.round(simSku.ssCurrent * (simZ / simSku.z)).toLocaleString()}` });
                   setSimOpen(false);
                 }}>
                 Áp dụng → Workspace duyệt
