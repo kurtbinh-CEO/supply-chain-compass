@@ -307,8 +307,8 @@ export default function MonitoringPage() {
               </tbody>
             </table>
             <div className="px-5 py-2.5">
-              <button onClick={() => toast.info("Mở simulation SS")} className="text-primary text-table-sm font-medium hover:underline">
-                Mô phỏng thay đổi SS ▸
+              <button onClick={() => navigate("/drp")} className="text-primary text-table-sm font-medium hover:underline">
+                Điều chỉnh SS → /drp Tham số ▸
               </button>
             </div>
           </CollapsibleSection>
