@@ -316,6 +316,9 @@ export default function DrpPage() {
         >
           <Settings className="h-3.5 w-3.5" /> Tham số
         </button>
+        {!showLayer3 && !activeCn && (
+          <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setDrillCn(null); setDrillSku(null); }} />
+        )}
       </div>
 
       {/* ═══ LỚP 1: Per CN (default) ═══ */}
