@@ -86,7 +86,21 @@ const notifTypes: NotifType[] = [
   { type: "FC_LOCK", channel: "Email", urgency: "Low", recipients: "All stakeholders" },
 ];
 
-const featureToggles: FeatureToggle[] = [
+const rbacMatrix: RbacRow[] = [
+  { screen: "/cn-portal Tab 1 Điều chỉnh", cn_manager: "✅ Sửa CN mình", sc_manager: "✅ Sửa all + duyệt", sales: "👁 Read-only", buyer: "❌", viewer: "❌" },
+  { screen: "/cn-portal Tab 2 Tồn kho", cn_manager: "👁 CN mình", sc_manager: "👁 All CN", sales: "❌", buyer: "👁 All", viewer: "❌" },
+  { screen: "/cn-portal Tab 3 Trao đổi", cn_manager: "✅ CN mình", sc_manager: "✅ All", sales: "✅ Threads mình", buyer: "👁", viewer: "❌" },
+  { screen: "/demand", cn_manager: "❌", sc_manager: "✅ Full", sales: "✅ B2B tab only", buyer: "❌", viewer: "👁" },
+  { screen: "/sop", cn_manager: "❌", sc_manager: "✅ Full", sales: "👁 Tab 1 only", buyer: "❌", viewer: "👁" },
+  { screen: "/hub", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "✅ Full", viewer: "👁" },
+  { screen: "/supply", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "✅ Full", viewer: "❌" },
+  { screen: "/orders", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "✅ Full", viewer: "👁" },
+  { screen: "/drp", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "❌", viewer: "👁" },
+  { screen: "/monitoring", cn_manager: "👁 CN mình", sc_manager: "✅ Full", sales: "❌", buyer: "❌", viewer: "👁" },
+  { screen: "/supplier-portal", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "❌", viewer: "❌" },
+  { screen: "/config", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "❌", viewer: "❌" },
+];
+
   { feature: "LCNB Lateral", unis: true, ttc: false, mdlz: false },
   { feature: "B2B Pipeline", unis: true, ttc: false, mdlz: true },
   { feature: "FC Commitment Tiers", unis: true, ttc: true, mdlz: false },
