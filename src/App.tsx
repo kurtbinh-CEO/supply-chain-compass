@@ -7,6 +7,7 @@ import { SidebarProvider } from "@/components/SidebarContext";
 import { WorkflowProvider } from "@/components/WorkflowContext";
 import { WorkspaceProvider } from "@/components/WorkspaceContext";
 import { TenantProvider } from "@/components/TenantContext";
+import { RbacProvider } from "@/components/RbacContext";
 import Index from "./pages/Index";
 import DesignTest from "./pages/DesignTest";
 import WorkspacePage from "./pages/WorkspacePage";
@@ -25,6 +26,7 @@ import ReportsPage from "./pages/ReportsPage";
 import ConfigPage from "./pages/ConfigPage";
 import LogicPage from "./pages/LogicPage";
 import NotFound from "./pages/NotFound";
+import CnPortalPage from "./pages/CnPortalPage";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +38,7 @@ const App = () => (
       <BrowserRouter>
         <SidebarProvider>
           <TenantProvider>
+          <RbacProvider>
           <WorkspaceProvider>
           <WorkflowProvider>
             <Routes>
@@ -54,12 +57,14 @@ const App = () => (
               <Route path="/master-data" element={<MasterDataPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/config" element={<ConfigPage />} />
+              <Route path="/cn-portal" element={<CnPortalPage />} />
               <Route path="/logic" element={<LogicPage />} />
               <Route path="/design-test" element={<DesignTest />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </WorkflowProvider>
           </WorkspaceProvider>
+          </RbacProvider>
           </TenantProvider>
         </SidebarProvider>
       </BrowserRouter>
