@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronRight, ChevronLeft, CheckCircle, AlertTriangle, Package } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props { scale: number }
@@ -13,6 +13,311 @@ interface NmRow {
   confirmed: number;
   skus: { item: string; variant: string; sent: number; confirmed: number; note: string }[];
 }
+
+/* ─── MOQ Data ─── */
+interface MoqSku {
+  item: string; variant: string; netReq: number; moq: number; order: number; surplus: number;
+  poqOption: string; poqQty: number | null;
+}
+
+interface MoqNm {
+  nm: string; netReqTotal: number; afterMoq: number; surplus: number; pctIncrease: number; surplusCost: string;
+  skus: MoqSku[];
+}
+
+const baseMoqNms: MoqNm[] = [
+  {
+    nm: "Mikado", netReqTotal: 3100, afterMoq: 4000, surplus: 900, pctIncrease: 29, surplusCost: "166M₫",
+    skus: [
+      { item: "GA-300", variant: "A4", netReq: 800, moq: 1000, order: 1000, surplus: 200, poqOption: "Gộp W16+W17 = 1.500 → 1 container", poqQty: 1500 },
+      { item: "GA-600", variant: "A4", netReq: 2251, moq: 1000, order: 3000, surplus: 749, poqOption: "Gộp W16-W18 = 3.200 → tiết kiệm 1 PO", poqQty: 3200 },
+      { item: "GA-300", variant: "B2", netReq: 480, moq: 500, order: 500, surplus: 20, poqOption: "", poqQty: null },
+    ],
+  },
+  {
+    nm: "Toko", netReqTotal: 2800, afterMoq: 3000, surplus: 200, pctIncrease: 7, surplusCost: "36M₫",
+    skus: [
+      { item: "GA-300", variant: "A4", netReq: 1200, moq: 1000, order: 2000, surplus: 800, poqOption: "", poqQty: null },
+      { item: "GA-600", variant: "A4", netReq: 1600, moq: 1000, order: 2000, surplus: 400, poqOption: "Gộp W16+W17 = 2.500", poqQty: 2500 },
+    ],
+  },
+  {
+    nm: "Phú Mỹ", netReqTotal: 1200, afterMoq: 1500, surplus: 300, pctIncrease: 25, surplusCost: "48M₫",
+    skus: [
+      { item: "GA-300", variant: "B2", netReq: 700, moq: 500, order: 1000, surplus: 300, poqOption: "", poqQty: null },
+      { item: "GA-600", variant: "B2", netReq: 500, moq: 500, order: 500, surplus: 0, poqOption: "", poqQty: null },
+    ],
+  },
+];
+
+/* ─── MOQ Section Component ─── */
+function MoqSection({ scale }: { scale: number }) {
+  const [expanded, setExpanded] = useState(true);
+  const [drillNm, setDrillNm] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState<Set<string>>(new Set());
+  const [editingCell, setEditingCell] = useState<string | null>(null);
+  const [editVal, setEditVal] = useState("");
+  const [allLocked, setAllLocked] = useState(false);
+
+  const moqNms = baseMoqNms.map((n) => ({
+    ...n,
+    netReqTotal: Math.round(n.netReqTotal * scale),
+    afterMoq: Math.round(n.afterMoq * scale),
+    surplus: Math.round(n.surplus * scale),
+    skus: n.skus.map((s) => ({
+      ...s,
+      netReq: Math.round(s.netReq * scale),
+      moq: Math.round(s.moq * scale),
+      order: Math.round(s.order * scale),
+      surplus: Math.round(s.surplus * scale),
+      poqQty: s.poqQty ? Math.round(s.poqQty * scale) : null,
+    })),
+  }));
+
+  const totalNetReq = moqNms.reduce((a, n) => a + n.netReqTotal, 0);
+  const totalAfterMoq = moqNms.reduce((a, n) => a + n.afterMoq, 0);
+  const totalSurplus = moqNms.reduce((a, n) => a + n.surplus, 0);
+  const totalPctIncrease = totalNetReq > 0 ? Math.round(((totalAfterMoq - totalNetReq) / totalNetReq) * 100) : 0;
+  const itemsNeedRound = moqNms.reduce((a, n) => a + n.skus.filter((s) => s.surplus > 0).length, 0);
+  const allOk = itemsNeedRound === 0;
+  const activeNm = drillNm ? moqNms.find((n) => n.nm === drillNm) : null;
+
+  const handleConfirmSku = (nm: string, item: string, variant: string, type: "moq" | "poq") => {
+    const key = `${nm}-${item}-${variant}`;
+    setConfirmed((p) => new Set(p).add(key));
+    toast.success(`Đã chọn ${type === "poq" ? "POQ" : "MOQ"} cho ${item} ${variant}`);
+  };
+
+  const handleEditOrder = (key: string, current: number) => {
+    setEditingCell(key);
+    setEditVal(String(current));
+  };
+
+  const commitEdit = (key: string, moq: number) => {
+    const v = parseInt(editVal);
+    if (!isNaN(v) && v >= moq) {
+      toast.success(`Đã cập nhật số đặt: ${v.toLocaleString()}`);
+    } else if (!isNaN(v) && v < moq) {
+      toast.error(`Số đặt phải ≥ MOQ (${moq.toLocaleString()})`);
+    }
+    setEditingCell(null);
+  };
+
+  const handleLockAll = () => {
+    setAllLocked(true);
+    toast.success("Đã xác nhận tất cả MOQ", { description: "Số sau MOQ round đã cập nhật vào bảng Đặt hàng NM." });
+  };
+
+  if (allLocked) {
+    return (
+      <div className="rounded-card border border-success/30 bg-success-bg/50 px-5 py-3 flex items-center gap-2">
+        <CheckCircle className="h-4 w-4 text-success" />
+        <span className="text-table font-medium text-success">MOQ đã xác nhận — Số đặt đã round theo MOQ NM.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+      {/* Header */}
+      <button
+        onClick={() => { setExpanded(!expanded); setDrillNm(null); }}
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-surface-1/30 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <Package className="h-4 w-4 text-text-2" />
+          <span className="font-display text-body font-semibold text-text-1">Kiểm tra MOQ</span>
+          {allOk ? (
+            <span className="rounded-full bg-success-bg text-success text-caption font-medium px-2.5 py-0.5 flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" /> Tất cả OK
+            </span>
+          ) : (
+            <span className="rounded-full bg-warning-bg text-warning text-caption font-medium px-2.5 py-0.5 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" /> {itemsNeedRound} items cần round
+            </span>
+          )}
+        </div>
+        <ChevronRight className={cn("h-4 w-4 text-text-3 transition-transform", expanded && "rotate-90")} />
+      </button>
+
+      {expanded && !allOk && (
+        <div className="border-t border-surface-3">
+          {!activeNm ? (
+            /* ─── MOQ Lớp 1: Per NM ─── */
+            <div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-table-sm">
+                  <thead>
+                    <tr className="border-b border-surface-3 bg-surface-1/50">
+                      {["NM", "Net req gốc (m²)", "Sau MOQ round", "Surplus", "Tăng thêm", "Chi phí surplus", ""].map((h, i) => (
+                        <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {moqNms.map((n) => (
+                      <tr key={n.nm} className="border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer" onClick={() => setDrillNm(n.nm)}>
+                        <td className="px-4 py-2.5 font-medium text-text-1">{n.nm}</td>
+                        <td className="px-4 py-2.5 tabular-nums text-text-2">{n.netReqTotal.toLocaleString()}</td>
+                        <td className="px-4 py-2.5 tabular-nums font-medium text-text-1">{n.afterMoq.toLocaleString()}</td>
+                        <td className="px-4 py-2.5 tabular-nums text-warning font-medium">+{n.surplus.toLocaleString()}</td>
+                        <td className="px-4 py-2.5">
+                          <span className={cn("tabular-nums font-medium", n.pctIncrease > 20 ? "text-warning" : "text-text-2")}>
+                            +{n.pctIncrease}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 tabular-nums text-text-2">{n.surplusCost}</td>
+                        <td className="px-4 py-2.5">
+                          <span className="text-primary text-table-sm font-medium flex items-center gap-0.5">
+                            Xem chi tiết <ChevronRight className="h-3.5 w-3.5" />
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
+                      <td className="px-4 py-2.5 text-text-1">TOTAL</td>
+                      <td className="px-4 py-2.5 tabular-nums text-text-1">{totalNetReq.toLocaleString()}</td>
+                      <td className="px-4 py-2.5 tabular-nums text-text-1">{totalAfterMoq.toLocaleString()}</td>
+                      <td className="px-4 py-2.5 tabular-nums text-warning font-medium">+{totalSurplus.toLocaleString()}</td>
+                      <td className="px-4 py-2.5 tabular-nums text-text-1">+{totalPctIncrease}%</td>
+                      <td className="px-4 py-2.5 tabular-nums text-text-1">250M₫</td>
+                      <td />
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 py-3 border-t border-surface-3 flex items-center justify-between">
+                <p className="text-caption text-text-3">
+                  Tổng surplus: {totalSurplus.toLocaleString()} m² = 250M₫ working capital. Surplus sẽ tự trừ trong net req tháng sau.
+                </p>
+                <button onClick={handleLockAll} className="rounded-button bg-gradient-primary text-primary-foreground px-4 py-1.5 text-table-sm font-medium">
+                  Xác nhận tất cả MOQ
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ─── MOQ Lớp 2: Per SKU ─── */
+            <div>
+              <div className="px-5 py-3 border-b border-surface-3 flex items-center gap-2">
+                <button onClick={() => setDrillNm(null)} className="text-primary text-table-sm font-medium hover:underline flex items-center gap-1">
+                  <ChevronLeft className="h-3.5 w-3.5" /> MOQ
+                </button>
+                <span className="text-text-3 text-caption">/</span>
+                <span className="text-text-1 text-table-sm font-medium">{activeNm.nm}</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-table-sm">
+                  <thead>
+                    <tr className="border-b border-surface-3 bg-surface-1/50">
+                      {["Item", "Variant", "Net req 4 CN", "MOQ NM", "Đặt", "Surplus", "POQ option", "Action"].map((h, i) => (
+                        <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeNm.skus.map((sk) => {
+                      const key = `${activeNm.nm}-${sk.item}-${sk.variant}`;
+                      const isConfirmed = confirmed.has(key);
+                      const isEditing = editingCell === key;
+                      return (
+                        <tr key={key} className={cn(
+                          "border-b border-surface-3/50",
+                          isConfirmed ? "bg-success/5" : "hover:bg-surface-1/30"
+                        )}>
+                          <td className="px-4 py-2.5 font-medium text-text-1">{sk.item}</td>
+                          <td className="px-4 py-2.5 text-text-2">{sk.variant}</td>
+                          <td className="px-4 py-2.5 tabular-nums text-text-2">{sk.netReq.toLocaleString()}</td>
+                          <td className="px-4 py-2.5 tabular-nums text-text-3">{sk.moq.toLocaleString()}</td>
+                          <td className="px-4 py-2.5">
+                            {isEditing ? (
+                              <input
+                                autoFocus type="number" value={editVal}
+                                onChange={(e) => setEditVal(e.target.value)}
+                                onBlur={() => commitEdit(key, sk.moq)}
+                                onKeyDown={(e) => e.key === "Enter" && commitEdit(key, sk.moq)}
+                                className="w-20 rounded border border-primary bg-surface-0 px-2 py-1 text-table-sm tabular-nums text-text-1 outline-none"
+                              />
+                            ) : (
+                              <button
+                                onClick={() => handleEditOrder(key, sk.order)}
+                                className="tabular-nums font-medium text-primary hover:underline"
+                              >
+                                {sk.order.toLocaleString()}
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-4 py-2.5 tabular-nums text-warning font-medium">
+                            {sk.surplus > 0 ? `+${sk.surplus.toLocaleString()}` : "0"}
+                          </td>
+                          <td className="px-4 py-2.5 text-caption text-text-3 max-w-[220px]">
+                            {sk.poqOption || "—"}
+                          </td>
+                          <td className="px-4 py-2.5">
+                            {isConfirmed ? (
+                              <span className="text-success text-caption font-medium flex items-center gap-1">
+                                <CheckCircle className="h-3 w-3" /> Đã chọn
+                              </span>
+                            ) : (
+                              <div className="flex gap-1.5">
+                                <button
+                                  onClick={() => handleConfirmSku(activeNm.nm, sk.item, sk.variant, "moq")}
+                                  className="rounded-button bg-gradient-primary text-primary-foreground px-2 py-1 text-caption font-medium"
+                                >
+                                  Chọn {sk.order.toLocaleString()}
+                                </button>
+                                {sk.poqQty && (
+                                  <button
+                                    onClick={() => handleConfirmSku(activeNm.nm, sk.item, sk.variant, "poq")}
+                                    className="rounded-button border border-info text-info px-2 py-1 text-caption font-medium hover:bg-info/10"
+                                  >
+                                    POQ {sk.poqQty.toLocaleString()}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Container optimization hint */}
+              {activeNm.nm === "Mikado" && (
+                <div className="px-5 py-3 border-t border-surface-3 bg-info-bg/30">
+                  <p className="text-caption text-text-2">
+                    <span className="font-medium text-info">📦 Container:</span> Mikado tổng {activeNm.afterMoq.toLocaleString()} m² ≈ 2,3 container (28T). Round lên 3 containers = {Math.round(activeNm.afterMoq * 1.05).toLocaleString()} m².
+                  </p>
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={() => toast.success("Đã chọn 3 containers")} className="rounded-button bg-info/10 text-info px-3 py-1 text-caption font-medium hover:bg-info/20">
+                      Chọn 3 containers
+                    </button>
+                    <button onClick={() => toast.info("Giữ nguyên LTL")} className="rounded-button border border-surface-3 px-3 py-1 text-caption font-medium text-text-3 hover:text-text-1">
+                      Giữ {activeNm.afterMoq.toLocaleString()} (LTL)
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {expanded && allOk && (
+        <div className="border-t border-surface-3 px-5 py-3 flex items-center gap-2">
+          <CheckCircle className="h-4 w-4 text-success" />
+          <span className="text-table text-success font-medium">MOQ OK — tất cả đơn hàng đã ≥ MOQ NM.</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Main NmOrderTab ─── */
 
 const baseNms: NmRow[] = [
   { nm: "Mikado", tier: "Hard M+1 · ±5%", sent: 5500, confirmed: 5060,
@@ -150,6 +455,9 @@ export function NmOrderTab({ scale }: Props) {
           </div>
         ))}
       </div>
+
+      {/* ★ MOQ SECTION */}
+      <MoqSection scale={scale} />
 
       {/* NM table */}
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
