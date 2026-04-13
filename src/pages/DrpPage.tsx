@@ -5,6 +5,7 @@ import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronRight, ChevronDown, AlertTriangle, ArrowRight, Play, Settings, ChevronLeft } from "lucide-react";
+import { LogicLink } from "@/components/LogicLink";
 import { useNavigate } from "react-router-dom";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { Switch } from "@/components/ui/switch";
