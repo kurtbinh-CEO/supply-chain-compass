@@ -395,10 +395,13 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* View toggle */}
-      {!drillCn && (
+      {/* View toggle + Pivot toggle */}
+      {!drillCn && !drillSku && (
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-screen-title text-text-1">Demand tổng</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="font-display text-screen-title text-text-1">Demand tổng</h2>
+            <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setDrillCn(null); setDrillSku(null); }} />
+          </div>
           <div className="inline-flex rounded-button border border-surface-3 overflow-hidden">
             {([["12m","12 tháng"],["3m","3 tháng"],["week","Tuần"]] as [View,string][]).map(([k,l]) => (
               <button key={k} onClick={() => setView(k)}
@@ -410,7 +413,98 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
         </div>
       )}
 
-      {drillCn ? renderDrill() : (
+      {drillCn ? renderDrill() : drillSku && drillSkuData ? (
+        /* SKU-first drill: per CN for selected SKU */
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-table">
+            <button onClick={() => setDrillSku(null)} className="text-primary hover:underline">Per SKU</button>
+            <ChevronRight className="h-3.5 w-3.5 text-text-3" />
+            <span className="text-text-1 font-medium">{drillSkuData.item} {drillSkuData.variant} ({drillSkuData.totalDemand.toLocaleString()} m²)</span>
+          </div>
+          <div className="rounded-card border border-surface-3 bg-surface-2">
+            <table className="w-full text-table-sm">
+              <thead>
+                <tr className="border-b border-surface-3">
+                  {["CN", "FC (m²)", "B2B (m²)", "PO (m²)", "Total (m²)", "vs LM", "Source", "MAPE"].map(h => (
+                    <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {drillSkuData.cnDetails.map((c, i) => (
+                  <tr key={c.cn} className={cn("border-b border-surface-3/50", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
+                    <td className="px-3 py-2.5 font-medium text-text-1">{c.cn}</td>
+                    <td className="px-3 py-2.5 text-center tabular-nums text-text-1">{c.fc.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-center tabular-nums text-text-1">{c.b2b.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-center tabular-nums text-text-2">{c.po.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-center tabular-nums font-bold text-primary">{c.total.toLocaleString()}</td>
+                    <td className={cn("px-3 py-2.5 text-center tabular-nums font-medium", c.vsLm > 0 ? "text-success" : c.vsLm < 0 ? "text-danger" : "text-text-3")}>
+                      {c.vsLm > 0 ? "+" : ""}{c.vsLm}%
+                    </td>
+                    <td className="px-3 py-2.5 text-center text-text-3 text-table-sm">{c.source}</td>
+                    <td className="px-3 py-2.5 text-center text-table-sm text-text-3">{c.mape}%</td>
+                  </tr>
+                ))}
+                <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
+                  <td className="px-3 py-2.5 text-text-1">TOTAL</td>
+                  <td className="px-3 py-2.5 text-center tabular-nums">{drillSkuData.totalFc.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-center tabular-nums">{drillSkuData.totalB2b.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-center tabular-nums">{drillSkuData.totalPo.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-center tabular-nums text-primary">{drillSkuData.totalDemand.toLocaleString()}</td>
+                  <td colSpan={3} />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : pivotMode === "sku" ? (
+        /* SKU-first Lớp 1 */
+        <>
+          <div className="rounded-card border border-surface-3 bg-surface-2">
+            <table className="w-full text-table-sm">
+              <thead>
+                <tr className="border-b border-surface-3">
+                  {["Item", "Variant", "FC (m²)", "B2B (m²)", "PO (m²)", "Total (m²)", "Worst CN", "# CN"].map(h => (
+                    <th key={h} className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {skuAggregated.map((sk, i) => {
+                  const worst = sk.cnDetails.length > 0 ? sk.cnDetails.reduce((a, b) => a.total < b.total ? a : b) : null;
+                  return (
+                    <tr key={`${sk.item}-${sk.variant}`}
+                      className={cn("border-b border-surface-3/50 hover:bg-primary/5 cursor-pointer", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
+                      onClick={() => setDrillSku(`${sk.item}-${sk.variant}`)}
+                    >
+                      <td className="px-3 py-3 font-medium text-text-1 font-mono">{sk.item}</td>
+                      <td className="px-3 py-3 text-text-2">{sk.variant}</td>
+                      <td className="px-3 py-3 text-center tabular-nums text-text-1">{sk.totalFc.toLocaleString()}</td>
+                      <td className="px-3 py-3 text-center tabular-nums text-text-1">{sk.totalB2b.toLocaleString()}</td>
+                      <td className="px-3 py-3 text-center tabular-nums text-text-2">{sk.totalPo.toLocaleString()}</td>
+                      <td className="px-3 py-3 text-center tabular-nums font-bold text-primary">{sk.totalDemand.toLocaleString()}</td>
+                      <td className="px-3 py-3 text-table-sm">
+                        {worst && <span className="text-text-2">{worst.cn} {worst.total.toLocaleString()}</span>}
+                      </td>
+                      <td className="px-3 py-3">
+                        <CnGapBadge count={sk.cnDetails.length} />
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
+                  <td className="px-3 py-3 text-text-1" colSpan={2}>TOTAL</td>
+                  <td className="px-3 py-3 text-center tabular-nums">{skuAggregated.reduce((a, s) => a + s.totalFc, 0).toLocaleString()}</td>
+                  <td className="px-3 py-3 text-center tabular-nums">{skuAggregated.reduce((a, s) => a + s.totalB2b, 0).toLocaleString()}</td>
+                  <td className="px-3 py-3 text-center tabular-nums">{skuAggregated.reduce((a, s) => a + s.totalPo, 0).toLocaleString()}</td>
+                  <td className="px-3 py-3 text-center tabular-nums text-primary">{skuAggregated.reduce((a, s) => a + s.totalDemand, 0).toLocaleString()}</td>
+                  <td colSpan={2} />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (
         <>
           {/* CN-level table (all views) */}
           <div className="rounded-card border border-surface-3 bg-surface-2">
