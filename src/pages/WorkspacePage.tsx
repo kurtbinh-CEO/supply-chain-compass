@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Play, ChevronDown, X } from "lucide-react";
+import { VoiceInput } from "@/components/VoiceInput";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
 
@@ -52,6 +53,8 @@ export default function WorkspacePage() {
   const [items, setItems] = useState(initialItems);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [showAll, setShowAll] = useState(false);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const filtered = filter === "all" ? items : items.filter((i) => i.type === filter);
   const visible = showAll ? filtered : filtered.slice(0, 5);
@@ -70,8 +73,14 @@ export default function WorkspacePage() {
   };
 
   const handleReject = (item: ActionItem) => {
-    toast.error(`Đã từ chối: ${item.description.slice(0, 40)}…`);
-    removeItem(item.id);
+    if (rejectingId === item.id && rejectReason.trim()) {
+      toast.error(`Đã từ chối: ${item.description.slice(0, 40)}… — "${rejectReason}"`);
+      removeItem(item.id);
+      setRejectingId(null);
+      setRejectReason("");
+    } else {
+      setRejectingId(item.id);
+    }
   };
 
   const handleAction = (item: ActionItem) => {
@@ -142,6 +151,15 @@ export default function WorkspacePage() {
                     <>
                       <button onClick={() => handleApprove(item)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">Duyệt</button>
                       <button onClick={() => handleReject(item)} className="rounded-button border border-surface-3 text-text-2 px-2.5 py-1 text-caption font-medium hover:text-danger hover:border-danger">Từ chối</button>
+                      {rejectingId === item.id && (
+                        <div className="flex items-center gap-1 ml-1">
+                          <input value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleReject(item); }}
+                            placeholder="Lý do..." autoFocus
+                            className="w-28 h-6 rounded border border-surface-3 bg-surface-0 px-2 text-caption text-text-1 focus:outline-none focus:ring-1 focus:ring-primary" />
+                          <VoiceInput onTranscript={(t) => setRejectReason((p) => p + t)} />
+                        </div>
+                      )}
                     </>
                   )}
                   {item.type === "exception" && (

@@ -5,7 +5,9 @@ import { useRbac, AppUser } from "@/components/RbacContext";
 import { useWorkspace } from "@/components/WorkspaceContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronDown, Clock, Check, X as XIcon, AlertTriangle, Info, Paperclip, AtSign, MessageSquare } from "lucide-react";
+import { ChevronDown, Clock, Check, X as XIcon, AlertTriangle, Info, Paperclip, AtSign, MessageSquare, Volume2 } from "lucide-react";
+import { VoiceInput } from "@/components/VoiceInput";
+import { VoiceMessage, AudioPlayerInline } from "@/components/VoiceMessage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { LogicLink } from "@/components/LogicLink";
@@ -522,12 +524,15 @@ export default function CnPortalPage() {
                         </td>
                         <td className="px-3 py-2.5">
                           {isEditable ? (
-                            <input type="text" value={row.reason} onChange={(e) => updateRow(idx, "reason", e.target.value.slice(0, 100))}
-                              placeholder={Math.abs(pct) > 5 ? "Bắt buộc..." : "—"} maxLength={100}
-                              className={cn("w-40 h-7 rounded border bg-surface-0 px-2 text-table text-text-1 focus:outline-none focus:ring-2 focus:ring-primary",
-                                needReason ? "border-danger" : "border-surface-3"
-                              )}
-                            />
+                            <div className="flex items-center gap-1">
+                              <input type="text" value={row.reason} onChange={(e) => updateRow(idx, "reason", e.target.value.slice(0, 100))}
+                                placeholder={Math.abs(pct) > 5 ? "Bắt buộc..." : "—"} maxLength={100}
+                                className={cn("w-36 h-7 rounded border bg-surface-0 px-2 text-table text-text-1 focus:outline-none focus:ring-2 focus:ring-primary",
+                                  needReason ? "border-danger" : "border-surface-3"
+                                )}
+                              />
+                              <VoiceInput onTranscript={(t) => updateRow(idx, "reason", (row.reason ? row.reason + " " : "") + t)} />
+                            </div>
                           ) : (
                             <span className="text-table text-text-2 truncate max-w-[160px] block">{row.reason || "—"}</span>
                           )}
@@ -617,10 +622,13 @@ export default function CnPortalPage() {
                     </div>
                   )}
                   {isEditable && (
-                    <input type="text" value={row.reason} onChange={(e) => updateRow(idx, "reason", e.target.value.slice(0, 100))}
-                      placeholder={Math.abs(pct) > 5 ? "Lý do (bắt buộc)..." : "Lý do..."} maxLength={100}
-                      className="w-full h-9 rounded-lg border border-surface-3 bg-surface-0 px-3 text-table-sm text-text-1 placeholder:text-text-3"
-                    />
+                    <div className="flex items-center gap-2">
+                      <input type="text" value={row.reason} onChange={(e) => updateRow(idx, "reason", e.target.value.slice(0, 100))}
+                        placeholder={Math.abs(pct) > 5 ? "Lý do (bắt buộc)..." : "Lý do..."} maxLength={100}
+                        className="flex-1 h-9 rounded-lg border border-surface-3 bg-surface-0 px-3 text-table-sm text-text-1 placeholder:text-text-3"
+                      />
+                      <VoiceInput size="md" onTranscript={(t) => updateRow(idx, "reason", (row.reason ? row.reason + " " : "") + t)} />
+                    </div>
                   )}
                   {invRow && (
                     <div className={cn("text-[11px] px-2 py-1 rounded bg-surface-1 flex items-center gap-2",
@@ -816,11 +824,20 @@ export default function CnPortalPage() {
                       ))}
                   </div>
                 )}
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                   <button onClick={handleAttach}
                     className="h-9 w-9 rounded-lg border border-surface-3 bg-surface-0 flex items-center justify-center text-text-3 hover:text-text-1 hover:bg-surface-1 transition-colors shrink-0">
                     <Paperclip className="h-4 w-4" />
                   </button>
+                  <VoiceMessage onRecorded={(audioUrl, transcript) => {
+                    const msg: Message = {
+                      id: `m${Date.now()}`, from: user.name, role: user.role,
+                      time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+                      text: `🎙 ${transcript}`,
+                      sku: threadFilter !== "all" && threadFilter !== "general" ? threadFilter : undefined,
+                    };
+                    setMessages((prev) => ({ ...prev, [activeCn]: [...(prev[activeCn] || []), msg] }));
+                  }} />
                   <div className="relative flex-1">
                     <input ref={inputRef}
                       value={newMsg}
@@ -834,6 +851,7 @@ export default function CnPortalPage() {
                       <AtSign className="h-3.5 w-3.5" />
                     </button>
                   </div>
+                  <VoiceInput size="md" onTranscript={(t) => setNewMsg((prev) => prev + t)} />
                   <Button onClick={() => sendMessage()} className="bg-gradient-primary text-primary-foreground px-4 shrink-0">
                     Gửi
                   </Button>
