@@ -480,7 +480,8 @@ export function InventorySSTab({ scale: s }: Props) {
             </div>
           </div>
         </div>
-      )}
+      );
+      })()}
 
       {/* ═══ SECTION C: SS Management ═══ */}
       <div className="rounded-card border border-surface-3 bg-surface-2">
