@@ -554,89 +554,291 @@ FMCG:     seasonal_method = 'rolling'
   },
 ];
 
-/* ═══ TAB 4: Safety Stock ═══ */
-const tab4Nodes: LogicNodeData[] = [
-  {
-    label: "Safety Stock là gì?",
-    accent: "blue",
-    content: (
+/* ═══ SS Interactive Calculator ═══ */
+function SSCalculator() {
+  const [z, setZ] = useState(1.65);
+  const sigma = 28.5;
+  const lt = 14;
+  const sqrtLt = Math.sqrt(lt);
+  const ss = z * sigma * sqrtLt;
+  const unitCost = 185000;
+  const wc = (ss * unitCost) / 1e6;
+
+  const scenarios = [
+    { z: 1.28, label: "90%", risk: "10%" },
+    { z: 1.65, label: "95%", risk: "5%" },
+    { z: 2.33, label: "99%", risk: "1%" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-caption font-medium text-text-2">z = {z.toFixed(2)}</span>
+          <span className="text-caption text-text-3">Service level: {z <= 1.28 ? "90%" : z <= 1.65 ? "95%" : z <= 2.0 ? "97%" : "99%"}</span>
+        </div>
+        <Slider
+          min={1.0}
+          max={2.5}
+          step={0.01}
+          value={[z]}
+          onValueChange={([v]) => setZ(v)}
+        />
+      </div>
+      <div className="bg-surface-1 border border-surface-3 rounded-lg p-3">
+        <p className="text-caption font-mono text-text-1">
+          SS = {z.toFixed(2)} × 28,5 × √14 = <strong>{Math.round(ss)} m²</strong>
+        </p>
+        <p className="text-caption text-text-2 mt-1">
+          WC = {Math.round(ss)} × 185.000₫ = <strong>{wc.toFixed(0)}M₫</strong>
+        </p>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {scenarios.map((s) => {
+          const ssSc = s.z * sigma * sqrtLt;
+          const wcSc = (ssSc * unitCost) / 1e6;
+          const baseline = 1.65 * sigma * sqrtLt * unitCost / 1e6;
+          const diff = wcSc - baseline;
+          return (
+            <div key={s.z} className={`rounded-lg border p-2.5 text-center ${s.z === 1.65 ? "border-primary bg-primary/5" : "border-surface-3"}`}>
+              <p className="text-[10px] font-semibold text-text-1">z={s.z} ({s.label})</p>
+              <p className="text-caption font-mono font-bold text-text-1 mt-1">{Math.round(ssSc)} m²</p>
+              <p className="text-[10px] text-text-2">WC: {wcSc.toFixed(0)}M₫</p>
+              <p className="text-[10px] text-text-3">Stockout: {s.risk}</p>
+              <p className={`text-[10px] font-medium mt-1 ${diff < 0 ? "text-success" : diff > 0 ? "text-danger" : "text-text-3"}`}>
+                {s.z === 1.65 ? "Baseline" : `${diff > 0 ? "+" : ""}${diff.toFixed(0)}M₫`}
+              </p>
+            </div>
+          );
+        })}
+      </div>
       <Note>
-        Safety Stock = hàng dự phòng để <strong>không bao giờ hết hàng</strong> khi forecast sai hoặc NM giao trễ.
-        <br /><br />
-        Giống "quỹ dự phòng": không dùng hàng ngày, nhưng khi có sự cố → cứu.
-        <br />
-        Càng nhiều SS → càng an toàn → nhưng tốn vốn (tiền nằm trong kho).
+        SC Manager cân đối: chi phí vốn vs risk hết hàng.
+        <br />95% (z=1.65) là lựa chọn phổ biến cho sản xuất/phân phối.
+        <br />99% chỉ dùng cho items cực kỳ quan trọng (VD: thuốc, phụ tùng máy).
       </Note>
-    ),
-  },
+    </div>
+  );
+}
+
+/* ═══ SS z Slider for Node 1 ═══ */
+function ZSliderDemo() {
+  const [z, setZ] = useState(1.65);
+  const sigma = 28.5;
+  const sqrtLt = Math.sqrt(14);
+  const ss = z * sigma * sqrtLt;
+  return (
+    <div className="mt-2 space-y-2">
+      <div className="flex items-center justify-between text-caption">
+        <span className="text-text-2">Kéo z:</span>
+        <span className="font-mono font-semibold text-text-1">z = {z.toFixed(2)} → SS = {Math.round(ss)} m²</span>
+      </div>
+      <Slider min={1.0} max={2.5} step={0.01} value={[z]} onValueChange={([v]) => setZ(v)} />
+    </div>
+  );
+}
+
+/* ═══ TAB 4: Safety Stock ═══ */
+const SSAlertIntro = () => (
+  <Alert className="mb-4 border-info/30 bg-info/5">
+    <Info className="h-4 w-4 text-info" />
+    <AlertDescription className="text-caption text-text-1">
+      <strong>Safety Stock = dự phòng cho SAI SỐ FORECAST</strong>, KHÔNG PHẢI dự phòng cho demand cao.
+      <br />Nếu forecast chính xác 100% → SS = 0. FC tốt hơn → SS thấp hơn → tiết kiệm vốn.
+    </AlertDescription>
+  </Alert>
+);
+
+const tab4Nodes: LogicNodeData[] = [
   {
     label: "Công thức SS",
     formulaHeader: "SS = z × σ_fc_error × √LT",
-    accent: "green",
+    accent: "blue",
     content: (
       <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {/* Card 1: z */}
+          <div className="rounded-lg border-2 border-info/40 bg-info/5 p-3">
+            <p className="text-table font-bold text-info mb-1">z = Mức bảo vệ</p>
+            <p className="text-caption text-text-2">Bạn muốn an toàn bao nhiêu?</p>
+            <div className="mt-2 space-y-1 text-[10px] font-mono text-text-1">
+              <p>z = 1.28 → 90% (10% risk)</p>
+              <p className="font-bold">z = 1.65 → 95% (5% risk) ← UNIS</p>
+              <p>z = 2.33 → 99% (1% risk, tốn vốn)</p>
+            </div>
+            <p className="text-[10px] text-text-3 mt-2 italic">VD: z=1.65 → cứ 20 tuần, chấp nhận 1 tuần có thể thiếu hàng.</p>
+            <ZSliderDemo />
+          </div>
+          {/* Card 2: σ */}
+          <div className="rounded-lg border-2 border-success/40 bg-success/5 p-3">
+            <p className="text-table font-bold text-success mb-1">σ_fc_error = FC sai bao nhiêu?</p>
+            <p className="text-caption text-text-2">σ = standard deviation sai số forecast.</p>
+            <p className="text-[10px] text-text-1 mt-2">Tính từ 12 tuần gần nhất: |actual − forecast| mỗi tuần → tính σ.</p>
+            <p className="text-[10px] font-mono font-semibold text-text-1 mt-2">UNIS GA-300 A4: σ = 28,5 m²/tuần</p>
+            <p className="text-[10px] text-text-3 mt-1 italic">Nghĩa là: forecast thường sai khoảng ±28,5 m²/tuần.</p>
+            <div className="mt-2 bg-success/10 rounded p-1.5">
+              <p className="text-[10px] text-success font-medium">★ FC tốt hơn → σ giảm → SS giảm → tiết kiệm vốn. Đây là ROI lớn nhất.</p>
+            </div>
+          </div>
+          {/* Card 3: √LT */}
+          <div className="rounded-lg border-2 border-warning/40 bg-warning/5 p-3">
+            <p className="text-table font-bold text-warning mb-1">√LT = Chờ hàng bao lâu?</p>
+            <p className="text-caption text-text-2">LT = Lead Time = thời gian từ đặt NM đến nhận.</p>
+            <div className="text-[10px] font-mono text-text-1 mt-2 space-y-0.5">
+              <p>Mikado: 14 ngày. √14 = 3,74</p>
+              <p>Đồng Tâm: 7 ngày. √7 = 2,65</p>
+            </div>
+            <p className="text-[10px] text-text-3 mt-2 italic">√LT vì: chờ càng lâu → SS càng nhiều (nhưng không tuyến tính).</p>
+            <p className="text-[10px] text-warning font-medium mt-1">Mikado LT dài hơn → SS cao hơn 41%.</p>
+          </div>
+        </div>
         <CodeBlock>{`SS = z × σ_fc_error × √LT
-
-z          = hệ số phục vụ (service level)
-             90% → z = 1.28
-             95% → z = 1.65 (mặc định)
-             99% → z = 2.33
-σ_fc_error = độ lệch chuẩn sai số forecast
-             Nếu forecast càng sai → σ càng lớn → SS càng cao
-√LT        = căn bậc 2 của Lead Time (ngày)
-             LT càng dài → SS càng cao (vì chờ lâu hơn)`}</CodeBlock>
-        <CodeBlock>{`VD: GA-300 A4 tại CN-BD:
-  z = 1.65 (service 95%)
-  σ = 28.5 (sai số forecast)
-  LT = 14 ngày
-
-  SS = 1.65 × 28.5 × √14
-     = 1.65 × 28.5 × 3.74
-     = 176 m²/ngày × ... → monthly SS = 1.035 m²`}</CodeBlock>
+   = 1,65 × 28,5 × √14
+   = 1,65 × 28,5 × 3,74
+   = 176 m² per SKU per CN
+     
+Tổng SS cho GA-300 A4 toàn network:
+  CN-BD: 176 × 5,1 (demand weight) = 900
+  CN-ĐN: 176 × 4,5 = 800
+  CN-HN: 176 × 4,0 = 700
+  CN-CT: 176 × 2,8 = 500
+  Total = 2.900 m²`}</CodeBlock>
       </div>
     ),
   },
   {
-    label: "SS ↔ Working Capital",
-    formulaHeader: "Tăng SS = tốn vốn, giảm SS = rủi ro",
-    accent: "amber",
-    content: (
-      <div className="space-y-3">
-        <CodeBlock>{`WC impact = SS_qty × unit_cost
-
-VD: SS tăng 135m² × 185.000đ/m² = +25M₫/tháng
-    Tiền nằm trong kho, không sinh lời.
-
-Trade-off:
-  SS cao  → stockout 0% → WC tăng 20% → CFO không vui
-  SS thấp → stockout 5% → WC giảm 15% → khách hàng không vui
-
-Mục tiêu: tìm điểm CÂN BẰNG.
-  → Simulation: thử z = 1.28 vs 1.65 vs 2.33
-  → Xem stockout risk vs WC impact → chọn z phù hợp.`}</CodeBlock>
-      </div>
-    ),
-  },
-  {
-    label: "Auto-adjust SS (Closed-loop)",
-    formulaHeader: "Hệ thống tự điều chỉnh SS",
+    label: "Tại sao σ_fc_error mà KHÔNG PHẢI σ_demand?",
+    formulaHeader: "QUAN TRỌNG — tiết kiệm 54% vốn",
     accent: "red",
     content: (
       <div className="space-y-3">
-        <CodeBlock>{`Trigger tăng SS:
-  Stockout > 2 lần/tháng → SS +15%
-  VD: CN-BD GA-300 A4 stockout 2x → SS 900 → 1.035
+        <Note>
+          Nhiều hệ thống dùng σ_demand (biến động demand) → SS quá cao → <strong>lãng phí vốn</strong>.
+          <br />SCP Smartlog dùng <strong>σ_fc_error</strong> (sai số forecast) → SS chính xác hơn.
+        </Note>
+        <div className="bg-surface-1 border border-surface-3 rounded-lg p-3">
+          <p className="text-caption font-semibold text-text-1 mb-2">TẠI SAO?</p>
+          <Note>
+            Forecast ĐÃ "hấp thụ" phần dự đoán được của demand.
+            <br />SS chỉ cần buffer phần forecast <strong>SAI</strong> — phần không dự đoán được.
+          </Note>
+        </div>
+        <CodeBlock>{`VÍ DỤ THỰC TẾ:
+┌─────────────────────────────────────────────────────┐
+│ Tháng 5: Demand thực tế = 7.650 (biến động LỚN)    │
+│ Forecast = 7.500 (dự đoán GẦN ĐÚNG)                │
+│ Sai số = 150 (chỉ 2%)                              │
+│ → σ_fc_error THẤP → SS cần ÍT                      │
+│                                                     │
+│ Tháng 6: Demand thực tế = 5.000 (biến động NHỎ)    │
+│ Forecast = 6.500 (dự đoán SAI)                      │
+│ Sai số = 1.500 (30%)                                │
+│ → σ_fc_error CAO → SS cần NHIỀU                     │
+└─────────────────────────────────────────────────────┘
 
-Trigger giảm SS:
-  HSTK > 14 ngày liên tục → SS −10%
-  VD: CN-ĐN GA-600 A4 HSTK 18d → SS 1.000 → 900
+KẾT LUẬN:
+σ_demand    = biến động demand   = 35 m²/ngày
+σ_fc_error  = sai số forecast    = 16 m²/ngày (FC absorb 54%)
 
-Trigger từ FC accuracy:
-  MAPE giảm 25% → 15% → σ giảm → SS tự giảm
-  (Forecast tốt hơn → cần ít dự phòng hơn)
+SS dùng σ_demand:   1,65 × 35 × 3,74 = 216 m² (quá cao)
+SS dùng σ_fc_error: 1,65 × 16 × 3,74 = 99 m²  (chính xác)
+→ Tiết kiệm 54% working capital!
 
-Tất cả thay đổi → pending duyệt (Planner xác nhận).
-Không bao giờ tự áp dụng mà không có người kiểm tra.`}</CodeBlock>
+FC accuracy cải thiện thêm (MAPE 18%→10%):
+σ_fc_error giảm từ 16 → 9 → SS giảm thêm 44%.
+→ ĐẦU TƯ FC ACCURACY = CÁCH TIẾT KIỆM VỐN TỐT NHẤT.`}</CodeBlock>
+        {/* 2 bars comparison */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="bg-danger/70 rounded h-6 flex items-center px-2" style={{ width: "100%" }}>
+              <span className="text-[10px] text-white font-medium whitespace-nowrap">σ_demand: SS = 216 m² | WC = 40M₫</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="bg-success/70 rounded h-6 flex items-center px-2" style={{ width: "46%" }}>
+              <span className="text-[10px] text-white font-medium whitespace-nowrap">σ_fc_error: SS = 99 m² | WC = 18M₫</span>
+            </div>
+            <span className="text-[10px] font-semibold text-success whitespace-nowrap">−54%</span>
+          </div>
+          <p className="text-[10px] text-text-3 text-center font-medium">Tiết kiệm 54% vốn nhờ dùng đúng σ</p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    label: "SS thay đổi thì tốn/tiết kiệm bao nhiêu?",
+    formulaHeader: "Interactive calculator",
+    accent: "amber",
+    content: <SSCalculator />,
+  },
+  {
+    label: "LCNB giúp giảm SS network",
+    formulaHeader: "SS giảm 25% nhờ risk pooling",
+    accent: "green",
+    content: (
+      <div className="space-y-3">
+        <Note>
+          Khi bật LCNB (chuyển hàng CN→CN), SS giảm <strong>25%</strong> nhờ CN hỗ trợ nhau.
+        </Note>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="border border-danger/30 bg-danger/5 rounded-lg p-2.5 text-center">
+            <p className="text-[10px] font-semibold text-danger">Không có LCNB</p>
+            <p className="text-caption font-mono font-bold text-text-1 mt-1">SS = 2.900 m²</p>
+            <p className="text-[10px] text-text-3">Mỗi CN tự đủ SS</p>
+          </div>
+          <div className="border border-success/30 bg-success/5 rounded-lg p-2.5 text-center">
+            <p className="text-[10px] font-semibold text-success">Có LCNB ✓</p>
+            <p className="text-caption font-mono font-bold text-text-1 mt-1">SS = 2.175 m²</p>
+            <p className="text-[10px] text-text-3">CN thừa → CN thiếu</p>
+          </div>
+        </div>
+        <div className="bg-success/10 border border-success/30 rounded-lg p-2.5 text-center">
+          <p className="text-caption font-semibold text-success">Tiết kiệm: 725 m² = 134M₫/tháng</p>
+        </div>
+        <CodeBlock>{`Công thức: SS_lcnb = σ_fc_error × 0.75 (giảm 25% nhờ network pooling)
+
+Risk pooling: 4 CN biến động không cùng lúc
+→ gộp lại thì σ tổng nhỏ hơn Σ(σ riêng)`}</CodeBlock>
+      </div>
+    ),
+  },
+  {
+    label: "Closed-loop: SS tự động điều chỉnh",
+    formulaHeader: "Hệ thống tự học mỗi tuần",
+    accent: "blue",
+    content: (
+      <div className="space-y-3">
+        {/* Flow visual */}
+        <div className="space-y-0">
+          {[
+            { step: "①", text: "Mỗi tuần: tính lại σ_fc_error từ 12 tuần gần nhất" },
+            { step: "②", text: "FC accuracy tốt hơn → σ giảm → SS giảm tự động\nFC accuracy xấu hơn → σ tăng → SS tăng tự động" },
+            { step: "③", text: "Stockout > 2 lần/tháng → SS tự tăng +15%\nExcess > 14 ngày → SS tự giảm −10%" },
+            { step: "④", text: "Thay đổi gửi Workspace → Planner duyệt → áp dụng" },
+            { step: "⑤", text: "DRP đêm nay dùng SS mới → kết quả tốt hơn" },
+          ].map((item, i, arr) => (
+            <div key={i}>
+              <div className="flex items-start gap-3 py-2">
+                <span className="text-lg leading-none">{item.step}</span>
+                <p className="text-caption text-text-1 whitespace-pre-line">{item.text}</p>
+              </div>
+              {i < arr.length - 1 && (
+                <div className="ml-3 border-l-2 border-dashed border-surface-3 h-3" />
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="bg-surface-1 border border-surface-3 rounded-lg p-3 text-center">
+          <p className="text-caption font-semibold text-text-1">Hệ thống TỰ HỌC. Planner chỉ DUYỆT, không phải tính tay.</p>
+        </div>
+        <div className="bg-success/10 border border-success/30 rounded-lg p-3">
+          <p className="text-caption font-semibold text-success mb-1">ROI Example:</p>
+          <CodeBlock>{`MAPE cải thiện 25% → 15%:
+  → σ_fc_error giảm 42%
+  → SS giảm 42%
+  → WC tiết kiệm: 42% × 1.742M₫ = 732M₫/tháng
+  → "Đầu tư vào FC accuracy = cách tiết kiệm vốn tốt nhất."`}</CodeBlock>
+        </div>
       </div>
     ),
   },
