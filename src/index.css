@@ -34,4 +34,19 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+  .animate-slide-in-right {
+    animation: slideInRight 0.25s ease-out both;
+  }
+  .animate-slide-in-left {
+    animation: slideInLeft 0.25s ease-out both;
+  }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
