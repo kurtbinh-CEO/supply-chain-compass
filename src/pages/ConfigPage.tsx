@@ -27,7 +27,15 @@ interface FeatureToggle {
   mdlz: boolean;
 }
 
-/* ── Demo data ── */
+interface RbacRow {
+  screen: string;
+  cn_manager: string;
+  sc_manager: string;
+  sales: string;
+  buyer: string;
+  viewer: string;
+}
+
 const planningKeys: ConfigKey[] = [
   { key: "sop.lock_day", value: "7", desc: "Ngày lock consensus trong tháng", type: "number" },
   { key: "sop.compare_versions", value: "4", desc: "Số versions so sánh (v0-v3)", type: "number" },
