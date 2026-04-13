@@ -548,13 +548,6 @@ export default function DrpPage() {
               </table>
             </div>
           </div>
-                      </>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
 
           {/* All SKU (collapsed) */}
           {activeCn.allSkus.length > 0 && (
