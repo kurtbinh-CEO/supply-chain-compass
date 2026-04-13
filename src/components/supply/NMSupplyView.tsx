@@ -4,6 +4,7 @@ import { getNMSummaries, NMSummary, NMSkuRow } from "./supplyData";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronRight, ChevronDown, Upload, Download, Pencil, Bell, FileSpreadsheet } from "lucide-react";
+import { ClickableNumber } from "@/components/ClickableNumber";
 
 /* ─── Upload Zone ─── */
 function UploadZone() {
@@ -106,7 +107,15 @@ function SkuTable({ nm, skus, share, onUpdate }: { nm: string; skus: NMSkuRow[];
                       </button>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-table tabular-nums text-text-2">{sku.unisDung.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-table tabular-nums text-text-2">
+                    <ClickableNumber
+                      value={sku.unisDung}
+                      label={`UNIS dùng ${sku.item} ${sku.variant}`}
+                      color="text-text-2"
+                      formula={`On-hand ${sku.tonKho.toLocaleString()} × share ${Math.round(share * 100)}% = ${Math.round(sku.tonKho * share).toLocaleString()} − reserved = ${sku.unisDung.toLocaleString()}`}
+                      links={[{ label: "Sửa share% → /master-data", to: "/master-data" }]}
+                    />
+                  </td>
                   <td className="px-3 py-2.5 text-table text-text-2">
                     {sku.dangVe > 0 ? (
                       <span className={cn(sku.dangVeEta.includes("trễ") && "text-danger font-medium")}>
@@ -235,7 +244,20 @@ export function NMSupplyView() {
                       {nm.tongTon !== null ? nm.tongTon.toLocaleString() : <span className="text-danger font-medium">Chưa có</span>}
                     </td>
                     <td className="px-4 py-3 text-table tabular-nums text-text-2">
-                      {nm.unisDung > 0 ? nm.unisDung.toLocaleString() : "—"}
+                      {nm.unisDung > 0 ? (
+                        <ClickableNumber
+                          value={nm.unisDung}
+                          label={`UNIS dùng ${nm.nm} tổng`}
+                          color="text-text-2"
+                          breakdown={nm.skus.map(s => ({
+                            label: `${s.item} ${s.variant}`,
+                            value: s.unisDung,
+                            detail: `${s.tonKho.toLocaleString()} × ${Math.round(nm.share * 100)}%`,
+                          }))}
+                          note={`Share% UNIS: ${Math.round(nm.share * 100)}% (config /master-data)`}
+                          links={[{ label: "Sửa share% → /master-data", to: "/master-data" }]}
+                        />
+                      ) : "—"}
                     </td>
                     <td className="px-4 py-3 text-table text-text-2">
                       {nm.dangVe > 0 ? (

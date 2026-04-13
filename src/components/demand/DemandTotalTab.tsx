@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronRight, Info } from "lucide-react";
+import { ClickableNumber } from "@/components/ClickableNumber";
 import { toast } from "sonner";
 
 interface Props {
@@ -147,10 +148,29 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
                 {data12.map((v, mi) => {
                   const cnShare = c.total / totals.total;
                   const val = Math.round(v * cnShare);
+                  const isPast = mi < 4;
+                  const isCurrent = mi === 4;
+                  const fcPart = Math.round(val * 0.63);
+                  const b2bPart = Math.round(val * 0.29);
+                  const poPart = Math.round(val * 0.14);
+                  const overlap = val - fcPart - b2bPart - poPart;
                   return (
                     <td key={mi} className={cn("px-2 py-2.5 text-center tabular-nums",
-                      mi === 4 ? "font-bold text-primary bg-primary/5" : mi < 4 ? "text-text-2" : "text-text-3 italic"
-                    )}>{val.toLocaleString()}</td>
+                      isCurrent ? "font-bold text-primary bg-primary/5" : isPast ? "text-text-2" : "text-text-3 italic"
+                    )}>
+                      <ClickableNumber
+                        value={val}
+                        label={`${c.cn} ${months12[mi]}`}
+                        color={isCurrent ? "font-bold text-primary" : isPast ? "text-text-2" : "text-text-3 italic"}
+                        breakdown={[
+                          { label: "FC", value: fcPart },
+                          { label: "B2B", value: b2bPart },
+                          { label: "PO", value: poPart },
+                          ...(overlap !== 0 ? [{ label: "Overlap", value: overlap, color: "text-danger" as const }] : []),
+                        ]}
+                        note={isPast ? `Actual từ Bravo. Locked ${months12[mi]}.` : `S&OP forecast, confidence 70%`}
+                      />
+                    </td>
                   );
                 })}
                 <td className="px-2 py-2.5 text-center tabular-nums font-bold text-text-1 bg-surface-1/30">

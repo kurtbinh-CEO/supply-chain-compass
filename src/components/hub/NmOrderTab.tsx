@@ -2,6 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, ChevronLeft, CheckCircle, AlertTriangle, Package, Send } from "lucide-react";
+import { ClickableNumber } from "@/components/ClickableNumber";
 import { toast } from "sonner";
 import { getNmCode, getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 
@@ -180,7 +181,14 @@ function MoqSection({ scale, onMoqLocked }: { scale: number; onMoqLocked: () => 
                       <tr key={n.nm} className="border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer" onClick={() => setDrillNm(n.nm)}>
                         <td className="px-4 py-2.5 font-medium text-text-1">{n.nm}</td>
                         <td className="px-4 py-2.5 tabular-nums text-text-2">{n.netReqTotal.toLocaleString()}</td>
-                        <td className="px-4 py-2.5 tabular-nums font-medium text-text-1">{n.afterMoq.toLocaleString()}</td>
+                        <td className="px-4 py-2.5 tabular-nums font-medium text-text-1">
+                          <ClickableNumber
+                            value={n.afterMoq}
+                            label={`Sau round ${n.nm}`}
+                            color="text-text-1"
+                            formula={`Net req ${n.netReqTotal.toLocaleString()} → MOQ round → ${n.afterMoq.toLocaleString()}\nSurplus +${n.surplus.toLocaleString()}`}
+                          />
+                        </td>
                         <td className="px-4 py-2.5 tabular-nums text-warning font-medium">+{n.surplus.toLocaleString()}</td>
                         <td className="px-4 py-2.5">
                           <span className={cn("tabular-nums font-medium", n.pctIncrease > 20 ? "text-warning" : "text-text-2")}>+{n.pctIncrease}%</span>
@@ -559,12 +567,53 @@ export function NmOrderTab({ scale }: Props) {
     <div className="space-y-5 animate-fade-in">
       {/* KPI cards */}
       <div className="grid grid-cols-4 gap-3">
-        {kpis.map(k => (
-          <div key={k.label} className={cn("rounded-card border border-surface-3 p-4", k.bg)}>
-            <div className="text-caption text-text-3 uppercase mb-1">{k.label}</div>
-            <div className={cn("font-display text-kpi tabular-nums", k.text)}>{k.value}</div>
-          </div>
-        ))}
+        {/* S&OP demand */}
+        <div className={cn("rounded-card border border-surface-3 p-4 bg-info-bg")}>
+          <div className="text-caption text-text-3 uppercase mb-1">S&OP demand</div>
+          <ClickableNumber
+            value={`${sopDemand.toLocaleString()} m²`}
+            label="S&OP demand"
+            color="font-display text-kpi text-info"
+            note={`Từ /sop tab 2 Lock 07/05.`}
+            links={[{ label: "→ /sop", to: "/sop" }]}
+          />
+        </div>
+        {/* Đã gửi NM */}
+        <div className={cn("rounded-card border border-surface-3 p-4 bg-success-bg")}>
+          <div className="text-caption text-text-3 uppercase mb-1">Đã gửi NM</div>
+          <ClickableNumber
+            value={totalSent.toLocaleString()}
+            label="Đã gửi NM"
+            color="font-display text-kpi text-success"
+            breakdown={nms.map(n => ({ label: n.nm, value: n.sent, pct: `${Math.round(n.sent / totalSent * 100)}%` }))}
+            formula={`FC Min 3.893 + MOQ round + share% coverage = ${totalSent.toLocaleString()}`}
+          />
+        </div>
+        {/* NM xác nhận */}
+        <div className={cn("rounded-card border border-surface-3 p-4 bg-success-bg")}>
+          <div className="text-caption text-text-3 uppercase mb-1">NM xác nhận</div>
+          <ClickableNumber
+            value={totalConfirmed.toLocaleString()}
+            label="NM xác nhận"
+            color="font-display text-kpi text-success"
+            breakdown={nms.map(n => {
+              const pct = n.sent > 0 ? Math.round(n.confirmed / n.sent * 100) : 0;
+              const icon = pct >= 80 ? "✅" : "🔴";
+              return { label: n.nm, value: `${n.confirmed.toLocaleString()} (${pct}% ${icon})` };
+            })}
+          />
+        </div>
+        {/* Chưa confirm */}
+        <div className={cn("rounded-card border border-surface-3 p-4 bg-danger-bg")}>
+          <div className="text-caption text-text-3 uppercase mb-1">Chưa confirm</div>
+          <ClickableNumber
+            value={`${totalUnconfirmed.toLocaleString()} 🔴`}
+            label="Chưa confirm"
+            color="font-display text-kpi text-danger"
+            breakdown={nms.map(n => ({ label: `${n.nm} chưa`, value: n.sent - n.confirmed }))}
+            note="Toko + Phú Mỹ = 83% of gap. [Nhắc NM]"
+          />
+        </div>
       </div>
 
       {/* ★ MOQ SECTION */}

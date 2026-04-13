@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Play, ChevronDown, X } from "lucide-react";
+import { ClickableNumber } from "@/components/ClickableNumber";
 
 type ItemType = "approve" | "exception" | "notify";
 type Priority = "danger" | "warning" | "info";
@@ -93,13 +94,6 @@ export default function WorkspacePage() {
     { key: "notify", label: "Thông báo", count: notifyCount },
   ];
 
-  const kpis = [
-    { label: "Demand", value: "7.650 m²", to: "/demand" },
-    { label: "Exceptions", value: String(excCount), to: "#" },
-    { label: "HSTK", value: "8,5d", to: "/monitoring" },
-    { label: "FC Accuracy", value: "82%", to: "/monitoring" },
-  ];
-
   return (
     <AppLayout>
       {/* Header */}
@@ -117,7 +111,6 @@ export default function WorkspacePage() {
         <div className="rounded-card border border-surface-3 bg-surface-2">
           <div className="px-5 py-3.5 border-b border-surface-3 flex items-center justify-between">
             <h2 className="font-display text-body font-semibold text-text-1">Cần làm</h2>
-            {/* Filter tabs */}
             <div className="flex items-center gap-1">
               {filters.map((f) => (
                 <button
@@ -137,17 +130,12 @@ export default function WorkspacePage() {
           <div className="divide-y divide-surface-3/50">
             {visible.map((item) => (
               <div key={item.id} className="px-5 py-3 flex items-center gap-3 hover:bg-surface-1/30 transition-colors">
-                {/* Dot */}
                 <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", dotColor[item.priority])} />
-                {/* Type badge */}
                 <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium shrink-0", typeBadge[item.type].cls)}>
                   {typeBadge[item.type].label}
                 </span>
-                {/* Description */}
                 <span className="flex-1 text-table text-text-1 truncate">{item.description}</span>
-                {/* Time */}
                 <span className="text-caption text-text-3 shrink-0">{item.time}</span>
-                {/* Actions */}
                 <div className="flex items-center gap-1.5 shrink-0">
                   {item.type === "approve" && (
                     <>
@@ -185,7 +173,6 @@ export default function WorkspacePage() {
 
         {/* ─── SECTION 2: Bắt đầu ─── */}
         <div className="space-y-4">
-          {/* 2 CTA cards */}
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => handleStartWorkflow("daily")}
@@ -209,18 +196,81 @@ export default function WorkspacePage() {
             </button>
           </div>
 
-          {/* 4 KPI mini cards */}
+          {/* 4 KPI mini cards with ClickableNumber */}
           <div className="grid grid-cols-4 gap-3">
-            {kpis.map((k) => (
-              <button
-                key={k.label}
-                onClick={() => k.to !== "#" && navigate(k.to)}
-                className="rounded-card border border-surface-3 bg-surface-2 p-3 text-left hover:bg-surface-1/50 transition-colors"
-              >
-                <div className="text-caption text-text-3 uppercase mb-0.5">{k.label}</div>
-                <div className="font-display text-section-header tabular-nums text-text-1">{k.value}</div>
-              </button>
-            ))}
+            {/* Demand */}
+            <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
+              <div className="text-caption text-text-3 uppercase mb-0.5">Demand</div>
+              <ClickableNumber
+                value="7.650 m²"
+                label="Demand"
+                color="font-display text-section-header text-text-1"
+                breakdown={[
+                  { label: "FC Statistical", value: 4800, pct: "63%" },
+                  { label: "B2B Weighted", value: 2200, pct: "29%" },
+                  { label: "PO Confirmed", value: 1100, pct: "14%" },
+                  { label: "Overlap", value: -450, pct: "-6%", color: "text-danger" },
+                ]}
+                links={[{ label: "→ /demand tab 1", to: "/demand" }]}
+              />
+            </div>
+
+            {/* Exceptions */}
+            <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
+              <div className="text-caption text-text-3 uppercase mb-0.5">Exceptions</div>
+              <ClickableNumber
+                value={String(excCount)}
+                label="Exceptions"
+                color="font-display text-section-header text-text-1"
+                breakdown={[
+                  { label: "SHORTAGE CN-BD", value: "345m²" },
+                  { label: "PO_OVERDUE Toko", value: "8 ngày" },
+                  { label: "FC_DRIFT", value: "18,4%" },
+                ]}
+                links={[
+                  { label: "→ /drp", to: "/drp" },
+                  { label: "→ /orders", to: "/orders" },
+                  { label: "→ /monitoring", to: "/monitoring" },
+                ]}
+              />
+            </div>
+
+            {/* HSTK */}
+            <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
+              <div className="text-caption text-text-3 uppercase mb-0.5">HSTK</div>
+              <ClickableNumber
+                value="8,5d"
+                label="HSTK"
+                color="font-display text-section-header text-text-1"
+                breakdown={[
+                  { label: "CN-BD", value: "5,2d 🔴" },
+                  { label: "CN-ĐN", value: "14d" },
+                  { label: "CN-HN", value: "9d" },
+                  { label: "CN-CT", value: "11d" },
+                  { label: "Avg", value: "8,5d", color: "text-primary" },
+                ]}
+                formula={"HSTK = Available ÷ daily_demand"}
+                links={[{ label: "→ /monitoring tab 2", to: "/monitoring" }]}
+              />
+            </div>
+
+            {/* FC Accuracy */}
+            <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
+              <div className="text-caption text-text-3 uppercase mb-0.5">FC Accuracy</div>
+              <ClickableNumber
+                value="82%"
+                label="FC Accuracy"
+                color="font-display text-section-header text-text-1"
+                breakdown={[
+                  { label: "CN-BD MAPE", value: "12%" },
+                  { label: "CN-ĐN MAPE", value: "22%" },
+                  { label: "CN-HN MAPE", value: "31% 🔴" },
+                  { label: "CN-CT MAPE", value: "15%" },
+                  { label: "Avg accuracy", value: "82%", color: "text-primary" },
+                ]}
+                links={[{ label: "→ /monitoring tab 3", to: "/monitoring" }]}
+              />
+            </div>
           </div>
         </div>
       </div>
