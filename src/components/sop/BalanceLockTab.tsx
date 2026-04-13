@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { Lock, CheckCircle, ChevronRight, ChevronLeft, AlertTriangle, ArrowRight } from "lucide-react";
+import { Lock, CheckCircle, ChevronRight, ChevronLeft, AlertTriangle, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { SkuNmPanel } from "./SkuNmPanel";
 import { toast } from "sonner";
 import type { ConsensusRow } from "@/pages/SopPage";
 
@@ -99,6 +100,8 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
     setTimeout(() => navigate("/hub"), 1500);
   };
 
+  const [expandedSku, setExpandedSku] = useState<number | null>(null);
+
   // Drill down view
   if (drillCn !== null) {
     const row = balRows[drillCn];
@@ -109,7 +112,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
     return (
       <div className="space-y-4 animate-fade-in">
         <div className="flex items-center gap-2 text-table-sm">
-          <button onClick={() => setDrillCn(null)} className="text-primary font-medium hover:underline flex items-center gap-1">
+          <button onClick={() => { setDrillCn(null); setExpandedSku(null); }} className="text-primary font-medium hover:underline flex items-center gap-1">
             <ChevronLeft className="h-3.5 w-3.5" /> Cân đối
           </button>
           <span className="text-text-3">/</span>
@@ -121,41 +124,76 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
             <table className="w-full text-table-sm">
               <thead>
                 <tr className="border-b border-surface-3 bg-surface-1/50">
-                  {["Item", "Variant", "Demand", "Stock", "Pipeline", "SS", "Net req", "NM source", "NM ATP", "Match", ""].map(h => (
+                  {["Item", "Variant", "Demand", "Stock", "Pipeline", "Net req", "NM status", "Gap", ""].map(h => (
                     <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {row.skus.map((sk, si) => (
-                  <tr key={si} className={cn("border-b border-surface-3/50 hover:bg-primary/5", si % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
-                    <td className="px-4 py-2.5 font-medium text-text-1">{sk.item}</td>
-                    <td className="px-4 py-2.5 text-text-2">{sk.variant}</td>
-                    <td className="px-4 py-2.5 tabular-nums text-text-1 font-medium">{sk.demand.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 tabular-nums text-text-1">{sk.stock.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 tabular-nums text-text-2">
-                      {sk.pipeline > 0 ? `${sk.pipeline.toLocaleString()} (${sk.pipelineSource})` : "0"}
-                    </td>
-                    <td className="px-4 py-2.5 tabular-nums text-text-1">{sk.ss.toLocaleString()}</td>
-                    <td className={cn("px-4 py-2.5 tabular-nums font-medium", sk.netReq > 0 ? "text-danger" : "text-success")}>
-                      {sk.netReq.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-2.5 text-text-2">{sk.nmSource || "—"}</td>
-                    <td className="px-4 py-2.5 tabular-nums text-text-2">{sk.nmAtp > 0 ? sk.nmAtp.toLocaleString() : "—"}</td>
-                    <td className="px-4 py-2.5">
-                      <span className={cn("text-table-sm font-medium", sk.match.includes("SHORT") ? "text-danger" : "text-success")}>
-                        {sk.match}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {sk.netReq > 0 && (
-                        <button onClick={() => navigate("/hub")} className="text-primary text-table-sm font-medium hover:underline flex items-center gap-0.5">
-                          Commit <ChevronRight className="h-3.5 w-3.5" />
-                        </button>
+                {row.skus.map((sk, si) => {
+                  const skuGap = sk.netReq > 0 ? Math.max(0, sk.netReq - sk.nmAtp) : 0;
+                  const isExpanded = expandedSku === si;
+                  return (
+                    <>
+                      <tr key={si} className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors cursor-pointer",
+                        isExpanded ? "bg-primary/5" : si % 2 === 0 ? "bg-surface-0" : "bg-surface-2"
+                      )} onClick={() => setExpandedSku(isExpanded ? null : si)}>
+                        <td className="px-4 py-2.5 font-medium text-text-1">{sk.item}</td>
+                        <td className="px-4 py-2.5 text-text-2">{sk.variant}</td>
+                        <td className="px-4 py-2.5 tabular-nums text-text-1 font-medium">{sk.demand.toLocaleString()}</td>
+                        <td className="px-4 py-2.5 tabular-nums text-text-1">{sk.stock.toLocaleString()}</td>
+                        <td className="px-4 py-2.5 tabular-nums text-text-2">
+                          {sk.pipeline > 0 ? `${sk.pipeline.toLocaleString()} (${sk.pipelineSource})` : "0"}
+                        </td>
+                        <td className={cn("px-4 py-2.5 tabular-nums font-medium", sk.netReq > 0 ? "text-danger" : "text-success")}>
+                          {sk.netReq.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {sk.nmSource ? (
+                            <span className="text-table-sm">
+                              <span className="font-medium text-text-1">{sk.nmSource}</span>{" "}
+                              <span className="tabular-nums text-text-2">{sk.nmAtp.toLocaleString()}</span>{" "}
+                              <span className={cn("font-medium", sk.match.includes("SHORT") ? "text-danger" : "text-success")}>
+                                {sk.match.includes("SHORT") ? "⚠ stale" : "✅"}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-text-3">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          {skuGap > 0 ? (
+                            <span className="tabular-nums font-bold text-danger">−{skuGap.toLocaleString()} 🔴</span>
+                          ) : (
+                            <span className="tabular-nums font-bold text-success">0</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <button className="text-primary text-table-sm font-medium hover:underline flex items-center gap-0.5">
+                            Xem NM {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          </button>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr key={`panel-${si}`}>
+                          <td colSpan={9} className="p-0">
+                            <SkuNmPanel
+                              item={sk.item}
+                              variant={sk.variant}
+                              netReq={sk.netReq}
+                              primaryNm={sk.nmSource}
+                              primaryAtp={sk.nmAtp}
+                              scale={scale}
+                              onSourceConfirm={(sources) => {
+                                toast.success(`Sourcing ${sk.item} ${sk.variant} confirmed: ${sources.length} NM`);
+                              }}
+                            />
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                  </tr>
-                ))}
+                    </>
+                  );
+                })}
               </tbody>
             </table>
           </div>
