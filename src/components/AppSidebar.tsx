@@ -1,13 +1,7 @@
 import { NavLink } from "@/components/NavLink";
 import {
-  LayoutDashboard,
-  AlertTriangle,
-  Package,
-  TrendingUp,
-  Truck,
-  ClipboardCheck,
-  Settings,
-  ChevronLeft,
+  LayoutDashboard, AlertTriangle, Package, TrendingUp,
+  Truck, ClipboardCheck, Settings, ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/components/SidebarContext";
@@ -27,18 +21,16 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-border frosted-glass transition-all duration-200",
+        "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-surface-3 frosted-glass transition-all duration-200",
         collapsed ? "w-16" : "w-[260px]"
       )}
     >
-      <div className="flex h-14 items-center justify-between px-4 border-b border-border">
+      <div className="flex h-14 items-center justify-between px-4 border-b border-surface-3">
         {!collapsed && (
-          <span className="font-display text-section-header text-foreground tracking-tight">
-            Smartlog
-          </span>
+          <span className="font-display text-section-header text-text-1 tracking-tight">Smartlog</span>
         )}
-        <button onClick={toggle} className="rounded-button p-1.5 hover:bg-accent transition-colors">
-          <ChevronLeft className={cn("h-4 w-4 text-muted-foreground transition-transform", collapsed && "rotate-180")} />
+        <button onClick={toggle} className="rounded-button p-1.5 hover:bg-surface-3 transition-colors">
+          <ChevronLeft className={cn("h-4 w-4 text-text-2 transition-transform", collapsed && "rotate-180")} />
         </button>
       </div>
 
@@ -49,10 +41,10 @@ export function AppSidebar() {
             to={item.url}
             end={item.url === "/"}
             className={cn(
-              "flex items-center gap-3 rounded-button px-3 py-2 text-body text-muted-foreground hover:bg-accent hover:text-foreground transition-colors",
+              "flex items-center gap-3 rounded-button px-3 py-2 text-body text-text-2 hover:bg-surface-3 hover:text-text-1 transition-colors",
               collapsed && "justify-center px-0"
             )}
-            activeClassName="bg-accent text-foreground font-medium"
+            activeClassName="bg-surface-3 text-text-1 font-medium"
           >
             <item.icon className="h-[18px] w-[18px] shrink-0" />
             {!collapsed && <span>{item.title}</span>}
@@ -60,14 +52,14 @@ export function AppSidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-border p-3">
+      <div className="border-t border-surface-3 p-3">
         <NavLink
           to="/settings"
           className={cn(
-            "flex items-center gap-3 rounded-button px-3 py-2 text-body text-muted-foreground hover:bg-accent transition-colors",
+            "flex items-center gap-3 rounded-button px-3 py-2 text-body text-text-2 hover:bg-surface-3 transition-colors",
             collapsed && "justify-center px-0"
           )}
-          activeClassName="bg-accent text-foreground font-medium"
+          activeClassName="bg-surface-3 text-text-1 font-medium"
         >
           <Settings className="h-[18px] w-[18px] shrink-0" />
           {!collapsed && <span>Cài đặt</span>}
