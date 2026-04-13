@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenShell";
 import { NMInventoryTab } from "@/components/supply/NMInventoryTab";
 import { GanttSXTab } from "@/components/supply/GanttSXTab";
@@ -15,7 +16,7 @@ export default function SupplyPage() {
   const [activeTab, setActiveTab] = useState("inventory");
 
   return (
-    <div className="p-6">
+    <AppLayout>
       <ScreenHeader title="NM Supply Sync" subtitle="Vận hành ngày — Đồng bộ tồn kho và năng lực nhà máy" />
 
       {/* Tab pills */}
@@ -39,6 +40,6 @@ export default function SupplyPage() {
       {activeTab === "inventory" && <NMInventoryTab />}
       {activeTab === "gantt" && <GanttSXTab />}
       {activeTab === "pipeline" && <PipelineTab />}
-    </div>
+    </AppLayout>
   );
 }

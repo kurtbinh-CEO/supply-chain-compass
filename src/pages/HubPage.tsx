@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenShell";
 import { HubStockTab } from "@/components/hub/HubStockTab";
 import { FCCommitmentTab } from "@/components/hub/FCCommitmentTab";
@@ -15,7 +16,7 @@ export default function HubPage() {
   const [activeTab, setActiveTab] = useState("hub-stock");
 
   return (
-    <div className="p-6">
+    <AppLayout>
       <ScreenHeader title="Hub & Commitment" subtitle="Kế hoạch tháng — Cam kết nhà máy & phân bổ hub" />
       {/* Context bar */}
       <div className="flex items-center gap-4 mb-6 rounded-card border border-surface-3 bg-surface-2 px-5 py-3">
@@ -52,6 +53,6 @@ export default function HubPage() {
       {activeTab === "hub-stock" && <HubStockTab />}
       {activeTab === "fc-commitment" && <FCCommitmentTab />}
       {activeTab === "gap-monitor" && <GapMonitorTab />}
-    </div>
+    </AppLayout>
   );
 }
