@@ -5,6 +5,7 @@ import { Lock, CheckCircle, ChevronRight, ChevronLeft, AlertTriangle, ArrowRight
 import { SkuNmPanel } from "./SkuNmPanel";
 import { toast } from "sonner";
 import { FormulaBar } from "@/components/FormulaBar";
+import { DemandToOrderBridge, type BridgeStep } from "@/components/DemandToOrderBridge";
 import type { ConsensusRow } from "@/pages/SopPage";
 
 interface Props {
@@ -111,6 +112,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   };
 
   const [expandedSku, setExpandedSku] = useState<number | null>(null);
+  const [bridgeSku, setBridgeSku] = useState<number | null>(null);
 
   // Drill down view
   if (drillCn !== null) {
@@ -187,17 +189,45 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
                       {isExpanded && (
                         <tr key={`panel-${si}`}>
                           <td colSpan={9} className="p-0">
-                            <SkuNmPanel
-                              item={sk.item}
-                              variant={sk.variant}
-                              netReq={sk.netReq}
-                              primaryNm={sk.nmSource}
-                              primaryAtp={sk.nmAtp}
-                              scale={scale}
-                              onSourceConfirm={(sources) => {
-                                toast.success(`Sourcing ${sk.item} ${sk.variant} confirmed: ${sources.length} NM`);
-                              }}
-                            />
+                            <div className="border-t border-surface-3 bg-surface-1/20">
+                              <SkuNmPanel
+                                item={sk.item}
+                                variant={sk.variant}
+                                netReq={sk.netReq}
+                                primaryNm={sk.nmSource}
+                                primaryAtp={sk.nmAtp}
+                                scale={scale}
+                                onSourceConfirm={(sources) => {
+                                  toast.success(`Sourcing ${sk.item} ${sk.variant} confirmed: ${sources.length} NM`);
+                                }}
+                              />
+                              <div className="px-5 py-2 border-t border-surface-3/50">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setBridgeSku(bridgeSku === si ? null : si); }}
+                                  className="text-info text-caption font-medium hover:underline flex items-center gap-1"
+                                >
+                                  {bridgeSku === si ? "Ẩn bridge ▴" : "Xem bridge ▾"}
+                                </button>
+                                {bridgeSku === si && (
+                                  <div className="mt-2">
+                                    <DemandToOrderBridge
+                                      item={sk.item}
+                                      variant={sk.variant}
+                                      cn={row.cn}
+                                      steps={[
+                                        { operator: "", label: "Demand", value: sk.demand, accent: "blue", detail: `S&OP consensus locked`, link: { label: "→ /demand", to: "/demand" }, explain: "Tổng nhu cầu tháng này.", logicTab: "monthly", logicNode: 0 },
+                                        { operator: "−", label: "Tồn kho", value: -sk.stock, accent: "green", detail: `Tồn kho ${row.cn}`, link: { label: "→ /monitoring", to: "/monitoring" }, explain: "Hàng có sẵn trong kho CN." },
+                                        { operator: "−", label: "Pipeline", value: -sk.pipeline, accent: "green", detail: sk.pipelineSource ? `${sk.pipelineSource}` : "Không có", explain: "Hàng đang về." },
+                                        { operator: "=", label: "Gross gap", value: sk.demand - sk.stock - sk.pipeline, accent: "amber", detail: `${sk.demand} − ${sk.stock} − ${sk.pipeline}`, explain: "Chênh lệch chưa tính SS." },
+                                        { operator: "+", label: "SS buffer", value: sk.ss, accent: "red", detail: `z(1.65) × σ × √LT`, link: { label: "→ /logic tab SS", to: "/logic?tab=ss&node=0" }, explain: "Dự phòng forecast sai.", logicTab: "ss", logicNode: 0 },
+                                        { operator: "=", label: "Net req", value: sk.netReq, accent: "amber", detail: `${sk.demand - sk.stock - sk.pipeline} + ${sk.ss} = ${sk.netReq}`, explain: "Cần đặt NM (chưa round MOQ). MOQ xử lý tại /hub." },
+                                      ] satisfies BridgeStep[]}
+                                      toStep={5}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </td>
                         </tr>
                       )}

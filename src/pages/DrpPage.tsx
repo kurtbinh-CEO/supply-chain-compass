@@ -8,6 +8,7 @@ import { ChevronRight, ChevronDown, AlertTriangle, ArrowRight, Play, Settings, C
 import { LogicLink } from "@/components/LogicLink";
 import { useNavigate } from "react-router-dom";
 import { ClickableNumber } from "@/components/ClickableNumber";
+import { DemandToOrderBridge, buildFullBridgeSteps } from "@/components/DemandToOrderBridge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormulaBar } from "@/components/FormulaBar";
@@ -489,62 +490,33 @@ export default function DrpPage() {
                             <td colSpan={8} className="p-0">
                               <div className="border-t border-surface-3 px-6 py-4 space-y-4 bg-surface-1/30">
 
-                                {/* SECTION A: Netting — code block */}
+                                {/* SECTION A: Netting — Bridge */}
                                 <div>
                                   <h4 className="text-caption font-medium text-text-3 uppercase mb-2">Netting</h4>
-                                  <div className="bg-[#f8f9ff] rounded-lg border border-surface-3 p-3 font-mono text-[12px] leading-6 text-text-1 overflow-x-auto">
-                                    <div className="text-text-3 mb-1">{ex.item} {ex.variant} {activeCn.cn} — Netting W17:</div>
-                                    <div className="flex justify-between">
-                                      <span>{"  "}Demand:{" ".repeat(8)}<span className="font-bold">{ex.demand.toLocaleString()}</span> m²</span>
-                                      <button onClick={() => navigate("/demand")} className="text-primary hover:underline cursor-pointer">← FC {ex.netting.fcPhased.toLocaleString()} + CN adj +{Math.round((ex.demand - ex.netting.fcPhased) * 0.47)} + PO {Math.round((ex.demand - ex.netting.fcPhased) * 0.53 + 151)} − overlap 151</button>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span>− On-hand:{" ".repeat(6)}<span className="font-bold">−{ex.netting.onHand.toLocaleString()}</span> m²</span>
-                                      <button onClick={() => navigate("/monitoring")} className="text-primary hover:underline cursor-pointer">← WMS sync 14:32</button>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span>− In-transit:{" ".repeat(3)}<span className="font-bold">−{ex.netting.pipeline.toLocaleString()}</span> m²</span>
-                                      <span className="text-text-3">← Toko RPO-TKO-2605-W16-001, ETA 17/05</span>
-                                    </div>
-                                    <div className="border-t border-surface-3/50 my-1"></div>
-                                    <div>
-                                      <span>= Gross gap:{" ".repeat(3)}<span className="font-bold">{(ex.demand - ex.netting.onHand - ex.netting.pipeline) > 0 ? "" : "−"}{Math.abs(ex.demand - ex.netting.onHand - ex.netting.pipeline).toLocaleString()}</span> m²</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span>+ SS buffer:{" ".repeat(3)}<span className="font-bold text-warning">+{ex.netting.ssTarget.toLocaleString()}</span> m²</span>
-                                      <button onClick={() => { setShowLayer3(true); setDrillCn(null); }} className="text-primary hover:underline cursor-pointer">← z(1.65) × σ(28.5) × √LT(14d)</button>
-                                    </div>
-                                    <div className="border-t border-surface-3/50 my-1"></div>
-                                    <div>
-                                      <span>= Net req:{" ".repeat(5)}</span>
-                                      <ClickableNumber
-                                        value={`${ex.netting.netReq.toLocaleString()} m²`}
-                                        label={`Net req ${ex.item} ${ex.variant}`}
-                                        color={cn("font-bold", ex.netting.netReq > 0 ? "text-danger" : "text-success")}
-                                        formula={`Demand ${ex.demand.toLocaleString()} − On-hand ${ex.netting.onHand.toLocaleString()} − Pipeline ${ex.netting.pipeline.toLocaleString()} + SS ${ex.netting.ssTarget.toLocaleString()} = ${ex.netting.netReq.toLocaleString()}`}
-                                        breakdown={[
-                                          { label: "FC phased", value: ex.netting.fcPhased.toLocaleString(), detail: "Từ S&OP consensus" },
-                                          { label: "− On-hand", value: `−${ex.netting.onHand.toLocaleString()}`, detail: "WMS sync" },
-                                          { label: "− In-transit", value: `−${ex.netting.pipeline.toLocaleString()}`, detail: "RPO đang về" },
-                                          { label: "+ SS buffer", value: `+${ex.netting.ssTarget.toLocaleString()}`, color: "text-warning", detail: "z×σ×√LT" },
-                                          { label: "= Net req", value: ex.netting.netReq.toLocaleString(), color: ex.netting.netReq > 0 ? "text-danger" : "text-success" },
-                                        ]}
-                                        note={ex.netting.netReq > 0 ? "Cần bổ sung hàng để đáp ứng demand + SS" : "Đủ hàng cover demand + SS"}
-                                      />
-                                    </div>
-                                    {ex.type === "SHORTAGE" && (
-                                      <>
-                                        <div>
-                                          <span>÷ MOQ round:{" ".repeat(3)}<span className="font-bold">1.000</span>{" ".repeat(5)}</span>
-                                          <span className="text-text-3">← Mikado MOQ</span>
-                                        </div>
-                                        <div>
-                                          <span>= Planned RPO:{" "}<span className="font-bold text-primary">1.000</span> m²</span>
-                                          <span className="text-text-3 ml-2">→ RPO-MKD-2605-W17-002</span>
-                                        </div>
-                                      </>
-                                    )}
-                                  </div>
+                                  <DemandToOrderBridge
+                                    item={ex.item}
+                                    variant={ex.variant}
+                                    cn={activeCn.cn}
+                                    steps={buildFullBridgeSteps({
+                                      demand: ex.demand,
+                                      fcPhased: ex.netting.fcPhased,
+                                      cnAdj: Math.round((ex.demand - ex.netting.fcPhased) * 0.47),
+                                      po: Math.round((ex.demand - ex.netting.fcPhased) * 0.53 + 151),
+                                      overlap: 151,
+                                      onHand: ex.netting.onHand,
+                                      pipeline: ex.netting.pipeline,
+                                      pipelineSource: "Toko RPO-TKO-2605-W16-001, ETA 17/05 (trễ 4d)",
+                                      ssTarget: ex.netting.ssTarget,
+                                      zVal: 1.65,
+                                      sigma: 28.5,
+                                      lt: 14,
+                                      moq: 1000,
+                                      moqNm: "Mikado",
+                                      finalOrder: 1000,
+                                      rpoNum: "RPO-MKD-2605-W17-002",
+                                    })}
+                                    toStep={ex.type === "SHORTAGE" ? 7 : 5}
+                                  />
                                 </div>
 
                                 {/* SECTION B: Allocation 6-layer trace — inline chips */}
