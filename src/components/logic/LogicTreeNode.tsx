@@ -13,10 +13,11 @@ export interface LogicNodeData {
 interface LogicTreeNodeProps {
   node: LogicNodeData;
   depth?: number;
+  defaultOpen?: boolean;
 }
 
-export function LogicTreeNode({ node, depth = 0 }: LogicTreeNodeProps) {
-  const [open, setOpen] = useState(false);
+export function LogicTreeNode({ node, depth = 0, defaultOpen = false }: LogicTreeNodeProps) {
+  const [open, setOpen] = useState(defaultOpen);
   const hasContent = !!(node.content || (node.children && node.children.length > 0));
 
   const accentColors: Record<string, string> = {

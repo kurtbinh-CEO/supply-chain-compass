@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenShell";
 import { LogicTreeNode, LogicNodeData } from "@/components/logic/LogicTreeNode";
@@ -852,7 +853,12 @@ const tabs = [
 ];
 
 export default function LogicPage() {
-  const [activeTab, setActiveTab] = useState("monthly");
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const nodeParam = searchParams.get("node");
+  const initialTab = tabs.find((t) => t.key === tabParam) ? tabParam! : "monthly";
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const openNodeIndex = tabParam && nodeParam !== null ? parseInt(nodeParam, 10) : -1;
   const current = tabs.find((t) => t.key === activeTab)!;
 
   return (
@@ -880,7 +886,7 @@ export default function LogicPage() {
       <div className="space-y-3 max-w-4xl animate-fade-in">
         {activeTab === "ss" && <SSAlertIntro />}
         {current.nodes.map((node, i) => (
-          <LogicTreeNode key={`${activeTab}-${i}`} node={node} />
+          <LogicTreeNode key={`${activeTab}-${i}`} node={node} defaultOpen={activeTab === initialTab && i === openNodeIndex} />
         ))}
       </div>
     </AppLayout>

@@ -5,6 +5,7 @@ import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronRight, ChevronDown, AlertTriangle, ArrowRight, Play, Settings, ChevronLeft } from "lucide-react";
+import { LogicLink } from "@/components/LogicLink";
 import { useNavigate } from "react-router-dom";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { Switch } from "@/components/ui/switch";
@@ -203,6 +204,7 @@ export default function DrpPage() {
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
           <ScreenHeader title="DRP & Phân bổ" subtitle="Distribution Requirements Planning + Allocation" />
+          <LogicLink tab="daily" node={2} tooltip="Logic DRP Netting" />
           {totalExc > 0 && (
             <span className="flex items-center gap-1 rounded-full bg-danger-bg px-3 py-1 text-table-sm font-medium text-danger">
               <AlertTriangle className="h-3.5 w-3.5" /> {totalExc} exceptions
@@ -278,12 +280,17 @@ export default function DrpPage() {
       {/* ═══ LỚP 1: Per CN (default) ═══ */}
       {!activeCn && !showLayer3 && (
         <div className="space-y-5 animate-slide-in-left">
-          <FormulaBar
-            demand={totalDemand}
-            stock={Math.round(3200 * s)}
-            pipeline={Math.round(1757 * s)}
-            ssBuffer={Math.round(1200 * s)}
-          />
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <FormulaBar
+                demand={totalDemand}
+                stock={Math.round(3200 * s)}
+                pipeline={Math.round(1757 * s)}
+                ssBuffer={Math.round(1200 * s)}
+              />
+            </div>
+            <LogicLink tab="monthly" node={2} tooltip="Logic cân đối Demand − Supply" />
+          </div>
           <div className="rounded-card border border-surface-3 bg-surface-2">
           <div className="overflow-x-auto">
             <table className="w-full">
