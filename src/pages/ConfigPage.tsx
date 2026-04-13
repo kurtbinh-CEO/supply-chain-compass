@@ -101,6 +101,7 @@ const rbacMatrix: RbacRow[] = [
   { screen: "/config", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "❌", viewer: "❌" },
 ];
 
+const featureToggles: FeatureToggle[] = [
   { feature: "LCNB Lateral", unis: true, ttc: false, mdlz: false },
   { feature: "B2B Pipeline", unis: true, ttc: false, mdlz: true },
   { feature: "FC Commitment Tiers", unis: true, ttc: true, mdlz: false },
