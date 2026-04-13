@@ -7,7 +7,7 @@ import { CodeBlock, Note } from "@/components/logic/CodeBlock";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Slider } from "@/components/ui/slider";
-import { Info } from "lucide-react";
+import { Info, Search, X } from "lucide-react";
 
 /* ═══ CSS accent vars mapping ═══ */
 // accent colors use design token CSS vars
