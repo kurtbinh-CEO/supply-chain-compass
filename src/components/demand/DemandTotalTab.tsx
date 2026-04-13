@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { ChevronRight, Info } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { toast } from "sonner";
+import { ViewPivotToggle, usePivotMode, WorstCnCell, CnGapBadge, LcnbBadge } from "@/components/ViewPivotToggle";
 
 interface Props {
   tenant: string;
@@ -91,7 +92,9 @@ function OverrideModal({ sku, value, onClose, onSave }: {
 export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
   const [view, setView] = useState<View>("12m");
   const [drillCn, setDrillCn] = useState<string | null>(null);
+  const [drillSku, setDrillSku] = useState<string | null>(null);
   const [overrideModal, setOverrideModal] = useState<{ sku: string; value: number } | null>(null);
+  const [pivotMode, setPivotMode] = usePivotMode("demand");
 
   const s = tenantScale[tenant] || 1;
 
