@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider } from "@/components/SidebarContext";
 import { WorkflowProvider } from "@/components/WorkflowContext";
 import { WorkspaceProvider } from "@/components/WorkspaceContext";
+import { TenantProvider } from "@/components/TenantContext";
 import Index from "./pages/Index";
 import DesignTest from "./pages/DesignTest";
 import WorkspacePage from "./pages/WorkspacePage";
@@ -33,6 +34,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <SidebarProvider>
+          <TenantProvider>
           <WorkspaceProvider>
           <WorkflowProvider>
             <Routes>
@@ -56,6 +58,7 @@ const App = () => (
             </Routes>
           </WorkflowProvider>
           </WorkspaceProvider>
+          </TenantProvider>
         </SidebarProvider>
       </BrowserRouter>
     </TooltipProvider>
