@@ -4,6 +4,7 @@ import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronRight, ChevronDown, ChevronLeft, TrendingUp, TrendingDown, Minus, ArrowRight } from "lucide-react";
+import { LogicLink } from "@/components/LogicLink";
 import { useNavigate } from "react-router-dom";
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell as PieCell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
