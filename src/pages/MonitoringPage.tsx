@@ -82,6 +82,7 @@ const tabs = [
 export default function MonitoringPage() {
   const { tenant } = useTenant();
   const s = tenantScales[tenant] || 1;
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("inv");
   const [drillCn, setDrillCn] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
