@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Play, ChevronDown, X } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
+import { LogicLink } from "@/components/LogicLink";
 
 type ItemType = "approve" | "exception" | "notify";
 type Priority = "danger" | "warning" | "info";
