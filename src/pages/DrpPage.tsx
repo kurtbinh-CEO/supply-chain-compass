@@ -704,6 +704,24 @@ export default function DrpPage() {
         </div>
       )}
 
+      {/* ═══ DRP Confirm Modal ═══ */}
+      {showDrpConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDrpConfirm(false)}>
+          <div className="bg-surface-0 rounded-card border border-surface-3 p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-display text-section-header text-text-1 mb-2">Chạy DRP</h3>
+            <p className="text-table text-text-2 mb-5">Chạy DRP với data hiện tại? Quá trình gồm 3 bước: Netting → Allocation → PO generation.</p>
+            <div className="flex gap-3">
+              <button onClick={handleRunDrp} className="flex-1 rounded-button bg-gradient-primary text-primary-foreground py-2 text-table font-medium">
+                Xác nhận
+              </button>
+              <button onClick={() => setShowDrpConfirm(false)} className="flex-1 rounded-button border border-surface-3 py-2 text-table font-medium text-text-2">
+                Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ═══ SS Simulation Modal ═══ */}
       {showSimModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowSimModal(false)}>
