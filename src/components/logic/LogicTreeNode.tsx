@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
 
@@ -10,15 +10,57 @@ export interface LogicNodeData {
   children?: LogicNodeData[];
 }
 
+/** Check if a node or its children contain the search query (checks label + formulaHeader) */
+export function nodeMatchesSearch(node: LogicNodeData, query: string): boolean {
+  if (!query) return false;
+  const q = query.toLowerCase();
+  if (node.label.toLowerCase().includes(q)) return true;
+  if (node.formulaHeader && node.formulaHeader.toLowerCase().includes(q)) return true;
+  if (node.children?.some((c) => nodeMatchesSearch(c, q))) return true;
+  return false;
+}
+
+function HighlightText({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const q = query.toLowerCase();
+  const idx = text.toLowerCase().indexOf(q);
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-warning/30 text-inherit rounded-sm px-0.5">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
 interface LogicTreeNodeProps {
   node: LogicNodeData;
   depth?: number;
   defaultOpen?: boolean;
+  searchQuery?: string;
 }
 
-export function LogicTreeNode({ node, depth = 0, defaultOpen = false }: LogicTreeNodeProps) {
-  const [open, setOpen] = useState(defaultOpen);
+export function LogicTreeNode({ node, depth = 0, defaultOpen = false, searchQuery = "" }: LogicTreeNodeProps) {
+  const matchesSelf = searchQuery && (
+    node.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (node.formulaHeader && node.formulaHeader.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+  const childMatches = searchQuery && node.children?.some((c) => nodeMatchesSearch(c, searchQuery));
+  const shouldAutoOpen = !!(matchesSelf || childMatches);
+
+  const [open, setOpen] = useState(defaultOpen || shouldAutoOpen);
   const hasContent = !!(node.content || (node.children && node.children.length > 0));
+
+  // Re-sync open state when search changes
+  const [prevQuery, setPrevQuery] = useState(searchQuery);
+  if (searchQuery !== prevQuery) {
+    setPrevQuery(searchQuery);
+    if (searchQuery) {
+      if (shouldAutoOpen && !open) setOpen(true);
+      if (!shouldAutoOpen && !matchesSelf && open && !defaultOpen) setOpen(false);
+    }
+  }
 
   const accentColors: Record<string, string> = {
     blue: "hsl(var(--info))",
@@ -35,6 +77,7 @@ export function LogicTreeNode({ node, depth = 0, defaultOpen = false }: LogicTre
         className={cn(
           "rounded-lg bg-white dark:bg-surface-2 border border-surface-3 overflow-hidden transition-shadow",
           open && "shadow-md",
+          matchesSelf && "ring-2 ring-warning/50",
         )}
         style={{ borderLeftWidth: "3px", borderLeftColor: borderColor, borderLeftStyle: "solid" }}
       >
@@ -51,10 +94,12 @@ export function LogicTreeNode({ node, depth = 0, defaultOpen = false }: LogicTre
               className={cn("h-4 w-4 text-text-3 shrink-0 transition-transform duration-150", open && "rotate-90")}
             />
           )}
-          <span className="font-display text-table font-semibold text-text-1">{node.label}</span>
+          <span className="font-display text-table font-semibold text-text-1">
+            <HighlightText text={node.label} query={searchQuery} />
+          </span>
           {node.formulaHeader && (
             <span className="ml-auto text-[11px] font-mono text-text-3 tabular-nums truncate max-w-[50%] text-right">
-              {node.formulaHeader}
+              <HighlightText text={node.formulaHeader} query={searchQuery} />
             </span>
           )}
         </button>
@@ -69,7 +114,7 @@ export function LogicTreeNode({ node, depth = 0, defaultOpen = false }: LogicTre
             {node.children && node.children.length > 0 && (
               <div className="space-y-2 mt-2">
                 {node.children.map((child, i) => (
-                  <LogicTreeNode key={i} node={child} depth={depth + 1} />
+                  <LogicTreeNode key={i} node={child} depth={depth + 1} searchQuery={searchQuery} />
                 ))}
               </div>
             )}
