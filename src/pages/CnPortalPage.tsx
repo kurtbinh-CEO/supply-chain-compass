@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useRbac, AppUser } from "@/components/RbacContext";
+import { useWorkspace } from "@/components/WorkspaceContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronDown, Clock, Check, X as XIcon, AlertTriangle, Info } from "lucide-react";
