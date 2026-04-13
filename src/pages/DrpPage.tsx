@@ -779,48 +779,101 @@ export default function DrpPage() {
       )}
 
       {/* ═══ SS Simulation Modal ═══ */}
-      {showSimModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowSimModal(false)}>
-          <div className="bg-surface-0 rounded-card border border-surface-3 p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-section-header text-text-1 mb-4">Mô phỏng SS</h3>
-            <div className="mb-4">
-              <label className="text-caption text-text-3 uppercase block mb-1.5">Service Level (z-score)</label>
-              <input
-                type="range" min={1.28} max={2.33} step={0.01} value={simZ}
-                onChange={(e) => setSimZ(Number(e.target.value))}
-                className="w-full accent-primary"
-              />
-              <div className="flex justify-between text-caption text-text-3 mt-1">
-                <span>90% (z=1.28)</span>
-                <span className="text-primary font-medium">{(simZ * 100 / 1.65 * 0.95).toFixed(0)}% (z={simZ.toFixed(2)})</span>
-                <span>99% (z=2.33)</span>
+      {showSimModal && (() => {
+        const skuRef = ssBdSkus.find(s => `${s.item} ${s.variant}` === simSku) || ssBdSkus[0];
+        const simSs = Math.round(simZ * skuRef.sigma * Math.sqrt(skuRef.lt));
+        const wcBase = Math.round(skuRef.ssCurrent * 0.185);
+        const wcNew = Math.round(simSs * 0.185);
+        const riskBefore = simZ <= 1.65 ? 5 : 2;
+        const slPct = simZ <= 1.28 ? 90 : simZ <= 1.65 ? 95 : 99;
+        const riskAfter = slPct === 90 ? 8 : slPct === 95 ? 5 : 1;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowSimModal(false)}>
+            <div className="bg-surface-0 rounded-card border border-surface-3 p-6 w-full max-w-lg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <h3 className="font-display text-section-header text-text-1 mb-4">Mô phỏng thay đổi SS</h3>
+
+              {/* CN + SKU selectors */}
+              <div className="flex gap-3 mb-4">
+                <div className="flex-1">
+                  <label className="text-caption text-text-3 uppercase block mb-1">CN</label>
+                  <select value={simCn} onChange={(e) => setSimCn(e.target.value)}
+                    className="w-full h-8 rounded border border-surface-3 bg-surface-1 px-2 text-table text-text-1 focus:outline-none focus:ring-1 focus:ring-primary">
+                    {baseSsCn.map(c => <option key={c.cn} value={c.cn}>{c.cn}</option>)}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-caption text-text-3 uppercase block mb-1">SKU</label>
+                  <select value={simSku} onChange={(e) => setSimSku(e.target.value)}
+                    className="w-full h-8 rounded border border-surface-3 bg-surface-1 px-2 text-table text-text-1 focus:outline-none focus:ring-1 focus:ring-primary">
+                    {ssBdSkus.map(s => <option key={`${s.item}-${s.variant}`} value={`${s.item} ${s.variant}`}>{s.item} {s.variant}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Z slider */}
+              <div className="mb-5">
+                <label className="text-caption text-text-3 uppercase block mb-1.5">Service Level (z-score)</label>
+                <input type="range" min={1.28} max={2.33} step={0.01} value={simZ}
+                  onChange={(e) => setSimZ(Number(e.target.value))} className="w-full accent-primary" />
+                <div className="flex justify-between text-caption text-text-3 mt-1">
+                  <span>90% (z=1.28)</span>
+                  <span className="text-primary font-semibold">{slPct}% (z={simZ.toFixed(2)})</span>
+                  <span>99% (z=2.33)</span>
+                </div>
+              </div>
+
+              {/* Before / After table */}
+              <div className="rounded-lg border border-surface-3 overflow-hidden mb-5">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-surface-3 bg-surface-1/50">
+                      {["", "Trước", "Sau", "Delta"].map((h, i) => (
+                        <th key={i} className="px-4 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-surface-3/50">
+                      <td className="px-4 py-2.5 text-table font-medium text-text-1">SS (m²)</td>
+                      <td className="px-4 py-2.5 text-table tabular-nums text-text-2">{skuRef.ssCurrent.toLocaleString()}</td>
+                      <td className="px-4 py-2.5 text-table tabular-nums text-text-1 font-medium">{simSs.toLocaleString()}</td>
+                      <td className={cn("px-4 py-2.5 text-table tabular-nums font-medium", simSs > skuRef.ssCurrent ? "text-warning" : simSs < skuRef.ssCurrent ? "text-success" : "text-text-3")}>
+                        {simSs - skuRef.ssCurrent > 0 ? "+" : ""}{(simSs - skuRef.ssCurrent).toLocaleString()}
+                      </td>
+                    </tr>
+                    <tr className="border-b border-surface-3/50">
+                      <td className="px-4 py-2.5 text-table font-medium text-text-1">WC/tháng</td>
+                      <td className="px-4 py-2.5 text-table tabular-nums text-text-2">{wcBase}M₫</td>
+                      <td className="px-4 py-2.5 text-table tabular-nums text-text-1 font-medium">{wcNew}M₫</td>
+                      <td className={cn("px-4 py-2.5 text-table tabular-nums font-medium", wcNew > wcBase ? "text-warning" : "text-success")}>
+                        {wcNew - wcBase > 0 ? "+" : ""}{wcNew - wcBase}M₫
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-2.5 text-table font-medium text-text-1">Stockout risk</td>
+                      <td className="px-4 py-2.5 text-table tabular-nums text-text-2">{riskBefore}%</td>
+                      <td className="px-4 py-2.5 text-table tabular-nums text-text-1 font-medium">{riskAfter}%</td>
+                      <td className={cn("px-4 py-2.5 text-table tabular-nums font-medium", riskAfter < riskBefore ? "text-success" : "text-danger")}>
+                        {riskAfter - riskBefore > 0 ? "+" : ""}{riskAfter - riskBefore}%
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex gap-3">
+                <button onClick={() => { toast.success("SS mới áp dụng", { description: `${simSku} ${simCn}: ${skuRef.ssCurrent}→${simSs}. Gửi Workspace duyệt.` }); setShowSimModal(false); }}
+                  className="flex-1 rounded-button bg-gradient-primary text-primary-foreground py-2 text-table font-medium">
+                  Áp dụng SS mới
+                </button>
+                <button onClick={() => setShowSimModal(false)} className="flex-1 rounded-button border border-surface-3 py-2 text-table font-medium text-text-2">
+                  Hủy
+                </button>
               </div>
             </div>
-            <div className="space-y-2 border-t border-surface-3 pt-3 mb-4">
-              {[
-                { label: "z=1.28 (90% SL)", ss: "698", wc: "−37M₫/tháng", risk: "+5%" },
-                { label: `z=${simZ.toFixed(2)}`, ss: Math.round(900 * simZ / 1.65).toString(), wc: `${simZ > 1.65 ? "+" : ""}${Math.round((simZ - 1.65) * 40)}M₫`, risk: `${simZ > 1.65 ? "−" : "+"}${Math.abs(Math.round((simZ - 1.65) * 10))}%` },
-                { label: "z=2.33 (99% SL)", ss: "1.270", wc: "+68M₫/tháng", risk: "−4%" },
-              ].map((row, i) => (
-                <div key={i} className={cn("flex justify-between text-table px-3 py-2 rounded", i === 1 && "bg-primary/5 border border-primary/20")}>
-                  <span className="text-text-2">{row.label}</span>
-                  <span className="tabular-nums text-text-1">SS {row.ss}</span>
-                  <span className="text-text-3">WC {row.wc}</span>
-                  <span className={cn("font-medium", row.risk.startsWith("+") ? "text-danger" : "text-success")}>Risk {row.risk}</span>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-3">
-              <button onClick={() => { toast.success("SS mới gửi Workspace duyệt"); setShowSimModal(false); }} className="flex-1 rounded-button bg-gradient-primary text-primary-foreground py-2 text-table font-medium">
-                Áp dụng mới
-              </button>
-              <button onClick={() => setShowSimModal(false)} className="flex-1 rounded-button border border-surface-3 py-2 text-table font-medium text-text-2">
-                Hủy
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </AppLayout>
   );
 }
