@@ -304,6 +304,7 @@ export default function ConfigPage() {
               </table>
             </div>
           </div>
+        </TabsContent>
       </Tabs>
     </AppLayout>
   );
