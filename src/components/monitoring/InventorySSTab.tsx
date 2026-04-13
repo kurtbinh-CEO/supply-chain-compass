@@ -92,8 +92,10 @@ interface Props { scale: number }
 
 export function InventorySSTab({ scale: s }: Props) {
   const navigate = useNavigate();
+  const [pivotMode, setPivotMode] = usePivotMode("monitoring-inv");
   const [invChartFilter, setInvChartFilter] = useState("all");
   const [drillCn, setDrillCn] = useState<string | null>(null);
+  const [drillSku, setDrillSku] = useState<string | null>(null);
   const [expandedBridge, setExpandedBridge] = useState<string | null>(null);
   const [simOpen, setSimOpen] = useState(false);
   const [simSku, setSimSku] = useState<SsSkuRow | null>(null);
