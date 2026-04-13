@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ChevronRight, Send, Truck, Upload } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 import { useNavigate } from "react-router-dom";
+import { ClickableNumber } from "@/components/ClickableNumber";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -196,9 +197,30 @@ export default function OrdersPage() {
                   <tbody>
                     {groups.map((g) => (
                       <tr key={g.status} className="border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer" onClick={() => setDrillStatus(g.status)}>
-                        <td className="px-4 py-3 text-table font-medium text-text-1">{g.status}</td>
-                        <td className="px-4 py-3 text-table tabular-nums text-text-1">{g.count}</td>
-                        <td className="px-4 py-3 text-table tabular-nums text-text-2">{g.totalQty.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-table font-medium text-text-1">
+                          <ClickableNumber
+                            value={g.status}
+                            label={g.status.split("—")[0].trim()}
+                            color="font-medium text-text-1"
+                            breakdown={g.pos.map(p => ({
+                              label: p.poNum,
+                              value: `${p.qty.toLocaleString()}m² ${p.item}`,
+                            }))}
+                            note={g.status.includes("ATP_FAIL") ? "NM chưa cập nhật tồn kho." : undefined}
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-table tabular-nums text-text-1">
+                          <ClickableNumber
+                            value={`${g.count} PO, ${g.totalQty.toLocaleString()}m²`}
+                            label={g.status.split("—")[0].trim()}
+                            color="text-text-1"
+                            breakdown={g.pos.map(p => ({
+                              label: p.poNum,
+                              value: `${p.qty.toLocaleString()}m²`,
+                              detail: p.item,
+                            }))}
+                          />
+                        </td>
                         <td className="px-4 py-3 text-table tabular-nums text-text-2">{g.totalVnd}</td>
                         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                           {g.action && (
