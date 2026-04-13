@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronRight, ChevronDown, AlertTriangle, ArrowRight, Play, Settings, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -129,6 +131,12 @@ export default function DrpPage() {
   const [simSku, setSimSku] = useState("GA-300 A4");
   const [showChangeLog, setShowChangeLog] = useState(false);
   const [editingParam, setEditingParam] = useState<string | null>(null);
+  const [paramHorizon, setParamHorizon] = useState("6 tuần");
+  const [paramRunTime, setParamRunTime] = useState("23:00");
+  const [paramServiceLevel, setParamServiceLevel] = useState("95% (z=1.65)");
+  const [paramMoq, setParamMoq] = useState("ceil");
+  const [paramLcnb, setParamLcnb] = useState(true);
+  const [paramLcnbThreshold, setParamLcnbThreshold] = useState("70%");
   const [showDrpConfirm, setShowDrpConfirm] = useState(false);
   const [drpRunning, setDrpRunning] = useState(false);
   const [drpStep, setDrpStep] = useState(0);
