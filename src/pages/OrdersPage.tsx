@@ -165,7 +165,10 @@ export default function OrdersPage() {
 
   return (
     <AppLayout>
-      <ScreenHeader title="Orders & Tracking" subtitle="Đơn hàng và theo dõi giao nhận" />
+      <div className="flex items-center gap-2 mb-1">
+        <ScreenHeader title="Orders & Tracking" subtitle="Đơn hàng và theo dõi giao nhận" />
+        <LogicLink tab="daily" node={4} tooltip="Logic PO Release: BPO → RPO → ASN" />
+      </div>
 
       <div className="flex items-center gap-1 mb-6 rounded-full border border-surface-3 bg-surface-0 p-0.5 w-fit">
         {tabs.map((tab) => (

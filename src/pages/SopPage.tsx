@@ -124,9 +124,12 @@ export default function SopPage() {
     <AppLayout>
       {/* Header */}
       <div className="flex items-center justify-between mb-1">
-        <div>
-          <h1 className="font-display text-screen-title text-text-1">S&OP Consensus — Tháng 5</h1>
-          <p className="text-table text-text-2">Digital Curator — Consensus Planning</p>
+        <div className="flex items-center gap-2">
+          <div>
+            <h1 className="font-display text-screen-title text-text-1">S&OP Consensus — Tháng 5</h1>
+            <p className="text-table text-text-2">Digital Curator — Consensus Planning</p>
+          </div>
+          <LogicLink tab="monthly" node={1} tooltip="Logic S&OP Consensus → Lock" />
         </div>
         <div className="flex items-center gap-3">
           <button className="rounded-button bg-gradient-primary text-white px-4 py-2 text-table-sm font-medium flex items-center gap-2">
