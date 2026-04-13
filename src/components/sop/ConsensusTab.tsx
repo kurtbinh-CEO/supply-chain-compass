@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronRight, ChevronLeft } from "lucide-react";
+import { ClickableNumber } from "@/components/ClickableNumber";
 import type { ConsensusRow } from "@/pages/SopPage";
 
 interface Props {
@@ -185,8 +186,32 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
                 return (
                   <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
                     <td className="px-4 py-3 font-medium text-text-1">{row.cn}</td>
-                    <td className="px-4 py-3 tabular-nums text-text-2">{row.v0.toLocaleString()}</td>
-                    <td className={cn("px-4 py-3 tabular-nums text-text-2", versionSpread > 10 && "bg-warning/10")}>{row.v1.toLocaleString()}</td>
+                    <td className="px-4 py-3 tabular-nums text-text-2">
+                      <ClickableNumber
+                        value={row.v0}
+                        label="v0 Statistical"
+                        color="text-text-2"
+                        breakdown={[
+                          { label: "Model", value: "Holt-Winters" },
+                          { label: "History", value: "24M" },
+                          { label: "MAPE", value: "18,4%" },
+                          { label: "Run", value: "10/05 auto" },
+                        ]}
+                        note={`Per CN: ${data.map(d => `${d.cn} ${d.v0.toLocaleString()}`).join(" | ")}`}
+                      />
+                    </td>
+                    <td className={cn("px-4 py-3 tabular-nums text-text-2", versionSpread > 10 && "bg-warning/10")}>
+                      <ClickableNumber
+                        value={row.v1}
+                        label="v1 Sales"
+                        color="text-text-2"
+                        breakdown={[
+                          { label: "Nhập bởi", value: "Anh Tuấn, Chị Lan" },
+                          { label: "Ngày", value: "03/05" },
+                        ]}
+                        note={`Per CN: ${data.map(d => `${d.cn} ${d.v1.toLocaleString()} (${d.v0 > 0 ? (d.v1 > d.v0 ? "+" : "") + Math.round(((d.v1-d.v0)/d.v0)*100) + "% vs v0" : ""})`).join(" | ")}\nSales thấy pipeline B2B tăng Q2`}
+                      />
+                    </td>
                     <td className="px-4 py-3 tabular-nums text-text-2">{row.v2.toLocaleString()}</td>
                     <td className="px-4 py-3">
                       <span className="flex items-center gap-1">
