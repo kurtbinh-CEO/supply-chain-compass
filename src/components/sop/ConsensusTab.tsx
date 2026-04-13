@@ -238,7 +238,18 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
                 <td className="px-4 py-3 tabular-nums text-text-1">{totals.v0.toLocaleString()}</td>
                 <td className="px-4 py-3 tabular-nums text-text-1">{totals.v1.toLocaleString()}</td>
                 <td className="px-4 py-3 tabular-nums text-text-1">{totals.v2.toLocaleString()}</td>
-                <td className="px-4 py-3 tabular-nums text-primary font-bold">★{totals.v3.toLocaleString()}</td>
+                <td className="px-4 py-3 tabular-nums text-primary font-bold">
+                  ★<ClickableNumber
+                    value={totals.v3}
+                    label="v3 Consensus"
+                    color="text-primary font-bold"
+                    breakdown={[
+                      { label: "Quyết định", value: "SC Manager Thúy" },
+                      { label: "Ngày", value: "05/05" },
+                    ]}
+                    note={`Logic: "Dùng v2 CN input cho BD+ĐN, v0 stat cho HN, v1 sales cho CT"`}
+                  />
+                </td>
                 <td className="px-4 py-3 tabular-nums text-text-3">{totals.aop.toLocaleString()}</td>
                 <td className={cn("px-4 py-3 tabular-nums font-medium", deltaAopPct > 5 ? "text-warning" : "text-success")}>
                   {deltaAop > 0 ? "+" : ""}{deltaAop.toLocaleString()} ({deltaAopPct > 0 ? "+" : ""}{deltaAopPct}%)
