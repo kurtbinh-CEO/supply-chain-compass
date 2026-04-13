@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
+import { LogicLink } from "@/components/LogicLink";
 import type { ConsensusRow } from "@/pages/SopPage";
 
 interface Props {
@@ -168,8 +169,18 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
           <table className="w-full text-table-sm">
             <thead>
               <tr className="border-b border-surface-3 bg-surface-1/50">
-                {["CN", "v0 Statistical", "v1 Sales", "v2 CN Input", "v3 Consensus ★", "AOP target", "vs AOP", "FVA best", ""].map(h => (
-                  <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
+                {[
+                  { h: "CN" }, { h: "v0 Statistical" }, { h: "v1 Sales" }, { h: "v2 CN Input" }, { h: "v3 Consensus ★" },
+                  { h: "AOP target" }, { h: "vs AOP" },
+                  { h: "FVA best", logic: { tab: "forecast" as const, node: 4, tip: "FVA — Ai dự báo chính xác nhất?" } },
+                  { h: "" },
+                ].map((col, i) => (
+                  <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">
+                    <span className="flex items-center gap-1">
+                      {col.h}
+                      {col.logic && <LogicLink tab={col.logic.tab} node={col.logic.node} tooltip={col.logic.tip} />}
+                    </span>
+                  </th>
                 ))}
               </tr>
             </thead>
