@@ -8,7 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/components/SidebarContext";
 import { useWorkflow } from "@/components/WorkflowContext";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface NavItem {
   title: string;
