@@ -853,7 +853,12 @@ const tabs = [
 ];
 
 export default function LogicPage() {
-  const [activeTab, setActiveTab] = useState("monthly");
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const nodeParam = searchParams.get("node");
+  const initialTab = tabs.find((t) => t.key === tabParam) ? tabParam! : "monthly";
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const openNodeIndex = tabParam && nodeParam !== null ? parseInt(nodeParam, 10) : -1;
   const current = tabs.find((t) => t.key === activeTab)!;
 
   return (
