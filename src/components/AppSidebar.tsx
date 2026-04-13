@@ -1,7 +1,7 @@
 import { NavLink } from "@/components/NavLink";
 import {
   ClipboardCheck, Activity, BarChart3, Handshake, Boxes,
-  Package, CalendarDays, GitBranch, SplitSquareVertical,
+  Package, CalendarDays, GitBranch,
   ShoppingCart, Users, Database, FileBarChart, Settings,
   ChevronLeft, Play,
 } from "lucide-react";
@@ -46,11 +46,10 @@ const navGroups: NavGroup[] = [
   {
     label: "Vận hành ngày",
     items: [
-      { title: "NM Supply Sync", icon: Package, url: "/supply" },
-      { title: "Demand Weekly", icon: CalendarDays, url: "/demand-weekly" },
-      { title: "DRP", icon: GitBranch, url: "/drp" },
-      { title: "Allocation", icon: SplitSquareVertical, url: "/allocation" },
-      { title: "Orders & Tracking", icon: ShoppingCart, url: "/orders" },
+      { title: "NM Supply", icon: Package, url: "/supply" },
+      { title: "Demand tuần", icon: CalendarDays, url: "/demand-weekly" },
+      { title: "DRP & Phân bổ", icon: GitBranch, url: "/drp" },
+      { title: "Orders", icon: ShoppingCart, url: "/orders" },
     ],
   },
   {
