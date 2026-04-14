@@ -156,14 +156,14 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   })();
 
   /* ═══ SKU-first drill ═══ */
-  if (pivotMode === "sku" && drillSku) {
-    const skuRow = skuPivotData.find(r => `${r.item}|${r.variant}` === drillSku);
+  if (pivotMode === "sku" && expandedSkuKeys.size > 0 && false) {
+    const skuRow = skuPivotData.find(r => `${r.item}|${r.variant}` === expandedSkuKeys.size > 0 && false);
     if (!skuRow) return null;
     return (
       <div className="space-y-5 animate-fade-in">
         <FormulaBar demand={totalDemand} stock={totalStock} pipeline={totalPipeline} ssBuffer={ssBuffer} stockDetail={stockDetailForBar} netPerCn={netPerCnForBar} />
         <div className="flex items-center gap-2 text-table-sm">
-          <button onClick={() => setDrillSku(null)} className="text-primary font-medium hover:underline flex items-center gap-1">
+          <button onClick={() => setExpandedSkuKeys(new Set())} className="text-primary font-medium hover:underline flex items-center gap-1">
             <ChevronLeft className="h-3.5 w-3.5" /> Per SKU
           </button>
           <span className="text-text-3">/</span>
@@ -226,8 +226,8 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   }
 
   // CN-first drill down view
-  if (pivotMode === "cn" && drillCn !== null) {
-    const row = balRows[drillCn];
+  if (pivotMode === "cn" && expandedCns.size > 0) {
+    const row = balRows[expandedCns.values().next().value];
     const avail = row.stock + row.pipeline;
     const cover = row.demand > 0 ? +(row.stock / (row.demand / 30)).toFixed(1) : 0;
     const rowNet = Math.max(0, row.demand - avail);
@@ -235,7 +235,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
     return (
       <div className="space-y-4 animate-fade-in">
         <div className="flex items-center gap-2 text-table-sm">
-          <button onClick={() => { setDrillCn(null); setExpandedSku(null); }} className="text-primary font-medium hover:underline flex items-center gap-1">
+          <button onClick={() => { setExpandedCns(new Set()); setExpandedSku(null); }} className="text-primary font-medium hover:underline flex items-center gap-1">
             <ChevronLeft className="h-3.5 w-3.5" /> Cân đối
           </button>
           <span className="text-text-3">/</span>
@@ -366,7 +366,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
       />
 
       {/* Pivot toggle */}
-      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setDrillCn(null); setDrillSku(null); }} />
+      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setExpandedCns(new Set()); setExpandedSkuKeys(new Set()); }} />
 
       {/* Balance table */}
       {pivotMode === "sku" ? (
@@ -387,7 +387,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
               <tbody>
                 {skuPivotData.map((row, i) => (
                   <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors cursor-pointer", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
-                    onClick={() => setDrillSku(`${row.item}|${row.variant}`)}>
+                    onClick={() => setExpandedSkuKeys(prev => { const n = new Set(prev); const k = `${row.item}|${row.variant}`)}>
                     <td className="px-3 py-2.5 font-medium text-text-1">{row.item}</td>
                     <td className="px-3 py-2.5 text-text-2">{row.variant}</td>
                     <td className="px-3 py-2.5 tabular-nums text-text-1 font-medium">{row.demand.toLocaleString()}</td>
@@ -467,7 +467,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
                       )}>{status}</span>
                     </td>
                     <td className="px-3 py-2.5">
-                      <button onClick={() => setDrillCn(i)} className="text-primary text-table-sm font-medium hover:underline flex items-center gap-0.5">
+                      <button onClick={() => setExpandedCns(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; })} className="text-primary text-table-sm font-medium hover:underline flex items-center gap-0.5">
                         Xem SKU <ChevronRight className="h-3.5 w-3.5" />
                       </button>
                     </td>
@@ -505,7 +505,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
           <div>
             <p className="text-table font-semibold text-danger mb-1">CN-BD cover 2,5d CRITICAL</p>
             <p className="text-table-sm text-text-2 mb-2">Net requirement {balRows[0] ? Math.max(0, balRows[0].demand - balRows[0].stock - balRows[0].pipeline).toLocaleString() : 0}m²</p>
-            <button onClick={() => setDrillCn(0)} className="text-danger text-table-sm font-medium hover:underline flex items-center gap-0.5">
+            <button onClick={() => setExpandedCns(prev => { const n = new Set(prev); n.has(0) ? n.delete(0) : n.add(0); return n; })} className="text-danger text-table-sm font-medium hover:underline flex items-center gap-0.5">
               Xem SKU <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>
