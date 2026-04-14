@@ -745,6 +745,13 @@ export default function CnPortalPage() {
             </div>
           </div>
 
+          {/* #8 Tolerance rules */}
+          <LogicTooltip
+            alwaysVisible
+            title="📋 Quy tắc điều chỉnh"
+            content={"• Thay đổi < ±10%: ✅ Tự động duyệt\n• Thay đổi 10-30%: 🟡 SC Manager duyệt\n• Thay đổi > 30%: 🔴 Cần giải trình + file đính kèm\n• Cutoff: 18:00. Sau cutoff = dùng số HQ.\n• Trust score bạn: 82% → tolerance ±30%\n  Trust >85% → tolerance mở rộng ±40%. Trust <60% → thu hẹp ±15%."}
+          />
+
           {/* Mobile Card Layout */}
           <div className="sm:hidden space-y-3 pb-20">
             {rows.map((row, idx) => {
