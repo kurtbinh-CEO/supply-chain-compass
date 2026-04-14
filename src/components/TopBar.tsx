@@ -41,7 +41,7 @@ const routeGroups: Record<string, string> = {
   "/config": "Cấu hình",
 };
 
-function TenantDropdown({ tenant, setTenant, tenants }: { tenant: string; setTenant: (t: TenantName) => void; tenants: TenantName[] }) {
+function TenantDropdown({ tenant, setTenant, tenants }: { tenant: string; setTenant: (t: TenantName) => void; tenants: readonly string[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
