@@ -45,7 +45,10 @@ interface RoleData {
   monthly: MonthlyStep[];
   tips: Tip[];
   steps: StepCard[];
+  dailySteps: StepCard[];
   formulas: { title: string; content: string }[];
+  dailyIntro?: string;
+  monthlyIntro?: string;
 }
 
 const roleData: Record<RoleKey, RoleData> = {
