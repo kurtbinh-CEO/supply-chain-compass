@@ -170,13 +170,14 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
 
   const confirmLeave = useCallback(() => {
     setShowLeaveConfirm(false);
-    const nav = pendingNavigation;
     setPendingNavigation(null);
-    // Don't close workflow, just allow navigation
-    if (nav && typeof window !== "undefined") {
-      // We'll handle navigation in the component
-    }
-  }, [pendingNavigation]);
+    // Close the workflow session
+    setWorkflowType(null);
+    setCurrentStepIndex(0);
+    setCompleted(false);
+    setCompletedSteps([]);
+    setSessionStartTime(null);
+  }, []);
 
   const cancelLeave = useCallback(() => {
     setShowLeaveConfirm(false);
