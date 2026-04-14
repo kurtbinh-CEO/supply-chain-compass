@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronRight, ChevronDown, Info, TrendingUp, TrendingDown, Minus, ArrowRight } from "lucide-react";
+import { LogicTooltip } from "@/components/LogicTooltip";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { toast } from "sonner";
 import { ViewPivotToggle, usePivotMode, CnGapBadge } from "@/components/ViewPivotToggle";
@@ -352,11 +353,19 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
                       <span className="ml-1 text-text-3 text-table-sm">{sk.variant}</span>
                     </td>
                     <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">
-                      <span className="cursor-help group relative">
+                      <span className="inline-flex items-center gap-1.5">
                         {sk.fc.toLocaleString()}
-                        <span className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 bg-text-1 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-20">
-                          {sk.source}, MAPE {sk.mape}%
-                        </span>
+                        <LogicTooltip
+                          title={`${sk.item} ${sk.variant} — FC Model`}
+                          content={`Model: ${sk.source}\nHistory: 24 tháng (05/2024–04/2026)\nMAPE: ${sk.mape}% (accuracy ${(100 - sk.mape).toFixed(1)}%)\nAuto-selected: ${sk.source === "Holt-Winters" ? "HW" : "XGB"} vì MAPE thấp hơn cho SKU này.\nChạy: 01/05/2026 auto.`}
+                        >
+                          <span className={cn(
+                            "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium cursor-pointer",
+                            sk.mape <= 15 ? "bg-success-bg text-success" : sk.mape <= 20 ? "bg-warning-bg text-warning" : "bg-danger-bg text-danger"
+                          )}>
+                            {sk.source === "Holt-Winters" ? "HW" : "XGB"} {sk.mape}%
+                          </span>
+                        </LogicTooltip>
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">{sk.b2b.toLocaleString()}</td>
