@@ -112,8 +112,8 @@ export function AppSidebar() {
           </button>
         ) : (
           <>
-            <div className="flex items-center gap-2.5">
-              <img src={smartlogLogoFull} alt="Supply Chain Planning Intelligence" className="h-8 object-contain" />
+            <div className="flex items-center">
+              <img src={smartlogLogoFull} alt="Supply Chain Planning Intelligence" className="h-10 object-contain" />
             </div>
             <button onClick={toggle} className="rounded-button p-1.5 hover:bg-surface-3 transition-colors">
               <ChevronLeft className="h-4 w-4 text-text-3" />
