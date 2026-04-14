@@ -1,12 +1,37 @@
 import { useWorkflow } from "@/components/WorkflowContext";
 import { useNavigate } from "react-router-dom";
-import { X, ChevronRight, Check } from "lucide-react";
+import { X, ChevronRight, Check, Lock, Clock, Zap, CalendarDays } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
+
+function SessionTimer({ startTime }: { startTime: number }) {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [startTime]);
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+  return (
+    <span className="inline-flex items-center gap-1 text-caption text-text-3 tabular-nums">
+      <Clock className="h-3 w-3" />
+      {m}:{String(s).padStart(2, "0")}
+    </span>
+  );
+}
 
 export function WorkflowBar() {
-  const { isBarVisible, steps, currentStepIndex, completed, nextStep, closeWorkflow, goToStep } = useWorkflow();
+  const {
+    workflowType, isBarVisible, steps, currentStepIndex, completed, completedSteps,
+    sessionStartTime, nextStep, closeWorkflow, goToStep, isStepUnlocked,
+  } = useWorkflow();
   const navigate = useNavigate();
 
   if (!isBarVisible) return null;
+
+  const isDaily = workflowType === "daily";
+  const accentColor = isDaily ? "primary" : "info";
+  const progress = completed ? 100 : ((completedSteps.length) / steps.length) * 100;
 
   const handleNext = () => {
     nextStep();
@@ -17,72 +42,135 @@ export function WorkflowBar() {
   };
 
   const handleStepClick = (index: number) => {
-    goToStep(index);
-    navigate(steps[index].routes[0]);
+    if (!isStepUnlocked(index) && !completedSteps.includes(index)) return;
+    const ok = goToStep(index);
+    if (ok) navigate(steps[index].routes[0]);
   };
 
   if (completed) {
     return (
-      <div className="h-12 bg-success-bg border-b border-surface-3 flex items-center justify-between px-6 animate-slide-down">
-        <div className="flex items-center gap-2 text-success text-body font-medium">
-          <Check className="h-4 w-4" />
-          <span>Hoàn tất · {steps.length}/{steps.length}</span>
+      <div className="relative overflow-hidden border-b border-surface-3">
+        <div className="absolute inset-0 bg-gradient-to-r from-success/5 to-success/10" />
+        <div className="relative flex items-center justify-between px-6 py-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center h-7 w-7 rounded-full bg-success text-white">
+              <Check className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-table font-semibold text-success">Phiên làm việc hoàn tất</p>
+              <p className="text-caption text-text-3">{steps.length}/{steps.length} bước · Tất cả đã xong</p>
+            </div>
+          </div>
+          <button onClick={closeWorkflow} className="text-text-3 hover:text-text-1 transition-colors p-1.5 rounded-button hover:bg-surface-3">
+            <X className="h-4 w-4" />
+          </button>
         </div>
-        <button onClick={closeWorkflow} className="text-success hover:opacity-70 transition-opacity">
-          <X className="h-4 w-4" />
-        </button>
       </div>
     );
   }
 
   return (
-    <div className="h-12 bg-surface-2 border-b border-surface-3 flex items-center gap-3 px-6 animate-slide-down">
-      {/* Step chips */}
-      <div className="flex items-center gap-1.5">
-        {steps.map((step, i) => (
-          <button
-            key={i}
-            onClick={() => handleStepClick(i)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-caption font-medium transition-colors ${
-              step.status === "done"
-                ? "bg-success-bg text-success"
-                : step.status === "active"
-                ? "bg-primary text-primary-foreground"
-                : "bg-transparent border border-surface-3 text-text-3"
-            }`}
-          >
-            {step.status === "done" ? (
-              <Check className="h-3 w-3" />
-            ) : step.status === "active" ? (
-              <span className="h-1.5 w-1.5 rounded-full bg-primary-foreground" />
-            ) : (
-              <span className="h-1.5 w-1.5 rounded-full border border-text-3" />
-            )}
-            <span className="hidden lg:inline">{step.label}</span>
-          </button>
-        ))}
+    <div className="relative border-b border-surface-3 bg-surface-1">
+      {/* Progress bar */}
+      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-surface-3">
+        <div
+          className={cn("h-full transition-all duration-500 ease-out", isDaily ? "bg-primary" : "bg-info")}
+          style={{ width: `${progress}%` }}
+        />
       </div>
 
-      <div className="flex-1" />
+      <div className="flex items-center gap-4 px-6 py-2.5">
+        {/* Workflow type badge */}
+        <div className={cn(
+          "flex items-center gap-1.5 rounded-full px-3 py-1 text-caption font-semibold shrink-0",
+          isDaily ? "bg-primary/10 text-primary" : "bg-info/10 text-info"
+        )}>
+          {isDaily ? <Zap className="h-3 w-3" /> : <CalendarDays className="h-3 w-3" />}
+          {isDaily ? "Vận hành ngày" : "Kế hoạch tháng"}
+        </div>
 
-      {/* Progress text */}
-      <span className="text-table-sm text-text-2">
-        Bước {currentStepIndex + 1}/{steps.length} · {steps[currentStepIndex]?.label}
-      </span>
+        {/* Step stepper */}
+        <div className="flex items-center gap-0.5 flex-1">
+          {steps.map((step, i) => {
+            const isDone = step.status === "done";
+            const isActive = step.status === "active";
+            const isLocked = step.status === "locked";
 
-      {/* Next button */}
-      <button
-        onClick={handleNext}
-        className="inline-flex items-center gap-1 bg-gradient-primary text-primary-foreground rounded-button px-3 py-1.5 text-table-sm font-medium hover:opacity-90 transition-opacity"
-      >
-        {currentStepIndex < steps.length - 1 ? "Tiếp" : "Hoàn tất"}
-        <ChevronRight className="h-3 w-3" />
-      </button>
+            return (
+              <div key={i} className="flex items-center">
+                {i > 0 && (
+                  <div className={cn(
+                    "w-8 h-[2px] mx-0.5 transition-colors",
+                    isDone || (isActive && completedSteps.includes(i - 1)) ? (isDaily ? "bg-primary" : "bg-info") : "bg-surface-3"
+                  )} />
+                )}
+                <button
+                  onClick={() => handleStepClick(i)}
+                  disabled={isLocked}
+                  className={cn(
+                    "group flex items-center gap-2 rounded-lg px-3 py-1.5 text-table-sm font-medium transition-all relative",
+                    isDone && "text-success hover:bg-success/5",
+                    isActive && (isDaily
+                      ? "bg-primary/10 text-primary ring-1 ring-primary/20"
+                      : "bg-info/10 text-info ring-1 ring-info/20"),
+                    !isDone && !isActive && !isLocked && "text-text-3 hover:text-text-2 hover:bg-surface-3",
+                    isLocked && "text-text-3/50 cursor-not-allowed opacity-60",
+                  )}
+                >
+                  {/* Step indicator */}
+                  <span className={cn(
+                    "flex items-center justify-center h-5 w-5 rounded-full text-caption font-bold shrink-0 transition-all",
+                    isDone && "bg-success text-white",
+                    isActive && (isDaily ? "bg-primary text-white" : "bg-info text-white"),
+                    !isDone && !isActive && !isLocked && "border border-surface-3 text-text-3",
+                    isLocked && "border border-surface-3/50 text-text-3/50",
+                  )}>
+                    {isDone ? <Check className="h-3 w-3" /> : isLocked ? <Lock className="h-2.5 w-2.5" /> : i + 1}
+                  </span>
+                  <span className="hidden xl:inline whitespace-nowrap">{step.label}</span>
+                  {/* Tooltip for locked */}
+                  {isLocked && (
+                    <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-text-1 text-surface-0 text-caption px-2 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      Hoàn thành bước {i} trước
+                    </span>
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
 
-      {/* Close */}
-      <button onClick={closeWorkflow} className="text-text-3 hover:text-text-1 transition-colors p-1">
-        <X className="h-4 w-4" />
-      </button>
+        {/* Session info */}
+        <div className="flex items-center gap-3 shrink-0">
+          {sessionStartTime && <SessionTimer startTime={sessionStartTime} />}
+
+          <span className="text-caption text-text-3">
+            {completedSteps.length}/{steps.length}
+          </span>
+
+          {/* Next / Complete button */}
+          <button
+            onClick={handleNext}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-button px-4 py-1.5 text-table-sm font-semibold transition-all",
+              isDaily
+                ? "bg-primary text-white hover:bg-primary/90 shadow-sm shadow-primary/20"
+                : "bg-info text-white hover:bg-info/90 shadow-sm shadow-info/20"
+            )}
+          >
+            {currentStepIndex < steps.length - 1 ? (
+              <>Hoàn tất bước <ChevronRight className="h-3 w-3" /></>
+            ) : (
+              <>Hoàn tất phiên <Check className="h-3 w-3" /></>
+            )}
+          </button>
+
+          {/* Close */}
+          <button onClick={closeWorkflow} className="text-text-3 hover:text-text-1 transition-colors p-1.5 rounded-button hover:bg-surface-3">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
