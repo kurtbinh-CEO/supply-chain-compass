@@ -11,6 +11,7 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell as
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { InventorySSTab } from "@/components/monitoring/InventorySSTab";
+import { ActivityLogTab } from "@/components/monitoring/ActivityLogTab";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -222,6 +223,7 @@ const tabs = [
   { key: "overview", label: "Tổng quan" },
   { key: "inv", label: "Tồn kho & SS" },
   { key: "perf", label: "Hiệu suất" },
+  { key: "activity", label: "Activity Log" },
 ];
 
 export default function MonitoringPage() {
