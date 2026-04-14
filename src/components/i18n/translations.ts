@@ -31,6 +31,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "nav.reports": "Reports",
     "nav.configItem": "Config",
     "nav.logicOps": "Logic vận hành",
+    "nav.guide": "Hướng dẫn",
 
     // Sidebar footer
     "workflow.daily": "Quy trình ngày",
@@ -192,6 +193,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "nav.reports": "Reports",
     "nav.configItem": "Config",
     "nav.logicOps": "Operations Logic",
+    "nav.guide": "User Guide",
 
     // Sidebar footer
     "workflow.daily": "Daily Workflow",
