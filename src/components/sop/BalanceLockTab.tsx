@@ -60,8 +60,8 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   const navigate = useNavigate();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
   const [pivotMode, setPivotMode] = usePivotMode("sop-balance");
-  const [drillCn, setDrillCn] = useState<number | null>(null);
-  const [drillSku, setDrillSku] = useState<string | null>(null);
+  const [expandedCns, setExpandedCns] = useState<Set<number>>(new Set());
+  const [expandedSkuKeys, setExpandedSkuKeys] = useState<Set<string>>(new Set());
   const [showLockModal, setShowLockModal] = useState(false);
 
   // Use consensus data for demand, scale balance data
