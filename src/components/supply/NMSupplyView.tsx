@@ -163,6 +163,7 @@ export function NMSupplyView() {
   const [nmData, setNmData] = useState<NMSummary[]>(initialData);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reminded, setReminded] = useState<Set<string>>(new Set());
+  const { conflict: supplyConflict, triggerConflict: triggerSupplyConflict, clearConflict: clearSupplyConflict } = useVersionConflict();
 
   // Reset data when tenant changes
   const currentData = getNMSummaries(tenant);

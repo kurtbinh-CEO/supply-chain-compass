@@ -164,6 +164,7 @@ function EditPanel({ title, fields, onClose }: { title: string; fields: { label:
 
 export default function MasterDataPage() {
   const [editPanel, setEditPanel] = useState<{ title: string; fields: { label: string; value: string }[] } | null>(null);
+  const { conflict: mdConflict, clearConflict: clearMdConflict } = useVersionConflict();
 
   const openEdit = (title: string, headers: string[], row: string[]) => {
     setEditPanel({ title, fields: headers.map((h, i) => ({ label: h, value: row[i] || "" })) });
