@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
-import { ScreenFooter } from "@/components/ScreenShell";
+import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { toast } from "sonner";
 import { ChevronRight, ChevronDown, ChevronLeft, TrendingUp, TrendingDown, Minus, ArrowRight } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
@@ -261,12 +261,7 @@ export default function MonitoringPage() {
 
   return (
     <AppLayout>
-      <div className="flex items-center justify-between mb-1">
-        <div>
-          <h1 className="font-display text-screen-title text-text-1">Monitoring</h1>
-          <p className="text-table text-text-2">Giám sát chuỗi cung ứng</p>
-        </div>
-      </div>
+      <ScreenHeader title="Monitoring" subtitle="Giám sát chuỗi cung ứng" />
 
       {/* Tab bar */}
       <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
