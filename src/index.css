@@ -29,7 +29,7 @@
   }
   .frosted-glass {
     backdrop-filter: blur(12px);
-    background: rgba(248, 249, 255, 0.85);
+    background: rgba(247, 248, 252, 0.88);
   }
   .tabular-nums {
     font-variant-numeric: tabular-nums;

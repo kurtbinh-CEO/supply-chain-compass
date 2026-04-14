@@ -2,28 +2,28 @@
 :root {
   /* Primary */
   --color-primary: #2563EB;
-  --color-primary-dark: #004AC6;
+  --color-primary-dark: #1e40af;
 
   /* Surface layers */
-  --color-surface-0: #f8f9ff;
-  --color-surface-1: #e8eeff;
+  --color-surface-0: #f7f8fc;
+  --color-surface-1: #ffffff;
   --color-surface-2: #ffffff;
-  --color-surface-3: #e0e9ff;
+  --color-surface-3: #e2e8f0;
 
   /* Text hierarchy */
-  --color-text-1: #0b1c30;
-  --color-text-2: #434655;
+  --color-text-1: #0f172a;
+  --color-text-2: #475569;
   --color-text-3: #94a3b8;
 
   /* Status — tonal (dark text on light bg) */
-  --color-success-text: #00714d;
-  --color-success-bg: #e6f9ed;
-  --color-warning-text: #7a4100;
-  --color-warning-bg: #fff4e0;
-  --color-danger-text: #991b1b;
-  --color-danger-bg: #fde8e8;
-  --color-info-text: #0c4a6e;
-  --color-info-bg: #e8f4fd;
+  --color-success-text: #059669;
+  --color-success-bg: #ecfdf5;
+  --color-warning-text: #d97706;
+  --color-warning-bg: #fffbeb;
+  --color-danger-text: #dc2626;
+  --color-danger-bg: #fef2f2;
+  --color-info-text: #2563eb;
+  --color-info-bg: #eff6ff;
 
   /* Typography */
   --font-display: 'Manrope', sans-serif;
