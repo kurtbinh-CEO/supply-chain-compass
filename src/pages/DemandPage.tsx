@@ -39,13 +39,16 @@ export default function DemandPage() {
   return (
     <AppLayout>
       {/* Header */}
-      <div className="flex items-center justify-between mb-1">
-        <ScreenHeader title="Demand Review — Tháng 5" subtitle="" />
-        <div className="flex items-center gap-3">
-          <span className="rounded-full bg-info-bg text-info px-3 py-1 text-table-sm font-medium">AOP 2026: 60.000 m²</span>
-          <span className="rounded-full bg-success-bg text-success px-3 py-1 text-table-sm font-medium">YTD: 19.380 (32%)</span>
-        </div>
-      </div>
+      <ScreenHeader
+        title="Demand Review — Tháng 5"
+        subtitle=""
+        badges={
+          <>
+            <span className="rounded-full bg-info-bg text-info px-3 py-1 text-table-sm font-medium">AOP 2026: 60.000 m²</span>
+            <span className="rounded-full bg-success-bg text-success px-3 py-1 text-table-sm font-medium">YTD: 19.380 (32%)</span>
+          </>
+        }
+      />
 
       {/* Tab bar */}
       <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
