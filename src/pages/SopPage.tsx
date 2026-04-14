@@ -122,21 +122,18 @@ export default function SopPage() {
 
   return (
     <AppLayout>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-2">
-          <div>
-            <h1 className="font-display text-screen-title text-text-1">S&OP Consensus — Tháng 5</h1>
-            <p className="text-table text-text-2">Digital Curator — Consensus Planning</p>
-          </div>
-          <LogicLink tab="monthly" node={1} tooltip="Logic S&OP Consensus → Lock" />
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="rounded-button bg-gradient-primary text-white px-4 py-2 text-table-sm font-medium flex items-center gap-2">
-            <FileText className="h-4 w-4" /> Pre-meeting report
-          </button>
-        </div>
-      </div>
+      <ScreenHeader
+        title="S&OP Consensus — Tháng 5"
+        subtitle="Digital Curator — Consensus Planning"
+        actions={
+          <>
+            <LogicLink tab="monthly" node={1} tooltip="Logic S&OP Consensus → Lock" />
+            <button className="rounded-button bg-gradient-primary text-white px-4 py-2 text-table-sm font-medium flex items-center gap-2">
+              <FileText className="h-4 w-4" /> Pre-meeting report
+            </button>
+          </>
+        }
+      />
 
       {/* Status strip */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">

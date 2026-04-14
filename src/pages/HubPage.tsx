@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ScreenFooter } from "@/components/ScreenShell";
+import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { AppLayout } from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/TenantContext";
@@ -18,13 +18,7 @@ export default function HubPage() {
 
   return (
     <AppLayout>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-1">
-        <div>
-          <h1 className="font-display text-screen-title text-text-1">Hub & Commitment — Tháng 5</h1>
-          <p className="text-table text-text-2">Cam kết nhà máy & theo dõi giao hàng</p>
-        </div>
-      </div>
+      <ScreenHeader title="Hub & Commitment — Tháng 5" subtitle="Cam kết nhà máy & theo dõi giao hàng" />
 
       {/* Status strip */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">
