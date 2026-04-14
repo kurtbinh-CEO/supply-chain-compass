@@ -748,6 +748,9 @@ export default function MonitoringPage() {
               </div>
             </div>
           </CollapsibleSection>
+
+          {/* Section F: Conflict Log Dashboard */}
+          <ConflictLogSection expanded={expandedSections.has("conflict")} onToggle={() => toggleSection("conflict")} />
         </div>
       )}
 

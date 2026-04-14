@@ -101,6 +101,20 @@ const rbacMatrix: RbacRow[] = [
   { screen: "/config", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "❌", viewer: "❌" },
 ];
 
+const concurrentKeys: ConfigKey[] = [
+  { key: "concurrent.cell_lock_ttl_seconds", value: "120", desc: "Cell lock timeout (giây). Idle → release.", type: "number" },
+  { key: "concurrent.heartbeat_interval_seconds", value: "10", desc: "WebSocket ping interval.", type: "number" },
+  { key: "concurrent.heartbeat_timeout_seconds", value: "15", desc: "Disconnect = release lock sau X giây.", type: "number" },
+  { key: "concurrent.auto_save_interval_seconds", value: "30", desc: "Draft auto-save mỗi X giây.", type: "number" },
+  { key: "concurrent.force_edit_allowed", value: "true", desc: "Cho phép ghi đè cell locked.", type: "toggle" },
+  { key: "concurrent.version_check_enabled", value: "true", desc: "Entity version check khi save.", type: "toggle" },
+  { key: "concurrent.batch_lock_enabled", value: "true", desc: "Exclusive lock cho DRP batch.", type: "toggle" },
+  { key: "concurrent.batch_max_duration_minutes", value: "30", desc: "Force-kill batch sau X phút.", type: "number" },
+  { key: "concurrent.snapshot_retention_days", value: "30", desc: "Giữ snapshots X ngày cho audit.", type: "number" },
+  { key: "concurrent.pre_lock_grace_minutes", value: "5", desc: "Notify editors X phút trước lock.", type: "number" },
+  { key: "concurrent.pending_action_ttl_hours", value: "24", desc: "Hủy queued actions sau X giờ.", type: "number" },
+];
+
 const featureToggles: FeatureToggle[] = [
   { feature: "LCNB Lateral", unis: true, ttc: false, mdlz: false },
   { feature: "B2B Pipeline", unis: true, ttc: false, mdlz: true },
