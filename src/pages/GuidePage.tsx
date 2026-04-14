@@ -516,11 +516,11 @@ export default function GuidePage() {
             </div>
           )}
 
-          {/* Step formulas */}
-          {data.steps.length > 0 && (
+          {/* Step formulas (monthly + daily) */}
+          {[...data.steps, ...data.dailySteps].filter(s => s.formula).length > 0 && (
             <>
               <h3 className="font-display text-body font-semibold text-text-1 mt-6">Công thức theo bước</h3>
-              {data.steps.map((step, i) => (
+              {[...data.steps, ...data.dailySteps].filter(s => s.formula).map((step, i) => (
                 <div key={i} className="rounded-card border border-surface-3 overflow-hidden">
                   <div className="px-5 py-3 bg-surface-2 border-b border-surface-3 flex items-center gap-2">
                     <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-caption font-bold">{i + 1}</span>
