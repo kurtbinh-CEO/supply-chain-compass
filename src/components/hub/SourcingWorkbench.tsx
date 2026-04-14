@@ -688,7 +688,8 @@ export function SourcingWorkbench({ scale, objective: externalObjective, onObjec
 
   // Auto-recalculate allocations when objective changes
   const handleObjectiveChange = (newObj: Objective) => {
-    setObjective(newObj);
+    setInternalObjective(newObj);
+    externalOnChange?.(newObj);
     // Recompute allocations for all sourcing SKUs based on new rankings
     const needSourcing = skus.filter(s => s.urgency !== "OK");
     const newAllocations: Record<string, Allocation[]> = {};
