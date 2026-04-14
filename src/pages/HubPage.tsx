@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { AppLayout } from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
@@ -13,9 +13,18 @@ const tabs = [
 
 export default function HubPage() {
   const [activeTab, setActiveTab] = useState("sourcing");
-  const [objective, setObjective] = useState("hybrid");
+  const [objective, setObjective] = useState<"hybrid" | "lt" | "cost">("hybrid");
   const { tenant } = useTenant();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
+
+  // Ref to workbench's objective change handler
+  const [onObjectiveChange, setOnObjectiveChange] = useState<((o: "hybrid" | "lt" | "cost") => void) | null>(null);
+
+  const handleHeaderObjectiveChange = (val: string) => {
+    const o = val as "hybrid" | "lt" | "cost";
+    setObjective(o);
+    onObjectiveChange?.(o);
+  };
 
   return (
     <AppLayout>
@@ -26,7 +35,7 @@ export default function HubPage() {
           activeTab === "sourcing" ? (
             <select
               value={objective}
-              onChange={(e) => setObjective(e.target.value)}
+              onChange={(e) => handleHeaderObjectiveChange(e.target.value)}
               className="rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-table-sm text-text-1 outline-none"
             >
               <option value="hybrid">Weighted Hybrid</option>
@@ -56,7 +65,13 @@ export default function HubPage() {
         ))}
       </div>
 
-      {activeTab === "sourcing" && <SourcingWorkbench scale={scale} />}
+      {activeTab === "sourcing" && (
+        <SourcingWorkbench
+          scale={scale}
+          objective={objective}
+          onObjectiveChange={(handler) => setOnObjectiveChange(() => handler)}
+        />
+      )}
       {activeTab === "recon" && <ReconciliationTab scale={scale} />}
       <ScreenFooter actionCount={9} />
     </AppLayout>
