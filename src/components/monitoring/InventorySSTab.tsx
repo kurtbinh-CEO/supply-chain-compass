@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useSafetyStock } from "@/components/SafetyStockContext";
 
 /* ═══ DATA ═══ */
 const invTrendBase = Array.from({ length: 30 }, (_, i) => {
@@ -72,17 +73,7 @@ const baseCnData: CnInvRow[] = [
   { cn: "CN-CT", ton: 2800, available: 2100, ssTarget: 1500, ssActual: 2100, ssGap: 600, hstk: 11, replenish: 150, status: "OK", skus: [] },
 ];
 
-interface SsSkuRow {
-  item: string; variant: string; ssCurrent: number; z: number; sigma: number; lt: number;
-  ssProposed: number; delta: number; wcImpact: string;
-}
-
-const ssBdSkus: SsSkuRow[] = [
-  { item: "GA-300", variant: "A4", ssCurrent: 900, z: 1.65, sigma: 28.5, lt: 14, ssProposed: 1035, delta: 135, wcImpact: "+25M₫" },
-  { item: "GA-300", variant: "B2", ssCurrent: 700, z: 1.65, sigma: 22.1, lt: 12, ssProposed: 700, delta: 0, wcImpact: "0" },
-  { item: "GA-400", variant: "A4", ssCurrent: 600, z: 1.65, sigma: 18.3, lt: 14, ssProposed: 600, delta: 0, wcImpact: "0" },
-  { item: "GA-600", variant: "A4", ssCurrent: 1000, z: 1.65, sigma: 32.0, lt: 10, ssProposed: 950, delta: -50, wcImpact: "−9M₫" },
-];
+// SS SKU data now comes from shared SafetyStockContext
 
 /* ═══ HELPERS ═══ */
 function hstkColor(d: number) { return d < 5 ? "text-danger" : d < 10 ? "text-warning" : "text-success"; }
@@ -92,13 +83,15 @@ interface Props { scale: number }
 
 export function InventorySSTab({ scale: s }: Props) {
   const navigate = useNavigate();
+  const { ssSkuData, applySsChange } = useSafetyStock();
+  const ssBdSkus = ssSkuData.filter(e => e.cn === "CN-BD");
   const [pivotMode, setPivotMode] = usePivotMode("monitoring-inv");
   const [invChartFilter, setInvChartFilter] = useState("all");
   const [drillCn, setDrillCn] = useState<string | null>(null);
   const [drillSku, setDrillSku] = useState<string | null>(null);
   const [expandedBridge, setExpandedBridge] = useState<string | null>(null);
   const [simOpen, setSimOpen] = useState(false);
-  const [simSku, setSimSku] = useState<SsSkuRow | null>(null);
+  const [simSku, setSimSku] = useState<typeof ssSkuData[0] | null>(null);
   const [simZ, setSimZ] = useState(1.65);
 
   const cnData = baseCnData.map((r) => ({
@@ -527,7 +520,10 @@ export function InventorySSTab({ scale: s }: Props) {
                   <td className="px-4 py-2.5 flex items-center gap-1.5">
                     {r.delta !== 0 && (
                       <Button size="sm" variant="default" className="text-caption h-7 bg-text-1 text-surface-0 hover:bg-text-2"
-                        onClick={() => toast.success("Gửi Workspace duyệt", { description: `SS ${r.item} ${r.variant}: ${r.ssCurrent}→${r.ssProposed}` })}>
+                        onClick={() => {
+                          applySsChange("CN-BD", r.item, r.variant, r.z, "Planner", "Manual apply from Monitoring", "monitoring");
+                          toast.success("SS cập nhật (đồng bộ DRP ↔ Monitoring)", { description: `SS ${r.item} ${r.variant}: ${r.ssCurrent}→${r.ssProposed}` });
+                        }}>
                         Áp dụng
                       </Button>
                     )}
@@ -605,7 +601,8 @@ export function InventorySSTab({ scale: s }: Props) {
               </div>
               <Button className="w-full bg-gradient-primary text-primary-foreground"
                 onClick={() => {
-                  toast.success("Gửi Workspace duyệt", { description: `z=${simZ.toFixed(2)} → SS ${Math.round(simSku.ssCurrent * (simZ / simSku.z)).toLocaleString()}` });
+                  applySsChange("CN-BD", simSku.item, simSku.variant, simZ, "Planner", `Simulation z=${simZ.toFixed(2)}`, "monitoring");
+                  toast.success("SS cập nhật (đồng bộ DRP ↔ Monitoring)", { description: `z=${simZ.toFixed(2)} → SS ${Math.round(simSku.ssCurrent * (simZ / simSku.z)).toLocaleString()}` });
                   setSimOpen(false);
                 }}>
                 Áp dụng → Workspace duyệt

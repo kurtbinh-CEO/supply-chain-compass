@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormulaBar } from "@/components/FormulaBar";
 import { ViewPivotToggle, usePivotMode, WorstCnCell, CnGapBadge, LcnbBadge } from "@/components/ViewPivotToggle";
+import { useSafetyStock } from "@/components/SafetyStockContext";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -37,29 +38,11 @@ interface CnRow {
   rpos: number;
 }
 
-/* ═══ SS DATA ═══ */
-interface SsCnRow { cn: string; ssTotal: number; adequate: number; breaches: number; wc: string; rec: string }
-interface SsSkuRow { item: string; variant: string; ssCurrent: number; z: number; sigma: number; lt: number; ssProposed: number; delta: number; wcImpact: string }
+/* ═══ SS DATA — now from shared SafetyStockContext ═══ */
+// SsCnRow and SsSkuRow types kept for Layer 3 params table only
+type SsCnRow = { cn: string; ssTotal: number; adequate: number; breaches: number; wc: string; rec: string };
 
-const baseSsCn: SsCnRow[] = [
-  { cn: "CN-BD", ssTotal: 2900, adequate: 72, breaches: 12, wc: "389M₫", rec: "↑ Tăng SS 15% → +58M₫" },
-  { cn: "CN-ĐN", ssTotal: 2400, adequate: 146, breaches: 0, wc: "650M₫", rec: "↓ Giảm SS 10% → −65M₫" },
-  { cn: "CN-HN", ssTotal: 2100, adequate: 105, breaches: 2, wc: "407M₫", rec: "→ Giữ" },
-  { cn: "CN-CT", ssTotal: 1500, adequate: 107, breaches: 1, wc: "296M₫", rec: "→ Giữ" },
-];
-
-const ssBdSkus: SsSkuRow[] = [
-  { item: "GA-300", variant: "A4", ssCurrent: 900, z: 1.65, sigma: 28.5, lt: 14, ssProposed: 1035, delta: 135, wcImpact: "+25M₫/tháng" },
-  { item: "GA-300", variant: "B2", ssCurrent: 700, z: 1.65, sigma: 22.1, lt: 12, ssProposed: 700, delta: 0, wcImpact: "0" },
-  { item: "GA-400", variant: "A4", ssCurrent: 600, z: 1.65, sigma: 18.3, lt: 14, ssProposed: 600, delta: 0, wcImpact: "0" },
-  { item: "GA-600", variant: "A4", ssCurrent: 1000, z: 1.65, sigma: 32.0, lt: 10, ssProposed: 950, delta: -50, wcImpact: "−9M₫/tháng" },
-];
-
-
-const changeLog = [
-  { time: "12/05 14:30", who: "Thúy", change: "SS GA-300 A4 CN-BD: 900→1.035", reason: "Stockout 2x tháng qua" },
-  { time: "10/05 09:15", who: "System", change: "LCNB threshold: 60%→70%", reason: "Auto-adjust from closed-loop" },
-];
+// Change log now comes from shared SafetyStockContext
 
 /* ═══ LAYER 1 DATA ═══ */
 const baseData: CnRow[] = [
@@ -116,6 +99,8 @@ export default function DrpPage() {
   const { tenant } = useTenant();
   const s = tenantScales[tenant] || 1;
   const navigate = useNavigate();
+  const { ssSkuData, ssCnData: baseSsCn, changeLog: ssChangeLog, applySsChange, getSkusByCn } = useSafetyStock();
+  const ssBdSkus = getSkusByCn("CN-BD");
   const [drillCn, setDrillCn] = useState<string | null>(null);
   const [drillSku, setDrillSku] = useState<string | null>(null);
   const [showAllSkus, setShowAllSkus] = useState(false);
@@ -779,7 +764,10 @@ export default function DrpPage() {
                           <td className="px-4 py-2.5">
                             {sk.delta !== 0 && (
                               <button
-                                onClick={() => toast.success("SS change gửi Workspace duyệt", { description: `${sk.item} ${sk.variant}: ${sk.ssCurrent}→${sk.ssProposed}. DRP đêm nay dùng SS mới.` })}
+                                onClick={() => {
+                                  applySsChange("CN-BD", sk.item, sk.variant, sk.z, "Planner", "Apply from DRP Layer 3", "drp");
+                                  toast.success("SS cập nhật (đồng bộ DRP ↔ Monitoring)", { description: `${sk.item} ${sk.variant}: ${sk.ssCurrent}→${sk.ssProposed}. DRP đêm nay dùng SS mới.` });
+                                }}
                                 className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium"
                               >
                                 Áp dụng
@@ -917,18 +905,23 @@ export default function DrpPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-surface-3 bg-surface-1/50">
-                      {["Thời gian", "Ai", "Thay đổi", "Lý do"].map((h, i) => (
+                      {["Thời gian", "Ai", "Thay đổi", "Lý do", "Nguồn"].map((h, i) => (
                         <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {changeLog.map((log, i) => (
+                    {ssChangeLog.map((log, i) => (
                       <tr key={i} className="border-b border-surface-3/50">
                         <td className="px-4 py-2.5 text-table tabular-nums text-text-2">{log.time}</td>
                         <td className="px-4 py-2.5 text-table text-text-1">{log.who}</td>
                         <td className="px-4 py-2.5 text-table text-text-1 font-mono text-[11px]">{log.change}</td>
                         <td className="px-4 py-2.5 text-table text-text-3">{log.reason}</td>
+                        <td className="px-4 py-2.5">
+                          <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", log.source === "drp" ? "bg-primary/10 text-primary" : "bg-info-bg text-info")}>
+                            {log.source === "drp" ? "DRP" : "Monitoring"}
+                          </span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1041,7 +1034,7 @@ export default function DrpPage() {
               </div>
 
               <div className="flex gap-3">
-                <button onClick={() => { toast.success("SS mới áp dụng", { description: `${simSku} ${simCn}: ${skuRef.ssCurrent}→${simSs}. Gửi Workspace duyệt.` }); setShowSimModal(false); }}
+                <button onClick={() => { applySsChange(simCn, skuRef.item, skuRef.variant, simZ, "Planner", `Simulation z=${simZ.toFixed(2)}`, "drp"); toast.success("SS cập nhật (đồng bộ DRP ↔ Monitoring)", { description: `${simSku} ${simCn}: ${skuRef.ssCurrent}→${simSs}. Gửi Workspace duyệt.` }); setShowSimModal(false); }}
                   className="flex-1 rounded-button bg-gradient-primary text-primary-foreground py-2 text-table font-medium">
                   Áp dụng SS mới
                 </button>

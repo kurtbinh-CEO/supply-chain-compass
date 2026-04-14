@@ -8,6 +8,7 @@ import { WorkflowProvider } from "@/components/WorkflowContext";
 import { WorkspaceProvider } from "@/components/WorkspaceContext";
 import { TenantProvider } from "@/components/TenantContext";
 import { RbacProvider } from "@/components/RbacContext";
+import { SafetyStockProvider } from "@/components/SafetyStockContext";
 import Index from "./pages/Index";
 import DesignTest from "./pages/DesignTest";
 import WorkspacePage from "./pages/WorkspacePage";
@@ -41,6 +42,7 @@ const App = () => (
           <RbacProvider>
           <WorkspaceProvider>
           <WorkflowProvider>
+          <SafetyStockProvider>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/workspace" element={<WorkspacePage />} />
@@ -62,6 +64,7 @@ const App = () => (
               <Route path="/design-test" element={<DesignTest />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+          </SafetyStockProvider>
           </WorkflowProvider>
           </WorkspaceProvider>
           </RbacProvider>
