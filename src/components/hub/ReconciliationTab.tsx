@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronRight, ChevronDown } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 
 interface Props { scale: number }
@@ -65,7 +65,7 @@ const baseBpoRecon: BpoRecon[] = [
 ];
 
 export function ReconciliationTab({ scale }: Props) {
-  const [drillBpo, setDrillBpo] = useState<string | null>(null);
+  const [expandedBpos, setExpandedBpos] = useState<Set<string>>(new Set());
   const [selectedPeriod, setSelectedPeriod] = useState("Tháng 5 (đang chạy)");
 
   const recon = baseBpoRecon.map(r => ({
@@ -76,84 +76,9 @@ export function ReconciliationTab({ scale }: Props) {
     rpos: r.rpos.map(rp => ({ ...rp, qty: Math.round(rp.qty * scale), actual: Math.round(rp.actual * scale) })),
   }));
 
-  const activeBpo = drillBpo ? recon.find(r => r.bpo === drillBpo) : null;
-
-  if (activeBpo) {
-    const honoringPct = activeBpo.committed > 0 ? Math.round((activeBpo.delivered / activeBpo.committed) * 100) : 0;
-
-    return (
-      <div className="space-y-4 animate-fade-in">
-        <div className="flex items-center gap-2 text-table-sm">
-          <button onClick={() => setDrillBpo(null)} className="text-primary font-medium hover:underline flex items-center gap-1">
-            <ChevronLeft className="h-3.5 w-3.5" /> Đối chiếu
-          </button>
-          <span className="text-text-3">/</span>
-          <span className={cn("rounded-sm px-1.5 py-0.5 text-caption font-medium", getPoTypeBadge("BPO").bg, getPoTypeBadge("BPO").text, poNumClasses)}>
-            {activeBpo.bpo}
-          </span>
-          <span className="text-text-1 font-medium">{activeBpo.nm}</span>
-        </div>
-
-        {/* BPO summary */}
-        <div className="grid grid-cols-4 gap-3">
-          {[
-            { label: "Committed", value: activeBpo.committed.toLocaleString(), color: "text-text-1" },
-            { label: "Released", value: `${activeBpo.released.toLocaleString()} (${activeBpo.releasedRpos} RPOs)`, color: "text-info" },
-            { label: "Delivered", value: `${activeBpo.delivered.toLocaleString()} (${activeBpo.deliveredAsns} ASNs)`, color: "text-success" },
-            { label: "Honoring%", value: `${honoringPct}%`, color: honoringPct >= 80 ? "text-success" : "text-danger" },
-          ].map(k => (
-            <div key={k.label} className="rounded-card border border-surface-3 bg-surface-1 p-3">
-              <div className="text-caption text-text-3 uppercase">{k.label}</div>
-              <div className={cn("font-display text-section-header tabular-nums mt-1", k.color)}>{k.value}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* RPO → ASN table */}
-        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-          <table className="w-full text-table-sm">
-            <thead>
-              <tr className="border-b border-surface-3 bg-surface-1/50">
-                {["RPO#", "Item", "Qty", "ASN#", "Ship date", "ETA", "Actual", "Status"].map(h => (
-                  <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {activeBpo.rpos.map((rpo, i) => {
-                const rpoBadge = getPoTypeBadge("RPO");
-                const asnBadge = getPoTypeBadge("ASN");
-                const statusColor = rpo.status === "RECEIVED" ? "bg-success-bg text-success" :
-                  rpo.status === "SHIPPED" ? "bg-info-bg text-info" : "bg-warning-bg text-warning";
-                return (
-                  <tr key={i} className={cn("border-b border-surface-3/50", i % 2 === 0 ? "bg-surface-2" : "bg-surface-0")}>
-                    <td className={cn("px-4 py-2.5", poNumClasses, rpoBadge.text)}>{rpo.rpo}</td>
-                    <td className="px-4 py-2.5 text-text-1">{rpo.item}</td>
-                    <td className="px-4 py-2.5 tabular-nums text-text-1">{rpo.qty.toLocaleString()}</td>
-                    <td className="px-4 py-2.5">
-                      {rpo.asn !== "—" ? (
-                        <span className={cn("rounded-sm px-1.5 py-0.5", poNumClasses, asnBadge.bg, asnBadge.text)}>{rpo.asn}</span>
-                      ) : <span className="text-text-3">—</span>}
-                    </td>
-                    <td className={cn("px-4 py-2.5 text-text-2", poNumClasses)}>{rpo.shipDate}</td>
-                    <td className={cn("px-4 py-2.5 text-text-2", poNumClasses)}>{rpo.eta}</td>
-                    <td className="px-4 py-2.5 tabular-nums text-text-1 font-medium">
-                      {rpo.actual > 0 ? rpo.actual.toLocaleString() : "—"}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium", statusColor)}>
-                        ● {rpo.status}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  }
+  const toggleBpo = (bpo: string) => {
+    setExpandedBpos(prev => { const next = new Set(prev); next.has(bpo) ? next.delete(bpo) : next.add(bpo); return next; });
+  };
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -172,13 +97,13 @@ export function ReconciliationTab({ scale }: Props) {
         <button className="rounded-button border border-surface-3 text-table-sm text-text-2 px-3 py-2 hover:bg-surface-2">Export Excel</button>
       </div>
 
-      {/* BPO-level reconciliation */}
+      {/* BPO-level reconciliation with expandable RPO rows */}
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-table-sm">
             <thead>
               <tr className="border-b border-surface-3 bg-surface-1/50">
-                {["BPO#", "NM", "Committed", "Released (RPOs)", "Delivered (ASNs)", "Honoring%", "Status", ""].map(h => (
+                {["", "BPO#", "NM", "Committed", "Released (RPOs)", "Delivered (ASNs)", "Honoring%", "Status"].map(h => (
                   <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -187,29 +112,84 @@ export function ReconciliationTab({ scale }: Props) {
               {recon.map((r, i) => {
                 const honoringPct = r.committed > 0 ? Math.round((r.delivered / r.committed) * 100) : 0;
                 const bpoBadge = getPoTypeBadge("BPO");
+                const isExpanded = expandedBpos.has(r.bpo);
                 return (
-                  <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-primary/5 cursor-pointer", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
-                    onClick={() => setDrillBpo(r.bpo)}>
-                    <td className="px-4 py-2.5">
-                      <span className={cn("rounded-sm px-1.5 py-0.5", poNumClasses, bpoBadge.bg, bpoBadge.text)}>{r.bpo}</span>
-                    </td>
-                    <td className="px-4 py-2.5 font-medium text-text-1">{r.nm}</td>
-                    <td className="px-4 py-2.5 tabular-nums text-text-1">{r.committed.toLocaleString()}</td>
-                    <td className="px-4 py-2.5 tabular-nums text-text-2">{r.released.toLocaleString()} ({r.releasedRpos} RPOs)</td>
-                    <td className="px-4 py-2.5 tabular-nums text-text-2">{r.delivered.toLocaleString()} ({r.deliveredAsns} ASNs)</td>
-                    <td className="px-4 py-2.5">
-                      <span className={cn("tabular-nums font-bold", honoringPct >= 80 ? "text-success" : honoringPct >= 60 ? "text-warning" : "text-danger")}>
-                        {honoringPct}%
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium",
-                        r.state === "closed" ? "bg-surface-1 text-text-3" : "bg-info-bg text-info")}>
-                        {r.state === "closed" ? "🔒 Closed" : "● Active"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-text-3"><ChevronRight className="h-3.5 w-3.5" /></td>
-                  </tr>
+                  <>
+                    <tr key={r.bpo} className={cn("border-b border-surface-3/50 hover:bg-primary/5 cursor-pointer", isExpanded ? "bg-primary/5" : i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
+                      onClick={() => toggleBpo(r.bpo)}>
+                      <td className="px-4 py-2.5 w-8 text-text-3">{isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}</td>
+                      <td className="px-4 py-2.5">
+                        <span className={cn("rounded-sm px-1.5 py-0.5", poNumClasses, bpoBadge.bg, bpoBadge.text)}>{r.bpo}</span>
+                      </td>
+                      <td className="px-4 py-2.5 font-medium text-text-1">{r.nm}</td>
+                      <td className="px-4 py-2.5 tabular-nums text-text-1">{r.committed.toLocaleString()}</td>
+                      <td className="px-4 py-2.5 tabular-nums text-text-2">{r.released.toLocaleString()} ({r.releasedRpos} RPOs)</td>
+                      <td className="px-4 py-2.5 tabular-nums text-text-2">{r.delivered.toLocaleString()} ({r.deliveredAsns} ASNs)</td>
+                      <td className="px-4 py-2.5">
+                        <span className={cn("tabular-nums font-bold", honoringPct >= 80 ? "text-success" : honoringPct >= 60 ? "text-warning" : "text-danger")}>
+                          {honoringPct}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium",
+                          r.state === "closed" ? "bg-surface-1 text-text-3" : "bg-info-bg text-info")}>
+                          {r.state === "closed" ? "🔒 Closed" : "● Active"}
+                        </span>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <>
+                        {/* Summary KPIs */}
+                        <tr key={`${r.bpo}-summary`} className="bg-surface-0 animate-fade-in">
+                          <td />
+                          <td colSpan={7} className="px-4 py-3">
+                            <div className="grid grid-cols-4 gap-3">
+                              {[
+                                { label: "Committed", value: r.committed.toLocaleString(), color: "text-text-1" },
+                                { label: "Released", value: `${r.released.toLocaleString()} (${r.releasedRpos} RPOs)`, color: "text-info" },
+                                { label: "Delivered", value: `${r.delivered.toLocaleString()} (${r.deliveredAsns} ASNs)`, color: "text-success" },
+                                { label: "Honoring%", value: `${honoringPct}%`, color: honoringPct >= 80 ? "text-success" : "text-danger" },
+                              ].map(k => (
+                                <div key={k.label} className="rounded-lg border border-surface-3 bg-surface-1 p-2.5">
+                                  <div className="text-caption text-text-3 uppercase">{k.label}</div>
+                                  <div className={cn("font-display text-body font-semibold tabular-nums mt-0.5", k.color)}>{k.value}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                        {/* RPO detail rows */}
+                        {r.rpos.map((rpo, ri) => {
+                          const rpoBadge = getPoTypeBadge("RPO");
+                          const asnBadge = getPoTypeBadge("ASN");
+                          const statusColor = rpo.status === "RECEIVED" ? "bg-success-bg text-success" :
+                            rpo.status === "SHIPPED" ? "bg-info-bg text-info" : "bg-warning-bg text-warning";
+                          return (
+                            <tr key={`${r.bpo}-rpo-${ri}`} className="border-b border-surface-3/30 bg-surface-0 animate-fade-in">
+                              <td />
+                              <td className={cn("px-4 py-2 pl-8", poNumClasses, rpoBadge.text)}>↳ {rpo.rpo}</td>
+                              <td className="px-4 py-2 text-text-1">{rpo.item}</td>
+                              <td className="px-4 py-2 tabular-nums text-text-1">{rpo.qty.toLocaleString()}</td>
+                              <td className="px-4 py-2">
+                                {rpo.asn !== "—" ? (
+                                  <span className={cn("rounded-sm px-1.5 py-0.5", poNumClasses, asnBadge.bg, asnBadge.text)}>{rpo.asn}</span>
+                                ) : <span className="text-text-3">—</span>}
+                              </td>
+                              <td className="px-4 py-2 tabular-nums text-text-1 font-medium">
+                                {rpo.actual > 0 ? rpo.actual.toLocaleString() : "—"}
+                              </td>
+                              <td className="px-4 py-2">
+                                <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium", statusColor)}>
+                                  ● {rpo.status}
+                                </span>
+                              </td>
+                              <td className={cn("px-4 py-2 text-text-3", poNumClasses)}>{rpo.shipDate} → {rpo.eta}</td>
+                            </tr>
+                          );
+                        })}
+                      </>
+                    )}
+                  </>
                 );
               })}
             </tbody>
@@ -218,7 +198,7 @@ export function ReconciliationTab({ scale }: Props) {
       </div>
 
       <div className="text-table-sm text-text-3 italic">
-        Tháng closed: số lock vĩnh viễn. Honoring% = Delivered / Committed. Feed → /monitoring closed-loop.
+        * Đối chiếu tự động khi ASN received. Variance &gt; 5% → tạo exception.
       </div>
     </div>
   );
