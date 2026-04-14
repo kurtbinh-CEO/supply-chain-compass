@@ -4,7 +4,7 @@ import { ScreenHeader } from "@/components/ScreenShell";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronRight, Bell, Clock, Filter } from "lucide-react";
+import { ChevronRight, ChevronDown, Bell, Clock, Filter } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
 import { ViewPivotToggle, usePivotMode, CnGapBadge } from "@/components/ViewPivotToggle";
@@ -61,8 +61,8 @@ const baseCnData: CnRow[] = [
 export default function DemandWeeklyPage() {
   const { tenant } = useTenant();
   const s = tenantScales[tenant] || 1;
-  const [drillCn, setDrillCn] = useState<string | null>(null);
-  const [drillSku, setDrillSku] = useState<string | null>(null);
+  const [expandedCns, setExpandedCns] = useState<Set<string>>(new Set());
+  const [expandedSkus, setExpandedSkus] = useState<Set<string>>(new Set());
   const [pivotMode, setPivotMode] = usePivotMode("demand-weekly");
 
   const data = baseCnData.map((r) => ({
