@@ -358,9 +358,20 @@ export default function OrdersPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-surface-3 bg-surface-1/50">
-                      {["NM", "BPO#", "BPO total", "Released", "Delivered", "BPO completion%", ""].map((h, i) => (
-                        <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
-                      ))}
+                      {["NM", "BPO#", "BPO total", "Released", "Delivered", "BPO completion%",
+                        { h: "On-time%", tooltip: true }, ""
+                      ].map((col, i) => {
+                        const h = typeof col === "string" ? col : col.h;
+                        const hasTooltip = typeof col !== "string" && col.tooltip;
+                        return (
+                          <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
+                            <span className="inline-flex items-center gap-1">
+                              {h}
+                              {hasTooltip && <LogicTooltip title="On-time% SLA" content={`On-time = delivered ≤ ETA + grace period.\nGrace period: 2 ngày (config).\nETA 17/05 + grace 2d = deadline 19/05.\nDelivered 18/05 → ✅ On-time.\nDelivered 22/05 → 🔴 Late 3 ngày.\nOn-time% = (# PO on-time) / (# PO total) × 100\nConfig: /config → PO → on_time_grace_days = 2.`} />}
+                            </span>
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody>
@@ -454,6 +465,38 @@ export default function OrdersPage() {
             </div>
           )}
         </div>
+      )}
+      {/* Force-release modal */}
+      {forceReleasePoNum && (
+        <>
+          <div className="fixed inset-0 bg-text-1/30 z-50" onClick={() => setForceReleasePoNum(null)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-surface-2 border border-surface-3 rounded-card shadow-xl w-[480px] p-6 space-y-4">
+              <h3 className="font-display text-section-header text-text-1">Force-release bypass ATP</h3>
+              <div className="rounded-card border border-warning/30 bg-warning-bg/30 p-4 space-y-2 text-table-sm text-text-2">
+                <p className="font-medium text-warning">⚠ Force-release bypass ATP check. Cần duyệt 3 cấp:</p>
+                <div className="space-y-1.5 pl-2">
+                  <p>Cấp 1: SC Manager (Thúy) → <span className="text-warning">⏳ Chờ duyệt</span></p>
+                  <p>Cấp 2: Director Operations → <span className="text-text-3">Chưa tới</span></p>
+                  <p>Cấp 3: CEO (Kurt) → <span className="text-text-3">Chưa tới</span></p>
+                </div>
+                <p className="text-text-3 mt-2">Risk: NM có thể không đủ hàng → PO_OVERDUE.</p>
+                <p className="text-text-3">History: 2 force-releases tháng này (Toko×2).</p>
+                <p className="text-text-3 italic">Config: /config → PO → force_release_levels = 3.</p>
+              </div>
+              <div>
+                <label className="text-caption text-text-3 uppercase">Lý do bắt buộc</label>
+                <textarea value={forceReleaseReason} onChange={e => setForceReleaseReason(e.target.value)}
+                  className="w-full h-20 mt-1 rounded-button border border-surface-3 bg-surface-0 px-3 py-2 text-table text-text-1 resize-none" placeholder="Nhập lý do force-release..." />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => { setForceReleasePoNum(null); setForceReleaseReason(""); }} className="flex-1 h-10 rounded-button border border-surface-3 bg-surface-2 text-text-2 text-table font-medium hover:bg-surface-1">Hủy</button>
+                <button onClick={() => { toast.success(`Force-release ${forceReleasePoNum} gửi duyệt 3 cấp`); setForceReleasePoNum(null); setForceReleaseReason(""); }}
+                  className="flex-1 h-10 rounded-button bg-danger text-primary-foreground text-table font-medium hover:opacity-90">Gửi Force-release</button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
       <ScreenFooter actionCount={10} />
     </AppLayout>
