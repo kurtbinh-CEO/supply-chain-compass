@@ -29,7 +29,6 @@ const roleMap: Record<UserRole, RoleKey> = {
   SC_MANAGER: "SC_MANAGER",
   CN_MANAGER: "CN_MANAGER",
   SALES: "SALES",
-  BUYER: "BUYER",
   VIEWER: "SC_MANAGER",
 };
 
