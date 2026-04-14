@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Check, ChevronRight, AlertTriangle, HelpCircle, Star, Send, RotateCcw, Zap } from "lucide-react";
 import { toast } from "sonner";
