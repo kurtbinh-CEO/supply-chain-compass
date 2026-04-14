@@ -682,6 +682,35 @@ export function SourcingWorkbench({ scale }: Props) {
     fcMin: Math.round(s.fcMin * scale),
   })), [scale]);
 
+  const currentSku = selectedSku ? skus.find(s => s.item === selectedSku.item && s.variant === selectedSku.variant) : null;
+  const currentRankings = useMemo(() => selectedSku ? getRanking(selectedSku.item, selectedSku.variant, currentSku?.eligibleNms || [], objective) : [], [selectedSku, currentSku, objective]);
+
+  // Auto-recalculate allocations when objective changes
+  const handleObjectiveChange = (newObj: Objective) => {
+    setObjective(newObj);
+    // Recompute allocations for all sourcing SKUs based on new rankings
+    const needSourcing = skus.filter(s => s.urgency !== "OK");
+    const newAllocations: Record<string, Allocation[]> = {};
+    for (const sk of needSourcing) {
+      const key = `${sk.item}|${sk.variant}`;
+      const rankings = getRanking(sk.item, sk.variant, sk.eligibleNms, newObj);
+      const available = rankings.filter(r => !r.offline);
+      if (available.length === 0) continue;
+      if (available.length === 1 || sk.netReq <= available[0].atp) {
+        newAllocations[key] = [{ nm: available[0].nm, qty: sk.netReq, role: "Single source" }];
+      } else {
+        const primaryQty = Math.round(sk.netReq * 0.7);
+        const backupQty = sk.netReq - primaryQty;
+        newAllocations[key] = [
+          { nm: available[0].nm, qty: primaryQty, role: "Primary" },
+          { nm: available[1].nm, qty: backupQty, role: "Backup" },
+        ];
+      }
+    }
+    setAllocations(newAllocations);
+    toast.info(`Ranking re-sorted theo ${OBJECTIVE_LABELS[newObj]}`, { description: "Bước 2 & 3 đã tự động recalculate." });
+  };
+
   const completeStep = (n: number) => setCompletedSteps(prev => new Set(prev).add(n));
 
   const handleSelectSku = (item: string, variant: string) => {
@@ -694,7 +723,7 @@ export function SourcingWorkbench({ scale }: Props) {
     completeStep(1);
     completeStep(2);
     setActiveStep(3);
-    toast.success("Auto-allocation hoàn tất", { description: "5 SKU đã phân bổ theo Weighted Hybrid" });
+    toast.success("Auto-allocation hoàn tất", { description: `5 SKU đã phân bổ theo ${OBJECTIVE_LABELS[objective]}` });
   };
 
   const handleNmSelect = (nms: { nm: string; role: string }[]) => {
@@ -759,9 +788,6 @@ export function SourcingWorkbench({ scale }: Props) {
       </div>
     );
   }
-
-  const currentSku = selectedSku ? skus.find(s => s.item === selectedSku.item && s.variant === selectedSku.variant) : null;
-  const currentRankings = useMemo(() => selectedSku ? getRanking(selectedSku.item, selectedSku.variant, currentSku?.eligibleNms || [], objective) : [], [selectedSku, currentSku, objective]);
 
   return (
     <div className="space-y-2">
