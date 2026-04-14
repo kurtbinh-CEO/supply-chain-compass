@@ -406,7 +406,22 @@ export default function CnPortalPage() {
     { key: "adjust", label: "Điều chỉnh demand" },
     { key: "inv", label: "Tồn kho CN" },
     { key: "chat", label: "Trao đổi" },
+    { key: "history", label: "Lịch sử" },
   ];
+
+  // Audit log state
+  const auditEntries = baseAuditLog[activeCn] || [];
+  const [auditWeekFilter, setAuditWeekFilter] = useState("all");
+  const [auditSkuFilter, setAuditSkuFilter] = useState("all");
+  const [auditActionFilter, setAuditActionFilter] = useState("all");
+  const auditWeeks = Array.from(new Set(auditEntries.map(e => e.week))).sort().reverse();
+  const auditSkus = Array.from(new Set(auditEntries.filter(e => e.sku !== "—").map(e => `${e.sku} ${e.variant}`)));
+  const filteredAudit = auditEntries.filter(e => {
+    if (auditWeekFilter !== "all" && e.week !== auditWeekFilter) return false;
+    if (auditSkuFilter !== "all" && `${e.sku} ${e.variant}` !== auditSkuFilter) return false;
+    if (auditActionFilter !== "all" && e.action !== auditActionFilter) return false;
+    return true;
+  });
 
   const cnLabel: Record<string, string> = {
     "CN-BD": "CN Bình Dương", "CN-ĐN": "CN Đà Nẵng", "CN-HN": "CN Hà Nội", "CN-CT": "CN Cần Thơ",
