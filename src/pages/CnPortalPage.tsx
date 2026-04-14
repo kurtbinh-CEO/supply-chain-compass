@@ -372,12 +372,26 @@ export default function CnPortalPage() {
   };
 
   const handleApprove = (idx: number) => {
+    const r = rows[idx];
     setDemandData((prev) => {
       const copy = JSON.parse(JSON.stringify(prev));
       copy[activeCn][idx].status = "approved";
       return copy;
     });
-    toast.success("Đã duyệt", { description: `${rows[idx].item} ${rows[idx].variant}` });
+    const delta = (r.adjust ?? r.forecast) - r.forecast;
+    const pct = r.forecast > 0 ? ((delta / r.forecast) * 100).toFixed(1) : "0";
+    const sign = delta > 0 ? "+" : "";
+    addAuditEntry({
+      who: user.name,
+      role: user.role,
+      action: "approve",
+      sku: r.item,
+      variant: r.variant,
+      detail: `Duyệt điều chỉnh ${sign}${delta} (${sign}${pct}%)`,
+      oldValue: r.forecast,
+      newValue: r.adjust ?? r.forecast,
+    });
+    toast.success("Đã duyệt", { description: `${r.item} ${r.variant}` });
   };
 
   const handleReject = (idx: number, reason: string) => {
