@@ -256,6 +256,8 @@ export default function CnPortalPage() {
   const rows = demandData[activeCn] || [];
   const inv = baseInvData[activeCn] || [];
 
+  const cnPresence = useCellPresence("cn-portal", { id: user.id, name: user.name, role: user.role, color: "bg-primary text-primary-foreground" });
+
   useEffect(() => {
     if (focusRow && focusRef.current) {
       focusRef.current.focus();
