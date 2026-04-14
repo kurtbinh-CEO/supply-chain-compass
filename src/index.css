@@ -23,6 +23,16 @@
   }
 }
 
+@layer components {
+  .rounded-card {
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.2s ease;
+  }
+  .rounded-card:hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+}
+
 @layer utilities {
   .bg-gradient-primary {
     background: linear-gradient(135deg, var(--color-primary-dark), var(--color-primary));
