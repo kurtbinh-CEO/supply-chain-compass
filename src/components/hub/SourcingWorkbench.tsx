@@ -801,7 +801,7 @@ export function SourcingWorkbench({ scale }: Props) {
           sku={currentSku}
           rankings={currentRankings}
           objective={objective}
-          onObjective={setObjective}
+          onObjective={handleObjectiveChange}
           onSelect={handleNmSelect}
           onAutoSelect={handleAutoSelect}
           showFormula={showFormula}
