@@ -387,7 +387,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
               <tbody>
                 {skuPivotData.map((row, i) => (
                   <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors cursor-pointer", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
-                    onClick={() => setExpandedSkuKeys(prev => { const n = new Set(prev); const k = `${row.item}|${row.variant}`)}>
+                    onClick={() => { const k = `${row.item}|${row.variant}`; setExpandedSkuKeys(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; }); }}>
                     <td className="px-3 py-2.5 font-medium text-text-1">{row.item}</td>
                     <td className="px-3 py-2.5 text-text-2">{row.variant}</td>
                     <td className="px-3 py-2.5 tabular-nums text-text-1 font-medium">{row.demand.toLocaleString()}</td>
