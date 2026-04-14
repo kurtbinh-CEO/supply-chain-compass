@@ -52,7 +52,7 @@ const baseSsCnData: SsCnSummary[] = [
 ];
 
 const baseChangeLog: SsChangeLogEntry[] = [
-  { time: "12/05 14:30", who: "Thúy", change: "SS GA-300 A4 CN-BD: 900→1.035", reason: "Stockout 2x tháng qua", source: "drp" },
+  { time: "12/05 14:30", who: "Thúy", change: "SS GA-300 A4 CN-BD: 900→1.038", reason: "Stockout 2x tháng qua", source: "drp" },
   { time: "10/05 09:15", who: "System", change: "LCNB threshold: 60%→70%", reason: "Auto-adjust from closed-loop", source: "monitoring" },
 ];
 
