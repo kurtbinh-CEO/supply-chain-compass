@@ -280,7 +280,25 @@ export default function CnPortalPage() {
     });
   };
 
-  const handleSubmit = () => {
+  // Audit log state — stateful so actions can add entries
+  const [auditLog, setAuditLog] = useState<Record<string, AuditEntry[]>>(() => JSON.parse(JSON.stringify(baseAuditLog)));
+  const auditEntries = auditLog[activeCn] || [];
+
+  const addAuditEntry = (entry: Omit<AuditEntry, "id" | "time" | "date" | "week">) => {
+    const now = new Date();
+    const newEntry: AuditEntry = {
+      ...entry,
+      id: `a-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      time: now.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+      date: `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}`,
+      week: `W${Math.ceil(((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / 86400000 + new Date(now.getFullYear(), 0, 1).getDay() + 1) / 7)}`,
+    };
+    setAuditLog(prev => ({
+      ...prev,
+      [activeCn]: [newEntry, ...(prev[activeCn] || [])],
+    }));
+  };
+
     const edited = rows.filter((r) => r.adjust !== null && r.adjust !== r.forecast);
     const needReason = edited.filter((r) => {
       const pct = Math.abs((r.adjust! - r.forecast) / r.forecast) * 100;
@@ -323,27 +341,96 @@ export default function CnPortalPage() {
       url: "/cn-portal",
     });
 
+    // Add audit entries for each edited SKU
+    edited.forEach((r) => {
+      const delta = r.adjust! - r.forecast;
+      const pct = ((delta / r.forecast) * 100).toFixed(1);
+      const sign = delta > 0 ? "+" : "";
+      const isAutoApproved = r.status === "approved";
+      
+      addAuditEntry({
+        who: user.name,
+        role: user.role,
+        action: "adjust",
+        sku: r.item,
+        variant: r.variant,
+        detail: "Điều chỉnh demand",
+        oldValue: r.forecast,
+        newValue: r.adjust!,
+        reason: r.reason || undefined,
+      });
+
+      if (isAutoApproved) {
+        addAuditEntry({
+          who: "System",
+          role: "SYSTEM",
+          action: "auto_approve",
+          sku: r.item,
+          variant: r.variant,
+          detail: `Auto-approve (delta ${sign}${pct}%)`,
+          oldValue: r.forecast,
+          newValue: r.adjust!,
+        });
+      }
+    });
+
+    // Add submit entry
+    addAuditEntry({
+      who: user.name,
+      role: user.role,
+      action: "submit",
+      sku: "—",
+      variant: "—",
+      detail: `Gửi batch ${edited.length} SKU điều chỉnh`,
+    });
+
     toast.success("Đã gửi điều chỉnh", {
       description: `${edited.length} SKU. ${approved} auto-approved, ${pending} chờ duyệt.`,
     });
   };
 
   const handleApprove = (idx: number) => {
+    const r = rows[idx];
     setDemandData((prev) => {
       const copy = JSON.parse(JSON.stringify(prev));
       copy[activeCn][idx].status = "approved";
       return copy;
     });
-    toast.success("Đã duyệt", { description: `${rows[idx].item} ${rows[idx].variant}` });
+    const delta = (r.adjust ?? r.forecast) - r.forecast;
+    const pct = r.forecast > 0 ? ((delta / r.forecast) * 100).toFixed(1) : "0";
+    const sign = delta > 0 ? "+" : "";
+    addAuditEntry({
+      who: user.name,
+      role: user.role,
+      action: "approve",
+      sku: r.item,
+      variant: r.variant,
+      detail: `Duyệt điều chỉnh ${sign}${delta} (${sign}${pct}%)`,
+      oldValue: r.forecast,
+      newValue: r.adjust ?? r.forecast,
+    });
+    toast.success("Đã duyệt", { description: `${r.item} ${r.variant}` });
   };
 
   const handleReject = (idx: number, reason: string) => {
+    const r = rows[idx];
     setDemandData((prev) => {
       const copy = JSON.parse(JSON.stringify(prev));
       copy[activeCn][idx].status = "blocked";
       return copy;
     });
-    toast.info("Đã từ chối", { description: `${rows[idx].item} ${rows[idx].variant}: ${reason}` });
+    addAuditEntry({
+      who: user.name,
+      role: user.role,
+      action: "reject",
+      sku: r.item,
+      variant: r.variant,
+      detail: `Từ chối điều chỉnh — ${reason}`,
+      oldValue: r.forecast,
+      newValue: r.adjust ?? r.forecast,
+      reason,
+    });
+    toast.info("Đã từ chối", { description: `${r.item} ${r.variant}: ${reason}` });
   };
 
   const sendMessage = (skuTag?: string) => {
@@ -409,8 +496,6 @@ export default function CnPortalPage() {
     { key: "history", label: "Lịch sử" },
   ];
 
-  // Audit log state
-  const auditEntries = baseAuditLog[activeCn] || [];
   const [auditWeekFilter, setAuditWeekFilter] = useState("all");
   const [auditSkuFilter, setAuditSkuFilter] = useState("all");
   const [auditActionFilter, setAuditActionFilter] = useState("all");
