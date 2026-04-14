@@ -80,7 +80,7 @@ const navGroups: NavGroup[] = [
 
 export function AppSidebar() {
   const { collapsed, toggle } = useSidebarState();
-  const { startWorkflow } = useWorkflow();
+  const { startWorkflow, isBarVisible, isRouteInWorkflow, requestLeave } = useWorkflow();
   const { pendingCount } = useWorkspace();
   const { user } = useRbac();
   const location = useLocation();
@@ -129,11 +129,18 @@ export function AppSidebar() {
               <div className="space-y-0.5">
                 {visibleItems.map((item) => {
                   const isActive = location.pathname === item.url;
+                  const handleNavClick = (e: React.MouseEvent) => {
+                    if (isBarVisible && !isRouteInWorkflow(item.url) && item.url !== "/workspace" && item.url !== "/") {
+                      e.preventDefault();
+                      requestLeave(item.url);
+                    }
+                  };
                   return (
                     <NavLink
                       key={item.url}
                       to={item.url}
                       end
+                      onClick={handleNavClick}
                       className={cn(
                         "group relative flex items-center gap-3 rounded-button px-3 py-2 text-body text-text-2 hover:bg-surface-3 hover:text-text-1 transition-colors",
                         collapsed && "justify-center px-0",
