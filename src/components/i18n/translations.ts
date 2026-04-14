@@ -133,6 +133,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "wf.sessionComplete": "Phiên làm việc hoàn tất",
     "wf.allDone": "Tất cả đã xong",
     "wf.completeBefore": "Hoàn thành bước {n} trước",
+    "wf.celebrationTitle": "🎉 Hoàn tất xuất sắc!",
+    "wf.celebrationDesc": "Phiên làm việc hoàn thành trong {time}",
 
     // Workflow leave dialog
     "wf.leaveTitle": "Rời khỏi phiên làm việc?",
@@ -296,6 +298,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "wf.sessionComplete": "Session complete",
     "wf.allDone": "All steps done",
     "wf.completeBefore": "Complete step {n} first",
+    "wf.celebrationTitle": "🎉 Well done!",
+    "wf.celebrationDesc": "Session completed in {time}",
 
     // Workflow leave dialog
     "wf.leaveTitle": "Leave work session?",
