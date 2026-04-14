@@ -80,7 +80,7 @@ export default function DemandWeeklyPage() {
   const totalPo = data.reduce((a, r) => a + r.po, 0);
   const totalFinal = data.reduce((a, r) => a + r.final, 0);
   const doneCn = data.filter((r) => r.status === "Đã adjust").length;
-  const activeCn = drillCn ? data.find((r) => r.cn === drillCn) : null;
+  const activeCn = null; // removed drill-down
 
   // SKU-first aggregation
   const skuAgg = useMemo(() => {
@@ -101,7 +101,7 @@ export default function DemandWeeklyPage() {
     return Object.values(map).sort((a, b) => b.totalFinal - a.totalFinal);
   }, [data]);
 
-  const drillSkuData = drillSku ? skuAgg.find(sk => `${sk.item}-${sk.variant}` === drillSku) : null;
+  const drillSkuData = null; // removed drill-down
 
   const handleApprove = (item: string) => {
     toast.success(`Đã duyệt adjust ${item}`);
