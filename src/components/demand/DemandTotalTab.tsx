@@ -279,6 +279,7 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-info">B2B (m²)</th>
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-warning">PO (m²)</th>
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-1 font-semibold border-l border-surface-3">Total (m²)</th>
+            <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Trend 3M</th>
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Cơ cấu</th>
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">vs LM</th>
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Cover</th>
