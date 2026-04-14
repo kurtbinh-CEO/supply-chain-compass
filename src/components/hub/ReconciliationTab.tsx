@@ -2,6 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
+import { LogicTooltip } from "@/components/LogicTooltip";
 
 interface Props { scale: number }
 
@@ -92,6 +93,10 @@ export function ReconciliationTab({ scale }: Props) {
           <option>Tháng 4 (closed)</option>
           <option>Tháng 3 (closed)</option>
         </select>
+        <LogicTooltip
+          title="Honoring% & Lock Logic"
+          content={"Honoring% = delivered ÷ committed per tháng.\nPeriod: FIXED MONTH (01-30). Không rolling.\nLock: ngày cuối tháng 23:59 ICT → auto-snapshot → LOCK 🔒.\nSau lock: số không sửa được. Feed → /monitoring tab 3 NM Performance.\nTháng hiện tại: 'đang chạy' — số delivered cập nhật realtime."}
+        />
         <div className="flex-1" />
       </div>
 
