@@ -197,7 +197,6 @@ export default function ConfigPage() {
   const [feedforward, setFeedforward] = useState(feedforwardKeys);
   const [concurrent, setConcurrent] = useState(concurrentKeys);
   const [toggles, setToggles] = useState(featureToggles);
-  const [toggles, setToggles] = useState(featureToggles);
 
   const toggleFeature = (idx: number, tenant: "unis" | "ttc" | "mdlz") => {
     const next = [...toggles];
