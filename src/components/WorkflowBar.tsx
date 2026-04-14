@@ -30,6 +30,34 @@ export function WorkflowBar() {
   } = useWorkflow();
   const navigate = useNavigate();
   const { t } = useI18n();
+  const celebratedRef = useRef(false);
+
+  // Celebration effect on completion
+  useEffect(() => {
+    if (completed && !celebratedRef.current) {
+      celebratedRef.current = true;
+      // Fire confetti
+      const end = Date.now() + 1500;
+      const fire = () => {
+        confetti({ particleCount: 80, spread: 100, origin: { y: 0.35 }, colors: ["#22c55e", "#3b82f6", "#f59e0b", "#ec4899"] });
+        if (Date.now() < end) requestAnimationFrame(fire);
+      };
+      fire();
+      // Toast with elapsed time
+      if (sessionStartTime) {
+        const secs = Math.floor((Date.now() - sessionStartTime) / 1000);
+        const m = Math.floor(secs / 60);
+        const s = secs % 60;
+        const timeStr = m > 0 ? `${m}m ${String(s).padStart(2, "0")}s` : `${s}s`;
+        toast.success(t("wf.celebrationTitle"), {
+          description: t("wf.celebrationDesc").replace("{time}", timeStr),
+          duration: 6000,
+          icon: <PartyPopper className="h-5 w-5 text-warning" />,
+        });
+      }
+    }
+    if (!completed) celebratedRef.current = false;
+  }, [completed, sessionStartTime, t]);
 
   if (!isBarVisible) return null;
 
