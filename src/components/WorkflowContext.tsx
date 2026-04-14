@@ -109,9 +109,23 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     setCompleted(false);
     setCompletedSteps([]);
     setSessionStartTime(Date.now());
-  }, []);
+    addEntry({
+      type: "workflow",
+      route: type === "daily" ? "/supply" : "/demand",
+      user: "Người dùng",
+      message: `Bắt đầu phiên ${type === "daily" ? "Vận hành ngày" : "Kế hoạch tháng"}`,
+    });
+  }, [addEntry]);
 
   const closeWorkflow = useCallback(() => {
+    if (workflowType) {
+      addEntry({
+        type: "workflow",
+        route: "/workspace",
+        user: "Người dùng",
+        message: `Đóng phiên ${workflowType === "daily" ? "Vận hành ngày" : "Kế hoạch tháng"} (chưa hoàn tất)`,
+      });
+    }
     setWorkflowType(null);
     setCurrentStepIndex(0);
     setCompleted(false);
@@ -119,7 +133,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     setSessionStartTime(null);
     setShowLeaveConfirm(false);
     setPendingNavigation(null);
-  }, []);
+  }, [workflowType, addEntry]);
 
   const goToStep = useCallback((index: number) => {
     if (index === 0 || completedSteps.includes(index - 1)) {
@@ -135,13 +149,28 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   }, [currentStepIndex]);
 
   const nextStep = useCallback(() => {
+    const stepLabel = rawSteps[currentStepIndex]?.label || "";
+    const stepRoute = rawSteps[currentStepIndex]?.routes[0] || "/workspace";
     // Mark current step as done
     setCompletedSteps(prev => prev.includes(currentStepIndex) ? prev : [...prev, currentStepIndex]);
+    addEntry({
+      type: "workflow",
+      route: stepRoute,
+      user: "Người dùng",
+      message: `Hoàn tất bước "${stepLabel}" (${currentStepIndex + 1}/${rawSteps.length})`,
+    });
     const max = rawSteps.length;
     if (currentStepIndex < max - 1) {
       setCurrentStepIndex((i) => i + 1);
     } else {
       setCompleted(true);
+      const wfType = workflowType;
+      addEntry({
+        type: "workflow",
+        route: "/workspace",
+        user: "Người dùng",
+        message: `✅ Hoàn tất phiên ${wfType === "daily" ? "Vận hành ngày" : "Kế hoạch tháng"} — ${rawSteps.length}/${rawSteps.length} bước`,
+      });
       setTimeout(() => {
         setWorkflowType(null);
         setCurrentStepIndex(0);
@@ -150,7 +179,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
         setSessionStartTime(null);
       }, 10000);
     }
-  }, [currentStepIndex, rawSteps.length]);
+  }, [currentStepIndex, rawSteps, workflowType, addEntry]);
 
   const isRouteInWorkflow = useCallback(
     (path: string) => rawSteps.some((s) => s.routes.includes(path)),
