@@ -433,7 +433,7 @@ export default function GuidePage() {
           {data.steps.length > 0 ? (
             <>
               <p className="text-table text-text-2 mb-2">
-                Chu kỳ monthly: Day 1 thu thập → Day 5 S&OP meeting → Day 7 Lock → Day 8 gửi NM.
+                {data.monthlyIntro || "Chu kỳ monthly: Day 1 thu thập → Day 5 S&OP meeting → Day 7 Lock → Day 8 gửi NM."}
               </p>
               {data.steps.map((step, i) => (
                 <StepCardComponent key={i} step={step} index={i} accentBg={role.accentBg} />
