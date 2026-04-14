@@ -13,6 +13,7 @@ import { useRbac, UserRole } from "@/components/RbacContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useI18n } from "@/components/i18n/I18nContext";
 import smartlogLogo from "@/assets/smartlog-logo.png";
+import smartlogLogoFull from "@/assets/smartlog-logo-full.png";
 
 interface NavItem {
   titleKey: string;
@@ -112,11 +113,7 @@ export function AppSidebar() {
         ) : (
           <>
             <div className="flex items-center gap-2.5">
-              <img src={smartlogLogo} alt="Smartlog" className="h-7 w-7 object-contain" />
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-display text-body font-bold text-text-1 tracking-tight">Smartlog</span>
-                <span className="font-display text-caption font-semibold text-primary tracking-wide uppercase">SCP</span>
-              </div>
+              <img src={smartlogLogoFull} alt="Supply Chain Planning Intelligence" className="h-8 object-contain" />
             </div>
             <button onClick={toggle} className="rounded-button p-1.5 hover:bg-surface-3 transition-colors">
               <ChevronLeft className="h-4 w-4 text-text-3" />
