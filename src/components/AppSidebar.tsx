@@ -3,7 +3,7 @@ import {
   ClipboardCheck, Activity, BarChart3, Handshake, Boxes,
   Package, CalendarDays, GitBranch,
   ShoppingCart, Users, Database, FileBarChart, Settings,
-  ChevronLeft, Play, BookOpen, Building,
+  ChevronLeft, Play, BookOpen, Building, GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/components/SidebarContext";
@@ -75,6 +75,7 @@ const navGroups: NavGroup[] = [
     labelKey: "nav.support",
     items: [
       { titleKey: "nav.logicOps", icon: BookOpen, url: "/logic" },
+      { titleKey: "nav.guide", icon: GraduationCap, url: "/guide" },
     ],
   },
 ];
