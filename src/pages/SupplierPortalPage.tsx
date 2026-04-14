@@ -175,7 +175,6 @@ export default function SupplierPortalPage() {
                         </span>
                       )}
                     </p>
-                    </p>
                   </div>
                   <span className="text-table-sm text-text-3">Hạn {o.deadline}</span>
                 </div>
