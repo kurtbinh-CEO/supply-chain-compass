@@ -45,7 +45,7 @@ function getInvTrend(filter: string) {
 
 interface CnInvRow {
   cn: string; ton: number; available: number; ssTarget: number; ssActual: number; ssGap: number;
-  hstk: number; replenish: number; status: string;
+  hstk: number; replenish: number; status: string; turnover: number;
   skus: SkuRow[];
 }
 
@@ -59,7 +59,7 @@ interface SkuRow {
 
 const baseCnData: CnInvRow[] = [
   {
-    cn: "CN-BD", ton: 2100, available: 1350, ssTarget: 2900, ssActual: 2100, ssGap: -800, hstk: 5.2, replenish: 1993, status: "THIẾU SS",
+    cn: "CN-BD", ton: 2100, available: 1350, ssTarget: 2900, ssActual: 2100, ssGap: -800, hstk: 5.2, replenish: 1993, status: "THIẾU SS", turnover: 4.8,
     skus: [
       { item: "GA-300", variant: "A4", demand: 617, ton: 120, pipeline: 557, pipelineSource: "RPO-TKO-W15 ETA 17/05 (trễ 4d)", ssTarget: 900, ssGap: -780, netReq: 840, moq: 1000, moqNm: "Mikado", order: 1000, status: "RPO draft", fcPhased: 524, cnAdj: 44, po: 200, overlap: 151, onHand: 120, zVal: 1.65, sigma: 28.5, lt: 14, rpoNum: "RPO-MKD-2605-W17-002" },
       { item: "GA-300", variant: "B2", demand: 178, ton: 380, pipeline: 0, pipelineSource: "—", ssTarget: 700, ssGap: -320, netReq: 498, moq: 500, moqNm: "Mikado", order: 500, status: "RPO draft", fcPhased: 150, cnAdj: 18, po: 30, overlap: 20, onHand: 380, zVal: 1.65, sigma: 22.1, lt: 12, rpoNum: "RPO-MKD-2605-W17-003" },
@@ -69,9 +69,9 @@ const baseCnData: CnInvRow[] = [
       { item: "GA-600", variant: "B2", demand: 200, ton: 650, pipeline: 0, pipelineSource: "—", ssTarget: 500, ssGap: 150, netReq: 0, moq: 0, moqNm: "—", order: 0, status: "Đủ hàng ✅", fcPhased: 170, cnAdj: 15, po: 25, overlap: 10, onHand: 650, zVal: 1.65, sigma: 20.0, lt: 10, rpoNum: "—" },
     ],
   },
-  { cn: "CN-ĐN", ton: 4500, available: 3800, ssTarget: 2400, ssActual: 3800, ssGap: 1400, hstk: 14, replenish: 200, status: "THỪA", skus: [] },
-  { cn: "CN-HN", ton: 3200, available: 2500, ssTarget: 2100, ssActual: 2500, ssGap: 400, hstk: 9, replenish: 800, status: "OK", skus: [] },
-  { cn: "CN-CT", ton: 2800, available: 2100, ssTarget: 1500, ssActual: 2100, ssGap: 600, hstk: 11, replenish: 150, status: "OK", skus: [] },
+  { cn: "CN-ĐN", ton: 4500, available: 3800, ssTarget: 2400, ssActual: 3800, ssGap: 1400, hstk: 14, replenish: 200, status: "THỪA", turnover: 2.1, skus: [] },
+  { cn: "CN-HN", ton: 3200, available: 2500, ssTarget: 2100, ssActual: 2500, ssGap: 400, hstk: 9, replenish: 800, status: "OK", turnover: 3.5, skus: [] },
+  { cn: "CN-CT", ton: 2800, available: 2100, ssTarget: 1500, ssActual: 2100, ssGap: 600, hstk: 11, replenish: 150, status: "OK", turnover: 2.8, skus: [] },
 ];
 
 // SS SKU data now comes from shared SafetyStockContext
