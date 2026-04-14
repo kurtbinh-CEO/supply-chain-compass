@@ -323,6 +323,49 @@ export default function CnPortalPage() {
       url: "/cn-portal",
     });
 
+    // Add audit entries for each edited SKU
+    edited.forEach((r) => {
+      const delta = r.adjust! - r.forecast;
+      const pct = ((delta / r.forecast) * 100).toFixed(1);
+      const sign = delta > 0 ? "+" : "";
+      const isAutoApproved = r.status === "approved";
+      
+      addAuditEntry({
+        who: user.name,
+        role: user.role,
+        action: "adjust",
+        sku: r.item,
+        variant: r.variant,
+        detail: "Điều chỉnh demand",
+        oldValue: r.forecast,
+        newValue: r.adjust!,
+        reason: r.reason || undefined,
+      });
+
+      if (isAutoApproved) {
+        addAuditEntry({
+          who: "System",
+          role: "SYSTEM",
+          action: "auto_approve",
+          sku: r.item,
+          variant: r.variant,
+          detail: `Auto-approve (delta ${sign}${pct}%)`,
+          oldValue: r.forecast,
+          newValue: r.adjust!,
+        });
+      }
+    });
+
+    // Add submit entry
+    addAuditEntry({
+      who: user.name,
+      role: user.role,
+      action: "submit",
+      sku: "—",
+      variant: "—",
+      detail: `Gửi batch ${edited.length} SKU điều chỉnh`,
+    });
+
     toast.success("Đã gửi điều chỉnh", {
       description: `${edited.length} SKU. ${approved} auto-approved, ${pending} chờ duyệt.`,
     });
