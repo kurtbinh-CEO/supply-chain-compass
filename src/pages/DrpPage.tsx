@@ -905,7 +905,7 @@ export default function DrpPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-surface-3 bg-surface-1/50">
-                      {["Thời gian", "Ai", "Thay đổi", "Lý do"].map((h, i) => (
+                      {["Thời gian", "Ai", "Thay đổi", "Lý do", "Nguồn"].map((h, i) => (
                         <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
                       ))}
                     </tr>
@@ -917,6 +917,11 @@ export default function DrpPage() {
                         <td className="px-4 py-2.5 text-table text-text-1">{log.who}</td>
                         <td className="px-4 py-2.5 text-table text-text-1 font-mono text-[11px]">{log.change}</td>
                         <td className="px-4 py-2.5 text-table text-text-3">{log.reason}</td>
+                        <td className="px-4 py-2.5">
+                          <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", log.source === "drp" ? "bg-primary/10 text-primary" : "bg-info-bg text-info")}>
+                            {log.source === "drp" ? "DRP" : "Monitoring"}
+                          </span>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
