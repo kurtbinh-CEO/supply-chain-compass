@@ -83,13 +83,15 @@ interface Props { scale: number }
 
 export function InventorySSTab({ scale: s }: Props) {
   const navigate = useNavigate();
+  const { ssSkuData, applySsChange } = useSafetyStock();
+  const ssBdSkus = ssSkuData.filter(e => e.cn === "CN-BD");
   const [pivotMode, setPivotMode] = usePivotMode("monitoring-inv");
   const [invChartFilter, setInvChartFilter] = useState("all");
   const [drillCn, setDrillCn] = useState<string | null>(null);
   const [drillSku, setDrillSku] = useState<string | null>(null);
   const [expandedBridge, setExpandedBridge] = useState<string | null>(null);
   const [simOpen, setSimOpen] = useState(false);
-  const [simSku, setSimSku] = useState<SsSkuRow | null>(null);
+  const [simSku, setSimSku] = useState<typeof ssSkuData[0] | null>(null);
   const [simZ, setSimZ] = useState(1.65);
 
   const cnData = baseCnData.map((r) => ({
@@ -518,8 +520,13 @@ export function InventorySSTab({ scale: s }: Props) {
                   <td className="px-4 py-2.5 flex items-center gap-1.5">
                     {r.delta !== 0 && (
                       <Button size="sm" variant="default" className="text-caption h-7 bg-text-1 text-surface-0 hover:bg-text-2"
-                        onClick={() => toast.success("Gửi Workspace duyệt", { description: `SS ${r.item} ${r.variant}: ${r.ssCurrent}→${r.ssProposed}` })}>
+                        onClick={() => {
+                          applySsChange("CN-BD", r.item, r.variant, r.z, "Planner", "Manual apply from Monitoring", "monitoring");
+                          toast.success("SS cập nhật (đồng bộ DRP ↔ Monitoring)", { description: `SS ${r.item} ${r.variant}: ${r.ssCurrent}→${r.ssProposed}` });
+                        }}>
                         Áp dụng
+                      </Button>
+                    )}
                       </Button>
                     )}
                     <Button size="sm" variant="outline" className="text-caption h-7"
@@ -596,7 +603,8 @@ export function InventorySSTab({ scale: s }: Props) {
               </div>
               <Button className="w-full bg-gradient-primary text-primary-foreground"
                 onClick={() => {
-                  toast.success("Gửi Workspace duyệt", { description: `z=${simZ.toFixed(2)} → SS ${Math.round(simSku.ssCurrent * (simZ / simSku.z)).toLocaleString()}` });
+                  applySsChange("CN-BD", simSku.item, simSku.variant, simZ, "Planner", `Simulation z=${simZ.toFixed(2)}`, "monitoring");
+                  toast.success("SS cập nhật (đồng bộ DRP ↔ Monitoring)", { description: `z=${simZ.toFixed(2)} → SS ${Math.round(simSku.ssCurrent * (simZ / simSku.z)).toLocaleString()}` });
                   setSimOpen(false);
                 }}>
                 Áp dụng → Workspace duyệt
