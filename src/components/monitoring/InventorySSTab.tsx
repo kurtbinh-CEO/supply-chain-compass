@@ -344,6 +344,11 @@ export function InventorySSTab({ scale: s }: Props) {
                             <span className={cn("text-table-sm font-medium tabular-nums", hstkColor(r.hstk))}>{r.hstk}d</span>
                           </div>
                         </td>
+                        <td className="px-3 py-3">
+                          <span className={cn("text-table-sm font-medium tabular-nums", r.turnover >= 6 ? "text-success" : r.turnover >= 3 ? "text-text-1" : "text-warning")}>
+                            {r.turnover}×
+                          </span>
+                        </td>
                         <td className="px-3 py-3 text-table tabular-nums text-text-1">{r.replenish.toLocaleString()} m²</td>
                         <td className="px-3 py-3">
                           <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
