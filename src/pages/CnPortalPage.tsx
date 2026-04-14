@@ -541,6 +541,7 @@ export default function CnPortalPage() {
               Trust: 82% 🟢
             </span>
           </LogicTooltip>
+          <span className={cn("rounded-full px-3 py-1 text-table-sm font-medium flex items-center gap-1.5",
             cutoff.pastCutoff ? "bg-danger-bg text-danger" : "bg-warning-bg text-warning"
           )}>
             <Clock className="h-3.5 w-3.5" />
