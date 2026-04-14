@@ -4,7 +4,7 @@ import { Check, ChevronRight, AlertTriangle, HelpCircle, Star, Send, RotateCcw, 
 import { toast } from "sonner";
 import { generatePONumber, getNmCode, poNumClasses, getPoTypeBadge } from "@/lib/po-numbers";
 
-interface Props { scale: number }
+interface Props { scale: number; objective?: Objective; onObjectiveChange?: (o: Objective) => void }
 
 /* ─── Types ─── */
 type Objective = "hybrid" | "lt" | "cost";
