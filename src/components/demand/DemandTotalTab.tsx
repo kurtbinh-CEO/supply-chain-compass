@@ -365,6 +365,9 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
                     <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">{sk.b2b.toLocaleString()}</td>
                     <td className="px-3 py-2 text-center tabular-nums text-text-3 text-table-sm">{sk.po.toLocaleString()}</td>
                     <td className="px-3 py-2 text-center tabular-nums font-semibold text-primary/80 text-table-sm border-l border-surface-3/50">{sk.total.toLocaleString()}</td>
+                    <td className="px-3 py-2 text-center">
+                      <MiniSparkline data={[Math.round(sk.total * 0.88), Math.round(sk.total * 0.94), sk.total]} width={40} height={16} />
+                    </td>
                     <td className="px-3 py-2">
                       <CompositionBar fc={sk.fc} b2b={sk.b2b} po={sk.po} total={sk.total} />
                     </td>
@@ -389,6 +392,9 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
             <td className="px-3 py-3 text-center tabular-nums text-text-1">{totals.b2b.toLocaleString()}</td>
             <td className="px-3 py-3 text-center tabular-nums text-text-1">{totals.po.toLocaleString()}</td>
             <td className="px-3 py-3 text-center tabular-nums text-primary border-l border-surface-3">{totals.total.toLocaleString()}</td>
+            <td className="px-3 py-3 text-center">
+              <MiniSparkline data={[Math.round(totals.total * 0.91), Math.round(totals.total * 0.96), totals.total]} />
+            </td>
             <td className="px-3 py-3">
               <CompositionBar fc={totals.fc} b2b={totals.b2b} po={totals.po} total={totals.total} />
             </td>
