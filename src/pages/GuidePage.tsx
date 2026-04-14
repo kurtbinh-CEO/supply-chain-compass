@@ -452,38 +452,46 @@ export default function GuidePage() {
       {activeTab === "daily" && (
         <div className="space-y-4 animate-fade-in">
           <p className="text-table text-text-2 mb-2">
-            Quy trình hàng ngày cho {role.label}. Tổng thời gian: {data.dailyTotal}.
+            {data.dailyIntro || `Quy trình hàng ngày cho ${role.label}. Tổng thời gian: ${data.dailyTotal}.`}
           </p>
-          <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-            <table className="w-full text-table">
-              <thead>
-                <tr className="bg-surface-1">
-                  <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 w-12">#</th>
-                  <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 w-40">Màn hình</th>
-                  <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Việc cần làm</th>
-                  <th className="text-right px-4 py-2.5 text-table-header uppercase text-text-3 w-24">Thời gian</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.daily.map((step, i) => (
-                  <tr key={i} className={i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"}>
-                    <td className="px-4 py-3">
-                      <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-caption font-bold">{i + 1}</span>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-primary text-table-sm">{step.route}</td>
-                    <td className="px-4 py-3 text-text-1">{step.label}</td>
-                    <td className="px-4 py-3 text-right text-text-2 tabular-nums">{step.time}</td>
+
+          {data.dailySteps.length > 0 ? (
+            data.dailySteps.map((step, i) => (
+              <StepCardComponent key={i} step={step} index={i} accentBg={role.accentBg} />
+            ))
+          ) : (
+            /* Fallback: simple table */
+            <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+              <table className="w-full text-table">
+                <thead>
+                  <tr className="bg-surface-1">
+                    <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 w-12">#</th>
+                    <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 w-40">Màn hình</th>
+                    <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Việc cần làm</th>
+                    <th className="text-right px-4 py-2.5 text-table-header uppercase text-text-3 w-24">Thời gian</th>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr className="bg-surface-1 border-t border-surface-3">
-                  <td colSpan={3} className="px-4 py-2.5 font-medium text-text-1">Tổng</td>
-                  <td className="px-4 py-2.5 text-right font-medium text-primary tabular-nums">{data.dailyTotal}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {data.daily.map((step, i) => (
+                    <tr key={i} className={i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"}>
+                      <td className="px-4 py-3">
+                        <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-caption font-bold">{i + 1}</span>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-primary text-table-sm">{step.route}</td>
+                      <td className="px-4 py-3 text-text-1">{step.label}</td>
+                      <td className="px-4 py-3 text-right text-text-2 tabular-nums">{step.time}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-surface-1 border-t border-surface-3">
+                    <td colSpan={3} className="px-4 py-2.5 font-medium text-text-1">Tổng</td>
+                    <td className="px-4 py-2.5 text-right font-medium text-primary tabular-nums">{data.dailyTotal}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
