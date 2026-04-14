@@ -138,6 +138,9 @@ const tabs = [
 export default function OrdersPage() {
   const { tenant } = useTenant();
   const navigate = useNavigate();
+
+  const ordersBatch = useBatchLock(null);
+  const { conflict: ordersConflict, triggerConflict, clearConflict } = useVersionConflict();
   const s = tenantScales[tenant] || 1;
   const [activeTab, setActiveTab] = useState("po");
   const [drillStatus, setDrillStatus] = useState<string | null>(null);
