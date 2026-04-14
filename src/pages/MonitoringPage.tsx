@@ -6,6 +6,7 @@ import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { toast } from "sonner";
 import { ChevronRight, ChevronDown, ChevronLeft, TrendingUp, TrendingDown, Minus, ArrowRight } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
+import { LogicTooltip, LogicExpand } from "@/components/LogicTooltip";
 import { useNavigate } from "react-router-dom";
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell as PieCell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -486,6 +487,11 @@ export default function MonitoringPage() {
                       <td className="px-4 py-2.5 text-table tabular-nums">
                         <span className={cn("font-medium", r.mapeNow > 25 ? "text-danger" : "text-text-1")}>{r.mapeNow}%</span>
                         {r.mapeNow > 25 && " 🔴"}
+                        {r.cn === "CN-HN" && (
+                          <div className="mt-1">
+                            <LogicExpand label={`${r.cn} MAPE ${r.mapeNow}% per SKU`} title={`${r.cn} per SKU MAPE`} content={`GA-300 A4: 28% 🟡\nGA-300 B2: 42% 🔴 ← SKU tệ nhất\nGA-400 A4: 22% 🟡\nGA-600 A4: 33% 🔴\nGA-300 B2 kéo MAPE toàn CN lên.\nRecommend: kiểm tra data history GA-300 B2 CN-HN.\nCó thể: CN-HN ít bán B2, FC chưa đủ data → dùng v0 stat thay consensus.`} />
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-2.5 text-table tabular-nums text-text-3">{r.mapePrev}%</td>
                       <td className="px-4 py-2.5 text-table text-text-2 flex items-center gap-1"><TrendIcon trend={r.trend} /> {r.trend}</td>
@@ -525,8 +531,21 @@ export default function MonitoringPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
-                    {["NM", "Honoring%", "On-time%", "LT actual vs plan", "Trend", "Grade", "Action"].map((h, i) => (
-                      <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
+                    {[
+                      { h: "NM", tooltip: null },
+                      { h: "Honoring%", tooltip: null },
+                      { h: "On-time%", tooltip: "On-time = delivered ≤ ETA + grace period (2d).\nOn-time% = (# PO on-time) ÷ (# PO total) × 100\nConfig: /config → PO → on_time_grace_days = 2." },
+                      { h: "LT actual vs plan", tooltip: null },
+                      { h: "Trend", tooltip: null },
+                      { h: "Grade", tooltip: "NM Grade dựa trên Honoring% trung bình 3 tháng:\nA 🟢 ≥ 90%: NM đáng tin. ATP full confidence.\nB    ≥ 80%: OK. ATP × honoring factor.\nC 🟡 ≥ 60%: Cần cải thiện. ATP discounted. Review meeting.\nD 🔴 < 60%: Risk cao. Xem xét thay NM. Share% giảm.\nAuto-action: effective_ATP = raw_ATP × honoring%.\nConfig: /config → NM ATP → grade thresholds." },
+                      { h: "Action", tooltip: null },
+                    ].map((col, i) => (
+                      <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
+                        <span className="inline-flex items-center gap-1">
+                          {col.h}
+                          {col.tooltip && <LogicTooltip title={col.h} content={col.tooltip} />}
+                        </span>
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -545,10 +564,13 @@ export default function MonitoringPage() {
                       <td className="px-4 py-2.5 text-table tabular-nums text-text-2">{r.ltDelta}</td>
                       <td className="px-4 py-2.5 text-table text-text-2 flex items-center gap-1"><TrendIcon trend={r.trend} /> {r.trend}</td>
                       <td className="px-4 py-2.5">
-                        <span className={cn("rounded-full px-2 py-0.5 text-caption font-bold",
+                        <span className={cn("rounded-full px-2 py-0.5 text-caption font-bold inline-flex items-center gap-1",
                           r.grade === "A" ? "bg-success-bg text-success" : r.grade === "B" ? "bg-info-bg text-info" :
                           r.grade === "C" ? "bg-warning-bg text-warning" : "bg-danger-bg text-danger"
-                        )}>{r.grade} {r.grade === "A" && "🟢"}</span>
+                        )}>
+                          {r.grade} {r.grade === "A" && "🟢"}
+                          <LogicTooltip size="sm" title={`${r.nm} Grade ${r.grade}`} content={`${r.nm}: Th3 ${r.honoring - 2}% + Th4 ${r.honoring - 1}% + Th5 ${r.honoring}% = avg ${r.honoring}%\n→ Grade ${r.grade}\nAuto-action: effective_ATP = raw_ATP × ${(r.honoring / 100).toFixed(2)}.\nConfig: /config → NM ATP → grade thresholds.`} />
+                        </span>
                       </td>
                       <td className="px-4 py-2.5">
                         {r.grade === "C" && (
