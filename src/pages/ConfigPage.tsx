@@ -195,6 +195,8 @@ export default function ConfigPage() {
   const [drp, setDrp] = useState(drpKeys);
   const [lateral, setLateral] = useState(lateralKeys);
   const [feedforward, setFeedforward] = useState(feedforwardKeys);
+  const [concurrent, setConcurrent] = useState(concurrentKeys);
+  const [toggles, setToggles] = useState(featureToggles);
   const [toggles, setToggles] = useState(featureToggles);
 
   const toggleFeature = (idx: number, tenant: "unis" | "ttc" | "mdlz") => {
@@ -214,6 +216,7 @@ export default function ConfigPage() {
             { v: "drp", l: "DRP & Allocation" },
             { v: "lateral", l: "Lateral & LCNB" },
             { v: "feedforward", l: "Feed-forward" },
+            { v: "concurrent", l: "Concurrent" },
             { v: "notifications", l: "Notifications" },
             { v: "toggles", l: "Feature Toggles" },
           ].map(t => (
@@ -227,6 +230,7 @@ export default function ConfigPage() {
         <TabsContent value="drp"><ConfigTable keys={drp} setKeys={setDrp} /></TabsContent>
         <TabsContent value="lateral"><ConfigTable keys={lateral} setKeys={setLateral} /></TabsContent>
         <TabsContent value="feedforward"><ConfigTable keys={feedforward} setKeys={setFeedforward} /></TabsContent>
+        <TabsContent value="concurrent"><ConfigTable keys={concurrent} setKeys={setConcurrent} /></TabsContent>
 
         <TabsContent value="notifications">
           <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
