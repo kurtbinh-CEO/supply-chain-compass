@@ -115,6 +115,38 @@ function CompositionBar({ fc, b2b, po, total }: { fc: number; b2b: number; po: n
   );
 }
 
+// ── Mini Sparkline (pure SVG) ──
+function MiniSparkline({ data, color = "var(--primary)", width = 56, height = 20 }: { data: number[]; color?: string; width?: number; height?: number }) {
+  if (data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * (height - 4) - 2;
+    return `${x},${y}`;
+  });
+  const trend = data[data.length - 1] - data[0];
+  const strokeColor = trend > 0 ? "hsl(var(--success))" : trend < 0 ? "hsl(var(--danger))" : "hsl(var(--text-3))";
+  // Fill area
+  const areaPoints = `0,${height} ${points.join(" ")} ${width},${height}`;
+  return (
+    <svg width={width} height={height} className="inline-block" viewBox={`0 0 ${width} ${height}`}>
+      <polygon points={areaPoints} fill={strokeColor} fillOpacity={0.08} />
+      <polyline points={points.join(" ")} fill="none" stroke={strokeColor} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={String((data.length - 1) / (data.length - 1) * width)} cy={String(height - ((data[data.length - 1] - min) / range) * (height - 4) - 2)} r="2" fill={strokeColor} />
+    </svg>
+  );
+}
+
+// ── 3-month trend data per CN (T3, T4, T5) ──
+const cnTrend3m: Record<string, number[]> = {
+  "CN-BD": [5800, 6200, 7045],
+  "CN-ĐN": [3600, 3900, 4130],
+  "CN-HN": [7900, 8100, 7735],
+  "CN-CT": [1300, 1280, 1245],
+};
+
 // ── Trend Icon ──
 function TrendIcon({ value }: { value: number }) {
   if (value > 0) return <TrendingUp className="h-3 w-3 text-success inline" />;
@@ -247,6 +279,7 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-info">B2B (m²)</th>
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-warning">PO (m²)</th>
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-1 font-semibold border-l border-surface-3">Total (m²)</th>
+            <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Trend 3M</th>
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Cơ cấu</th>
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">vs LM</th>
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Cover</th>
@@ -281,6 +314,14 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
                   <td className="px-3 py-3 text-center tabular-nums text-text-1">{c.b2b.toLocaleString()}</td>
                   <td className="px-3 py-3 text-center tabular-nums text-text-2">{c.po.toLocaleString()}</td>
                   <td className="px-3 py-3 text-center tabular-nums font-bold text-primary border-l border-surface-3">{c.total.toLocaleString()}</td>
+                  <td className="px-3 py-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5 group relative cursor-help">
+                      <MiniSparkline data={cnTrend3m[c.cn] || [c.total * 0.9, c.total * 0.95, c.total]} />
+                      <span className="hidden group-hover:block absolute -top-8 left-1/2 -translate-x-1/2 bg-text-1 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-20">
+                        T3→T5: {(cnTrend3m[c.cn] || []).map(v => v.toLocaleString()).join(" → ")}
+                      </span>
+                    </div>
+                  </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2 justify-center">
                       <CompositionBar fc={c.fc} b2b={c.b2b} po={c.po} total={c.total} />
@@ -324,6 +365,9 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
                     <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">{sk.b2b.toLocaleString()}</td>
                     <td className="px-3 py-2 text-center tabular-nums text-text-3 text-table-sm">{sk.po.toLocaleString()}</td>
                     <td className="px-3 py-2 text-center tabular-nums font-semibold text-primary/80 text-table-sm border-l border-surface-3/50">{sk.total.toLocaleString()}</td>
+                    <td className="px-3 py-2 text-center">
+                      <MiniSparkline data={[Math.round(sk.total * 0.88), Math.round(sk.total * 0.94), sk.total]} width={40} height={16} />
+                    </td>
                     <td className="px-3 py-2">
                       <CompositionBar fc={sk.fc} b2b={sk.b2b} po={sk.po} total={sk.total} />
                     </td>
@@ -348,6 +392,9 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
             <td className="px-3 py-3 text-center tabular-nums text-text-1">{totals.b2b.toLocaleString()}</td>
             <td className="px-3 py-3 text-center tabular-nums text-text-1">{totals.po.toLocaleString()}</td>
             <td className="px-3 py-3 text-center tabular-nums text-primary border-l border-surface-3">{totals.total.toLocaleString()}</td>
+            <td className="px-3 py-3 text-center">
+              <MiniSparkline data={[Math.round(totals.total * 0.91), Math.round(totals.total * 0.96), totals.total]} />
+            </td>
             <td className="px-3 py-3">
               <CompositionBar fc={totals.fc} b2b={totals.b2b} po={totals.po} total={totals.total} />
             </td>
