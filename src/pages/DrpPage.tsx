@@ -767,7 +767,10 @@ export default function DrpPage() {
                           <td className="px-4 py-2.5">
                             {sk.delta !== 0 && (
                               <button
-                                onClick={() => toast.success("SS change gửi Workspace duyệt", { description: `${sk.item} ${sk.variant}: ${sk.ssCurrent}→${sk.ssProposed}. DRP đêm nay dùng SS mới.` })}
+                                onClick={() => {
+                                  applySsChange("CN-BD", sk.item, sk.variant, sk.z, "Planner", "Apply from DRP Layer 3", "drp");
+                                  toast.success("SS cập nhật (đồng bộ DRP ↔ Monitoring)", { description: `${sk.item} ${sk.variant}: ${sk.ssCurrent}→${sk.ssProposed}. DRP đêm nay dùng SS mới.` });
+                                }}
                                 className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium"
                               >
                                 Áp dụng
@@ -911,7 +914,7 @@ export default function DrpPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {changeLog.map((log, i) => (
+                    {ssChangeLog.map((log, i) => (
                       <tr key={i} className="border-b border-surface-3/50">
                         <td className="px-4 py-2.5 text-table tabular-nums text-text-2">{log.time}</td>
                         <td className="px-4 py-2.5 text-table text-text-1">{log.who}</td>
@@ -1029,7 +1032,7 @@ export default function DrpPage() {
               </div>
 
               <div className="flex gap-3">
-                <button onClick={() => { toast.success("SS mới áp dụng", { description: `${simSku} ${simCn}: ${skuRef.ssCurrent}→${simSs}. Gửi Workspace duyệt.` }); setShowSimModal(false); }}
+                <button onClick={() => { applySsChange(simCn, skuRef.item, skuRef.variant, simZ, "Planner", `Simulation z=${simZ.toFixed(2)}`, "drp"); toast.success("SS cập nhật (đồng bộ DRP ↔ Monitoring)", { description: `${simSku} ${simCn}: ${skuRef.ssCurrent}→${simSs}. Gửi Workspace duyệt.` }); setShowSimModal(false); }}
                   className="flex-1 rounded-button bg-gradient-primary text-primary-foreground py-2 text-table font-medium">
                   Áp dụng SS mới
                 </button>
