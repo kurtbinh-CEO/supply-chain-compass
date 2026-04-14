@@ -68,6 +68,13 @@ export default function DemandWeeklyPage() {
   const [expandedSkus, setExpandedSkus] = useState<Set<string>>(new Set());
   const [pivotMode, setPivotMode] = usePivotMode("demand-weekly");
 
+  const dwBatch = useBatchLock({
+    batchType: "DRP",
+    status: "info",
+    resultSummary: "DRP đêm qua 23:18. Demand cutoff 18:00.",
+    startedAt: "23:18",
+  });
+
   const data = baseCnData.map((r) => ({
     ...r,
     duKien: Math.round(r.duKien * s), po: Math.round(r.po * s), final: Math.round(r.final * s),
@@ -116,6 +123,19 @@ export default function DemandWeeklyPage() {
   return (
     <AppLayout>
       <ScreenHeader title="Demand tuần" subtitle="Điều chỉnh nhu cầu tuần" />
+
+      {/* Batch info banner */}
+      {dwBatch.batch && (
+        <div className="mb-4">
+          <BatchLockBanner
+            batch={dwBatch.batch}
+            dismissed={dwBatch.dismissed}
+            onDismiss={dwBatch.dismiss}
+            showQueue={dwBatch.showQueue}
+            onToggleQueue={() => dwBatch.setShowQueue(!dwBatch.showQueue)}
+          />
+        </div>
+      )}
 
       {/* Header strip */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">

@@ -272,6 +272,19 @@ export default function MonitoringPage() {
     <AppLayout>
       <ScreenHeader title="Monitoring" subtitle="Giám sát chuỗi cung ứng" />
 
+      {/* SS Batch Banner */}
+      {ssBatch.batch && (
+        <div className="mb-4">
+          <BatchLockBanner
+            batch={ssBatch.batch}
+            dismissed={ssBatch.dismissed}
+            onDismiss={ssBatch.dismiss}
+            showQueue={ssBatch.showQueue}
+            onToggleQueue={() => ssBatch.setShowQueue(!ssBatch.showQueue)}
+          />
+        </div>
+      )}
+
       {/* Tab bar */}
       <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
         {tabs.map((tab) => (
