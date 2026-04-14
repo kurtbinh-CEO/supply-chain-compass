@@ -115,6 +115,38 @@ function CompositionBar({ fc, b2b, po, total }: { fc: number; b2b: number; po: n
   );
 }
 
+// ── Mini Sparkline (pure SVG) ──
+function MiniSparkline({ data, color = "var(--primary)", width = 56, height = 20 }: { data: number[]; color?: string; width?: number; height?: number }) {
+  if (data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * (height - 4) - 2;
+    return `${x},${y}`;
+  });
+  const trend = data[data.length - 1] - data[0];
+  const strokeColor = trend > 0 ? "hsl(var(--success))" : trend < 0 ? "hsl(var(--danger))" : "hsl(var(--text-3))";
+  // Fill area
+  const areaPoints = `0,${height} ${points.join(" ")} ${width},${height}`;
+  return (
+    <svg width={width} height={height} className="inline-block" viewBox={`0 0 ${width} ${height}`}>
+      <polygon points={areaPoints} fill={strokeColor} fillOpacity={0.08} />
+      <polyline points={points.join(" ")} fill="none" stroke={strokeColor} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={String((data.length - 1) / (data.length - 1) * width)} cy={String(height - ((data[data.length - 1] - min) / range) * (height - 4) - 2)} r="2" fill={strokeColor} />
+    </svg>
+  );
+}
+
+// ── 3-month trend data per CN (T3, T4, T5) ──
+const cnTrend3m: Record<string, number[]> = {
+  "CN-BD": [5800, 6200, 7045],
+  "CN-ĐN": [3600, 3900, 4130],
+  "CN-HN": [7900, 8100, 7735],
+  "CN-CT": [1300, 1280, 1245],
+};
+
 // ── Trend Icon ──
 function TrendIcon({ value }: { value: number }) {
   if (value > 0) return <TrendingUp className="h-3 w-3 text-success inline" />;
