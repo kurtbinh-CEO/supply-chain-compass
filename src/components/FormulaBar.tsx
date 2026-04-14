@@ -159,7 +159,7 @@ export function FormulaBar({
               <div className="flex h-5 rounded-full overflow-hidden">
                 {demandDetail.rows.filter(r => r.qty > 0).map((r) => (
                   <div key={r.source} className={cn("h-full flex items-center justify-center text-[9px] font-bold text-white",
-                    r.source.includes("FC") ? "bg-[#2563EB]" : r.source.includes("B2B") ? "bg-[#0d9488]" : "bg-[#7c3aed]"
+                    r.source.includes("FC") ? "bg-primary" : r.source.includes("B2B") ? "bg-success" : "bg-info"
                   )} style={{ width: `${(r.qty / totalDemand) * 100}%` }}>
                     {r.pct}%
                   </div>
