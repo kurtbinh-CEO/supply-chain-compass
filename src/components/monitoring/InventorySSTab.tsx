@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useSafetyStock } from "@/components/SafetyStockContext";
 
 /* ═══ DATA ═══ */
 const invTrendBase = Array.from({ length: 30 }, (_, i) => {
