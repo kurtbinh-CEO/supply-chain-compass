@@ -112,6 +112,55 @@ const baseMessages: Record<string, Message[]> = {
   "CN-CT": [],
 };
 
+/* ═══ AUDIT LOG DATA ═══ */
+interface AuditEntry {
+  id: string;
+  time: string;
+  date: string;
+  week: string;
+  who: string;
+  role: string;
+  action: "adjust" | "approve" | "reject" | "submit" | "revert" | "auto_approve";
+  sku: string;
+  variant: string;
+  detail: string;
+  oldValue?: number;
+  newValue?: number;
+  reason?: string;
+}
+
+const baseAuditLog: Record<string, AuditEntry[]> = {
+  "CN-BD": [
+    { id: "a1", time: "14:32", date: "12/05", week: "W17", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 524, newValue: 568, reason: "Nhà thầu mới Q2, tăng 10%" },
+    { id: "a2", time: "15:10", date: "12/05", week: "W17", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "approve", sku: "GA-300", variant: "A4", detail: "Duyệt điều chỉnh +44 (+8.4%)", reason: "Có PO xác nhận" },
+    { id: "a3", time: "14:45", date: "12/05", week: "W17", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-400", variant: "A4", detail: "Điều chỉnh demand", oldValue: 294, newValue: 264, reason: "Dự án delay sang Th6" },
+    { id: "a4", time: "16:00", date: "12/05", week: "W17", who: "System", role: "SYSTEM", action: "auto_approve", sku: "GA-600", variant: "A4", detail: "Auto-approve (delta < 10%)", oldValue: 748, newValue: 828 },
+    { id: "a5", time: "09:30", date: "11/05", week: "W17", who: "Minh Trần", role: "CN_MANAGER", action: "submit", sku: "GA-300", variant: "A4", detail: "Gửi batch 3 SKU điều chỉnh" },
+    { id: "a6", time: "10:15", date: "05/05", week: "W16", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 510, newValue: 530, reason: "Tăng nhẹ theo trend" },
+    { id: "a7", time: "11:00", date: "05/05", week: "W16", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "approve", sku: "GA-300", variant: "A4", detail: "Duyệt điều chỉnh +20 (+3.9%)" },
+    { id: "a8", time: "14:00", date: "05/05", week: "W16", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-600", variant: "A4", detail: "Điều chỉnh demand", oldValue: 700, newValue: 740, reason: "Deal Vingroup phase 1" },
+    { id: "a9", time: "14:30", date: "05/05", week: "W16", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "reject", sku: "GA-600", variant: "B2", detail: "Từ chối điều chỉnh +80 (+22%)", oldValue: 360, newValue: 440, reason: "Không có PO" },
+    { id: "a10", time: "15:00", date: "05/05", week: "W16", who: "Minh Trần", role: "CN_MANAGER", action: "revert", sku: "GA-600", variant: "B2", detail: "Revert về forecast gốc", oldValue: 440, newValue: 360 },
+    { id: "a11", time: "09:00", date: "28/04", week: "W15", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 500, newValue: 510, reason: "Micro adjust" },
+    { id: "a12", time: "09:30", date: "28/04", week: "W15", who: "System", role: "SYSTEM", action: "auto_approve", sku: "GA-300", variant: "A4", detail: "Auto-approve (delta < 5%)", oldValue: 500, newValue: 510 },
+  ],
+  "CN-ĐN": [
+    { id: "a20", time: "08:30", date: "12/05", week: "W17", who: "Hà Lê", role: "CN_MANAGER", action: "submit", sku: "—", variant: "—", detail: "Chưa adjust — chờ data từ Sales team ĐN" },
+    { id: "a21", time: "10:00", date: "05/05", week: "W16", who: "Hà Lê", role: "CN_MANAGER", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 400, newValue: 420, reason: "Tăng nhẹ" },
+    { id: "a22", time: "11:00", date: "05/05", week: "W16", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "approve", sku: "GA-300", variant: "A4", detail: "Duyệt +20 (+5%)" },
+  ],
+  "CN-HN": [
+    { id: "a30", time: "09:00", date: "12/05", week: "W17", who: "Phong Vũ", role: "SALES", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 380, newValue: 400, reason: "Dự báo tăng nhẹ" },
+    { id: "a31", time: "10:00", date: "12/05", week: "W17", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "approve", sku: "GA-300", variant: "A4", detail: "Duyệt +20 (+5.3%)" },
+    { id: "a32", time: "11:00", date: "12/05", week: "W17", who: "Phong Vũ", role: "SALES", action: "adjust", sku: "GA-600", variant: "A4", detail: "Điều chỉnh demand", oldValue: 500, newValue: 520, reason: "Nhu cầu tăng" },
+    { id: "a33", time: "11:30", date: "12/05", week: "W17", who: "System", role: "SYSTEM", action: "auto_approve", sku: "GA-600", variant: "A4", detail: "Auto-approve (delta < 5%)", oldValue: 500, newValue: 520 },
+  ],
+  "CN-CT": [
+    { id: "a40", time: "08:00", date: "12/05", week: "W17", who: "Tuấn Phạm", role: "SALES", action: "adjust", sku: "GA-400", variant: "A4", detail: "Điều chỉnh demand", oldValue: 180, newValue: 200, reason: "Dự án mới" },
+    { id: "a41", time: "09:00", date: "12/05", week: "W17", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "approve", sku: "GA-400", variant: "A4", detail: "Duyệt +20 (+11.1%)" },
+  ],
+};
+
 /* Mentionable users */
 const mentionableUsers = [
   { id: "u1", name: "Thúy Nguyễn", role: "SC_MANAGER" },
