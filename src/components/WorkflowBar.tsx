@@ -1,9 +1,11 @@
 import { useWorkflow } from "@/components/WorkflowContext";
 import { useNavigate } from "react-router-dom";
-import { X, ChevronRight, Check, Lock, Clock, Zap, CalendarDays } from "lucide-react";
+import { X, ChevronRight, Check, Lock, Clock, Zap, CalendarDays, PartyPopper } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useI18n } from "@/components/i18n/I18nContext";
+import confetti from "canvas-confetti";
+import { toast } from "sonner";
 
 function SessionTimer({ startTime }: { startTime: number }) {
   const [elapsed, setElapsed] = useState(0);
