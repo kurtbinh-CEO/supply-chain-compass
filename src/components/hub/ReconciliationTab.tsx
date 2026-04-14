@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronRight, ChevronDown } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 
 interface Props { scale: number }
