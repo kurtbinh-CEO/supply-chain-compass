@@ -115,7 +115,7 @@ export function InventorySSTab({ scale: s }: Props) {
   const totalSsTarget = cnData.reduce((a, r) => a + r.ssTarget, 0);
   const totalSsGap = cnData.reduce((a, r) => a + r.ssGap, 0);
   const cnBelowSs = cnData.filter((r) => r.ssGap < 0).length;
-  const activeCn = drillCn ? cnData.find((r) => r.cn === drillCn) : null;
+  // removed drill-down, using expandable rows instead
 
   return (
     <div className="space-y-6 animate-fade-in">
