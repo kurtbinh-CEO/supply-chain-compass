@@ -534,30 +534,24 @@ export default function GuidePage() {
       {/* ═══ TAB: Công thức ═══ */}
       {activeTab === "formulas" && (
         <div className="space-y-4 animate-fade-in">
-          {data.formulas.length > 0 ? (
-            data.formulas.map((f, i) => (
-              <div key={i} className="rounded-card border border-surface-3 overflow-hidden">
-                <div className="px-5 py-3 bg-surface-2 border-b border-surface-3">
-                  <h3 className="font-display text-body font-semibold text-text-1">{f.title}</h3>
-                </div>
-                <div className="px-5 py-4 bg-[#111827]">
-                  <pre className="text-table-sm text-emerald-300 whitespace-pre-wrap font-mono leading-relaxed">{f.content}</pre>
-                </div>
+          {/* Role-specific formula cards */}
+          {data.formulas.length > 0 && data.formulas.map((f, i) => (
+            <div key={`rf-${i}`} className="rounded-card border border-surface-3 overflow-hidden">
+              <div className="px-5 py-3 bg-surface-2 border-b border-surface-3">
+                <h3 className="font-display text-body font-semibold text-text-1">{f.title}</h3>
               </div>
-            ))
-          ) : (
-            <div className="rounded-card border border-surface-3 bg-surface-2 p-8 text-center">
-              <p className="text-text-2">Chọn role <span className="font-medium text-text-1">SC Manager</span> để xem đầy đủ công thức.</p>
-              <p className="text-table-sm text-text-3 mt-1">Hoặc truy cập <span className="font-mono text-primary">/logic</span> để xem chi tiết.</p>
+              <div className="px-5 py-4 bg-[#111827]">
+                <pre className="text-table-sm text-emerald-300 whitespace-pre-wrap font-mono leading-relaxed">{f.content}</pre>
+              </div>
             </div>
-          )}
+          ))}
 
           {/* Step formulas (monthly + daily) */}
           {[...data.steps, ...data.dailySteps].filter(s => s.formula).length > 0 && (
             <>
               <h3 className="font-display text-body font-semibold text-text-1 mt-6">Công thức theo bước</h3>
               {[...data.steps, ...data.dailySteps].filter(s => s.formula).map((step, i) => (
-                <div key={i} className="rounded-card border border-surface-3 overflow-hidden">
+                <div key={`sf-${i}`} className="rounded-card border border-surface-3 overflow-hidden">
                   <div className="px-5 py-3 bg-surface-2 border-b border-surface-3 flex items-center gap-2">
                     <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-caption font-bold">{i + 1}</span>
                     <h4 className="font-display text-table font-semibold text-text-1">{step.title}</h4>
@@ -569,8 +563,37 @@ export default function GuidePage() {
               ))}
             </>
           )}
+
+          {/* SC Manager only: key insight */}
+          {selectedRole === "SC_MANAGER" && (
+            <div className="rounded-card border-2 border-[#b45309]/40 bg-[#b45309]/5 p-5">
+              <p className="text-table font-semibold text-[#b45309] mb-1">⚡ Insight quan trọng nhất</p>
+              <p className="text-table-sm text-text-2 leading-relaxed">
+                SS dùng <span className="font-mono font-semibold text-text-1">σ_fc_error</span> (sai số FC) không phải <span className="font-mono font-semibold text-text-1">σ_demand</span>.
+                Tiết kiệm ~54% vốn. Đầu tư FC accuracy = cách tiết kiệm vốn tốt nhất.
+              </p>
+            </div>
+          )}
+
+          {data.formulas.length === 0 && [...data.steps, ...data.dailySteps].filter(s => s.formula).length === 0 && (
+            <div className="rounded-card border border-surface-3 bg-surface-2 p-8 text-center">
+              <p className="text-text-2">Chọn role <span className="font-medium text-text-1">SC Manager</span> để xem đầy đủ công thức.</p>
+              <p className="text-table-sm text-text-3 mt-1">Hoặc truy cập <span className="font-mono text-primary">/logic</span> để xem chi tiết.</p>
+            </div>
+          )}
         </div>
       )}
+
+      {/* ═══ Quick links + Footer ═══ */}
+      <div className="mt-10 pt-6 border-t border-surface-3 space-y-3">
+        <p className="text-table text-text-2">
+          📚 Xem thêm:{" "}
+          <a href="/logic" className="font-mono text-primary hover:underline">/logic — Logic vận hành chi tiết</a>
+          {" | "}
+          <a href="/config" className="font-mono text-primary hover:underline">/config — Cấu hình hệ thống</a>
+        </p>
+        <p className="text-caption text-text-3">SCP Smartlog v5.0 LEAN · 14 screens · 30 views</p>
+      </div>
     </AppLayout>
   );
 }
