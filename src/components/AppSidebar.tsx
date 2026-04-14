@@ -80,7 +80,7 @@ const navGroups: NavGroup[] = [
 
 export function AppSidebar() {
   const { collapsed, toggle } = useSidebarState();
-  const { startWorkflow } = useWorkflow();
+  const { startWorkflow, isBarVisible, isRouteInWorkflow, requestLeave } = useWorkflow();
   const { pendingCount } = useWorkspace();
   const { user } = useRbac();
   const location = useLocation();
