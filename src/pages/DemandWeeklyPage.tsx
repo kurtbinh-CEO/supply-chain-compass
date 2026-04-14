@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ChevronRight, ChevronDown, Bell, Clock, Filter } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
+import { LogicTooltip, LogicExpand } from "@/components/LogicTooltip";
 import { ViewPivotToggle, usePivotMode, CnGapBadge } from "@/components/ViewPivotToggle";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
@@ -229,7 +230,12 @@ export default function DemandWeeklyPage() {
                         onClick={() => setExpandedCns(prev => { const next = new Set(prev); next.has(r.cn) ? next.delete(r.cn) : next.add(r.cn); return next; })}>
                         <td className="px-4 py-3 text-text-3 w-8">{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</td>
                         <td className="px-4 py-3 text-table font-medium text-text-1">{r.cn}</td>
-                        <td className="px-4 py-3 text-table tabular-nums text-text-2">{r.duKien.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-table tabular-nums text-text-2">
+                          <span className="inline-flex items-center gap-1">
+                            {r.duKien.toLocaleString()}
+                            <LogicTooltip title="Phasing Monthly → Weekly" content={`Dự kiến ${r.cn} W17 = ${r.duKien.toLocaleString()}m²\nSource: S&OP locked × W17 weight\n${r.cn} share of total demand\nPhasing method: historical_proportional\nW17 weight: 25% (tuần 2 tháng)\nOverride: Max(phased, PO confirmed)\nConfig: /config → Planning → phasing_method`} />
+                          </span>
+                        </td>
                         <td className="px-4 py-3 text-table text-text-1">
                           <ClickableNumber
                             value={r.cnAdjust}
@@ -258,7 +264,20 @@ export default function DemandWeeklyPage() {
                             links={[{ label: `→ /demand tab 1 ${r.cn}`, to: "/demand" }]}
                           />
                         </td>
-                        <td className={cn("px-4 py-3 text-table font-medium", r.statusColor)}>{r.status}</td>
+                        <td className={cn("px-4 py-3 text-table font-medium", r.statusColor)}>
+                          <span className="inline-flex items-center gap-1">
+                            {r.status}
+                            {r.status === "Đã adjust" && (
+                              <LogicTooltip title="Auto-approved" content={`Auto-approved: tổng delta ${r.adjustDelta >= 0 ? "+" : ""}${r.adjustDelta} < threshold 10%.\nTrust score ${r.cn}: 82%.\nRule: /config → cn_adjust.auto_approve_threshold = 10%.`} />
+                            )}
+                            {r.status.includes("Pending") && (
+                              <LogicTooltip title="Pending approval" content={`Chờ duyệt: delta nằm trong 10-30%.\nSC Manager Thúy sẽ duyệt.\nRule: 10% ≤ |delta| ≤ 30% → SC Manager approve.`} />
+                            )}
+                            {r.status.includes("Chưa") && (
+                              <LogicTooltip title="Chờ CN adjust" content={`CN chưa nhập điều chỉnh.\nCutoff 18:00. Sau cutoff → dùng số HQ (v0 Statistical).\nNhắc CN qua nút bên dưới.`} />
+                            )}
+                          </span>
+                        </td>
                       </tr>
                       {isExpanded && r.skus.map((sk, si) => (
                         <tr key={`${r.cn}-${si}`} className="border-b border-surface-3/30 bg-surface-0 animate-fade-in">
