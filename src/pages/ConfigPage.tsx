@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { ScreenHeader } from "@/components/ScreenShell";
+import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 
@@ -306,6 +306,7 @@ export default function ConfigPage() {
           </div>
         </TabsContent>
       </Tabs>
+      <ScreenFooter actionCount={4} />
     </AppLayout>
   );
 }

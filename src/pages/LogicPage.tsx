@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
-import { ScreenHeader } from "@/components/ScreenShell";
+import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { LogicTreeNode, LogicNodeData, nodeMatchesSearch } from "@/components/logic/LogicTreeNode";
 import { CodeBlock, Note } from "@/components/logic/CodeBlock";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
@@ -945,6 +945,7 @@ export default function LogicPage() {
           />
         ))}
       </div>
+      <ScreenFooter actionCount={3} />
     </AppLayout>
   );
 }

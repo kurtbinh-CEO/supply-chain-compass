@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { ScreenHeader } from "@/components/ScreenShell";
+import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { cn } from "@/lib/utils";
 import { DemandTotalTab } from "@/components/demand/DemandTotalTab";
 import { B2BInputTab } from "@/components/demand/B2BInputTab";
@@ -70,6 +70,7 @@ export default function DemandPage() {
 
       {activeTab === "total" && <DemandTotalTab tenant={tenant} b2bPerCn={b2bPerCn} />}
       {activeTab === "b2b" && <B2BInputTab deals={b2bDeals} setDeals={setB2bDeals} tenant={tenant} />}
+      <ScreenFooter actionCount={8} />
     </AppLayout>
   );
 }

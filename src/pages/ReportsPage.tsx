@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { ScreenHeader } from "@/components/ScreenShell";
+import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { FileText, Download, Clock, ChevronDown, ChevronUp, Plus, Mail, Calendar } from "lucide-react";
 import { toast } from "sonner";
 
@@ -118,6 +118,7 @@ export default function ReportsPage() {
           </table>
         </div>
       )}
+      <ScreenFooter actionCount={6} />
     </AppLayout>
   );
 }
