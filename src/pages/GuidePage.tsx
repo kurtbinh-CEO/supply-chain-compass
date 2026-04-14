@@ -188,7 +188,8 @@ const roleData: Record<RoleKey, RoleData> = {
       },
     ],
     formulas: [
-      { title: "Trust Score", content: "Trust = Σ(|adjust−actual| < 20%) / total_adjustments × 100%\n\nTrust >85% → auto-approve + tolerance ±40%\nTrust 60-85% → SC Manager duyệt + tolerance ±30%\nTrust <60% → tolerance ±15% + giải trình tất cả" },
+      { title: "Trust Score", content: "Trust = Σ(|adjust−actual| < 20%) / total_adjustments × 100%\n\nTrust >85% → auto-approve + tolerance ±40%\nTrust 60-85% → SC Manager duyệt + tolerance ±30%\nTrust <60% → tolerance ±15% + giải trình tất cả\n\nCách tăng trust: adjust chính xác liên tục → trust tăng tự nhiên." },
+      { title: "Tolerance Rules", content: "Delta < 10% → auto-approve ✅ (nếu trust ≥60%)\nDelta 10-30% → chờ SC Manager duyệt 🟡\nDelta > 30% → blocked 🔴 (cần giải trình + evidence)\n\nTrust cao → tolerance mở rộng:\nTrust >85%: auto-approve tất cả ≤40%\nTrust 60-85%: auto-approve ≤10%, duyệt ≤30%\nTrust <60%: giải trình tất cả ≤15%" },
     ],
   },
   SALES: {
@@ -222,7 +223,7 @@ const roleData: Record<RoleKey, RoleData> = {
     ],
     dailySteps: [],
     formulas: [
-      { title: "B2B Weighted Demand", content: "Weighted = qty × probability%\nVD: 12.000 × 85% = 10.200m²\n\nChỉ deals ≥30% mới tính vào demand.\nPO signed (100%) → chuyển sang PO confirmed, trừ overlap." },
+      { title: "FVA (Forecast Value Added)", content: "FVA = MAPE(v0_statistical) − MAPE(vX_your_input)\n\nFVA dương → bạn tốt hơn model → input có giá trị\nFVA âm → model tốt hơn → xem lại cách estimate\nFVA = 0 → không khác biệt\n\nTracking: hệ thống so sánh mỗi tháng. FVA trending up = bạn ngày càng giỏi estimate." },
     ],
   },
   BUYER: {
