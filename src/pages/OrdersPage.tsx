@@ -173,6 +173,31 @@ export default function OrdersPage() {
 
   return (
     <AppLayout>
+      {/* Batch Lock Banner for auto-gen PO */}
+      {ordersBatch.batch && (
+        <div className="mb-4">
+          <BatchLockBanner
+            batch={ordersBatch.batch}
+            dismissed={ordersBatch.dismissed}
+            onDismiss={ordersBatch.dismiss}
+            showQueue={ordersBatch.showQueue}
+            onToggleQueue={() => ordersBatch.setShowQueue(!ordersBatch.showQueue)}
+            onProcessQueue={(id) => toast.success(`Xử lý queue ${id}`)}
+            onCancelQueue={(id) => toast.info(`Hủy queue ${id}`)}
+          />
+        </div>
+      )}
+
+      {/* Version Conflict */}
+      {ordersConflict && (
+        <VersionConflictDialog
+          conflict={ordersConflict}
+          onReload={clearConflict}
+          onForceUpdate={() => { clearConflict(); toast.success("Đã ghi đè. Audit logged."); }}
+          onClose={clearConflict}
+        />
+      )}
+
       <div className="flex items-center gap-2 mb-1">
         <ScreenHeader title="Orders & Tracking" subtitle="Đơn hàng và theo dõi giao nhận" />
         <LogicLink tab="daily" node={4} tooltip="Logic PO Release: BPO → RPO → ASN" />
