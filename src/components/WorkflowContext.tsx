@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef, ReactNode } from "react";
+import { useActivityLog } from "@/components/ActivityLogContext";
 
 export type WorkflowType = "daily" | "monthly" | null;
 
