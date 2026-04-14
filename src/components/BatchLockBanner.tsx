@@ -165,6 +165,33 @@ export function BatchLockBanner({ batch, dismissed, onDismiss, showQueue, onTogg
   );
 }
 
+/* ═══ Batch Timeout Banner (EC3) ═══ */
+export function BatchTimeoutBanner({ batchType, timeoutMinutes, onRetry, onViewLog }: {
+  batchType: string; timeoutMinutes: number; onRetry: () => void; onViewLog: () => void;
+}) {
+  return (
+    <div className="w-full border border-danger/30 bg-danger/10 rounded-lg px-4 py-2.5 flex items-center gap-3 text-table-sm animate-fade-in">
+      <span className="text-base">❌</span>
+      <span className="text-danger font-medium">{batchType} timeout sau {timeoutMinutes} phút. Lock released.</span>
+      <span className="text-text-3">Email alert → SC Manager + CTO.</span>
+      <div className="flex gap-2 ml-auto">
+        <button onClick={onRetry} className="text-primary text-caption font-medium hover:underline">Chạy lại</button>
+        <button onClick={onViewLog} className="text-text-2 text-caption font-medium hover:underline">Xem log</button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ HSTK Urgent Badge for Version Conflict (EC4) ═══ */
+export function HstkUrgentBadge({ cn, sku, hstk }: { cn: string; sku: string; hstk: number }) {
+  if (hstk >= 1) return null;
+  return (
+    <div className="inline-flex items-center gap-1 rounded-sm bg-danger-bg px-1.5 py-0.5 text-[10px] font-bold text-danger">
+      ⚡ URGENT: HSTK {cn} {sku} = {hstk} ngày!
+    </div>
+  );
+}
+
 /* ═══ Pre-Lock Check Dialog (S&OP specific) ═══ */
 interface ActiveEditor { name: string; cell: string; duration: string }
 

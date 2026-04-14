@@ -248,7 +248,7 @@ export function AutoSaveIndicator({ lastSaved, offline }: { lastSaved: Date | nu
   if (offline) {
     return (
       <div className="fixed bottom-4 right-4 z-40 rounded-button bg-warning/15 border border-warning/30 px-3 py-1.5 text-caption text-warning flex items-center gap-1.5">
-        ⚠ Offline. Draft saved locally.
+        ⚠ Mất kết nối. Draft saved locally. Đang reconnect...
       </div>
     );
   }
@@ -257,6 +257,66 @@ export function AutoSaveIndicator({ lastSaved, offline }: { lastSaved: Date | nu
   return (
     <div className="fixed bottom-4 right-4 z-40 text-caption text-text-3">
       💾 Auto-saved {time}
+    </div>
+  );
+}
+
+/* ═══ Offline Reconnect Banner (EC1) ═══ */
+export function OfflineReconnectBanner({ offline, onReconnected }: { offline: boolean; onReconnected?: () => void }) {
+  if (!offline) return null;
+  return (
+    <div className="w-full rounded-lg border border-warning/30 bg-warning/10 px-4 py-2.5 flex items-center gap-3 text-table-sm animate-fade-in">
+      <span className="text-warning font-medium">⚠ Mất kết nối. Draft saved locally. Đang reconnect...</span>
+      <div className="flex-1" />
+      <button onClick={onReconnected} className="text-primary text-caption font-medium hover:underline">Thử lại</button>
+    </div>
+  );
+}
+
+/* ═══ Frequent Override Alert (EC2) ═══ */
+export function FrequentOverrideAlert({ cellKey, count, onDismiss }: { cellKey: string; count: number; onDismiss: () => void }) {
+  if (count < 3) return null;
+  return (
+    <div className="w-full rounded-lg border border-warning/30 bg-warning/10 px-4 py-2.5 flex items-center gap-3 text-table-sm animate-fade-in">
+      <span className="text-warning">⚠</span>
+      <span className="text-text-1">
+        Cell <span className="font-mono font-medium">{cellKey}</span> bị ghi đè <span className="font-bold text-warning">{count} lần</span> trong 1 phút.
+      </span>
+      <span className="text-text-3">Gợi ý: Assign 1 owner per CN cell range.</span>
+      <button onClick={onDismiss} className="text-text-3 hover:text-text-1 text-caption ml-auto">✕</button>
+    </div>
+  );
+}
+
+/* ═══ Draft Recovery Banner (EC5) ═══ */
+export function DraftRecoveryBanner({ draftInfo, lockedBy, onViewDraft, onDiscard }: {
+  draftInfo: string;
+  lockedBy: string;
+  onViewDraft: () => void;
+  onDiscard: () => void;
+}) {
+  return (
+    <div className="w-full rounded-lg border border-info/30 bg-info/10 px-4 py-2.5 flex items-center gap-3 text-table-sm animate-fade-in">
+      <span className="text-info">📋</span>
+      <span className="text-text-1">
+        {draftInfo} <span className="text-text-3">(locked bởi {lockedBy})</span>
+      </span>
+      <div className="flex gap-2 ml-auto">
+        <button onClick={onViewDraft} className="text-primary text-caption font-medium hover:underline">Xem</button>
+        <button onClick={onDiscard} className="text-danger text-caption font-medium hover:underline">Discard</button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══ Master Data During Batch Toast (EC6) ═══ */
+export function MasterDataBatchNotice({ field, oldVal, newVal, batchSnapshot }: {
+  field: string; oldVal: string; newVal: string; batchSnapshot: string;
+}) {
+  return (
+    <div className="rounded-lg border border-info/30 bg-info/10 px-4 py-3 text-table-sm text-text-1 space-y-1">
+      <p>Thay đổi <span className="font-medium">{field} {oldVal}→{newVal}</span> đã lưu.</p>
+      <p className="text-warning">⚠ DRP đang chạy dùng snapshot {field}={batchSnapshot}. Thay đổi có hiệu lực từ run tiếp theo.</p>
     </div>
   );
 }

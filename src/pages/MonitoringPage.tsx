@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
@@ -189,6 +189,133 @@ const closedLoopData = [
   { adjust: "CN-HN trust 85→72", trigger: "Gap −20%", impact: "Tolerance thu hẹp 30%→20%", status: "applied" },
   { adjust: "Share Toko 25→20%", trigger: "Grade C 3 tháng", impact: "Chuyển 5% sang Mikado", status: "recommend" },
 ];
+
+/* ═══ CONFLICT LOG DATA ═══ */
+const conflictLogData = [
+  { time: "08:15", type: "CELL_OVERRIDE", screen: "S&OP v3", userA: "Planner C", userB: "SC Thúy", entity: "BD×GA-300", result: "Thúy wins", detail: "CELL_OVERRIDE — S&OP v3 input\nCell: CN-BD × GA-300 A4 × v2 CN Input\nUser A (Planner C): value 600, editing since 08:12\nUser B (SC Thúy): force-edit at 08:15, value 617\nResult: Thúy's value 617 saved. Planner C notified.\nOld value: 600 (Planner C's draft preserved)." },
+  { time: "08:32", type: "VERSION_MISMATCH", screen: "PO approve", userA: "Planner A", userB: "CN-BD Minh", entity: "RPO-W17-002", result: "Minh refresh", detail: "VERSION_MISMATCH — PO RPO-MKD-2605-W17-002\nPlanner A edited qty 557→600, saved v5.\nCN-BD Minh tried approve on v4 → 409 conflict.\nMinh chose [Tải lại dữ liệu mới] → refreshed to v6.\nNo data lost." },
+  { time: "23:05", type: "BATCH_QUEUE", screen: "DRP", userA: "Admin Dũng", userB: "System", entity: "DRP run #47", result: "Queued 2 actions", detail: "BATCH_QUEUE — DRP nightly run #47\nDRP started 23:00, running Step 4/8.\nAdmin Dũng tried manual allocation at 23:05 → queued.\nSC Thúy tried SS change at 23:10 → queued.\nDRP completed 23:18. Queue processed." },
+  { time: "16:30", type: "FORCE_LOCK", screen: "S&OP lock", userA: "Planner C", userB: "SC Thúy", entity: "Period T5", result: "Locked (grace 0)", detail: "FORCE_LOCK — S&OP Period T5\nSC Thúy clicked Lock Consensus.\n2 editors active: Planner C (2m), Sales N (45s).\nThúy chose [Force lock ngay].\nPlanner C unsaved draft → preserved in Drafts.\nSales N notified: 'S&OP đã locked.'" },
+  { time: "09:45", type: "CELL_OVERRIDE", screen: "CN-BD adjust", userA: "CN Minh", userB: "SC Thúy", entity: "BD×GA-400", result: "Thúy wins", detail: "CELL_OVERRIDE — CN-BD Adjustment\nCN Minh editing GA-400 A4 CN-BD.\nSC Thúy (bypass CN ownership) force-edited.\nValue: Minh 500 → Thúy 520.\nMinh nhận toast: 'Cell BD×GA-400 đã bị Thúy ghi đè.'" },
+  { time: "14:20", type: "CELL_OVERRIDE", screen: "S&OP v3", userA: "Planner A", userB: "SC Thúy", entity: "HN×GA-600", result: "Thúy wins", detail: "CELL_OVERRIDE — S&OP v3\nPlanner A editing HN×GA-600. Thúy force-edit.\nFrequent: 3rd override in 5 min on S&OP.\nRecommend: phân CN ownership.", highlight: true },
+  { time: "14:22", type: "CELL_OVERRIDE", screen: "S&OP v3", userA: "Planner A", userB: "SC Thúy", entity: "HN×GA-300", result: "Thúy wins", detail: "CELL_OVERRIDE — S&OP v3\nPlanner A editing HN×GA-300. Thúy force-edit.\nFrequent override pattern detected.", highlight: true },
+  { time: "11:00", type: "VERSION_MISMATCH", screen: "Hub scenario", userA: "SC Thúy", userB: "SC Tuấn", entity: "Gap S-MKD-T5", result: "Tuấn refresh", detail: "VERSION_MISMATCH — Hub Gap Scenario\nThúy chose scenario A, saved v3.\nTuấn tried choose scenario B on v2 → conflict.\nTuấn refreshed, reviewed Thúy's choice, agreed." },
+  { time: "07:30", type: "BATCH_QUEUE", screen: "Orders", userA: "System", userB: "System", entity: "Auto-gen PO #12", result: "3 RPOs generated", detail: "BATCH_QUEUE — Auto-gen PO batch #12\nTriggered by DRP completion.\n3 RPOs auto-generated.\nNo manual actions queued during batch." },
+  { time: "22:00", type: "VERSION_MISMATCH", screen: "Master Data", userA: "Admin Dũng", userB: "System DRP", entity: "LT Mikado", result: "Saved (DRP snapshot)", detail: "VERSION_MISMATCH — Master Data LT Mikado\nAdmin Dũng changed LT 14→21.\nDRP running used snapshot LT=14.\nChange saved, effective from next DRP run.\nToast: 'DRP đang chạy dùng snapshot LT=14.'" },
+  { time: "15:00", type: "VERSION_MISMATCH", screen: "SS adjust", userA: "Planner B", userB: "SC Thúy", entity: "SS BD GA-300", result: "Thúy force", detail: "VERSION_MISMATCH — SS Adjustment\nPlanner B proposed SS 900→1035.\nThúy approved different value 950 at same time.\nConflict → Thúy force-updated.\nPlanner B notified." },
+  { time: "13:15", type: "CELL_OVERRIDE", screen: "B2B deals", userA: "Sales N", userB: "SC Thúy", entity: "Deal-VNG-001", result: "Thúy wins", detail: "CELL_OVERRIDE — B2B Deal Table\nSales N editing Deal-VNG-001 qty.\nSC Thúy overrode with approved value." },
+];
+
+const conflictWeeklyTrend = [
+  { week: "W14", count: 18 },
+  { week: "W15", count: 15 },
+  { week: "W16", count: 14 },
+  { week: "W17", count: 12 },
+];
+
+/* ═══ Conflict Log Section ═══ */
+function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const thisWeek = conflictLogData.slice(0, 12);
+  const autoResolved = thisWeek.filter(c => c.result.includes("refresh")).length;
+  const manual = thisWeek.length - autoResolved;
+  const sopCount = thisWeek.filter(c => c.screen.includes("S&OP")).length;
+
+  const typeBadge = (type: string) => {
+    const m: Record<string, string> = {
+      CELL_OVERRIDE: "bg-warning-bg text-warning",
+      VERSION_MISMATCH: "bg-info-bg text-info",
+      BATCH_QUEUE: "bg-primary/10 text-primary",
+      FORCE_LOCK: "bg-danger-bg text-danger",
+    };
+    return m[type] || "bg-surface-3 text-text-2";
+  };
+
+  return (
+    <CollapsibleSection title="Conflict Log — 7 ngày qua" summary={`${thisWeek.length} conflicts · ${manual} manual`} expanded={expanded} onToggle={onToggle}>
+      <div className="p-5 space-y-4">
+        {/* Summary strip */}
+        <div className="rounded-lg bg-info-bg/50 border border-info/20 px-4 py-3 text-table-sm text-text-1 flex items-center justify-between">
+          <span>
+            <span className="font-semibold">{thisWeek.length} conflicts</span> tuần này.{" "}
+            <span className="text-text-2">{autoResolved} auto-resolved (version refresh). {manual} manual (cell override).</span>
+            {sopCount > thisWeek.length / 2 && (
+              <span className="text-warning font-medium ml-2">Hot spot: S&OP input ({sopCount}/{thisWeek.length}).</span>
+            )}
+          </span>
+          <button onClick={() => { toast.success("Exporting CSV..."); }} className="shrink-0 rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-caption text-text-2 hover:bg-surface-3 transition-colors">
+            Export CSV
+          </button>
+        </div>
+
+        {/* Recommend */}
+        {sopCount > thisWeek.length / 2 && (
+          <div className="rounded-md bg-warning-bg/50 border border-warning/20 px-4 py-2.5 text-table-sm text-text-1">
+            💡 <span className="font-medium">Recommend:</span> phân CN ownership (1 editor/CN) để giảm conflicts trên S&OP input.
+          </div>
+        )}
+
+        {/* Table */}
+        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+          <table className="w-full text-table-sm">
+            <thead>
+              <tr className="bg-surface-1">
+                {["Thời gian", "Loại", "Screen", "User A", "User B", "Entity", "Kết quả", ""].map((h, i) => (
+                  <th key={i} className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {thisWeek.map((c, i) => (
+                <React.Fragment key={i}>
+                  <tr className={cn("border-b border-surface-3/50 hover:bg-surface-1/30 transition-colors", (c as any).highlight && "bg-warning-bg/20")}>
+                    <td className="px-3 py-2 tabular-nums text-text-2">{c.time}</td>
+                    <td className="px-3 py-2">
+                      <span className={cn("rounded-sm px-1.5 py-0.5 text-[10px] font-medium", typeBadge(c.type))}>{c.type}</span>
+                    </td>
+                    <td className="px-3 py-2 text-text-2">{c.screen}</td>
+                    <td className="px-3 py-2 text-text-1">{c.userA}</td>
+                    <td className="px-3 py-2 text-text-1">{c.userB}</td>
+                    <td className="px-3 py-2 font-mono text-text-2">{c.entity}</td>
+                    <td className="px-3 py-2 text-text-2">{c.result}</td>
+                    <td className="px-3 py-2">
+                      <button onClick={() => setExpandedRow(expandedRow === i ? null : i)} className="text-primary text-caption font-medium hover:underline">
+                        {expandedRow === i ? "Ẩn" : "Chi tiết"}
+                      </button>
+                    </td>
+                  </tr>
+                  {expandedRow === i && (
+                    <tr>
+                      <td colSpan={8} className="px-6 py-3 bg-surface-1/50">
+                        <pre className="text-table-sm text-text-2 whitespace-pre-wrap font-body leading-relaxed">{c.detail}</pre>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Weekly trend chart */}
+        <div>
+          <h4 className="text-table-sm font-medium text-text-2 mb-2">Weekly Conflict Trend (giảm = tốt)</h4>
+          <div className="h-32">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={conflictWeeklyTrend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-3)" />
+                <XAxis dataKey="week" tick={{ fontSize: 11, fill: "var(--color-text-3)" }} />
+                <YAxis tick={{ fontSize: 11, fill: "var(--color-text-3)" }} />
+                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                <Bar dataKey="count" name="Conflicts" fill="var(--color-warning-text)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+    </CollapsibleSection>
+  );
+}
 
 /* ═══ HELPERS ═══ */
 function hstkColor(d: number) { return d < 5 ? "text-danger" : d < 10 ? "text-warning" : "text-success"; }
@@ -748,6 +875,9 @@ export default function MonitoringPage() {
               </div>
             </div>
           </CollapsibleSection>
+
+          {/* Section F: Conflict Log Dashboard */}
+          <ConflictLogSection expanded={expandedSections.has("conflict")} onToggle={() => toggleSection("conflict")} />
         </div>
       )}
 
