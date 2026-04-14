@@ -12,6 +12,8 @@ import { VoiceMessage, AudioPlayerInline } from "@/components/VoiceMessage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { LogicLink } from "@/components/LogicLink";
+import { AvatarBar, AutoSaveIndicator, useCellPresence } from "@/components/CellPresence";
+import { CnOwnershipBanner } from "@/components/BatchLockBanner";
 
 /* ═══ DATA ═══ */
 const allCns = ["CN-BD", "CN-ĐN", "CN-HN", "CN-CT"];
@@ -253,6 +255,8 @@ export default function CnPortalPage() {
   const activeCn = filterCnId || selectedCn;
   const rows = demandData[activeCn] || [];
   const inv = baseInvData[activeCn] || [];
+
+  const cnPresence = useCellPresence("cn-portal", { id: user.id, name: user.name, role: user.role, color: "bg-primary text-primary-foreground" });
 
   useEffect(() => {
     if (focusRow && focusRef.current) {
@@ -533,6 +537,8 @@ export default function CnPortalPage() {
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
+          <CnOwnershipBanner cnName={activeCn} editorName={user.name} isAvailable={false} />
+          <AvatarBar users={cnPresence.onlineUsers} />
           <LogicTooltip
             title="Trust Score"
             content={"Trust score = bao nhiêu % lần adjust của bạn gần đúng thực tế.\n12 tuần gần nhất:\nTuần 10: adjust +44 → actual +38 → sai 14% ✅ (< threshold 20%)\nTuần 11: adjust −30 → actual −25 → sai 17% ✅\nTuần 12: adjust +80 → actual +95 → sai 16% ✅\n10/12 tuần < threshold → trust = 10/12 = 83%\n\nTrust > 85%: adjust tự duyệt + tolerance ±40%\nTrust 60-85%: SC Manager duyệt + tolerance ±30% ← Bạn đang đây\nTrust < 60%: tolerance thu hẹp ±15% + cần giải trình tất cả\nCải thiện: nhập lý do rõ + data support (PO, hợp đồng)."}

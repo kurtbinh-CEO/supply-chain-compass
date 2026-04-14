@@ -7,6 +7,9 @@ import { ConsensusTab } from "@/components/sop/ConsensusTab";
 import { BalanceLockTab } from "@/components/sop/BalanceLockTab";
 import { FileText } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
+import { AvatarBar, AutoSaveIndicator, useCellPresence } from "@/components/CellPresence";
+import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
+import { PreLockDialog } from "@/components/BatchLockBanner";
 
 const tabs = [
   { key: "consensus", label: "Consensus" },
@@ -80,6 +83,10 @@ export default function SopPage() {
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
 
   const [locked, setLocked] = useState(false);
+  const [showPreLock, setShowPreLock] = useState(false);
+
+  const cellPresence = useCellPresence("sop-consensus", { id: "u-me", name: "Bạn", role: "Planner", color: "bg-primary text-primary-foreground" });
+  const { conflict, triggerConflict, clearConflict } = useVersionConflict();
 
   // Scale and make consensus data stateful
   const [consensusData, setConsensusData] = useState<ConsensusRow[]>(() =>
@@ -149,10 +156,7 @@ export default function SopPage() {
           </span>
         )}
         <div className="flex-1" />
-        <span className="inline-flex items-center gap-1.5 text-table-sm text-text-2">
-          🟢 Thúy online
-        </span>
-        <div className="h-7 w-7 rounded-full bg-gradient-primary flex items-center justify-center text-[10px] font-semibold text-white">TH</div>
+        <AvatarBar users={cellPresence.onlineUsers} />
       </div>
 
       {/* Tab bar */}
@@ -192,10 +196,41 @@ export default function SopPage() {
           totalV3={totalV3}
           totalAop={totalAop}
           locked={locked}
-          onLock={() => setLocked(true)}
+          onLock={() => {
+            if (cellPresence.onlineUsers.length > 1) {
+              setShowPreLock(true);
+            } else {
+              setLocked(true);
+            }
+          }}
           tenant={tenant}
         />
       )}
+
+      {/* Concurrency: Pre-Lock Dialog */}
+      {showPreLock && (
+        <PreLockDialog
+          editors={[
+            { name: "Planner C", cell: "HN×GA-400", duration: "2m" },
+            { name: "Sales N", cell: "CT×GA-600", duration: "45s" },
+          ]}
+          onNotifyWait={() => { import("sonner").then(m => m.toast.info("Đã gửi thông báo tới editors. Chờ 5 phút...")); }}
+          onForceLock={() => { setLocked(true); setShowPreLock(false); import("sonner").then(m => m.toast.warning("S&OP đã locked. Unsaved data → Drafts.")); }}
+          onClose={() => setShowPreLock(false)}
+        />
+      )}
+
+      {/* Concurrency: Version Conflict */}
+      {conflict && (
+        <VersionConflictDialog
+          conflict={conflict}
+          onReload={() => { clearConflict(); }}
+          onForceUpdate={() => { clearConflict(); import("sonner").then(m => m.toast.success("Đã ghi đè. Audit logged.")); }}
+          onClose={clearConflict}
+        />
+      )}
+
+      <AutoSaveIndicator lastSaved={cellPresence.lastSaved} offline={cellPresence.offline} />
       <ScreenFooter actionCount={5} />
     </AppLayout>
   );

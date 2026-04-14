@@ -4,6 +4,7 @@ import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Search, Plus, Upload, X, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
+import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 
 /* ── Generic CRUD table data ── */
 const itemsData = [
@@ -163,6 +164,7 @@ function EditPanel({ title, fields, onClose }: { title: string; fields: { label:
 
 export default function MasterDataPage() {
   const [editPanel, setEditPanel] = useState<{ title: string; fields: { label: string; value: string }[] } | null>(null);
+  const { conflict: mdConflict, clearConflict: clearMdConflict } = useVersionConflict();
 
   const openEdit = (title: string, headers: string[], row: string[]) => {
     setEditPanel({ title, fields: headers.map((h, i) => ({ label: h, value: row[i] || "" })) });
@@ -171,6 +173,16 @@ export default function MasterDataPage() {
   return (
     <AppLayout>
       <ScreenHeader title="Master Data" subtitle="Dữ liệu nền tảng" />
+
+      {/* Version Conflict */}
+      {mdConflict && (
+        <VersionConflictDialog
+          conflict={mdConflict}
+          onReload={clearMdConflict}
+          onForceUpdate={() => { clearMdConflict(); toast.success("Đã ghi đè. Audit logged."); }}
+          onClose={clearMdConflict}
+        />
+      )}
       <Tabs defaultValue="items">
         <TabsList className="bg-surface-1 border border-surface-3 mb-4">
           {tabDefs.map(t => (

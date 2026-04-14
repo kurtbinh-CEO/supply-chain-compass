@@ -10,6 +10,8 @@ import { useNavigate } from "react-router-dom";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
 import { LogicTooltip, LogicExpand } from "@/components/LogicTooltip";
+import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
+import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -136,6 +138,9 @@ const tabs = [
 export default function OrdersPage() {
   const { tenant } = useTenant();
   const navigate = useNavigate();
+
+  const ordersBatch = useBatchLock(null);
+  const { conflict: ordersConflict, triggerConflict, clearConflict } = useVersionConflict();
   const s = tenantScales[tenant] || 1;
   const [activeTab, setActiveTab] = useState("po");
   const [drillStatus, setDrillStatus] = useState<string | null>(null);
@@ -168,6 +173,31 @@ export default function OrdersPage() {
 
   return (
     <AppLayout>
+      {/* Batch Lock Banner for auto-gen PO */}
+      {ordersBatch.batch && (
+        <div className="mb-4">
+          <BatchLockBanner
+            batch={ordersBatch.batch}
+            dismissed={ordersBatch.dismissed}
+            onDismiss={ordersBatch.dismiss}
+            showQueue={ordersBatch.showQueue}
+            onToggleQueue={() => ordersBatch.setShowQueue(!ordersBatch.showQueue)}
+            onProcessQueue={(id) => toast.success(`Xử lý queue ${id}`)}
+            onCancelQueue={(id) => toast.info(`Hủy queue ${id}`)}
+          />
+        </div>
+      )}
+
+      {/* Version Conflict */}
+      {ordersConflict && (
+        <VersionConflictDialog
+          conflict={ordersConflict}
+          onReload={clearConflict}
+          onForceUpdate={() => { clearConflict(); toast.success("Đã ghi đè. Audit logged."); }}
+          onClose={clearConflict}
+        />
+      )}
+
       <div className="flex items-center gap-2 mb-1">
         <ScreenHeader title="Orders & Tracking" subtitle="Đơn hàng và theo dõi giao nhận" />
         <LogicLink tab="daily" node={4} tooltip="Logic PO Release: BPO → RPO → ASN" />

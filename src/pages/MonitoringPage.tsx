@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { InventorySSTab } from "@/components/monitoring/InventorySSTab";
 import { ActivityLogTab } from "@/components/monitoring/ActivityLogTab";
+import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -230,6 +231,13 @@ const tabs = [
 export default function MonitoringPage() {
   const { tenant } = useTenant();
   const s = tenantScales[tenant] || 1;
+
+  const ssBatch = useBatchLock({
+    batchType: "SS Recalculation",
+    status: "info",
+    resultSummary: "SS recalc hoàn tất 06:00. 24 SKU updated, 2 breaches.",
+    startedAt: "06:00",
+  });
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [drillCn, setDrillCn] = useState<string | null>(null);
@@ -263,6 +271,19 @@ export default function MonitoringPage() {
   return (
     <AppLayout>
       <ScreenHeader title="Monitoring" subtitle="Giám sát chuỗi cung ứng" />
+
+      {/* SS Batch Banner */}
+      {ssBatch.batch && (
+        <div className="mb-4">
+          <BatchLockBanner
+            batch={ssBatch.batch}
+            dismissed={ssBatch.dismissed}
+            onDismiss={ssBatch.dismiss}
+            showQueue={ssBatch.showQueue}
+            onToggleQueue={() => ssBatch.setShowQueue(!ssBatch.showQueue)}
+          />
+        </div>
+      )}
 
       {/* Tab bar */}
       <div className="flex items-center gap-0 border-b border-surface-3 mb-6">

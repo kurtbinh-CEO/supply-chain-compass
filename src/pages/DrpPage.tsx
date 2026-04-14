@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormulaBar } from "@/components/FormulaBar";
 import { ViewPivotToggle, usePivotMode, WorstCnCell, CnGapBadge, LcnbBadge } from "@/components/ViewPivotToggle";
 import { useSafetyStock } from "@/components/SafetyStockContext";
+import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
+import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -124,7 +126,19 @@ export default function DrpPage() {
   const [showDrpConfirm, setShowDrpConfirm] = useState(false);
   const [drpRunning, setDrpRunning] = useState(false);
   const [drpStep, setDrpStep] = useState(0);
-  const [resolvedExceptions, setResolvedExceptions] = useState<Record<string, string>>({}); // key → chosen label
+  const [resolvedExceptions, setResolvedExceptions] = useState<Record<string, string>>({});
+
+  const drpBatch = useBatchLock({
+    batchType: "DRP",
+    status: "info",
+    resultSummary: "DRP đêm qua 23:18. 142 lines, 3 exceptions, 5 RPOs.",
+    startedAt: "23:00",
+    queuedActions: [
+      { id: "q1", description: "Manual allocation GA-300 A4 CN-BD → 272m²", queuedAt: "23:05", queuedBy: "Planner A" },
+      { id: "q2", description: "SS change GA-300 A4 900→1.035", queuedAt: "23:10", queuedBy: "Thúy", superseded: true },
+    ],
+  });
+  const { conflict: drpConflict, triggerConflict: triggerDrpConflict, clearConflict: clearDrpConflict } = useVersionConflict();
 
   const data = baseData.map((r) => ({
     ...r,
@@ -226,6 +240,33 @@ export default function DrpPage() {
 
   return (
     <AppLayout>
+      {/* Batch Lock Banner */}
+      {drpBatch.batch && (
+        <div className="mb-4">
+          <BatchLockBanner
+            batch={drpBatch.batch}
+            dismissed={drpBatch.dismissed}
+            onDismiss={drpBatch.dismiss}
+            showQueue={drpBatch.showQueue}
+            onToggleQueue={() => drpBatch.setShowQueue(!drpBatch.showQueue)}
+            onProcessQueue={(id) => toast.success(`Xử lý queue action ${id}`)}
+            onCancelQueue={(id) => toast.info(`Hủy queue action ${id}`)}
+            onRetry={() => toast.info("Đang chạy lại DRP...")}
+            onViewResults={() => toast.info("Xem kết quả DRP")}
+          />
+        </div>
+      )}
+
+      {/* Version Conflict */}
+      {drpConflict && (
+        <VersionConflictDialog
+          conflict={drpConflict}
+          onReload={clearDrpConflict}
+          onForceUpdate={() => { clearDrpConflict(); toast.success("Đã ghi đè. Audit logged."); }}
+          onClose={clearDrpConflict}
+        />
+      )}
+
       {/* ── Header ── */}
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">

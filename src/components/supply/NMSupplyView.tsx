@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ChevronRight, ChevronDown, Upload, Download, Pencil, Bell, FileSpreadsheet } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicTooltip } from "@/components/LogicTooltip";
+import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 
 /* ─── Upload Zone ─── */
 function UploadZone() {
@@ -162,6 +163,7 @@ export function NMSupplyView() {
   const [nmData, setNmData] = useState<NMSummary[]>(initialData);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reminded, setReminded] = useState<Set<string>>(new Set());
+  const { conflict: supplyConflict, triggerConflict: triggerSupplyConflict, clearConflict: clearSupplyConflict } = useVersionConflict();
 
   // Reset data when tenant changes
   const currentData = getNMSummaries(tenant);
@@ -204,6 +206,15 @@ export function NMSupplyView() {
 
   return (
     <div className="space-y-5 animate-fade-in">
+      {/* Version Conflict */}
+      {supplyConflict && (
+        <VersionConflictDialog
+          conflict={supplyConflict}
+          onReload={clearSupplyConflict}
+          onForceUpdate={() => { clearSupplyConflict(); toast.success("Đã ghi đè. Audit logged."); }}
+          onClose={clearSupplyConflict}
+        />
+      )}
       {/* Header actions */}
       <div className="flex items-center gap-3">
         <button className="rounded-button bg-gradient-primary text-primary-foreground px-4 py-2 text-table-sm font-medium flex items-center gap-2">
