@@ -487,6 +487,11 @@ export default function MonitoringPage() {
                       <td className="px-4 py-2.5 text-table tabular-nums">
                         <span className={cn("font-medium", r.mapeNow > 25 ? "text-danger" : "text-text-1")}>{r.mapeNow}%</span>
                         {r.mapeNow > 25 && " 🔴"}
+                        {r.cn === "CN-HN" && (
+                          <div className="mt-1">
+                            <LogicExpand label={`${r.cn} MAPE ${r.mapeNow}% per SKU`} title={`${r.cn} per SKU MAPE`} content={`GA-300 A4: 28% 🟡\nGA-300 B2: 42% 🔴 ← SKU tệ nhất\nGA-400 A4: 22% 🟡\nGA-600 A4: 33% 🔴\nGA-300 B2 kéo MAPE toàn CN lên.\nRecommend: kiểm tra data history GA-300 B2 CN-HN.\nCó thể: CN-HN ít bán B2, FC chưa đủ data → dùng v0 stat thay consensus.`} />
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-2.5 text-table tabular-nums text-text-3">{r.mapePrev}%</td>
                       <td className="px-4 py-2.5 text-table text-text-2 flex items-center gap-1"><TrendIcon trend={r.trend} /> {r.trend}</td>
