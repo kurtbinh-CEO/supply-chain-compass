@@ -87,8 +87,8 @@ export function InventorySSTab({ scale: s }: Props) {
   const ssBdSkus = ssSkuData.filter(e => e.cn === "CN-BD");
   const [pivotMode, setPivotMode] = usePivotMode("monitoring-inv");
   const [invChartFilter, setInvChartFilter] = useState("all");
-  const [drillCn, setDrillCn] = useState<string | null>(null);
-  const [drillSku, setDrillSku] = useState<string | null>(null);
+  const [expandedCns, setExpandedCns] = useState<Set<string>>(new Set());
+  const [expandedSkuPivot, setExpandedSkuPivot] = useState<Set<string>>(new Set());
   const [expandedBridge, setExpandedBridge] = useState<string | null>(null);
   const [simOpen, setSimOpen] = useState(false);
   const [simSku, setSimSku] = useState<typeof ssSkuData[0] | null>(null);
