@@ -723,7 +723,7 @@ export function SourcingWorkbench({ scale }: Props) {
     if (selectedSku) {
       const key = `${selectedSku.item}|${selectedSku.variant}`;
       const sk = skus.find(s => s.item === selectedSku.item && s.variant === selectedSku.variant);
-      const rankings = getRanking(selectedSku.item, selectedSku.variant, sk?.eligibleNms || []);
+      const rankings = getRanking(selectedSku.item, selectedSku.variant, sk?.eligibleNms || [], objective);
       const topNm = rankings.find(r => !r.offline);
       if (topNm && sk) {
         setAllocations(prev => ({ ...prev, [key]: [{ nm: topNm.nm, qty: sk.netReq, role: "Single source" }] }));
@@ -761,7 +761,7 @@ export function SourcingWorkbench({ scale }: Props) {
   }
 
   const currentSku = selectedSku ? skus.find(s => s.item === selectedSku.item && s.variant === selectedSku.variant) : null;
-  const currentRankings = selectedSku ? getRanking(selectedSku.item, selectedSku.variant, currentSku?.eligibleNms || []) : [];
+  const currentRankings = useMemo(() => selectedSku ? getRanking(selectedSku.item, selectedSku.variant, currentSku?.eligibleNms || [], objective) : [], [selectedSku, currentSku, objective]);
 
   return (
     <div className="space-y-2">
