@@ -32,11 +32,16 @@ export interface SsCnSummary {
 }
 
 /* ═══ BASE DATA ═══ */
+/* sigma here is σ_daily demand; SS = z × σ × √LT */
 const baseSsSkuData: SsSkuEntry[] = [
-  { cn: "CN-BD", item: "GA-300", variant: "A4", ssCurrent: 900, z: 1.65, sigma: 28.5, lt: 14, ssProposed: 1035, delta: 135, wcImpact: "+25M₫" },
-  { cn: "CN-BD", item: "GA-300", variant: "B2", ssCurrent: 700, z: 1.65, sigma: 22.1, lt: 12, ssProposed: 700, delta: 0, wcImpact: "0" },
-  { cn: "CN-BD", item: "GA-400", variant: "A4", ssCurrent: 600, z: 1.65, sigma: 18.3, lt: 14, ssProposed: 600, delta: 0, wcImpact: "0" },
-  { cn: "CN-BD", item: "GA-600", variant: "A4", ssCurrent: 1000, z: 1.65, sigma: 32.0, lt: 10, ssProposed: 950, delta: -50, wcImpact: "−9M₫" },
+  // z=1.65, σ=145.8, LT=14 → SS_current = 1.65*145.8*√14 ≈ 900;  proposed z=1.90 → 1038 (+138)
+  { cn: "CN-BD", item: "GA-300", variant: "A4", ssCurrent: 900, z: 1.90, sigma: 145.8, lt: 14, ssProposed: 1038, delta: 138, wcImpact: "+26M₫" },
+  // z=1.65, σ=122.4, LT=12 → 700; keep z=1.65 → 700
+  { cn: "CN-BD", item: "GA-300", variant: "B2", ssCurrent: 700, z: 1.65, sigma: 122.4, lt: 12, ssProposed: 700, delta: 0, wcImpact: "0" },
+  // z=1.65, σ=97.2, LT=14 → 600; keep z=1.65 → 600
+  { cn: "CN-BD", item: "GA-400", variant: "A4", ssCurrent: 600, z: 1.65, sigma: 97.2, lt: 14, ssProposed: 600, delta: 0, wcImpact: "0" },
+  // z=1.65, σ=191.6, LT=10 → 1000; proposed z=1.50 → 909 (−91)
+  { cn: "CN-BD", item: "GA-600", variant: "A4", ssCurrent: 1000, z: 1.50, sigma: 191.6, lt: 10, ssProposed: 909, delta: -91, wcImpact: "−17M₫" },
 ];
 
 const baseSsCnData: SsCnSummary[] = [
@@ -47,7 +52,7 @@ const baseSsCnData: SsCnSummary[] = [
 ];
 
 const baseChangeLog: SsChangeLogEntry[] = [
-  { time: "12/05 14:30", who: "Thúy", change: "SS GA-300 A4 CN-BD: 900→1.035", reason: "Stockout 2x tháng qua", source: "drp" },
+  { time: "12/05 14:30", who: "Thúy", change: "SS GA-300 A4 CN-BD: 900→1.038", reason: "Stockout 2x tháng qua", source: "drp" },
   { time: "10/05 09:15", who: "System", change: "LCNB threshold: 60%→70%", reason: "Auto-adjust from closed-loop", source: "monitoring" },
 ];
 
@@ -69,30 +74,34 @@ export function SafetyStockProvider({ children }: { children: ReactNode }) {
   const [changeLog, setChangeLog] = useState<SsChangeLogEntry[]>(baseChangeLog);
 
   const applySsChange = useCallback((cn: string, item: string, variant: string, newZ: number, who: string, reason: string, source: "drp" | "monitoring") => {
-    setSsSkuData(prev => prev.map(entry => {
-      if (entry.cn === cn && entry.item === item && entry.variant === variant) {
-        const newSs = Math.round(newZ * entry.sigma * Math.sqrt(entry.lt));
-        const delta = newSs - entry.ssCurrent;
-        const wcImpact = delta === 0 ? "0" : `${delta > 0 ? "+" : ""}${Math.round(delta * 18.5 / 1000)}M₫`;
-        return { ...entry, z: newZ, ssProposed: newSs, delta, wcImpact };
-      }
-      return entry;
-    }));
+    setSsSkuData(prev => {
+      const updated = prev.map(entry => {
+        if (entry.cn === cn && entry.item === item && entry.variant === variant) {
+          const newSs = Math.round(newZ * entry.sigma * Math.sqrt(entry.lt));
+          const delta = newSs - entry.ssCurrent;
+          const wcImpact = delta === 0 ? "0" : `${delta > 0 ? "+" : ""}${Math.round(delta * 18.5 / 1000)}M₫`;
+          return { ...entry, z: newZ, ssProposed: newSs, delta, wcImpact };
+        }
+        return entry;
+      });
 
-    const matchEntry = ssSkuData.find(e => e.cn === cn && e.item === item && e.variant === variant);
-    if (matchEntry) {
-      const newSs = Math.round(newZ * matchEntry.sigma * Math.sqrt(matchEntry.lt));
-      const now = new Date();
-      const timeStr = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
-      setChangeLog(prev => [{
-        time: timeStr,
-        who,
-        change: `SS ${item} ${variant} ${cn}: ${matchEntry.ssCurrent}→${newSs.toLocaleString()}`,
-        reason,
-        source,
-      }, ...prev]);
-    }
-  }, [ssSkuData]);
+      const matchEntry = prev.find(e => e.cn === cn && e.item === item && e.variant === variant);
+      if (matchEntry) {
+        const newSs = Math.round(newZ * matchEntry.sigma * Math.sqrt(matchEntry.lt));
+        const now = new Date();
+        const timeStr = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        setChangeLog(cl => [{
+          time: timeStr,
+          who,
+          change: `SS ${item} ${variant} ${cn}: ${matchEntry.ssCurrent}→${newSs.toLocaleString()}`,
+          reason,
+          source,
+        }, ...cl]);
+      }
+
+      return updated;
+    });
+  }, []);
 
   const getSkusByCn = useCallback((cn: string) => {
     return ssSkuData.filter(e => e.cn === cn);
