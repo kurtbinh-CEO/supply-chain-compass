@@ -240,6 +240,33 @@ export default function DrpPage() {
 
   return (
     <AppLayout>
+      {/* Batch Lock Banner */}
+      {drpBatch.batch && (
+        <div className="mb-4">
+          <BatchLockBanner
+            batch={drpBatch.batch}
+            dismissed={drpBatch.dismissed}
+            onDismiss={drpBatch.dismiss}
+            showQueue={drpBatch.showQueue}
+            onToggleQueue={() => drpBatch.setShowQueue(!drpBatch.showQueue)}
+            onProcessQueue={(id) => toast.success(`Xử lý queue action ${id}`)}
+            onCancelQueue={(id) => toast.info(`Hủy queue action ${id}`)}
+            onRetry={() => toast.info("Đang chạy lại DRP...")}
+            onViewResults={() => toast.info("Xem kết quả DRP")}
+          />
+        </div>
+      )}
+
+      {/* Version Conflict */}
+      {drpConflict && (
+        <VersionConflictDialog
+          conflict={drpConflict}
+          onReload={clearDrpConflict}
+          onForceUpdate={() => { clearDrpConflict(); toast.success("Đã ghi đè. Audit logged."); }}
+          onClose={clearDrpConflict}
+        />
+      )}
+
       {/* ── Header ── */}
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
