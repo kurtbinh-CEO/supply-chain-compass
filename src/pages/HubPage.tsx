@@ -6,6 +6,8 @@ import { useTenant } from "@/components/TenantContext";
 import { SourcingWorkbench } from "@/components/hub/SourcingWorkbench";
 import { ReconciliationTab } from "@/components/hub/ReconciliationTab";
 
+type Objective = "hybrid" | "lt" | "cost";
+
 const tabs = [
   { key: "sourcing", label: "Sourcing Workbench" },
   { key: "recon", label: "Đối chiếu" },
@@ -13,7 +15,7 @@ const tabs = [
 
 export default function HubPage() {
   const [activeTab, setActiveTab] = useState("sourcing");
-  const [objective, setObjective] = useState("hybrid");
+  const [objective, setObjective] = useState<Objective>("hybrid");
   const { tenant } = useTenant();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
 
@@ -26,7 +28,7 @@ export default function HubPage() {
           activeTab === "sourcing" ? (
             <select
               value={objective}
-              onChange={(e) => setObjective(e.target.value)}
+              onChange={(e) => setObjective(e.target.value as Objective)}
               className="rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-table-sm text-text-1 outline-none"
             >
               <option value="hybrid">Weighted Hybrid</option>
@@ -37,7 +39,6 @@ export default function HubPage() {
         }
       />
 
-      {/* Tab bar */}
       <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
         {tabs.map((tab) => (
           <button
@@ -56,7 +57,13 @@ export default function HubPage() {
         ))}
       </div>
 
-      {activeTab === "sourcing" && <SourcingWorkbench scale={scale} />}
+      {activeTab === "sourcing" && (
+        <SourcingWorkbench
+          scale={scale}
+          objective={objective}
+          onObjectiveChange={setObjective}
+        />
+      )}
       {activeTab === "recon" && <ReconciliationTab scale={scale} />}
       <ScreenFooter actionCount={9} />
     </AppLayout>
