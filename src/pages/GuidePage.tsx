@@ -4,378 +4,554 @@ import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenShell";
 import { cn } from "@/lib/utils";
 import { useRbac, UserRole } from "@/components/RbacContext";
-import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronRight, ExternalLink, Clock, ArrowRight, Zap, Target, Building2, Briefcase, Factory, TrendingUp, BarChart3, ShieldCheck, Package, Truck, Calculator, MousePointerClick, Mic, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { useWalkthrough } from "@/components/WalkthroughContext";
 
 /* ═══ TYPES ═══ */
 type RoleKey = "SC_MANAGER" | "CN_MANAGER" | "SALES" | "BUYER";
 
-interface RoleCard {
-  key: RoleKey;
-  icon: string;
-  label: string;
-  sub: string;
-  accent: string;
-  accentBg: string;
-  border: string;
+const roleMap: Record<UserRole, RoleKey> = {
+  SC_MANAGER: "SC_MANAGER", CN_MANAGER: "CN_MANAGER", SALES: "SALES", VIEWER: "SC_MANAGER",
+};
+
+interface RoleMeta {
+  key: RoleKey; icon: React.ReactNode; label: string; sub: string;
+  color: string; colorLight: string; colorText: string;
+  heroDesc: string; timeDaily: string; timeMonthly: string;
 }
 
-const roles: RoleCard[] = [
-  { key: "SC_MANAGER", icon: "🎯", label: "SC Manager", sub: "Điều phối toàn chuỗi", accent: "text-[#004AC6]", accentBg: "bg-[#004AC6]/5", border: "border-[#004AC6]" },
-  { key: "CN_MANAGER", icon: "🏢", label: "CN Manager", sub: "Quản lý chi nhánh", accent: "text-[#00714d]", accentBg: "bg-[#00714d]/5", border: "border-[#00714d]" },
-  { key: "SALES", icon: "💼", label: "Sales", sub: "Nhập B2B deals", accent: "text-[#7c3aed]", accentBg: "bg-[#7c3aed]/5", border: "border-[#7c3aed]" },
-  { key: "BUYER", icon: "🏭", label: "Buyer", sub: "Đặt hàng NM", accent: "text-[#b45309]", accentBg: "bg-[#b45309]/5", border: "border-[#b45309]" },
+const roleMeta: RoleMeta[] = [
+  {
+    key: "SC_MANAGER", icon: <Target className="h-6 w-6" />, label: "SC Manager", sub: "Điều phối toàn chuỗi",
+    color: "#004AC6", colorLight: "#004AC6", colorText: "#004AC6",
+    heroDesc: "Điều phối toàn bộ chuỗi cung ứng", timeDaily: "25'", timeMonthly: "1h",
+  },
+  {
+    key: "CN_MANAGER", icon: <Building2 className="h-6 w-6" />, label: "CN Manager", sub: "Quản lý chi nhánh",
+    color: "#00714d", colorLight: "#00714d", colorText: "#00714d",
+    heroDesc: "Điều chỉnh demand & quản lý tồn kho CN", timeDaily: "8'", timeMonthly: "—",
+  },
+  {
+    key: "SALES", icon: <Briefcase className="h-6 w-6" />, label: "Sales", sub: "Nhập B2B deals",
+    color: "#7c3aed", colorLight: "#7c3aed", colorText: "#7c3aed",
+    heroDesc: "Nhập deals B2B → planning chính xác", timeDaily: "15'/tuần", timeMonthly: "15'",
+  },
+  {
+    key: "BUYER", icon: <Factory className="h-6 w-6" />, label: "Buyer", sub: "Đặt hàng NM",
+    color: "#b45309", colorLight: "#b45309", colorText: "#b45309",
+    heroDesc: "Chọn NM, đặt hàng, theo dõi giao hàng", timeDaily: "15'", timeMonthly: "30'",
+  },
 ];
 
-const roleMap: Record<UserRole, RoleKey> = {
-  SC_MANAGER: "SC_MANAGER",
-  CN_MANAGER: "CN_MANAGER",
-  SALES: "SALES",
-  VIEWER: "SC_MANAGER",
-};
-
-/* ═══ DATA ═══ */
-interface DailyStep { route: string; label: string; time: string }
-interface MonthlyStep { route: string; label: string; days: string }
-interface Tip { text: string }
-interface StepCard { route: string; title: string; badge: string; collapsed: string; why: string; what: string; how: string; formula: string }
-
-interface RoleData {
-  heroDesc: string;
-  daily: DailyStep[];
-  dailyTotal: string;
-  monthly: MonthlyStep[];
-  tips: Tip[];
-  steps: StepCard[];
-  dailySteps: StepCard[];
-  formulas: { title: string; content: string }[];
-  dailyIntro?: string;
-  monthlyIntro?: string;
+/* ═══ FLOW DATA ═══ */
+interface FlowNode {
+  route: string; label: string; time: string; icon: React.ReactNode;
+  keyAction: string; kpi?: string;
+  why: string; what: string; how: string; formula: string;
 }
 
-const roleData: Record<RoleKey, RoleData> = {
-  SC_MANAGER: {
-    heroDesc: "Bạn điều phối toàn bộ chuỗi cung ứng: từ dự báo demand → S&OP consensus → đặt NM → theo dõi giao hàng → tối ưu tồn kho. Mỗi sáng 25 phút, mỗi tháng 1 giờ S&OP.",
-    daily: [
-      { route: "/workspace", label: "Cần làm", time: "5 phút" },
-      { route: "/supply", label: "Cập nhật tồn NM", time: "2 phút" },
-      { route: "/drp", label: "Xử lý exceptions", time: "10 phút" },
-      { route: "/orders", label: "Duyệt PO", time: "5 phút" },
-    ],
-    dailyTotal: "~25 phút/ngày",
-    dailyIntro: "Mỗi sáng 25 phút: Workspace → Supply → DRP → Orders.",
-    monthly: [
-      { route: "/demand", label: "Thu thập Demand", days: "Day 1-3" },
-      { route: "/sop", label: "S&OP Consensus + Lock", days: "Day 5-7" },
-      { route: "/hub", label: "Sourcing NM + BPO", days: "Day 7-8" },
-    ],
-    monthlyIntro: "Chu kỳ monthly: Day 1 thu thập → Day 5 S&OP meeting → Day 7 Lock → Day 8 gửi NM.",
-    tips: [
-      { text: "Click bất kỳ số nào → thấy nguồn gốc + cách tính. Không có số \"câm\"." },
-      { text: "FormulaBar ở /sop tab 2: 6 ô click được. Demand−Stock−Pipeline=Net+SS=FCMin." },
-      { text: "[▶ Chạy DRP] bất kỳ lúc nào, không chỉ 23:00 nightly." },
-      { text: "Pivot toggle [🏢 CN→SKU] ↔ [📦 SKU→CN]: 2 góc nhìn phát hiện LCNB." },
-      { text: "/logic page: giải thích chi tiết forecast, safety stock, 6-layer allocation." },
-    ],
-    steps: [
-      {
-        route: "/demand", title: "Thu thập Demand", badge: "Day 1-3",
-        collapsed: "Xem tổng demand = FC + B2B + PO. Click số → thấy nguồn.",
-        why: "Biết thị trường cần bao nhiêu hàng tháng tới. Demand = nền tảng mọi quyết định supply chain. Sai demand → sai tất cả: đặt NM thừa (tốn vốn) hoặc thiếu (mất khách).",
-        what: "Tab 1 'Demand tổng': xem per CN, drill per SKU. Mỗi số = FC + B2B + PO. Click bất kỳ → thấy breakdown.\nTab 2 'B2B nhập liệu': review deals Sales nhập. Sửa nếu cần. Weighted = qty × probability% auto-tính.",
-        how: "1. Mở /demand tab 1 → toggle [12 tháng] xem trend dài.\n2. Click cell tháng 5 → popover: FC 4.800 + B2B 2.200 + PO 1.100 − Overlap 450 = 7.650.\n3. Tab 2: review 12 deals. Vingroup 85% ✅ PO signed. Novaland 70% chưa PO.\n4. Demand ready → chuyển /sop.",
-        formula: "Demand = FC_statistical + Σ(B2B_qty × probability%) + PO_confirmed − overlap\n\nVD tháng 5: 4.800 + 2.200 + 1.100 − 450 = 7.650 m²\n\nFC: Holt-Winters/XGBoost, 24M history, MAPE 18,4%\nB2B: 12 deals × prob%. Chỉ deals ≥30% mới tính.\nPO: đơn hàng ERP Bravo. Sync mỗi 30 phút.\nOverlap: PO đã tính trong B2B → trừ trùng lặp.",
-      },
-      {
-        route: "/sop", title: "S&OP Consensus + Lock", badge: "Day 5",
-        collapsed: "4 versions demand → đồng ý 1 số → Lock → phasing gửi NM.",
-        why: "4 bộ phận (Model, Sales, CN, SC Manager) đưa 4 con số khác nhau. Nếu không ĐỒNG Ý 1 con số → NM nhận số sai → sản xuất sai → stockout hoặc excess. S&OP = quy trình đồng ý 1 con số duy nhất.",
-        what: "Tab 1 'Consensus': bảng 4 CN × 4 versions (v0 Statistical, v1 Sales, v2 CN, v3 Consensus). FVA cho biết ai dự báo đúng nhất tháng trước → tin ai tháng này.\nTab 2 'Cân đối & Lock': FormulaBar 6 ô. NM Panel. AOP gap. [🔒 Lock] → phasing auto → FC gửi NM.",
-        how: "1. Tab 1: 'CN-BD: v0=2.100, v1=2.800, v2=2.550. FVA: v2 CN best (MAPE 12%).'\n2. Click FVA → v2 sai 2,2% vs v0 sai 8,1% → chọn v2.\n3. Tab 2: FormulaBar 'Demand 7.650 − Stock 3.200 − Pipeline 1.757 = Net 2.693 + SS 1.200 = FC Min 3.893'\n4. Click 'Net 2.693' → breakdown per CN. CN-BD net 1.543 (CRITICAL).\n5. [🔒 Lock Consensus] → confirm → phasing auto → /hub pre-populated.",
-        formula: "Net = Demand − Stock − Pipeline = 7.650 − 3.200 − 1.757 = 2.693\nFC_Min = Net + SS_buffer = 2.693 + 1.200 = 3.893\nFVA = MAPE(v0_stat) − MAPE(vX_input)\n\nVD: FVA_CN = 8,1% − 2,2% = +5,9% (v2 CN tốt hơn model 5,9%)\nFVA dương → input có giá trị. FVA âm → model tốt hơn.",
-      },
-      {
-        route: "/hub", title: "Sourcing NM + BPO", badge: "Day 7-8",
-        collapsed: "FC Min → ranking NM → phân bổ → MOQ round → tạo BPO.",
-        why: "FC Min = 3.893 nhưng NM nào cung cấp? PHẢI có quy trình so sánh transparent để chọn NM tối ưu.",
-        what: "4-step Sourcing Workbench:\nBước 1: per SKU net req. Bước 2: ranking 5 NM (Score). Bước 3: allocate per NM. Bước 4: MOQ round + container optimize → [Tạo BPO].",
-        how: "1. GA-300 A4 cần 840m², CRITICAL.\n2. Mikado score 88 ★ (LT 14d, cost 185K, reliability 92%). Toko 52 ⚠.\n3. Mikado primary 700 (83%) + Đồng Tâm backup 140 (17%).\n4. MOQ round 2.000. [Xác nhận & Tạo BPO].",
-        formula: "Score = W₁×(1−LT/max_LT) + W₂×(1−cost/max_cost) + W₃×reliability\nHybrid: W₁=50%, W₂=30%, W₃=20%\n\nMOQ_round = ceil(net_req ÷ MOQ) × MOQ\nBPO_remaining = committed − Σ(RPO_qty)",
-      },
-    ],
-    dailySteps: [
-      {
-        route: "/workspace", title: "Cần làm", badge: "5 phút",
-        collapsed: "1 list thay 3 list. Sort: đỏ → vàng → xanh. Xử lý xong → bắt đầu ngày.",
-        why: "1 list thay 3 list (duyệt + exceptions + thông báo). Sort: đỏ → vàng → xanh. Xử lý xong → bắt đầu ngày.",
-        what: "List unified: 'Force-release Toko [Duyệt]', 'SHORTAGE CN-BD [→/drp]', 'CN adjust +12% [Duyệt]'. 4 KPI mini + 2 CTA workflow.",
-        how: "1. Scan list: đỏ trước.\n2. [Duyệt] inline (không cần modal).\n3. [Xử lý →] navigate screen.\n4. Click [▶ Vận hành ngày].",
-        formula: "",
-      },
-      {
-        route: "/supply", title: "Cập nhật tồn NM", badge: "2 phút",
-        collapsed: "DRP cần data NM fresh. Stale >24h → DRP tính sai → PO fail.",
-        why: "DRP cần data NM fresh. UNIS NM thường manual (Excel/phone), không API. Stale >24h → DRP tính sai → PO fail.",
-        what: "Upload Excel hoặc nhập tay. 'UNIS dùng' = tồn × share% auto. Lớp 1 per NM. Stale → [Nhắc NM].",
-        how: "1. Drag-drop file NM gửi sáng.\n2. Preview → [Xác nhận].\n3. NM chưa gửi → [Nhắc NM] push Supplier Portal.",
-        formula: "UNIS_dùng = on_hand × share%\nVD: Mikado tồn 2.500 × 60% = 1.500 − reserved 120 = 1.380.",
-      },
-      {
-        route: "/drp", title: "DRP & Phân bổ", badge: "10 phút",
-        collapsed: "DRP đêm qua tính hết. Sáng chỉ xử lý EXCEPTIONS. 95% OK → focus 5%.",
-        why: "DRP đêm qua tính hết. Sáng bạn chỉ xử lý EXCEPTIONS. 95% SKU OK → focus 5% có vấn đề.",
-        what: "3 lớp progressive disclosure:\nLớp 1 KẾT QUẢ: per CN fill rate + exceptions. 'CN-BD 86%, 2 exceptions.'\nLớp 2 CÁCH TÍNH: click [Xem cách tính] → netting 8 bước + allocation 6 chips.\nLớp 3 ĐIỀU CHỈNH: SS management + DRP params. [Mô phỏng] slider z.",
-        how: "1. Lớp 1: 'CN-BD 86%, 2 exceptions.'\n2. Click CN-BD → GA-300 A4 SHORTAGE 345.\n3. Click [Xem cách tính] → 'Demand 617 − On-hand 120 − Pipeline 557 + SS 900 = Net 840 → MOQ 1.000.'\n4. Click [Xử lý] → 3 options: A. Lateral CN-ĐN 220m² | B. PO mới Mikado 345 | C. Kết hợp ★.\n5. Chọn C → TO + RPO tạo → Workspace duyệt.",
-        formula: "Netting: Demand − On_hand − Pipeline + SS = Net_req\n617 − 120 − 557 + 900 = 840 → MOQ round 1.000\n\nAllocation 6 layers:\nL1 Source✓ → L2 Variant✓ → L3 FIFO✓ → L4 Fair✓ → L5 SS Guard✗(−228) → L6 Lateral+0\n\nSS = z × σ_fc_error × √LT = 1,65 × 28,5 × √14 = 176 m²/SKU\n\nQUAN TRỌNG: σ_fc_error (sai số forecast) KHÔNG PHẢI σ_demand.\nFC đã hấp thụ phần dự đoán được → SS chỉ buffer phần sai → tiết kiệm 54% WC.",
-      },
-      {
-        route: "/orders", title: "Quản lý PO", badge: "5 phút",
-        collapsed: "RPO draft từ DRP → ATP check → duyệt → post Bravo.",
-        why: "RPO draft từ DRP cần 3 bước: ATP check → duyệt → post Bravo. NM chỉ sản xuất khi nhận PO trong Bravo.",
-        what: "Tab 1: per status. [Gửi ATP] → [Duyệt] → [Post Bravo]. SHIP/HOLD inline.\nTab 2: tracking per NM → per RPO → per ASN. Honoring%.",
-        how: "1. Filter DRAFT → [Gửi ATP tất cả].\n2. ATP Pass → [Duyệt tất cả].\n3. Approved → [Post Bravo].\n4. ATP Fail → data NM stale → [Nhắc NM update] hoặc [Force 3 cấp].\n5. Tab 2: Toko overdue 8d → [Nhắc NM]. Honoring 68% → review meeting.",
-        formula: "ATP = on_hand × share% × honoring_rate\nVD: 2.500 × 60% × 92% = 1.380.\nATP Pass: 1.380 ≥ RPO 1.000 ✅.\n\nBPO quota: RPO trừ vào BPO.\nRPO > remaining → warning over-commitment.",
-      },
-    ],
-    formulas: [
-      { title: "Safety Stock", content: "SS = Z × σ_fc_error × √LT + Z × d_avg × σ_LT\nZ = 1.65 (service level 95%)\nσ_fc_error = std of FORECAST ERROR 12M (không phải σ_demand!)\nσ_LT = std of lead time 6M\n\nQUAN TRỌNG: dùng forecast error, không phải demand variation → SS nhỏ hơn 54%." },
-      { title: "HSTK", content: "HSTK = Available ÷ Daily_demand\nAvailable = On_hand − Reserved + In_transit\nDaily_demand = Monthly_demand ÷ 30" },
-      { title: "DRP Net", content: "Net_req = Demand − Available − Pipeline\nIf Net_req > 0 → shortage → create RPO\nIf Net_req < 0 → excess → LCNB candidate" },
-    ],
-  },
-  CN_MANAGER: {
-    heroDesc: "Bạn quản lý chi nhánh: điều chỉnh demand, xem tồn, trao đổi. 5-8 phút/ngày. Trước 18:00!",
-    daily: [
-      { route: "/cn-portal tab 1", label: "Điều chỉnh demand", time: "5 phút" },
-      { route: "/cn-portal tab 2", label: "Tồn kho CN", time: "1 phút" },
-      { route: "/cn-portal tab 3", label: "Trao đổi", time: "2 phút" },
-    ],
-    dailyTotal: "~8 phút/ngày",
-    dailyIntro: "Mỗi ngày 8 phút: Adjust → Tồn kho → Trao đổi. Trước 18:00!",
-    monthly: [
-      { route: "/cn-portal", label: "Nhập điều chỉnh demand tháng", days: "Day 1-3" },
-      { route: "/sop", label: "Xem kết quả consensus (read-only)", days: "Day 5-7" },
-    ],
-    tips: [
-      { text: "⏱ Cutoff 18:00. Sau 18:00 không sửa. Nhập sớm = DRP đêm nay dùng số bạn." },
-      { text: "🎤 Voice: nói thay gõ. \"Nhà thầu mới Hòa Bình\" → text tự điền. Nhanh hơn 6x." },
-      { text: "Trust score: adjust đúng → trust tăng → tolerance mở rộng → auto-approve nhiều hơn." },
-      { text: "Tab 2 Tồn kho: HSTK thấp → tăng demand → DRP đặt thêm NM → hàng về kịp." },
-    ],
-    steps: [],
-    dailySteps: [
-      {
-        route: "/cn-portal tab 1", title: "Điều chỉnh demand", badge: "5 phút",
-        collapsed: "Nhập số liệu thị trường mà hệ thống chưa biết. Input của bạn = 29% accuracy improvement.",
-        why: "Bạn biết thị trường địa phương mà hệ thống không biết: nhà thầu mới, dự án delay, đối thủ giảm giá. Input của bạn = 29% accuracy improvement (FVA data).",
-        what: "Bảng per SKU: 'Dự kiến (HQ)' = hệ thống tính từ S&OP. 'CN điều chỉnh' = bạn nhập. Delta auto-tính. Lý do bắt buộc >5%.",
-        how: "1. Click ô số GA-300 A4 → nhập 568 (thay 524). Delta +44 (+8,4%).\n2. Lý do: gõ 'Nhà thầu mới Q2' HOẶC 🎤 nói 'nhà thầu mới Hòa Bình ký tháng 5'.\n3. Làm tương tự per SKU cần adjust. Không adjust = giữ nguyên.\n4. [Gửi điều chỉnh] → <10% auto-approve ✅. 10-30% chờ SC Manager 🟡. >30% blocked 🔴.\n5. Check ⏱ countdown: 'Cutoff 18:00 còn 3h'. Gửi trước!",
-        formula: "Final_demand = Dự_kiến + CN_adjustment (nếu approved)\nTrust = Σ(|adjust−actual| < 20%) / total × 100%\n\nTrust >85% → auto-approve tất cả + tolerance ±40%\nTrust 60-85% → SC Manager duyệt + tolerance ±30%\nTrust <60% → tolerance ±15% + giải trình tất cả",
-      },
-      {
-        route: "/cn-portal tab 2", title: "Tồn kho CN", badge: "1 phút",
-        collapsed: "Biết SKU nào sắp hết → tăng demand → DRP đặt NM → hàng về trước stockout.",
-        why: "Biết SKU nào sắp hết → tăng demand → DRP đặt NM → hàng về trước khi stockout.",
-        what: "Bảng read-only: Tồn | SS target | SS gap | HSTK (bao nhiêu ngày còn hàng).",
-        how: "GA-300 A4: HSTK 1,2d 🔴 (sắp hết!) → quay Tab 1 → tăng demand GA-300 A4.",
-        formula: "",
-      },
-      {
-        route: "/cn-portal tab 3", title: "Trao đổi", badge: "2 phút",
-        collapsed: "Comment + file = evidence. SC Manager duyệt nhanh hơn khi thấy PO scan.",
-        why: "Comment + file = evidence. SC Manager duyệt nhanh hơn khi thấy PO scan, hợp đồng.",
-        what: "Thread per SKU. Text + 📎 file + 🎙 voice. @ mention.",
-        how: "1. Comment 'Hòa Bình Group ký PO 500m²/tháng'.\n2. 📎 đính kèm PO scan.\n3. @Thúy → push cho SC Manager.",
-        formula: "",
-      },
-    ],
-    formulas: [
-      { title: "Trust Score", content: "Trust = Σ(|adjust−actual| < 20%) / total_adjustments × 100%\n\nTrust >85% → auto-approve + tolerance ±40%\nTrust 60-85% → SC Manager duyệt + tolerance ±30%\nTrust <60% → tolerance ±15% + giải trình tất cả\n\nCách tăng trust: adjust chính xác liên tục → trust tăng tự nhiên." },
-      { title: "Tolerance Rules", content: "Delta < 10% → auto-approve ✅ (nếu trust ≥60%)\nDelta 10-30% → chờ SC Manager duyệt 🟡\nDelta > 30% → blocked 🔴 (cần giải trình + evidence)\n\nTrust cao → tolerance mở rộng:\nTrust >85%: auto-approve tất cả ≤40%\nTrust 60-85%: auto-approve ≤10%, duyệt ≤30%\nTrust <60%: giải trình tất cả ≤15%" },
-    ],
-  },
-  SALES: {
-    heroDesc: "Nhập deals B2B để planning chính xác. 15 phút/tuần. Deals sớm = planning tốt.",
-    daily: [
-      { route: "/demand tab 2", label: "Nhập/update B2B deals", time: "10 phút" },
-      { route: "/cn-portal tab 3", label: "Comments & evidence", time: "5 phút" },
-    ],
-    dailyTotal: "~15 phút/tuần",
-    dailyIntro: "Mỗi tuần 15 phút: update B2B pipeline + comment evidence.",
-    monthly: [
-      { route: "/demand", label: "Update B2B pipeline đầu tháng", days: "Day 1-3" },
-      { route: "/sop", label: "Xem consensus (tab 1 read-only)", days: "Day 5" },
-    ],
-    monthlyIntro: "Đầu tháng: update full pipeline. Day 5: xem S&OP consensus result.",
-    tips: [
-      { text: "Xác suất chính xác = FVA tốt. 30%=Qualified, 70%=Proposal, 85%=Committed, 100%=PO." },
-      { text: "Nhập sớm: deal lớn nhập ngay Day 1 → S&OP Day 5 đã có data." },
-      { text: "FVA tracking: hệ thống so sánh bạn vs model. FVA dương = bạn tốt hơn AI." },
-      { text: "Upload Excel nếu nhiều deals: template có sẵn [Download template]." },
-    ],
-    steps: [
-      {
-        route: "/demand tab 2", title: "Nhập B2B Deals", badge: "15 phút/tuần",
-        collapsed: "B2B chiếm 29% demand. Không nhập → FC thiếu → mất khách.",
-        why: "B2B chiếm 29% demand. Không nhập → FC chỉ dùng history → thiếu hàng cho deals mới → mất khách.",
-        what: "Bảng CRUD: Khách + Dự án + CN + SKU + Qty + Xác suất% + Tháng giao. Upload Excel hoặc từng dòng.",
-        how: "1. [+ Thêm deal] → form: Vingroup, Grand Park Ph.3, CN-BD+HN, GA-600 A4, 12.000m², 85%, Th5-Th6.\n2. Hoặc [Upload Excel] → drag-drop → preview → [Xác nhận].\n3. Deal có PO signed → PO status tự chuyển ✅. Hệ thống trừ overlap.\n4. Review deals cũ: update probability nếu thay đổi.",
-        formula: "Weighted = qty_gốc × probability%\nVD: 12.000 × 85% = 10.200 (chỉ phần tháng này)\n\nProbability scale:\n10% Lead (chưa qualify) → KHÔNG tính vào demand\n30% Qualified → tính vào demand\n60-70% Proposal → tính cao\n85% Committed → tính gần chắc\n100% PO signed → chuyển sang PO confirmed",
-      },
-    ],
-    dailySteps: [],
-    formulas: [
-      { title: "FVA (Forecast Value Added)", content: "FVA = MAPE(v0_statistical) − MAPE(vX_your_input)\n\nFVA dương → bạn tốt hơn model → input có giá trị\nFVA âm → model tốt hơn → xem lại cách estimate\nFVA = 0 → không khác biệt\n\nTracking: hệ thống so sánh mỗi tháng. FVA trending up = bạn ngày càng giỏi estimate." },
-    ],
-  },
-  BUYER: {
-    heroDesc: "Chọn NM tối ưu, đặt hàng, theo dõi giao hàng. 15 phút/ngày + 30 phút/tháng.",
-    daily: [
-      { route: "/supply", label: "Update tồn NM", time: "5 phút" },
-      { route: "/orders tab 1", label: "Duyệt & Post PO", time: "5 phút" },
-      { route: "/orders tab 2", label: "Tracking & POD", time: "5 phút" },
-    ],
-    dailyTotal: "~15 phút/ngày",
-    dailyIntro: "Mỗi ngày 15 phút: Supply → Orders Duyệt → Orders Tracking.",
-    monthly: [
-      { route: "/hub", label: "Sourcing NM + BPO", days: "Day 7-8" },
-    ],
-    monthlyIntro: "Mỗi tháng 30 phút: Sourcing NM sau S&OP Lock → tạo BPO.",
-    tips: [
-      { text: "NM Score transparent: hover row → breakdown LT/Cost/Reliability. Không pre-allocated ẩn." },
-      { text: "Dual-source: chọn 2 NM (primary 80% + backup 20%) giảm risk." },
-      { text: "BPO quota: RPO > BPO remaining → warning. Monitor quota mỗi tuần." },
-      { text: "SHIP/HOLD: HSTK<3d → SHIP ngay (urgent). >14d → HOLD gộp container (tiết kiệm freight)." },
-    ],
-    steps: [
-      {
-        route: "/hub", title: "Sourcing NM + BPO", badge: "30 phút/tháng",
-        collapsed: "Chọn NM quyết định: giá, tốc độ, độ tin cậy. Hệ thống ranking transparent — bạn quyết định.",
-        why: "Chọn NM quyết định: giá (cost), tốc độ (LT), độ tin cậy (reliability). Sai NM = overdue + stockout + premium freight. Hệ thống ranking transparent — bạn quyết định, không phải hộp đen.",
-        what: "4-step Sourcing Workbench:\nBước 1 'Cần gì?': 7 SKU, 5 cần sourcing (2 đủ hàng). Sort urgency (CRITICAL first).\nBước 2 'NM nào có?': 5 NM ranked. Score = weighted hybrid. Objective chọn được.\nBước 3 'Phân bổ': allocate qty per NM. Single/dual/custom. Sửa ratio slider hoặc input.\nBước 4 'MOQ + Gửi': round MOQ + POQ gộp tuần + container fit → [Tạo BPO].",
-        how: "1. Bước 1: 'GA-300 A4 CRITICAL (HSTK 1,2d), 4 NM eligible.'\n2. Bước 2: click GA-300 A4 → ranking: Mikado 88★, Đồng Tâm 82, Vigracera 75, Toko 52⚠, Phú Mỹ offline.\n   Hover Mikado → score breakdown: LT 64×50% + Cost 0×30% + Reliability 92×20% = 88.\n   Đổi objective [Lowest Cost ▼] → Đồng Tâm #1 (170K vs 185K).\n3. Bước 3: chọn Mikado primary (700) + Đồng Tâm backup (140) = 840 covered ✅.\n4. Bước 4: Mikado total 1.067 → MOQ 1.000 → round 2.000. Surplus 933 → dùng tháng sau.\n   [Xác nhận & Tạo BPO] → BPO-MKD-2605 (2.000m²), BPO-DTM-2605 (500m²).",
-        formula: "Score = W₁×(1−LT/max) + W₂×(1−cost/max) + W₃×reliability\nHybrid: 50/30/20. Shortest LT: 80/10/10. Lowest Cost: 10/80/10.\n\nMOQ = ceil(allocated ÷ MOQ_NM) × MOQ_NM\nPOQ = gộp 2 tuần demand → đặt 1 lần → tiết kiệm 1 chuyến container\nBPO = Purchase Agreement (Bravo). RPO = Purchase Order. ASN = Goods Receipt.",
-      },
-    ],
-    dailySteps: [
-      {
-        route: "/supply", title: "Update tồn NM", badge: "5 phút",
-        collapsed: "DRP cần data NM fresh. Stale >24h → DRP tính sai → PO fail.",
-        why: "DRP cần data NM fresh. UNIS NM thường manual (Excel/phone), không API. Stale >24h → DRP tính sai → PO fail.",
-        what: "Upload Excel hoặc nhập tay. 'UNIS dùng' = tồn × share% auto. Lớp 1 per NM. Stale → [Nhắc NM].",
-        how: "1. Drag-drop file NM gửi sáng.\n2. Preview → [Xác nhận].\n3. NM chưa gửi → [Nhắc NM] push Supplier Portal.",
-        formula: "UNIS_dùng = on_hand × share%\nVD: Mikado tồn 2.500 × 60% = 1.500 − reserved 120 = 1.380.",
-      },
-      {
-        route: "/orders tab 1", title: "Duyệt & Post PO", badge: "5 phút",
-        collapsed: "RPO từ DRP đêm qua = draft. Bạn là người duyệt cuối cùng trước khi NM nhận đơn.",
-        why: "RPO từ DRP đêm qua = draft. Bạn là người duyệt cuối cùng trước khi NM nhận đơn trong Bravo.",
-        what: "Per status summary → click drill. ATP check per PO. Force-release 3 cấp nếu cần.",
-        how: "1. [Gửi ATP tất cả] → 4 DRAFT → 3 ATP Pass + 1 ATP Fail.\n2. ATP Fail (Toko stale): [Nhắc NM update tồn] → chờ → re-ATP. Hoặc [Force 3 cấp].\n3. ATP Pass → [Duyệt tất cả] → [Post Bravo]. Idempotent (safe retry).\n4. SHIP/HOLD: 'HSTK CN-BD 1,2d → SHIP ngay. HSTK CN-ĐN 19d → HOLD gộp container.'",
-        formula: "ATP = on_hand × share% × honoring_rate\nVD: Mikado 2.500 × 60% × 92% = 1.380. RPO 1.000 ≤ 1.380 → Pass ✅.\n\nToko: data stale 18h → ATP = undefined → Fail ❌.\nForce-release: SC Manager → Director → CEO (3 cấp, risk-based).",
-      },
-      {
-        route: "/orders tab 2", title: "Tracking & POD", badge: "5 phút",
-        collapsed: "NM giao trễ = stockout CN. Track sớm = escalate sớm = ít impact.",
-        why: "NM giao trễ = stockout CN. Track sớm = escalate sớm = ít impact.",
-        what: "Per NM → per RPO → per ASN. Honoring% + On-time%. Overdue highlight.",
-        how: "1. Toko overdue 8 ngày → [Nhắc NM].\n2. Click Toko honoring 68% → breakdown per RPO.\n3. Trend 3 tháng: 70% → 65% → 68% = getting worse → [Review meeting].",
-        formula: "Honoring% = Σ(delivered) ÷ Σ(committed) × 100%\nOn-time% = (# PO on-time) ÷ (# PO total) × 100%\nOn-time = delivered ≤ ETA + grace 2d.\n\nNM Grade: A≥90% | B≥80% | C≥60% | D<60%\nGrade C → ATP auto-discount (×0.68). Grade D → xem xét thay NM.",
-      },
-    ],
-    formulas: [
-      { title: "NM Grade", content: "NM Grade: A≥90% | B≥80% | C≥60% | D<60%\n\nAuto-actions per grade:\nA: full ATP credit (×1.0), priority allocation\nB: standard (×0.9)\nC: ATP discount (×honoring%), review quarterly\nD: xem xét thay NM, escalate Director\n\nGrade = weighted(Honoring% × 60% + On-time% × 40%)" },
-      { title: "ATP Check", content: "ATP = on_hand × share% × honoring_rate\nVD: 2.500 × 60% × 92% = 1.380\nATP Pass: 1.380 ≥ RPO 1.000 ✅\n\nBPO_remaining = committed − Σ(RPO_qty)\nRPO > remaining → over-commitment warning\n\nForce-release: bypass ATP → 3 cấp duyệt (SC → Director → CEO)" },
-    ],
-  },
+interface FormulaViz {
+  title: string; visual: React.ReactNode; detail: string;
+}
+
+interface RoleFlows {
+  daily: FlowNode[];
+  monthly: FlowNode[];
+  tips: { icon: React.ReactNode; text: string }[];
+  formulas: FormulaViz[];
+}
+
+const scFlows: RoleFlows = {
+  daily: [
+    {
+      route: "/workspace", label: "Cần làm", time: "5'", icon: <Target className="h-5 w-5" />,
+      keyAction: "Scan → Duyệt → Navigate", kpi: "0 đỏ",
+      why: "1 list thay 3 list. Sort: đỏ → vàng → xanh.", what: "List unified: duyệt + exceptions + thông báo. 4 KPI mini + 2 CTA workflow.",
+      how: "1. Scan đỏ trước\n2. [Duyệt] inline\n3. [Xử lý →] navigate\n4. [▶ Vận hành ngày]", formula: "",
+    },
+    {
+      route: "/supply", label: "Tồn NM", time: "2'", icon: <Package className="h-5 w-5" />,
+      keyAction: "Upload Excel → Xác nhận", kpi: "Fresh <24h",
+      why: "DRP cần data NM fresh. Stale >24h → DRP sai.", what: "Upload Excel hoặc nhập tay. UNIS dùng = tồn × share%.",
+      how: "1. Drag-drop file NM\n2. Preview → [Xác nhận]\n3. NM chưa gửi → [Nhắc NM]", formula: "UNIS_dùng = on_hand × share%\nMikado: 2.500 × 60% = 1.500 − 120 = 1.380",
+    },
+    {
+      route: "/drp", label: "DRP Exceptions", time: "10'", icon: <AlertTriangle className="h-5 w-5" />,
+      keyAction: "Xử lý 5% exceptions", kpi: "Fill ≥95%",
+      why: "DRP đêm qua tính 95% OK. Focus 5% exceptions.", what: "3 lớp: Kết quả → Cách tính → Điều chỉnh.",
+      how: "1. CN-BD 86%, 2 exceptions\n2. GA-300 SHORTAGE 345\n3. Lateral / PO mới / Kết hợp", formula: "Net = Demand − On_hand − Pipeline + SS\n617 − 120 − 557 + 900 = 840\nSS = z × σ_fc_error × √LT",
+    },
+    {
+      route: "/orders", label: "Duyệt PO", time: "5'", icon: <Truck className="h-5 w-5" />,
+      keyAction: "ATP → Duyệt → Post Bravo", kpi: "0 pending",
+      why: "NM chỉ sản xuất khi nhận PO trong Bravo.", what: "ATP check → Duyệt → Post. SHIP/HOLD inline.",
+      how: "1. [Gửi ATP tất cả]\n2. Pass → [Duyệt tất cả]\n3. [Post Bravo]", formula: "ATP = on_hand × share% × honoring\n2.500 × 60% × 92% = 1.380",
+    },
+  ],
+  monthly: [
+    {
+      route: "/demand", label: "Demand", time: "Day 1-3", icon: <BarChart3 className="h-5 w-5" />,
+      keyAction: "Review FC + B2B + PO", kpi: "7.650 m²",
+      why: "Demand = nền tảng mọi quyết định. Sai demand → sai tất cả.", what: "Tab 1: tổng per CN. Tab 2: B2B deals. Click số → breakdown.",
+      how: "1. /demand tab 1 → trend 12M\n2. Click cell → FC + B2B + PO breakdown\n3. Tab 2: review deals\n4. Ready → /sop",
+      formula: "Demand = FC + Σ(B2B × prob%) + PO − Overlap\n4.800 + 2.200 + 1.100 − 450 = 7.650",
+    },
+    {
+      route: "/sop", label: "S&OP Lock", time: "Day 5-7", icon: <ShieldCheck className="h-5 w-5" />,
+      keyAction: "Consensus → FVA → Lock", kpi: "1 số đồng ý",
+      why: "4 bộ phận, 4 con số → phải ĐỒNG Ý 1 số.", what: "Tab 1: 4 versions × FVA. Tab 2: FormulaBar 6 ô → Lock.",
+      how: "1. v0/v1/v2 → FVA chọn best\n2. FormulaBar: D−S−P=Net+SS=FCMin\n3. [🔒 Lock] → phasing auto",
+      formula: "Net = D − S − P = 7.650 − 3.200 − 1.757 = 2.693\nFVA = MAPE(v0) − MAPE(vX)\nFVA_CN = 8,1% − 2,2% = +5,9%",
+    },
+    {
+      route: "/hub", label: "Sourcing", time: "Day 7-8", icon: <Factory className="h-5 w-5" />,
+      keyAction: "Rank NM → Allocate → BPO", kpi: "BPO created",
+      why: "NM nào cung cấp? Ranking transparent, bạn quyết định.", what: "4 bước: Cần gì → NM nào → Phân bổ → MOQ+BPO.",
+      how: "1. GA-300 CRITICAL\n2. Mikado 88★ vs Toko 52⚠\n3. Mikado 700 + ĐT 140\n4. [Tạo BPO]",
+      formula: "Score = W₁×LT + W₂×Cost + W₃×Reliability\nHybrid: 50/30/20\nMOQ = ceil(alloc ÷ MOQ) × MOQ",
+    },
+  ],
+  tips: [
+    { icon: <MousePointerClick className="h-4 w-4" />, text: "Click bất kỳ số → thấy nguồn gốc" },
+    { icon: <Calculator className="h-4 w-4" />, text: "FormulaBar /sop: 6 ô click được" },
+    { icon: <Zap className="h-4 w-4" />, text: "[▶ Chạy DRP] bất kỳ lúc nào" },
+    { icon: <TrendingUp className="h-4 w-4" />, text: "Pivot toggle: CN↔SKU 2 góc nhìn" },
+  ],
+  formulas: [
+    {
+      title: "Safety Stock",
+      visual: <FormulaBarViz parts={[
+        { label: "Z", value: "1.65", sub: "SL 95%" },
+        { label: "×", value: "", sub: "" },
+        { label: "σ_fc_err", value: "28.5", sub: "forecast error", highlight: true },
+        { label: "×", value: "", sub: "" },
+        { label: "√LT", value: "√14", sub: "lead time" },
+        { label: "=", value: "", sub: "" },
+        { label: "SS", value: "176", sub: "m²/SKU", result: true },
+      ]} />,
+      detail: "σ_fc_error (sai số FC) KHÔNG PHẢI σ_demand → tiết kiệm 54% vốn",
+    },
+    {
+      title: "Demand Total",
+      visual: <FormulaBarViz parts={[
+        { label: "FC", value: "4.800", sub: "statistical" },
+        { label: "+", value: "", sub: "" },
+        { label: "B2B", value: "2.200", sub: "weighted" },
+        { label: "+", value: "", sub: "" },
+        { label: "PO", value: "1.100", sub: "confirmed" },
+        { label: "−", value: "", sub: "" },
+        { label: "Overlap", value: "450", sub: "" },
+        { label: "=", value: "", sub: "" },
+        { label: "Demand", value: "7.650", sub: "m²", result: true },
+      ]} />,
+      detail: "FC: Holt-Winters/XGBoost, MAPE 18,4%. B2B: deals ≥30% prob.",
+    },
+    {
+      title: "NM Score",
+      visual: <NmScoreViz />,
+      detail: "Hybrid 50/30/20 · Shortest LT 80/10/10 · Lowest Cost 10/80/10",
+    },
+  ],
 };
 
-/* ═══ Expandable Section ═══ */
-function ExpandSection({ title, defaultOpen = false, children }: { title: string; defaultOpen?: boolean; children: React.ReactNode }) {
-  const [open, setOpen] = useState(defaultOpen);
+const cnFlows: RoleFlows = {
+  daily: [
+    {
+      route: "/cn-portal", label: "Điều chỉnh", time: "5'", icon: <TrendingUp className="h-5 w-5" />,
+      keyAction: "Nhập số → Gửi", kpi: "FVA +29%",
+      why: "Bạn biết thị trường mà hệ thống không biết.", what: "Per SKU: Dự kiến → CN điều chỉnh → Delta auto. Lý do >5%.",
+      how: "1. Click ô → nhập 568 (thay 524)\n2. Lý do hoặc 🎤 voice\n3. [Gửi] → <10% auto ✅", formula: "Trust = Σ(|adjust−actual|<20%) / total\n>85% auto-approve · 60-85% SC duyệt · <60% giải trình",
+    },
+    {
+      route: "/cn-portal", label: "Tồn kho", time: "1'", icon: <Package className="h-5 w-5" />,
+      keyAction: "Check HSTK", kpi: "HSTK >3d",
+      why: "SKU sắp hết → tăng demand → DRP đặt NM.", what: "Read-only: Tồn | SS | HSTK.",
+      how: "HSTK 1,2d 🔴 → Tab 1 tăng demand", formula: "",
+    },
+    {
+      route: "/cn-portal", label: "Trao đổi", time: "2'", icon: <Mic className="h-5 w-5" />,
+      keyAction: "Comment + Evidence", kpi: "Response <4h",
+      why: "Evidence = SC Manager duyệt nhanh.", what: "Thread per SKU. Text + file + voice. @mention.",
+      how: "1. Comment + 📎 PO scan\n2. @Thúy → push SC", formula: "",
+    },
+  ],
+  monthly: [],
+  tips: [
+    { icon: <Clock className="h-4 w-4" />, text: "Cutoff 18:00 — nhập sớm!" },
+    { icon: <Mic className="h-4 w-4" />, text: "Voice: nói thay gõ, nhanh 6x" },
+    { icon: <ShieldCheck className="h-4 w-4" />, text: "Trust cao → auto-approve nhiều" },
+  ],
+  formulas: [
+    {
+      title: "Trust Score & Tolerance",
+      visual: <TrustScoreViz />,
+      detail: "Adjust đúng liên tục → trust tăng → tolerance mở rộng",
+    },
+  ],
+};
+
+const salesFlows: RoleFlows = {
+  daily: [],
+  monthly: [
+    {
+      route: "/demand", label: "B2B Deals", time: "15'/tuần", icon: <Briefcase className="h-5 w-5" />,
+      keyAction: "Thêm/Update deals", kpi: "29% demand",
+      why: "B2B = 29% demand. Không nhập → thiếu hàng.", what: "CRUD: Khách + SKU + Qty + Prob%. Upload Excel.",
+      how: "1. [+ Thêm deal] → form\n2. Hoặc Upload Excel\n3. Update prob. nếu thay đổi",
+      formula: "Weighted = qty × prob%\n12.000 × 85% = 10.200 m²",
+    },
+  ],
+  tips: [
+    { icon: <Target className="h-4 w-4" />, text: "30% Qualified → 85% Committed → 100% PO" },
+    { icon: <Zap className="h-4 w-4" />, text: "Nhập sớm Day 1 → S&OP Day 5 có data" },
+    { icon: <TrendingUp className="h-4 w-4" />, text: "FVA dương = bạn tốt hơn AI" },
+  ],
+  formulas: [
+    {
+      title: "FVA & Probability",
+      visual: <ProbabilityViz />,
+      detail: "FVA = MAPE(model) − MAPE(bạn). Dương = bạn giỏi hơn AI.",
+    },
+  ],
+};
+
+const buyerFlows: RoleFlows = {
+  daily: [
+    {
+      route: "/supply", label: "Tồn NM", time: "5'", icon: <Package className="h-5 w-5" />,
+      keyAction: "Upload → Xác nhận", kpi: "Fresh <24h",
+      why: "DRP cần data NM fresh. Stale → PO fail.", what: "Upload Excel. UNIS dùng = tồn × share%.",
+      how: "1. Drag-drop file\n2. [Xác nhận]\n3. Stale → [Nhắc NM]", formula: "UNIS_dùng = on_hand × share%",
+    },
+    {
+      route: "/orders", label: "Duyệt PO", time: "5'", icon: <CheckCircle2 className="h-5 w-5" />,
+      keyAction: "ATP → Duyệt → Post", kpi: "0 draft",
+      why: "Bạn duyệt cuối cùng trước khi NM nhận đơn.", what: "ATP check → Duyệt → Post Bravo. Force 3 cấp.",
+      how: "1. [Gửi ATP tất cả]\n2. Pass → [Duyệt]\n3. [Post Bravo]", formula: "ATP = on_hand × share% × honoring\nPass: ATP ≥ RPO qty",
+    },
+    {
+      route: "/orders", label: "Tracking", time: "5'", icon: <Truck className="h-5 w-5" />,
+      keyAction: "Monitor NM delivery", kpi: "On-time ≥90%",
+      why: "NM trễ = stockout CN. Track sớm = escalate sớm.", what: "Per NM → RPO → ASN. Honoring% + On-time%.",
+      how: "1. Overdue → [Nhắc NM]\n2. Honoring <70% → [Review]\n3. Trend 3 tháng", formula: "Honoring% = delivered ÷ committed\nGrade: A≥90 B≥80 C≥60 D<60",
+    },
+  ],
+  monthly: [
+    {
+      route: "/hub", label: "Sourcing", time: "30'", icon: <Factory className="h-5 w-5" />,
+      keyAction: "Rank → Allocate → BPO", kpi: "BPO created",
+      why: "Sai NM = overdue + stockout. Ranking transparent.", what: "4 bước: Cần gì → NM rank → Phân bổ → MOQ + BPO.",
+      how: "1. CRITICAL → 4 NM eligible\n2. Mikado 88★ #1\n3. Primary 700 + Backup 140\n4. [Tạo BPO]",
+      formula: "Score = W₁×LT + W₂×Cost + W₃×Rel\nMOQ = ceil(alloc ÷ MOQ) × MOQ",
+    },
+  ],
+  tips: [
+    { icon: <Target className="h-4 w-4" />, text: "NM Score transparent — hover = breakdown" },
+    { icon: <ShieldCheck className="h-4 w-4" />, text: "Dual-source: 80% primary + 20% backup" },
+    { icon: <AlertTriangle className="h-4 w-4" />, text: "HSTK<3d → SHIP · >14d → HOLD gộp" },
+  ],
+  formulas: [
+    {
+      title: "NM Grade & ATP",
+      visual: <NmGradeViz />,
+      detail: "Grade C → ATP discount. Grade D → xem xét thay NM.",
+    },
+  ],
+};
+
+const allFlows: Record<RoleKey, RoleFlows> = {
+  SC_MANAGER: scFlows, CN_MANAGER: cnFlows, SALES: salesFlows, BUYER: buyerFlows,
+};
+
+/* ═══════════════════════════════════════════ */
+/*  VISUAL COMPONENTS                         */
+/* ═══════════════════════════════════════════ */
+
+/* Formula bar visualization */
+function FormulaBarViz({ parts }: { parts: { label: string; value: string; sub: string; highlight?: boolean; result?: boolean }[] }) {
   return (
-    <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-      <button onClick={() => setOpen(!open)} className="w-full px-5 py-3 flex items-center justify-between hover:bg-surface-1/30 transition-colors">
-        <span className="font-display text-body font-semibold text-text-1">{title}</span>
-        {open ? <ChevronDown className="h-4 w-4 text-text-3" /> : <ChevronRight className="h-4 w-4 text-text-3" />}
-      </button>
-      {open && <div className="border-t border-surface-3 px-5 py-4">{children}</div>}
+    <div className="flex items-center gap-1.5 flex-wrap py-2">
+      {parts.map((p, i) => {
+        if (p.label === "×" || p.label === "+" || p.label === "−" || p.label === "=" || p.label === "/")
+          return <span key={i} className="text-text-3 font-mono text-body font-light mx-1">{p.label}</span>;
+        return (
+          <div key={i} className={cn(
+            "flex flex-col items-center px-3 py-2 rounded-lg min-w-[56px] transition-all",
+            p.result ? "bg-primary/15 ring-2 ring-primary/30" :
+            p.highlight ? "bg-[#b45309]/10 ring-1 ring-[#b45309]/30" :
+            "bg-surface-1"
+          )}>
+            <span className={cn(
+              "font-mono text-body font-bold tabular-nums",
+              p.result ? "text-primary" : p.highlight ? "text-[#b45309]" : "text-text-1"
+            )}>{p.value}</span>
+            <span className="text-[10px] text-text-3 font-medium mt-0.5">{p.label}</span>
+            {p.sub && <span className="text-[9px] text-text-3/60">{p.sub}</span>}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-/* ═══ Step Card with WHY/WHAT/HOW/FORMULA ═══ */
-function StepCardComponent({ step, index, accentBg }: { step: StepCard; index: number; accentBg: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const navigate = useNavigate();
-  const { start } = useWalkthrough();
+/* NM Score radar-like viz */
+function NmScoreViz() {
+  const nms = [
+    { name: "Mikado", score: 88, lt: 64, cost: 100, rel: 92, star: true },
+    { name: "Đồng Tâm", score: 82, lt: 78, cost: 82, rel: 85, star: false },
+    { name: "Toko", score: 52, lt: 45, cost: 90, rel: 68, star: false },
+  ];
+  return (
+    <div className="space-y-2 py-2">
+      {nms.map((nm) => (
+        <div key={nm.name} className="flex items-center gap-3">
+          <span className={cn("font-display text-table font-semibold w-20 shrink-0", nm.star ? "text-primary" : nm.score < 60 ? "text-status-danger" : "text-text-1")}>
+            {nm.name} {nm.star && "★"}
+          </span>
+          <div className="flex-1 flex items-center gap-1.5">
+            <ScoreBar label="LT" value={nm.lt} max={100} color="#004AC6" />
+            <ScoreBar label="Cost" value={nm.cost} max={100} color="#00714d" />
+            <ScoreBar label="Rel" value={nm.rel} max={100} color="#b45309" />
+          </div>
+          <span className={cn(
+            "font-mono text-body font-bold w-10 text-right tabular-nums",
+            nm.score >= 80 ? "text-primary" : nm.score < 60 ? "text-status-danger" : "text-text-1"
+          )}>{nm.score}</span>
+        </div>
+      ))}
+      <div className="flex items-center gap-4 mt-1 text-[10px] text-text-3">
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#004AC6]" />LT ×50%</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#00714d]" />Cost ×30%</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#b45309]" />Rel ×20%</span>
+      </div>
+    </div>
+  );
+}
 
-  // Extract navigable route (e.g. "/orders tab 1" → "/orders")
-  const navRoute = step.route.split(" ")[0];
+function ScoreBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+  return (
+    <div className="flex-1">
+      <div className="h-3 rounded-full bg-surface-3 overflow-hidden">
+        <div className="h-full rounded-full transition-all" style={{ width: `${(value / max) * 100}%`, backgroundColor: color, opacity: 0.7 }} />
+      </div>
+    </div>
+  );
+}
 
-  const handleNavigate = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    start({ route: step.route, title: step.title, badge: step.badge, what: step.what, how: step.how });
-    navigate(navRoute);
-  };
+/* Trust Score tiers */
+function TrustScoreViz() {
+  const tiers = [
+    { range: ">85%", label: "Auto-approve", tolerance: "±40%", color: "bg-status-success", textColor: "text-status-success" },
+    { range: "60-85%", label: "SC duyệt", tolerance: "±30%", color: "bg-status-warning", textColor: "text-status-warning" },
+    { range: "<60%", label: "Giải trình", tolerance: "±15%", color: "bg-status-danger", textColor: "text-status-danger" },
+  ];
+  return (
+    <div className="flex gap-3 py-2">
+      {tiers.map((t) => (
+        <div key={t.range} className="flex-1 rounded-lg border border-surface-3 p-3 text-center">
+          <div className={cn("h-2 rounded-full mb-2 mx-auto w-16", t.color)} />
+          <div className="font-mono text-body font-bold text-text-1">{t.range}</div>
+          <div className="text-table-sm text-text-2 mt-0.5">{t.label}</div>
+          <div className={cn("text-caption font-medium mt-1", t.textColor)}>Tolerance {t.tolerance}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* Probability pipeline viz */
+function ProbabilityViz() {
+  const stages = [
+    { pct: "10%", label: "Lead", included: false },
+    { pct: "30%", label: "Qualified", included: true },
+    { pct: "70%", label: "Proposal", included: true },
+    { pct: "85%", label: "Committed", included: true },
+    { pct: "100%", label: "PO Signed", included: true },
+  ];
+  return (
+    <div className="flex items-center gap-0 py-3">
+      {stages.map((s, i) => (
+        <React.Fragment key={s.pct}>
+          <div className={cn(
+            "flex flex-col items-center px-3 py-2 rounded-lg border transition-all flex-1 text-center",
+            s.included ? "border-primary/30 bg-primary/5" : "border-surface-3 bg-surface-1 opacity-50"
+          )}>
+            <span className={cn("font-mono text-body font-bold", s.included ? "text-primary" : "text-text-3")}>{s.pct}</span>
+            <span className="text-[10px] text-text-2 mt-0.5">{s.label}</span>
+            {!s.included && <XCircle className="h-3 w-3 text-status-danger mt-1" />}
+            {s.included && <CheckCircle2 className="h-3 w-3 text-status-success mt-1" />}
+          </div>
+          {i < stages.length - 1 && <ArrowRight className="h-3 w-3 text-text-3 shrink-0 mx-0.5" />}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+/* NM Grade viz */
+function NmGradeViz() {
+  const grades = [
+    { grade: "A", min: "≥90%", action: "Full ATP ×1.0", color: "text-status-success", bg: "bg-status-success" },
+    { grade: "B", min: "≥80%", action: "Standard ×0.9", color: "text-primary", bg: "bg-primary" },
+    { grade: "C", min: "≥60%", action: "Discount ×honoring", color: "text-status-warning", bg: "bg-status-warning" },
+    { grade: "D", min: "<60%", action: "Xem xét thay NM", color: "text-status-danger", bg: "bg-status-danger" },
+  ];
+  return (
+    <div className="grid grid-cols-4 gap-2 py-2">
+      {grades.map((g) => (
+        <div key={g.grade} className="rounded-lg border border-surface-3 p-3 text-center">
+          <div className={cn("font-display text-section-header font-bold", g.color)}>{g.grade}</div>
+          <div className={cn("h-1.5 rounded-full mx-auto w-12 my-1.5", g.bg)} />
+          <div className="font-mono text-caption text-text-2">{g.min}</div>
+          <div className="text-[10px] text-text-3 mt-1">{g.action}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════ */
+/*  FLOW TIMELINE COMPONENT                   */
+/* ═══════════════════════════════════════════ */
+
+function FlowTimeline({ nodes, accentColor, onNavigate }: { nodes: FlowNode[]; accentColor: string; onNavigate: (node: FlowNode) => void }) {
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+
+  if (nodes.length === 0) return (
+    <div className="rounded-card border border-surface-3 bg-surface-1/50 p-8 text-center">
+      <p className="text-text-3 text-table">Không có quy trình cho phần này.</p>
+    </div>
+  );
 
   return (
-    <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-      <button onClick={() => setExpanded(!expanded)} className="w-full px-5 py-4 flex items-center gap-4 hover:bg-surface-1/30 transition-colors text-left">
-        <span className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-primary text-table font-bold shrink-0">{index + 1}</span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-display text-body font-semibold text-text-1">{step.route} — {step.title}</span>
-            <span className="rounded-sm bg-primary/10 text-primary text-caption font-medium px-1.5 py-0.5">{step.badge}</span>
-          </div>
-          <p className="text-table-sm text-text-2 mt-0.5">{step.collapsed}</p>
-        </div>
-        {expanded ? <ChevronDown className="h-4 w-4 text-text-3 shrink-0" /> : <ChevronRight className="h-4 w-4 text-text-3 shrink-0" />}
-      </button>
-      {expanded && (
-        <div className="border-t border-surface-3 space-y-0">
-          {/* Navigate button */}
-          <div className="px-5 py-3 bg-surface-1/50 flex items-center justify-between">
-            <span className="text-table-sm text-text-3">Xem trực tiếp trên màn hình</span>
-            <button
-              onClick={handleNavigate}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-button bg-primary text-primary-foreground text-table-sm font-medium hover:bg-primary/90 transition-colors"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              Mở {navRoute}
-            </button>
-          </div>
-          <div className="px-5 py-4 bg-[#004AC6]/5">
-            <h4 className="text-table font-semibold text-[#004AC6] mb-1.5">💡 TẠI SAO</h4>
-            <p className="text-table-sm text-text-2 whitespace-pre-wrap leading-relaxed">{step.why}</p>
-          </div>
-          <div className="px-5 py-4 bg-[#00714d]/5">
-            <h4 className="text-table font-semibold text-[#00714d] mb-1.5">📋 LÀM GÌ</h4>
-            <p className="text-table-sm text-text-2 whitespace-pre-wrap leading-relaxed">{step.what}</p>
-          </div>
-          <div className="px-5 py-4 bg-[#b45309]/5">
-            <h4 className="text-table font-semibold text-[#b45309] mb-1.5">🔧 CÁCH LÀM</h4>
-            <p className="text-table-sm text-text-2 whitespace-pre-wrap leading-relaxed font-body">{step.how}</p>
-          </div>
-          <div className="px-5 py-4 bg-[#111827] rounded-b-card">
-            <h4 className="text-table font-semibold text-emerald-400 mb-1.5">📐 CÔNG THỨC</h4>
-            <pre className="text-table-sm text-emerald-300 whitespace-pre-wrap font-mono leading-relaxed">{step.formula}</pre>
-          </div>
-        </div>
-      )}
+    <div className="relative">
+      {/* Vertical connector line */}
+      <div className="absolute left-[27px] top-8 bottom-8 w-[2px] bg-surface-3" />
+
+      <div className="space-y-3">
+        {nodes.map((node, i) => {
+          const isExpanded = expandedIdx === i;
+          return (
+            <div key={i} className="relative">
+              <div
+                className={cn(
+                  "rounded-card border bg-surface-0 overflow-hidden transition-all cursor-pointer hover:shadow-md",
+                  isExpanded ? "border-primary/30 shadow-md" : "border-surface-3"
+                )}
+                onClick={() => setExpandedIdx(isExpanded ? null : i)}
+              >
+                {/* Main row */}
+                <div className="flex items-center gap-4 px-4 py-3.5">
+                  {/* Circle node */}
+                  <div
+                    className="relative z-10 flex items-center justify-center h-[54px] w-[54px] rounded-xl shrink-0 text-white shadow-sm"
+                    style={{ backgroundColor: accentColor }}
+                  >
+                    {node.icon}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-display text-body font-semibold text-text-1">{node.label}</span>
+                      <span className="rounded-sm bg-surface-3 text-text-3 text-[10px] font-mono px-1.5 py-0.5">{node.route}</span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="flex items-center gap-1 text-table-sm text-text-2">
+                        <Clock className="h-3 w-3" />{node.time}
+                      </span>
+                      <span className="text-table-sm text-text-2">→ {node.keyAction}</span>
+                    </div>
+                  </div>
+
+                  {/* KPI badge */}
+                  {node.kpi && (
+                    <div className="text-right shrink-0">
+                      <div className="text-[10px] text-text-3 uppercase tracking-wider">Target</div>
+                      <div className="font-mono text-table font-bold text-primary">{node.kpi}</div>
+                    </div>
+                  )}
+
+                  {/* Expand indicator */}
+                  <div className="shrink-0">
+                    {isExpanded ? <ChevronDown className="h-4 w-4 text-text-3" /> : <ChevronRight className="h-4 w-4 text-text-3" />}
+                  </div>
+                </div>
+
+                {/* Expanded detail */}
+                {isExpanded && (
+                  <div className="border-t border-surface-3">
+                    {/* Visual action strip */}
+                    <div className="px-4 py-3 bg-surface-1/50 flex items-center justify-between">
+                      <div className="flex items-center gap-6">
+                        <div>
+                          <div className="text-[10px] text-text-3 uppercase tracking-wider mb-0.5">Tại sao</div>
+                          <p className="text-table-sm text-text-2 max-w-md">{node.why}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onNavigate(node); }}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-button bg-primary text-primary-foreground text-table-sm font-medium hover:bg-primary/90 transition-colors shrink-0"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Mở {node.route.split(" ")[0]}
+                      </button>
+                    </div>
+
+                    {/* How steps - visual */}
+                    <div className="px-4 py-3 grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-[10px] text-text-3 uppercase tracking-wider mb-2">Các bước</div>
+                        <div className="space-y-1.5">
+                          {node.how.split("\n").map((line, li) => (
+                            <div key={li} className="flex items-start gap-2 text-table-sm">
+                              <span className="flex items-center justify-center h-4 w-4 rounded-full text-[9px] font-bold shrink-0 mt-0.5" style={{ backgroundColor: `${accentColor}15`, color: accentColor }}>
+                                {li + 1}
+                              </span>
+                              <span className="text-text-2">{line.replace(/^\d+\.\s*/, "")}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Formula mini */}
+                      {node.formula && (
+                        <div>
+                          <div className="text-[10px] text-text-3 uppercase tracking-wider mb-2">Công thức</div>
+                          <div className="rounded-lg bg-[#111827] p-3">
+                            <pre className="text-[11px] text-emerald-300 font-mono whitespace-pre-wrap leading-relaxed">{node.formula}</pre>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 /* ═══ MAIN PAGE ═══ */
 export default function GuidePage() {
+  const navigate = useNavigate();
   const { user } = useRbac();
+  const { start } = useWalkthrough();
   const defaultRole = roleMap[user.role] || "SC_MANAGER";
   const [selectedRole, setSelectedRole] = useState<RoleKey>(defaultRole);
   const [activeTab, setActiveTab] = useState("overview");
 
-  const role = roles.find(r => r.key === selectedRole)!;
-  const data = roleData[selectedRole];
+  const role = roleMeta.find(r => r.key === selectedRole)!;
+  const flows = allFlows[selectedRole];
+
+  const handleNavigate = (node: FlowNode) => {
+    const navRoute = node.route.split(" ")[0];
+    start({ route: node.route, title: node.label, badge: node.time, what: node.what, how: node.how });
+    navigate(navRoute);
+  };
 
   const tabs = [
     { key: "overview", label: "Tổng quan" },
@@ -386,40 +562,61 @@ export default function GuidePage() {
 
   return (
     <AppLayout>
-      <ScreenHeader title="SCP Smartlog — Hướng dẫn sử dụng" subtitle="Chọn role của bạn để xem quy trình phù hợp" />
+      <ScreenHeader title="SCP Smartlog — Hướng dẫn sử dụng" subtitle="Chọn role để xem quy trình phù hợp" />
 
-      {/* Role Selector 2x2 */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        {roles.map((r) => (
-          <button
-            key={r.key}
-            onClick={() => { setSelectedRole(r.key); setActiveTab("overview"); }}
-            className={cn(
-              "rounded-card border-2 p-4 text-left transition-all hover:shadow-md",
-              selectedRole === r.key
-                ? cn(r.border, "shadow-lg", r.accentBg)
-                : "border-surface-3 bg-surface-2 hover:border-surface-3"
-            )}
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{r.icon}</span>
-              <div>
-                <div className={cn("font-display text-body font-semibold", selectedRole === r.key ? r.accent : "text-text-1")}>{r.label}</div>
-                <div className="text-table-sm text-text-2">{r.sub}</div>
+      {/* ═══ ROLE SELECTOR — Visual cards ═══ */}
+      <div className="grid grid-cols-4 gap-3 mb-8">
+        {roleMeta.map((r) => {
+          const isActive = selectedRole === r.key;
+          return (
+            <button
+              key={r.key}
+              onClick={() => { setSelectedRole(r.key); setActiveTab("overview"); }}
+              className={cn(
+                "group rounded-xl p-4 text-center transition-all border-2 relative overflow-hidden",
+                isActive
+                  ? "shadow-lg scale-[1.02]"
+                  : "border-surface-3 bg-surface-0 hover:border-surface-3 hover:shadow-md"
+              )}
+              style={isActive ? { borderColor: r.color, backgroundColor: `${r.color}08` } : {}}
+            >
+              {/* Icon */}
+              <div
+                className={cn("mx-auto flex items-center justify-center h-12 w-12 rounded-xl mb-3 transition-all", isActive ? "text-white shadow-md" : "bg-surface-1 text-text-2 group-hover:text-text-1")}
+                style={isActive ? { backgroundColor: r.color } : {}}
+              >
+                {r.icon}
               </div>
-            </div>
-          </button>
-        ))}
+
+              <div className={cn("font-display text-body font-bold transition-colors", isActive ? "" : "text-text-1")} style={isActive ? { color: r.color } : {}}>
+                {r.label}
+              </div>
+              <div className="text-caption text-text-3 mt-0.5">{r.sub}</div>
+
+              {/* Time badges */}
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <span className="rounded-full bg-surface-1 px-2 py-0.5 text-[10px] font-mono text-text-2">
+                  📅 {r.timeDaily}/ngày
+                </span>
+                {r.timeMonthly !== "—" && (
+                  <span className="rounded-full bg-surface-1 px-2 py-0.5 text-[10px] font-mono text-text-2">
+                    📆 {r.timeMonthly}/tháng
+                  </span>
+                )}
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Tab bar */}
-      <div className="flex items-center gap-1 bg-surface-1 rounded-lg p-1 mb-6 w-fit">
+      {/* ═══ TAB BAR ═══ */}
+      <div className="flex items-center gap-1 bg-surface-1 rounded-xl p-1 mb-6 w-fit">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={cn(
-              "px-4 py-2 rounded-md text-table font-medium transition-all",
+              "px-5 py-2 rounded-lg text-table font-medium transition-all",
               activeTab === tab.key
                 ? "bg-surface-0 text-text-1 shadow-sm"
                 : "text-text-2 hover:text-text-1"
@@ -430,194 +627,188 @@ export default function GuidePage() {
         ))}
       </div>
 
-      {/* ═══ TAB: Tổng quan ═══ */}
+      {/* ═══ TAB: TỔNG QUAN ═══ */}
       {activeTab === "overview" && (
-        <div className="space-y-4 animate-fade-in">
-          {/* Hero card */}
-          <div className={cn("rounded-card border border-surface-3 p-6", role.accentBg)}>
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-3xl">{role.icon}</span>
-              <h2 className={cn("font-display text-section-header font-bold", role.accent)}>{role.label}</h2>
+        <div className="space-y-6 animate-fade-in">
+          {/* Hero banner */}
+          <div
+            className="rounded-xl p-6 relative overflow-hidden"
+            style={{ backgroundColor: `${role.color}08`, borderLeft: `4px solid ${role.color}` }}
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center h-14 w-14 rounded-xl text-white shadow-md" style={{ backgroundColor: role.color }}>
+                {role.icon}
+              </div>
+              <div>
+                <h2 className="font-display text-section-header font-bold text-text-1">{role.label}</h2>
+                <p className="text-table text-text-2 mt-0.5">{role.heroDesc}</p>
+              </div>
+              <div className="ml-auto flex gap-4">
+                <div className="text-center">
+                  <div className="font-mono text-section-header font-bold" style={{ color: role.color }}>{role.timeDaily}</div>
+                  <div className="text-[10px] text-text-3 uppercase tracking-wider">Hàng ngày</div>
+                </div>
+                {role.timeMonthly !== "—" && (
+                  <div className="text-center">
+                    <div className="font-mono text-section-header font-bold" style={{ color: role.color }}>{role.timeMonthly}</div>
+                    <div className="text-[10px] text-text-3 uppercase tracking-wider">Hàng tháng</div>
+                  </div>
+                )}
+              </div>
             </div>
-            <p className="text-table text-text-2 leading-relaxed">{data.heroDesc}</p>
           </div>
 
-          {/* Quy trình hàng ngày */}
-          <ExpandSection title="Quy trình hàng ngày" defaultOpen>
-            <ol className="space-y-2">
-              {data.daily.map((step, i) => (
-                <li key={i} className="flex items-center gap-3 text-table">
-                  <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-caption font-bold shrink-0">{i + 1}</span>
-                  <span className="font-mono text-primary text-table-sm">{step.route}</span>
-                  <span className="text-text-1 flex-1">— {step.label}</span>
-                  <span className="text-text-3 text-caption tabular-nums">({step.time})</span>
-                </li>
-              ))}
-            </ol>
-            <p className="mt-3 text-table-sm text-text-3 font-medium">Tổng: {data.dailyTotal}</p>
-          </ExpandSection>
-
-          {/* Quy trình hàng tháng */}
-          {data.monthly.length > 0 && (
-            <ExpandSection title="Quy trình hàng tháng">
-              <ol className="space-y-2">
-                {data.monthly.map((step, i) => (
-                  <li key={i} className="flex items-center gap-3 text-table">
-                    <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-caption font-bold shrink-0">{i + 1}</span>
-                    <span className="font-mono text-primary text-table-sm">{step.route}</span>
-                    <span className="text-text-1 flex-1">— {step.label}</span>
-                    <span className="rounded-sm bg-surface-3 text-text-3 text-caption px-1.5 py-0.5">{step.days}</span>
-                  </li>
+          {/* Visual flow preview — daily */}
+          {flows.daily.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-display text-body font-semibold text-text-1">Quy trình hàng ngày</h3>
+                <button onClick={() => setActiveTab("daily")} className="text-table-sm text-primary font-medium hover:underline flex items-center gap-1">
+                  Xem chi tiết <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+              {/* Horizontal flow cards */}
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {flows.daily.map((node, i) => (
+                  <React.Fragment key={i}>
+                    <div className="rounded-xl border border-surface-3 bg-surface-0 p-4 min-w-[160px] flex-1 text-center hover:shadow-md transition-all cursor-pointer"
+                      onClick={() => { setActiveTab("daily"); }}
+                    >
+                      <div className="mx-auto flex items-center justify-center h-10 w-10 rounded-lg text-white mb-2" style={{ backgroundColor: role.color }}>
+                        {node.icon}
+                      </div>
+                      <div className="font-display text-table font-semibold text-text-1">{node.label}</div>
+                      <div className="flex items-center justify-center gap-1 mt-1 text-caption text-text-3">
+                        <Clock className="h-3 w-3" />{node.time}
+                      </div>
+                      {node.kpi && (
+                        <div className="mt-2 rounded-md bg-primary/5 px-2 py-1 text-[10px] font-mono text-primary font-medium">
+                          Target: {node.kpi}
+                        </div>
+                      )}
+                    </div>
+                    {i < flows.daily.length - 1 && (
+                      <div className="flex items-center shrink-0">
+                        <ArrowRight className="h-4 w-4 text-text-3" />
+                      </div>
+                    )}
+                  </React.Fragment>
                 ))}
-              </ol>
-            </ExpandSection>
+              </div>
+            </div>
           )}
 
-          {/* Mẹo */}
-          {data.tips.length > 0 && (
-            <ExpandSection title="Mẹo quan trọng">
-              <ul className="space-y-2">
-                {data.tips.map((tip, i) => (
-                  <li key={i} className="flex gap-2 text-table-sm text-text-2">
-                    <span className="text-primary shrink-0">•</span>
-                    <span>{tip.text}</span>
-                  </li>
+          {/* Monthly flow preview */}
+          {flows.monthly.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-display text-body font-semibold text-text-1">Quy trình hàng tháng</h3>
+                <button onClick={() => setActiveTab("monthly")} className="text-table-sm text-primary font-medium hover:underline flex items-center gap-1">
+                  Xem chi tiết <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2">
+                {flows.monthly.map((node, i) => (
+                  <React.Fragment key={i}>
+                    <div className="rounded-xl border border-surface-3 bg-surface-0 p-4 min-w-[160px] flex-1 text-center hover:shadow-md transition-all cursor-pointer"
+                      onClick={() => setActiveTab("monthly")}
+                    >
+                      <div className="mx-auto flex items-center justify-center h-10 w-10 rounded-lg text-white mb-2" style={{ backgroundColor: role.color }}>
+                        {node.icon}
+                      </div>
+                      <div className="font-display text-table font-semibold text-text-1">{node.label}</div>
+                      <div className="rounded-sm bg-surface-3 text-text-3 text-[10px] font-mono px-1.5 py-0.5 mt-1 inline-block">{node.time}</div>
+                    </div>
+                    {i < flows.monthly.length - 1 && (
+                      <div className="flex items-center shrink-0">
+                        <ArrowRight className="h-4 w-4 text-text-3" />
+                      </div>
+                    )}
+                  </React.Fragment>
                 ))}
-              </ul>
-            </ExpandSection>
+              </div>
+            </div>
+          )}
+
+          {/* Quick tips — icon grid */}
+          {flows.tips.length > 0 && (
+            <div>
+              <h3 className="font-display text-body font-semibold text-text-1 mb-3">Mẹo nhanh</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {flows.tips.map((tip, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-lg border border-surface-3 bg-surface-0 px-4 py-3">
+                    <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary shrink-0">
+                      {tip.icon}
+                    </div>
+                    <span className="text-table-sm text-text-2">{tip.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}
 
-      {/* ═══ TAB: Kế hoạch tháng ═══ */}
+      {/* ═══ TAB: KẾ HOẠCH THÁNG ═══ */}
       {activeTab === "monthly" && (
-        <div className="space-y-4 animate-fade-in">
-          {data.steps.length > 0 ? (
-            <>
-              <p className="text-table text-text-2 mb-2">
-                {data.monthlyIntro || "Chu kỳ monthly: Day 1 thu thập → Day 5 S&OP meeting → Day 7 Lock → Day 8 gửi NM."}
-              </p>
-              {data.steps.map((step, i) => (
-                <StepCardComponent key={i} step={step} index={i} accentBg={role.accentBg} />
-              ))}
-            </>
-          ) : (
-            <div className="rounded-card border border-surface-3 bg-surface-2 p-8 text-center">
-              <p className="text-text-2">Role <span className="font-medium text-text-1">{role.label}</span> chủ yếu tham gia quy trình hàng ngày.</p>
-              <p className="text-table-sm text-text-3 mt-1">Xem tab "Vận hành ngày" hoặc chọn SC Manager để xem full monthly flow.</p>
-            </div>
-          )}
+        <div className="animate-fade-in">
+          <FlowTimeline nodes={flows.monthly} accentColor={role.color} onNavigate={handleNavigate} />
         </div>
       )}
 
-      {/* ═══ TAB: Vận hành ngày ═══ */}
+      {/* ═══ TAB: VẬN HÀNH NGÀY ═══ */}
       {activeTab === "daily" && (
-        <div className="space-y-4 animate-fade-in">
-          <p className="text-table text-text-2 mb-2">
-            {data.dailyIntro || `Quy trình hàng ngày cho ${role.label}. Tổng thời gian: ${data.dailyTotal}.`}
-          </p>
-
-          {data.dailySteps.length > 0 ? (
-            data.dailySteps.map((step, i) => (
-              <StepCardComponent key={i} step={step} index={i} accentBg={role.accentBg} />
-            ))
-          ) : (
-            /* Fallback: simple table */
-            <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-              <table className="w-full text-table">
-                <thead>
-                  <tr className="bg-surface-1">
-                    <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 w-12">#</th>
-                    <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 w-40">Màn hình</th>
-                    <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Việc cần làm</th>
-                    <th className="text-right px-4 py-2.5 text-table-header uppercase text-text-3 w-24">Thời gian</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.daily.map((step, i) => (
-                    <tr key={i} className={i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"}>
-                      <td className="px-4 py-3">
-                        <span className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10 text-primary text-caption font-bold">{i + 1}</span>
-                      </td>
-                      <td className="px-4 py-3 font-mono text-primary text-table-sm">{step.route}</td>
-                      <td className="px-4 py-3 text-text-1">{step.label}</td>
-                      <td className="px-4 py-3 text-right text-text-2 tabular-nums">{step.time}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-surface-1 border-t border-surface-3">
-                    <td colSpan={3} className="px-4 py-2.5 font-medium text-text-1">Tổng</td>
-                    <td className="px-4 py-2.5 text-right font-medium text-primary tabular-nums">{data.dailyTotal}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
+        <div className="animate-fade-in">
+          <FlowTimeline nodes={flows.daily} accentColor={role.color} onNavigate={handleNavigate} />
         </div>
       )}
 
-      {/* ═══ TAB: Công thức ═══ */}
+      {/* ═══ TAB: CÔNG THỨC ═══ */}
       {activeTab === "formulas" && (
         <div className="space-y-4 animate-fade-in">
-          {/* Role-specific formula cards */}
-          {data.formulas.length > 0 && data.formulas.map((f, i) => (
-            <div key={`rf-${i}`} className="rounded-card border border-surface-3 overflow-hidden">
-              <div className="px-5 py-3 bg-surface-2 border-b border-surface-3">
+          {flows.formulas.map((f, i) => (
+            <div key={i} className="rounded-xl border border-surface-3 bg-surface-0 overflow-hidden">
+              <div className="px-5 py-3 border-b border-surface-3">
                 <h3 className="font-display text-body font-semibold text-text-1">{f.title}</h3>
               </div>
-              <div className="px-5 py-4 bg-[#111827]">
-                <pre className="text-table-sm text-emerald-300 whitespace-pre-wrap font-mono leading-relaxed">{f.content}</pre>
+              <div className="px-5 py-3">
+                {f.visual}
+              </div>
+              <div className="px-5 py-2 bg-surface-1/50 border-t border-surface-3">
+                <p className="text-table-sm text-text-3">{f.detail}</p>
               </div>
             </div>
           ))}
 
-          {/* Step formulas (monthly + daily) */}
-          {[...data.steps, ...data.dailySteps].filter(s => s.formula).length > 0 && (
-            <>
-              <h3 className="font-display text-body font-semibold text-text-1 mt-6">Công thức theo bước</h3>
-              {[...data.steps, ...data.dailySteps].filter(s => s.formula).map((step, i) => (
-                <div key={`sf-${i}`} className="rounded-card border border-surface-3 overflow-hidden">
-                  <div className="px-5 py-3 bg-surface-2 border-b border-surface-3 flex items-center gap-2">
-                    <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-caption font-bold">{i + 1}</span>
-                    <h4 className="font-display text-table font-semibold text-text-1">{step.title}</h4>
-                  </div>
-                  <div className="px-5 py-4 bg-[#111827]">
-                    <pre className="text-table-sm text-emerald-300 whitespace-pre-wrap font-mono leading-relaxed">{step.formula}</pre>
-                  </div>
-                </div>
-              ))}
-            </>
-          )}
-
-          {/* SC Manager only: key insight */}
+          {/* SC Manager insight */}
           {selectedRole === "SC_MANAGER" && (
-            <div className="rounded-card border-2 border-[#b45309]/40 bg-[#b45309]/5 p-5">
-              <p className="text-table font-semibold text-[#b45309] mb-1">⚡ Insight quan trọng nhất</p>
-              <p className="text-table-sm text-text-2 leading-relaxed">
-                SS dùng <span className="font-mono font-semibold text-text-1">σ_fc_error</span> (sai số FC) không phải <span className="font-mono font-semibold text-text-1">σ_demand</span>.
-                Tiết kiệm ~54% vốn. Đầu tư FC accuracy = cách tiết kiệm vốn tốt nhất.
-              </p>
+            <div className="rounded-xl border-2 border-[#b45309]/30 p-5" style={{ backgroundColor: `#b4530908` }}>
+              <div className="flex items-center gap-3">
+                <Zap className="h-5 w-5 text-[#b45309]" />
+                <div>
+                  <p className="text-table font-semibold text-[#b45309]">Key Insight</p>
+                  <p className="text-table-sm text-text-2">
+                    SS dùng <span className="font-mono font-bold text-text-1">σ_fc_error</span> → tiết kiệm <span className="font-mono font-bold text-primary">54% vốn</span> so với σ_demand
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
-          {data.formulas.length === 0 && [...data.steps, ...data.dailySteps].filter(s => s.formula).length === 0 && (
-            <div className="rounded-card border border-surface-3 bg-surface-2 p-8 text-center">
-              <p className="text-text-2">Chọn role <span className="font-medium text-text-1">SC Manager</span> để xem đầy đủ công thức.</p>
-              <p className="text-table-sm text-text-3 mt-1">Hoặc truy cập <span className="font-mono text-primary">/logic</span> để xem chi tiết.</p>
+          {flows.formulas.length === 0 && (
+            <div className="rounded-xl border border-surface-3 bg-surface-1/50 p-8 text-center">
+              <p className="text-text-3">Chọn <span className="font-semibold text-text-1">SC Manager</span> để xem đầy đủ công thức.</p>
             </div>
           )}
         </div>
       )}
 
-      {/* ═══ Quick links + Footer ═══ */}
-      <div className="mt-10 pt-6 border-t border-surface-3 space-y-3">
-        <p className="text-table text-text-2">
-          📚 Xem thêm:{" "}
-          <a href="/logic" className="font-mono text-primary hover:underline">/logic — Logic vận hành chi tiết</a>
-          {" | "}
-          <a href="/config" className="font-mono text-primary hover:underline">/config — Cấu hình hệ thống</a>
-        </p>
+      {/* ═══ FOOTER ═══ */}
+      <div className="mt-10 pt-6 border-t border-surface-3 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <a href="/logic" className="text-table-sm text-primary hover:underline font-medium">/logic — Logic chi tiết</a>
+          <a href="/config" className="text-table-sm text-primary hover:underline font-medium">/config — Cấu hình</a>
+        </div>
         <p className="text-caption text-text-3">SCP Smartlog v5.0 LEAN · 14 screens · 30 views</p>
       </div>
     </AppLayout>
