@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
+import { ScreenFooter } from "@/components/ScreenShell";
 import { useWorkflow } from "@/components/WorkflowContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -376,6 +377,7 @@ export default function WorkspacePage() {
           </button>
         </div>
       </div>
+      <ScreenFooter actionCount={12} />
     </AppLayout>
   );
 }

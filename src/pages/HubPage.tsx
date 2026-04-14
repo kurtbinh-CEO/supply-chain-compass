@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ScreenFooter } from "@/components/ScreenShell";
 import { AppLayout } from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/TenantContext";
@@ -56,6 +57,7 @@ export default function HubPage() {
 
       {activeTab === "order" && <NmOrderTab scale={scale} />}
       {activeTab === "recon" && <ReconciliationTab scale={scale} />}
+      <ScreenFooter actionCount={9} />
     </AppLayout>
   );
 }

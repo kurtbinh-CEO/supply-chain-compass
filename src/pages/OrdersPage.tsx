@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { ScreenHeader } from "@/components/ScreenShell";
+import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -427,6 +427,7 @@ export default function OrdersPage() {
           )}
         </div>
       )}
+      <ScreenFooter actionCount={10} />
     </AppLayout>
   );
 }

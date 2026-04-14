@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { ScreenHeader } from "@/components/ScreenShell";
+import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/TenantContext";
 import { ConsensusTab } from "@/components/sop/ConsensusTab";
@@ -199,6 +199,7 @@ export default function SopPage() {
           tenant={tenant}
         />
       )}
+      <ScreenFooter actionCount={5} />
     </AppLayout>
   );
 }

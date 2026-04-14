@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
+import { ScreenFooter } from "@/components/ScreenShell";
 import { toast } from "sonner";
 import { ChevronRight, ChevronDown, ChevronLeft, TrendingUp, TrendingDown, Minus, ArrowRight } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
@@ -709,6 +710,7 @@ export default function MonitoringPage() {
           </CollapsibleSection>
         </div>
       )}
+      <ScreenFooter actionCount={11} />
     </AppLayout>
   );
 }
