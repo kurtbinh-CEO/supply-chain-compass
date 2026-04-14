@@ -71,6 +71,7 @@ const WorkflowContext = createContext<WorkflowContextType>({
 export const useWorkflow = () => useContext(WorkflowContext);
 
 export function WorkflowProvider({ children }: { children: ReactNode }) {
+  const { addEntry } = useActivityLog();
   const [workflowType, setWorkflowType] = useState<WorkflowType>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [completed, setCompleted] = useState(false);
