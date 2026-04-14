@@ -527,8 +527,6 @@ export function InventorySSTab({ scale: s }: Props) {
                         Áp dụng
                       </Button>
                     )}
-                      </Button>
-                    )}
                     <Button size="sm" variant="outline" className="text-caption h-7"
                       onClick={() => { setSimSku(r); setSimZ(r.z); setSimOpen(true); }}>
                       Mô phỏng
