@@ -666,10 +666,11 @@ function Step4({ allocations, scale, onCreateBpo }: {
 }
 
 /* ═══ MAIN COMPONENT ═══ */
-export function SourcingWorkbench({ scale }: Props) {
+export function SourcingWorkbench({ scale, objective: externalObjective, onObjectiveChange: externalOnChange }: Props) {
   const [activeStep, setActiveStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
-  const [objective, setObjective] = useState<Objective>("hybrid");
+  const [internalObjective, setInternalObjective] = useState<Objective>("hybrid");
+  const objective = externalObjective ?? internalObjective;
   const [selectedSku, setSelectedSku] = useState<{ item: string; variant: string } | null>(null);
   const [allocations, setAllocations] = useState<Record<string, Allocation[]>>({ ...defaultAllocations });
   const [showFormula, setShowFormula] = useState(false);
