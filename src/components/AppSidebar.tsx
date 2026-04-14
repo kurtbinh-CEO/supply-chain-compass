@@ -12,6 +12,7 @@ import { useWorkspace } from "@/components/WorkspaceContext";
 import { useRbac, UserRole } from "@/components/RbacContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useI18n } from "@/components/i18n/I18nContext";
+import smartlogLogo from "@/assets/smartlog-logo.png";
 
 interface NavItem {
   titleKey: string;
@@ -100,15 +101,28 @@ export function AppSidebar() {
       )}
     >
       {/* Logo area */}
-      <div className="flex h-14 items-center justify-between px-4 border-b border-surface-3 shrink-0">
-        {!collapsed && (
-          <span className="font-display text-section-header text-text-1 tracking-tight">
-            Smartlog
-          </span>
+      <div className={cn(
+        "flex h-14 items-center border-b border-surface-3 shrink-0",
+        collapsed ? "justify-center px-2" : "justify-between px-4"
+      )}>
+        {collapsed ? (
+          <button onClick={toggle} className="flex items-center justify-center rounded-button p-1 hover:bg-surface-3 transition-colors">
+            <img src={smartlogLogo} alt="Smartlog" className="h-7 w-7 object-contain" />
+          </button>
+        ) : (
+          <>
+            <div className="flex items-center gap-2.5">
+              <img src={smartlogLogo} alt="Smartlog" className="h-7 w-7 object-contain" />
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-display text-body font-bold text-text-1 tracking-tight">Smartlog</span>
+                <span className="font-display text-caption font-semibold text-primary tracking-wide uppercase">SCP</span>
+              </div>
+            </div>
+            <button onClick={toggle} className="rounded-button p-1.5 hover:bg-surface-3 transition-colors">
+              <ChevronLeft className="h-4 w-4 text-text-3" />
+            </button>
+          </>
         )}
-        <button onClick={toggle} className="rounded-button p-1.5 hover:bg-surface-3 transition-colors">
-          <ChevronLeft className={cn("h-4 w-4 text-text-2 transition-transform", collapsed && "rotate-180")} />
-        </button>
       </div>
 
       {/* Nav groups */}
