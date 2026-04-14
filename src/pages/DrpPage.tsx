@@ -102,6 +102,8 @@ export default function DrpPage() {
   const { tenant } = useTenant();
   const s = tenantScales[tenant] || 1;
   const navigate = useNavigate();
+  const { ssSkuData, ssCnData: baseSsCn, changeLog: ssChangeLog, applySsChange, getSkusByCn } = useSafetyStock();
+  const ssBdSkus = getSkusByCn("CN-BD");
   const [drillCn, setDrillCn] = useState<string | null>(null);
   const [drillSku, setDrillSku] = useState<string | null>(null);
   const [showAllSkus, setShowAllSkus] = useState(false);
