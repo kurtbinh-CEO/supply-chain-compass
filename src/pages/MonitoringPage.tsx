@@ -231,6 +231,13 @@ const tabs = [
 export default function MonitoringPage() {
   const { tenant } = useTenant();
   const s = tenantScales[tenant] || 1;
+
+  const ssBatch = useBatchLock({
+    batchType: "SS Recalculation",
+    status: "info",
+    resultSummary: "SS recalc hoàn tất 06:00. 24 SKU updated, 2 breaches.",
+    startedAt: "06:00",
+  });
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [drillCn, setDrillCn] = useState<string | null>(null);
