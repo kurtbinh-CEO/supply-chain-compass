@@ -93,8 +93,6 @@ export function ReconciliationTab({ scale }: Props) {
           <option>Tháng 3 (closed)</option>
         </select>
         <div className="flex-1" />
-        <button className="rounded-button border border-surface-3 text-table-sm text-text-2 px-3 py-2 hover:bg-surface-2">Export PDF</button>
-        <button className="rounded-button border border-surface-3 text-table-sm text-text-2 px-3 py-2 hover:bg-surface-2">Export Excel</button>
       </div>
 
       {/* BPO-level reconciliation with expandable RPO rows */}
