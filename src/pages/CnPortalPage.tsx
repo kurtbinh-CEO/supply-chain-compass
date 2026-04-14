@@ -925,6 +925,167 @@ export default function CnPortalPage() {
           </div>
         </div>
       )}
+
+      {/* ═══ TAB 4: Lịch sử ═══ */}
+      {activeTab === "history" && (
+        <div className="space-y-4 animate-fade-in">
+          {/* Filters */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5 text-table-sm text-text-2">
+              <Filter className="h-3.5 w-3.5" />
+              <span>Lọc:</span>
+            </div>
+            <Select value={auditWeekFilter} onValueChange={setAuditWeekFilter}>
+              <SelectTrigger className="w-28 h-8 text-table-sm bg-surface-0 border-surface-3">
+                <SelectValue placeholder="Tuần" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả tuần</SelectItem>
+                {auditWeeks.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={auditSkuFilter} onValueChange={setAuditSkuFilter}>
+              <SelectTrigger className="w-32 h-8 text-table-sm bg-surface-0 border-surface-3">
+                <SelectValue placeholder="SKU" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả SKU</SelectItem>
+                {auditSkus.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={auditActionFilter} onValueChange={setAuditActionFilter}>
+              <SelectTrigger className="w-32 h-8 text-table-sm bg-surface-0 border-surface-3">
+                <SelectValue placeholder="Hành động" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="adjust">Điều chỉnh</SelectItem>
+                <SelectItem value="approve">Duyệt</SelectItem>
+                <SelectItem value="reject">Từ chối</SelectItem>
+                <SelectItem value="auto_approve">Auto-approve</SelectItem>
+                <SelectItem value="submit">Gửi batch</SelectItem>
+                <SelectItem value="revert">Revert</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-caption text-text-3 ml-auto">{filteredAudit.length} bản ghi</span>
+          </div>
+
+          {/* Timeline */}
+          <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+            {(() => {
+              // Group by date
+              const grouped: Record<string, AuditEntry[]> = {};
+              filteredAudit.forEach(e => {
+                const key = `${e.date} (${e.week})`;
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(e);
+              });
+
+              const actionConfig: Record<string, { icon: React.ReactNode; color: string; bgColor: string; label: string }> = {
+                adjust: { icon: <span className="text-[11px]">✏️</span>, color: "text-info", bgColor: "bg-info/10 border-info/30", label: "Điều chỉnh" },
+                approve: { icon: <Check className="h-3.5 w-3.5" />, color: "text-success", bgColor: "bg-success/10 border-success/30", label: "Duyệt" },
+                reject: { icon: <XIcon className="h-3.5 w-3.5" />, color: "text-danger", bgColor: "bg-danger/10 border-danger/30", label: "Từ chối" },
+                auto_approve: { icon: <Check className="h-3.5 w-3.5" />, color: "text-success", bgColor: "bg-success/5 border-success/20", label: "Auto ✓" },
+                submit: { icon: <span className="text-[11px]">📤</span>, color: "text-primary", bgColor: "bg-primary/10 border-primary/30", label: "Gửi" },
+                revert: { icon: <History className="h-3.5 w-3.5" />, color: "text-warning", bgColor: "bg-warning/10 border-warning/30", label: "Revert" },
+              };
+
+              return Object.entries(grouped).map(([dateLabel, entries]) => (
+                <div key={dateLabel}>
+                  {/* Date header */}
+                  <div className="px-5 py-2.5 bg-surface-1/50 border-b border-surface-3 sticky top-0 z-10">
+                    <span className="text-table-sm font-semibold text-text-1">{dateLabel}</span>
+                    <span className="text-caption text-text-3 ml-2">{entries.length} thay đổi</span>
+                  </div>
+
+                  {/* Timeline entries */}
+                  <div className="relative">
+                    {/* Vertical line */}
+                    <div className="absolute left-[29px] top-0 bottom-0 w-[2px] bg-surface-3/60" />
+
+                    {entries.map((entry, idx) => {
+                      const cfg = actionConfig[entry.action] || actionConfig.adjust;
+                      return (
+                        <div key={entry.id} className="relative px-5 py-3 flex items-start gap-3 hover:bg-surface-1/20 transition-colors">
+                          {/* Timeline dot */}
+                          <div className={cn(
+                            "relative z-10 h-[22px] w-[22px] rounded-full border flex items-center justify-center shrink-0 mt-0.5",
+                            cfg.bgColor
+                          )}>
+                            <span className={cfg.color}>{cfg.icon}</span>
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold border", cfg.bgColor, cfg.color)}>
+                                {cfg.label}
+                              </span>
+                              {entry.sku !== "—" && (
+                                <span className="text-table-sm font-mono font-medium text-text-1 bg-surface-1 rounded px-1.5 py-0.5">
+                                  {entry.sku} {entry.variant}
+                                </span>
+                              )}
+                              <span className="text-caption text-text-3">{entry.time}</span>
+                            </div>
+
+                            <p className="text-table text-text-1 mt-1">{entry.detail}</p>
+
+                            {/* Value change */}
+                            {entry.oldValue !== undefined && entry.newValue !== undefined && (
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <span className="text-table-sm text-text-3 tabular-nums">{entry.oldValue.toLocaleString()}</span>
+                                <span className="text-text-3">→</span>
+                                <span className={cn(
+                                  "text-table-sm font-semibold tabular-nums",
+                                  entry.newValue > entry.oldValue ? "text-success" : entry.newValue < entry.oldValue ? "text-danger" : "text-text-1"
+                                )}>
+                                  {entry.newValue.toLocaleString()}
+                                </span>
+                                {(() => {
+                                  const delta = entry.newValue - entry.oldValue;
+                                  const pct = entry.oldValue > 0 ? ((delta / entry.oldValue) * 100).toFixed(1) : "0";
+                                  return (
+                                    <span className={cn(
+                                      "text-caption font-medium px-1.5 py-0.5 rounded",
+                                      delta > 0 ? "bg-success/10 text-success" : delta < 0 ? "bg-danger/10 text-danger" : ""
+                                    )}>
+                                      {delta > 0 ? "+" : ""}{delta} ({delta > 0 ? "+" : ""}{pct}%)
+                                    </span>
+                                  );
+                                })()}
+                              </div>
+                            )}
+
+                            {/* Reason */}
+                            {entry.reason && (
+                              <p className="text-caption text-text-2 mt-1 italic">"{entry.reason}"</p>
+                            )}
+
+                            {/* Who */}
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              <Avatar name={entry.who} role={entry.role} />
+                              <span className="text-caption text-text-2">{entry.who}</span>
+                              <RoleBadge role={entry.role} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ));
+            })()}
+
+            {filteredAudit.length === 0 && (
+              <div className="px-5 py-12 text-center text-text-3">
+                <History className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p>Chưa có lịch sử điều chỉnh cho bộ lọc này.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
