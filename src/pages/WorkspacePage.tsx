@@ -4,7 +4,7 @@ import { useWorkflow } from "@/components/WorkflowContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { Play, ChevronDown, X } from "lucide-react";
+import { Play, ChevronDown, TrendingUp, TrendingDown, AlertTriangle, BarChart3, Package, Activity } from "lucide-react";
 import { VoiceInput } from "@/components/VoiceInput";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
@@ -104,10 +104,105 @@ export default function WorkspacePage() {
     { key: "notify", label: "Thông báo", count: notifyCount },
   ];
 
+  /* ═══ KPI card configs ═══ */
+  const kpiCards = [
+    {
+      icon: <BarChart3 className="h-5 w-5" />,
+      label: "Demand",
+      accentClass: "text-primary",
+      bgClass: "bg-primary/5 border-primary/20",
+      iconBgClass: "bg-primary/10",
+      trend: { value: "+4,2%", direction: "up" as const },
+      sub: "vs tháng trước",
+      logicTab: "monthly" as const,
+      logicNode: 0,
+      logicTooltip: "Logic xác định Demand",
+      clickable: {
+        value: "7.650 m²",
+        breakdown: [
+          { label: "FC Statistical", value: 4800, pct: "63%" },
+          { label: "B2B Weighted", value: 2200, pct: "29%" },
+          { label: "PO Confirmed", value: 1100, pct: "14%" },
+          { label: "Overlap", value: -450, pct: "-6%", color: "text-danger" },
+        ],
+        links: [{ label: "→ /demand tab 1", to: "/demand" }],
+      },
+    },
+    {
+      icon: <AlertTriangle className="h-5 w-5" />,
+      label: "Exceptions",
+      accentClass: "text-danger",
+      bgClass: "bg-danger/5 border-danger/20",
+      iconBgClass: "bg-danger/10",
+      trend: { value: "+1", direction: "up" as const },
+      sub: "hôm nay",
+      clickable: {
+        value: String(excCount),
+        breakdown: [
+          { label: "SHORTAGE CN-BD", value: "345m²" },
+          { label: "PO_OVERDUE Toko", value: "8 ngày" },
+          { label: "FC_DRIFT", value: "18,4%" },
+        ],
+        links: [
+          { label: "→ /drp", to: "/drp" },
+          { label: "→ /orders", to: "/orders" },
+          { label: "→ /monitoring", to: "/monitoring" },
+        ],
+      },
+    },
+    {
+      icon: <Package className="h-5 w-5" />,
+      label: "HSTK",
+      accentClass: "text-warning",
+      bgClass: "bg-warning/5 border-warning/20",
+      iconBgClass: "bg-warning/10",
+      trend: { value: "−0,3d", direction: "down" as const },
+      sub: "vs tuần trước",
+      logicTab: "ss" as const,
+      logicNode: 0,
+      logicTooltip: "Logic Safety Stock",
+      clickable: {
+        value: "8,5d",
+        breakdown: [
+          { label: "CN-BD", value: "5,2d 🔴" },
+          { label: "CN-ĐN", value: "14d" },
+          { label: "CN-HN", value: "9d" },
+          { label: "CN-CT", value: "11d" },
+          { label: "Avg", value: "8,5d", color: "text-primary" },
+        ],
+        formula: "HSTK = Available ÷ daily_demand",
+        links: [{ label: "→ /monitoring tab 2", to: "/monitoring" }],
+      },
+    },
+    {
+      icon: <Activity className="h-5 w-5" />,
+      label: "FC Accuracy",
+      accentClass: "text-success",
+      bgClass: "bg-success/5 border-success/20",
+      iconBgClass: "bg-success/10",
+      trend: { value: "+2%", direction: "up" as const },
+      sub: "vs tháng trước",
+      logicTab: "forecast" as const,
+      logicNode: 2,
+      logicTooltip: "MAPE là gì?",
+      clickable: {
+        value: "82%",
+        breakdown: [
+          { label: "CN-BD MAPE", value: "12%" },
+          { label: "CN-ĐN MAPE", value: "22%" },
+          { label: "CN-HN MAPE", value: "31% 🔴" },
+          { label: "CN-CT MAPE", value: "15%" },
+          { label: "Avg accuracy", value: "82%", color: "text-primary" },
+        ],
+        links: [{ label: "→ /monitoring tab 3", to: "/monitoring" }],
+      },
+    },
+  ];
+
   return (
     <AppLayout>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-5">
         <h1 className="font-display text-screen-title text-text-1">Workspace</h1>
         {items.length > 0 && (
           <span className="rounded-full bg-danger text-primary-foreground text-caption font-bold px-2 py-0.5 min-w-[22px] text-center">
@@ -116,7 +211,74 @@ export default function WorkspacePage() {
         )}
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-5">
+        {/* ─── KPI HERO CARDS ─── */}
+        <div className="grid grid-cols-4 gap-4">
+          {kpiCards.map((kpi) => (
+            <div
+              key={kpi.label}
+              className={cn(
+                "relative rounded-xl border p-4 transition-all hover:shadow-md hover:-translate-y-0.5 group",
+                kpi.bgClass
+              )}
+            >
+              {/* Icon + Label row */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className={cn("rounded-lg p-1.5", kpi.iconBgClass, kpi.accentClass)}>
+                    {kpi.icon}
+                  </div>
+                  <span className="text-table font-medium text-text-2 flex items-center gap-1">
+                    {kpi.label}
+                    {kpi.logicTab && <LogicLink tab={kpi.logicTab} node={kpi.logicNode!} tooltip={kpi.logicTooltip!} />}
+                  </span>
+                </div>
+              </div>
+
+              {/* Hero Number */}
+              <div className="mb-2">
+                <ClickableNumber
+                  value={kpi.clickable.value}
+                  label={kpi.label}
+                  color={cn("font-display text-[26px] leading-none font-bold", kpi.accentClass)}
+                  breakdown={kpi.clickable.breakdown}
+                  formula={(kpi.clickable as any).formula}
+                  links={kpi.clickable.links}
+                />
+              </div>
+
+              {/* Trend + Sub */}
+              <div className="flex items-center gap-1.5">
+                {kpi.trend.direction === "up" ? (
+                  <TrendingUp className={cn("h-3.5 w-3.5", kpi.label === "Exceptions" ? "text-danger" : "text-success")} />
+                ) : (
+                  <TrendingDown className={cn("h-3.5 w-3.5", kpi.label === "HSTK" ? "text-warning" : "text-danger")} />
+                )}
+                <span className={cn(
+                  "text-caption font-semibold tabular-nums",
+                  kpi.label === "Exceptions" && kpi.trend.direction === "up" ? "text-danger" :
+                  kpi.trend.direction === "up" ? "text-success" : "text-warning"
+                )}>
+                  {kpi.trend.value}
+                </span>
+                <span className="text-caption text-text-3">{kpi.sub}</span>
+              </div>
+
+              {/* Subtle sparkline decoration */}
+              <div className="absolute bottom-0 right-0 w-24 h-10 opacity-[0.07] overflow-hidden rounded-br-xl pointer-events-none">
+                <svg viewBox="0 0 100 40" className={kpi.accentClass} fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d={
+                    kpi.label === "Demand" ? "M0,30 Q20,10 40,20 T80,15 L100,10" :
+                    kpi.label === "Exceptions" ? "M0,35 Q25,30 45,20 T85,10 L100,5" :
+                    kpi.label === "HSTK" ? "M0,15 Q20,25 50,20 T90,30 L100,28" :
+                    "M0,30 Q30,15 50,20 T80,12 L100,8"
+                  } />
+                </svg>
+              </div>
+            </div>
+          ))}
+        </div>
+
         {/* ─── SECTION 1: Cần làm ─── */}
         <div className="rounded-card border border-surface-3 bg-surface-2">
           <div className="px-5 py-3.5 border-b border-surface-3 flex items-center justify-between">
@@ -191,106 +353,27 @@ export default function WorkspacePage() {
         </div>
 
         {/* ─── SECTION 2: Bắt đầu ─── */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => handleStartWorkflow("daily")}
-              className="rounded-card bg-gradient-primary text-primary-foreground p-5 text-left hover:opacity-90 transition-opacity"
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <Play className="h-5 w-5" />
-                <span className="font-display text-body font-semibold">Vận hành ngày</span>
-              </div>
-              <p className="text-table-sm opacity-80">NM Supply → Demand → DRP & Orders</p>
-            </button>
-            <button
-              onClick={() => handleStartWorkflow("monthly")}
-              className="rounded-card bg-success text-primary-foreground p-5 text-left hover:opacity-90 transition-opacity"
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <Play className="h-5 w-5" />
-                <span className="font-display text-body font-semibold">Kế hoạch tháng</span>
-              </div>
-              <p className="text-table-sm opacity-80">Demand Review → S&OP → Hub</p>
-            </button>
-          </div>
-
-          {/* 4 KPI mini cards with ClickableNumber */}
-          <div className="grid grid-cols-4 gap-3">
-            {/* Demand */}
-            <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
-              <div className="text-caption text-text-3 uppercase mb-0.5 flex items-center gap-1">Demand <LogicLink tab="monthly" node={0} tooltip="Logic xác định Demand" /></div>
-              <ClickableNumber
-                value="7.650 m²"
-                label="Demand"
-                color="font-display text-section-header text-text-1"
-                breakdown={[
-                  { label: "FC Statistical", value: 4800, pct: "63%" },
-                  { label: "B2B Weighted", value: 2200, pct: "29%" },
-                  { label: "PO Confirmed", value: 1100, pct: "14%" },
-                  { label: "Overlap", value: -450, pct: "-6%", color: "text-danger" },
-                ]}
-                links={[{ label: "→ /demand tab 1", to: "/demand" }]}
-              />
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={() => handleStartWorkflow("daily")}
+            className="rounded-card bg-gradient-primary text-primary-foreground p-5 text-left hover:opacity-90 transition-opacity"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Play className="h-5 w-5" />
+              <span className="font-display text-body font-semibold">Vận hành ngày</span>
             </div>
-
-            {/* Exceptions */}
-            <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
-              <div className="text-caption text-text-3 uppercase mb-0.5">Exceptions</div>
-              <ClickableNumber
-                value={String(excCount)}
-                label="Exceptions"
-                color="font-display text-section-header text-text-1"
-                breakdown={[
-                  { label: "SHORTAGE CN-BD", value: "345m²" },
-                  { label: "PO_OVERDUE Toko", value: "8 ngày" },
-                  { label: "FC_DRIFT", value: "18,4%" },
-                ]}
-                links={[
-                  { label: "→ /drp", to: "/drp" },
-                  { label: "→ /orders", to: "/orders" },
-                  { label: "→ /monitoring", to: "/monitoring" },
-                ]}
-              />
+            <p className="text-table-sm opacity-80">NM Supply → Demand → DRP & Orders</p>
+          </button>
+          <button
+            onClick={() => handleStartWorkflow("monthly")}
+            className="rounded-card bg-success text-primary-foreground p-5 text-left hover:opacity-90 transition-opacity"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Play className="h-5 w-5" />
+              <span className="font-display text-body font-semibold">Kế hoạch tháng</span>
             </div>
-
-            {/* HSTK */}
-            <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
-              <div className="text-caption text-text-3 uppercase mb-0.5 flex items-center gap-1">HSTK <LogicLink tab="ss" node={0} tooltip="Logic Safety Stock" /></div>
-              <ClickableNumber
-                value="8,5d"
-                label="HSTK"
-                color="font-display text-section-header text-text-1"
-                breakdown={[
-                  { label: "CN-BD", value: "5,2d 🔴" },
-                  { label: "CN-ĐN", value: "14d" },
-                  { label: "CN-HN", value: "9d" },
-                  { label: "CN-CT", value: "11d" },
-                  { label: "Avg", value: "8,5d", color: "text-primary" },
-                ]}
-                formula={"HSTK = Available ÷ daily_demand"}
-                links={[{ label: "→ /monitoring tab 2", to: "/monitoring" }]}
-              />
-            </div>
-
-            {/* FC Accuracy */}
-            <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
-              <div className="text-caption text-text-3 uppercase mb-0.5 flex items-center gap-1">FC Accuracy <LogicLink tab="forecast" node={2} tooltip="MAPE là gì?" /></div>
-              <ClickableNumber
-                value="82%"
-                label="FC Accuracy"
-                color="font-display text-section-header text-text-1"
-                breakdown={[
-                  { label: "CN-BD MAPE", value: "12%" },
-                  { label: "CN-ĐN MAPE", value: "22%" },
-                  { label: "CN-HN MAPE", value: "31% 🔴" },
-                  { label: "CN-CT MAPE", value: "15%" },
-                  { label: "Avg accuracy", value: "82%", color: "text-primary" },
-                ]}
-                links={[{ label: "→ /monitoring tab 3", to: "/monitoring" }]}
-              />
-            </div>
-          </div>
+            <p className="text-table-sm opacity-80">Demand Review → S&OP → Hub</p>
+          </button>
         </div>
       </div>
     </AppLayout>
