@@ -73,17 +73,7 @@ const baseCnData: CnInvRow[] = [
   { cn: "CN-CT", ton: 2800, available: 2100, ssTarget: 1500, ssActual: 2100, ssGap: 600, hstk: 11, replenish: 150, status: "OK", skus: [] },
 ];
 
-interface SsSkuRow {
-  item: string; variant: string; ssCurrent: number; z: number; sigma: number; lt: number;
-  ssProposed: number; delta: number; wcImpact: string;
-}
-
-const ssBdSkus: SsSkuRow[] = [
-  { item: "GA-300", variant: "A4", ssCurrent: 900, z: 1.65, sigma: 28.5, lt: 14, ssProposed: 1035, delta: 135, wcImpact: "+25M₫" },
-  { item: "GA-300", variant: "B2", ssCurrent: 700, z: 1.65, sigma: 22.1, lt: 12, ssProposed: 700, delta: 0, wcImpact: "0" },
-  { item: "GA-400", variant: "A4", ssCurrent: 600, z: 1.65, sigma: 18.3, lt: 14, ssProposed: 600, delta: 0, wcImpact: "0" },
-  { item: "GA-600", variant: "A4", ssCurrent: 1000, z: 1.65, sigma: 32.0, lt: 10, ssProposed: 950, delta: -50, wcImpact: "−9M₫" },
-];
+// SS SKU data now comes from shared SafetyStockContext
 
 /* ═══ HELPERS ═══ */
 function hstkColor(d: number) { return d < 5 ? "text-danger" : d < 10 ? "text-warning" : "text-success"; }
