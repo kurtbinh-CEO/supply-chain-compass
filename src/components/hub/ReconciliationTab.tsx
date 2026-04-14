@@ -139,7 +139,6 @@ export function ReconciliationTab({ scale }: Props) {
                           />
                         </span>
                       </td>
-                      </td>
                       <td className="px-4 py-2.5">
                         <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium",
                           r.state === "closed" ? "bg-surface-1 text-text-3" : "bg-info-bg text-info")}>
