@@ -12,6 +12,8 @@ import { VoiceMessage, AudioPlayerInline } from "@/components/VoiceMessage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { LogicLink } from "@/components/LogicLink";
+import { AvatarBar, AutoSaveIndicator, useCellPresence } from "@/components/CellPresence";
+import { CnOwnershipBanner } from "@/components/BatchLockBanner";
 
 /* ═══ DATA ═══ */
 const allCns = ["CN-BD", "CN-ĐN", "CN-HN", "CN-CT"];

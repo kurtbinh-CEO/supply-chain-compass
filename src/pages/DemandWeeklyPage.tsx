@@ -9,6 +9,8 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
 import { LogicTooltip, LogicExpand } from "@/components/LogicTooltip";
 import { ViewPivotToggle, usePivotMode, CnGapBadge } from "@/components/ViewPivotToggle";
+import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
+import { CnOwnershipBanner } from "@/components/BatchLockBanner";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
