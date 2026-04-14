@@ -5,6 +5,7 @@ import { ViewPivotToggle, usePivotMode, WorstCnCell, CnGapBadge, LcnbBadge } fro
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LogicLink } from "@/components/LogicLink";
+import { LogicTooltip } from "@/components/LogicTooltip";
 import { DemandToOrderBridge, buildFullBridgeSteps } from "@/components/DemandToOrderBridge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -294,8 +295,24 @@ export function InventorySSTab({ scale: s }: Props) {
               <thead>
                 <tr className="border-b border-surface-3 bg-surface-1/50">
                   <th className="w-10 px-3 py-2.5" />
-                  {["CN", "Tồn", "Available", "SS target", "SS actual", "SS gap", "HSTK", "Replenish need", "Status"].map((h) => (
-                    <th key={h} className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
+                  {[
+                    { h: "CN", tooltip: null },
+                    { h: "Tồn", tooltip: null },
+                    { h: "Available", tooltip: null },
+                    { h: "SS target", tooltip: null },
+                    { h: "SS actual", tooltip: null },
+                    { h: "SS gap", tooltip: null },
+                    { h: "HSTK", tooltip: null },
+                    { h: "Turnover", tooltip: "Turnover = Annual demand ÷ Average stock\nNghĩa: hàng quay bao nhiêu vòng/năm.\nBenchmark:\n>6× = Tốt (hàng quay nhanh, ít vốn tồn)\n3-6× = Trung bình\n<3× = Chậm (nhiều vốn bị kẹt) ← cần review SKU mix\nConfig: /config → Monitoring → turnover_threshold" },
+                    { h: "Replenish need", tooltip: null },
+                    { h: "Status", tooltip: null },
+                  ].map((col) => (
+                    <th key={col.h} className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1">
+                        {col.h}
+                        {col.tooltip && <LogicTooltip title={col.h} content={col.tooltip} />}
+                      </span>
+                    </th>
                   ))}
                 </tr>
               </thead>
