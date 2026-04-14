@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormulaBar } from "@/components/FormulaBar";
 import { ViewPivotToggle, usePivotMode, WorstCnCell, CnGapBadge, LcnbBadge } from "@/components/ViewPivotToggle";
 import { useSafetyStock } from "@/components/SafetyStockContext";
+import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
+import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
