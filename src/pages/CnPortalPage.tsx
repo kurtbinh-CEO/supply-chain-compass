@@ -280,7 +280,25 @@ export default function CnPortalPage() {
     });
   };
 
-  const handleSubmit = () => {
+  // Audit log state — stateful so actions can add entries
+  const [auditLog, setAuditLog] = useState<Record<string, AuditEntry[]>>(() => JSON.parse(JSON.stringify(baseAuditLog)));
+  const auditEntries = auditLog[activeCn] || [];
+
+  const addAuditEntry = (entry: Omit<AuditEntry, "id" | "time" | "date" | "week">) => {
+    const now = new Date();
+    const newEntry: AuditEntry = {
+      ...entry,
+      id: `a-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      time: now.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+      date: `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}`,
+      week: `W${Math.ceil(((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / 86400000 + new Date(now.getFullYear(), 0, 1).getDay() + 1) / 7)}`,
+    };
+    setAuditLog(prev => ({
+      ...prev,
+      [activeCn]: [newEntry, ...(prev[activeCn] || [])],
+    }));
+  };
+
     const edited = rows.filter((r) => r.adjust !== null && r.adjust !== r.forecast);
     const needReason = edited.filter((r) => {
       const pct = Math.abs((r.adjust! - r.forecast) / r.forecast) * 100;
