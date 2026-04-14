@@ -104,6 +104,10 @@ export default {
           ring: "var(--color-primary)",
         },
       },
+      boxShadow: {
+        card: "var(--shadow-card)",
+        "card-hover": "var(--shadow-card-hover)",
+      },
       borderRadius: {
         sm: "var(--radius-sm)",
         md: "var(--radius-md)",
