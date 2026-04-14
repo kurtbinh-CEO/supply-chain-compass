@@ -343,12 +343,12 @@ export function AuditFeedbackTab() {
           <div className="p-5">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={waterfallChartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e0e9ff" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-3)" />
                 <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#94a3b8" }} />
                 <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} tickFormatter={(v) => `$${v}K`} />
-                <Tooltip contentStyle={{ borderRadius: 8, borderColor: "#e0e9ff", fontSize: 12 }} />
+                <Tooltip contentStyle={{ borderRadius: 8, borderColor: "var(--color-surface-3)", fontSize: 12 }} />
                 <Bar dataKey="positive" fill="#2563EB" name="Cost" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="negative" fill="#00714d" name="Savings" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="negative" fill="var(--color-success-text)" name="Savings" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
             <div className="grid grid-cols-4 gap-3 mt-4 pt-4 border-t border-surface-3">

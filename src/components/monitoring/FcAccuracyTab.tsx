@@ -42,10 +42,10 @@ export function FcAccuracyTab() {
           </div>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={mapeData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e0e9ff" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-3)" />
               <XAxis dataKey="week" tick={{ fontSize: 11, fill: "#94a3b8" }} />
               <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} tickFormatter={(v) => `${v}%`} />
-              <Tooltip contentStyle={{ borderRadius: 8, borderColor: "#e0e9ff", fontSize: 12 }} />
+              <Tooltip contentStyle={{ borderRadius: 8, borderColor: "var(--color-surface-3)", fontSize: 12 }} />
               <Line type="monotone" dataKey="hw" stroke="#94a3b8" strokeWidth={2} strokeDasharray="6 4" dot={false} name="HW" />
               <Line type="monotone" dataKey="ai" stroke="#2563EB" strokeWidth={2.5} dot={false} name="XGBoost" />
             </LineChart>
