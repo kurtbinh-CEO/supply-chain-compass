@@ -145,15 +145,15 @@ export function InventorySSTab({ scale: s }: Props) {
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: "var(--color-text-3)" }} interval={4} />
                 <YAxis tick={{ fontSize: 10, fill: "var(--color-text-3)" }} />
                 <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} formatter={(value: number) => `${value.toLocaleString()} m²`} />
-                <Area type="monotone" dataKey="available" name="Available" stackId="1" stroke="#00714d" fill="#00714d" fillOpacity={0.15} strokeWidth={2} />
+                <Area type="monotone" dataKey="available" name="Available" stackId="1" stroke="var(--color-success-text)" fill="var(--color-success-text)" fillOpacity={0.15} strokeWidth={2} />
                 <Area type="monotone" dataKey="reserved" name="Reserved + Committed" stackId="1" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.12} strokeWidth={1.5} />
-                <Area type="monotone" dataKey="ss" name="SS Target" stroke="#991b1b" fill="none" strokeWidth={1.5} strokeDasharray="6 3" />
+                <Area type="monotone" dataKey="ss" name="SS Target" stroke="var(--color-danger-text)" fill="none" strokeWidth={1.5} strokeDasharray="6 3" />
               </AreaChart>
             </ResponsiveContainer>
             <div className="flex items-center gap-5 mt-2 text-[10px] text-text-3">
-              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#00714d] rounded" /> Available</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#94a3b8] rounded" /> Reserved</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-0.5 rounded" style={{ borderTop: "1.5px dashed #991b1b" }} /> SS Target</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[var(--color-success-text)] rounded" /> Available</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-text-3 rounded" /> Reserved</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 rounded" style={{ borderTop: "1.5px dashed var(--color-danger-text)" }} /> SS Target</span>
             </div>
           </div>
           {/* Mini KPIs */}

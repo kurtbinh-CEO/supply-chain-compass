@@ -187,14 +187,14 @@ export function SafetyStockTab() {
         </div>
         <ResponsiveContainer width="100%" height={250}>
           <BarChart data={trendData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e0e9ff" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-3)" />
             <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#94a3b8" }} />
             <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} />
-            <Tooltip contentStyle={{ borderRadius: 8, borderColor: "#e0e9ff", fontSize: 12 }} />
+            <Tooltip contentStyle={{ borderRadius: 8, borderColor: "var(--color-surface-3)", fontSize: 12 }} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Bar dataKey="fc" fill="#2563EB" name="Forecast" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="ss" fill="#e0e9ff" name="Safety Stock" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="wc" fill="#00714d" name="Working Capital" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="ss" fill="var(--color-surface-3)" name="Safety Stock" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="wc" fill="var(--color-success-text)" name="Working Capital" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
         <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-surface-3">

@@ -92,10 +92,10 @@ function getInvTrend(filter: string) {
 
 /* Aging distribution */
 const agingData = [
-  { name: "<30d", value: 65, fill: "#00714d" },
-  { name: "30-60d", value: 25, fill: "#7a4100" },
+  { name: "<30d", value: 65, fill: "var(--color-success-text)" },
+  { name: "30-60d", value: 25, fill: "var(--color-warning-text)" },
   { name: "60-90d", value: 8, fill: "#dc2626" },
-  { name: ">90d", value: 2, fill: "#991b1b" },
+  { name: ">90d", value: 2, fill: "var(--color-danger-text)" },
 ];
 
 /* Stockout log */
@@ -162,7 +162,7 @@ const waterfallData = [
   { name: "+SS overshoot", value: 120, fill: "hsl(var(--destructive, 0 84% 60%))" },
   { name: "+Freight", value: 45, fill: "hsl(var(--destructive, 0 84% 60%))" },
   { name: "+Stockout", value: 32, fill: "hsl(var(--destructive, 0 84% 60%))" },
-  { name: "−LCNB", value: -96, fill: "#00714d" },
+  { name: "−LCNB", value: -96, fill: "var(--color-success-text)" },
   { name: "Actual", value: 1101, fill: "hsl(var(--primary))" },
 ];
 
@@ -288,12 +288,12 @@ export default function MonitoringPage() {
           {/* Section A: 6 KPI Cards */}
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: "HSTK trung bình", value: "8,5d", target: "target 7d", delta: "↗ +1,3d vs tháng trước", spark: kpiSparklines.hstk, color: "#00714d", bg: "bg-success-bg/40", tab: "inv", logicTab: "ss" as const, logicNode: 0, logicTip: "Công thức Safety Stock" },
-              { label: "Fill rate", value: "95,5%", target: "target 95%", delta: "→ stable", spark: kpiSparklines.fillRate, color: "#00714d", bg: "bg-success-bg/40", tab: "inv", logicTab: "daily" as const, logicNode: 3, logicTip: "Logic phân bổ 6 lớp" },
-              { label: "FC Accuracy (MAPE)", value: "18,4%", target: "target <15%", delta: "↘ từ 15,2%", spark: kpiSparklines.fcAccuracy, color: "#991b1b", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 2, logicTip: "MAPE là gì?" },
-              { label: "NM Honoring", value: "77%", target: "target 85%", delta: "↘ xấu hơn", spark: kpiSparklines.nmHonoring, color: "#991b1b", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 4, logicTip: "FVA & NM Honoring" },
-              { label: "Working Capital", value: "1,2 tỷ₫", target: "target 1,0B", delta: "+20% over", spark: kpiSparklines.wc, color: "#7a4100", bg: "bg-warning-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 2, logicTip: "SS ↔ Working Capital" },
-              { label: "LCNB Savings", value: "96M₫", target: "tháng này", delta: "↗ +14M vs T3", spark: kpiSparklines.lcnb, color: "#00714d", bg: "bg-success-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 3, logicTip: "LCNB giảm SS network" },
+              { label: "HSTK trung bình", value: "8,5d", target: "target 7d", delta: "↗ +1,3d vs tháng trước", spark: kpiSparklines.hstk, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "inv", logicTab: "ss" as const, logicNode: 0, logicTip: "Công thức Safety Stock" },
+              { label: "Fill rate", value: "95,5%", target: "target 95%", delta: "→ stable", spark: kpiSparklines.fillRate, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "inv", logicTab: "daily" as const, logicNode: 3, logicTip: "Logic phân bổ 6 lớp" },
+              { label: "FC Accuracy (MAPE)", value: "18,4%", target: "target <15%", delta: "↘ từ 15,2%", spark: kpiSparklines.fcAccuracy, color: "var(--color-danger-text)", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 2, logicTip: "MAPE là gì?" },
+              { label: "NM Honoring", value: "77%", target: "target 85%", delta: "↘ xấu hơn", spark: kpiSparklines.nmHonoring, color: "var(--color-danger-text)", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 4, logicTip: "FVA & NM Honoring" },
+              { label: "Working Capital", value: "1,2 tỷ₫", target: "target 1,0B", delta: "+20% over", spark: kpiSparklines.wc, color: "var(--color-warning-text)", bg: "bg-warning-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 2, logicTip: "SS ↔ Working Capital" },
+              { label: "LCNB Savings", value: "96M₫", target: "tháng này", delta: "↗ +14M vs T3", spark: kpiSparklines.lcnb, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 3, logicTip: "LCNB giảm SS network" },
             ].map((kpi) => (
               <div
                 key={kpi.label}
@@ -465,11 +465,11 @@ export default function MonitoringPage() {
                     <XAxis dataKey="week" tick={{ fontSize: 11, fill: "var(--color-text-3)" }} />
                     <YAxis tick={{ fontSize: 11, fill: "var(--color-text-3)" }} unit="%" />
                     <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                    <ReferenceLine y={15} stroke="#991b1b" strokeDasharray="6 3" label={{ value: "Target 15%", fill: "#991b1b", fontSize: 10, position: "right" }} />
+                    <ReferenceLine y={15} stroke="var(--color-danger-text)" strokeDasharray="6 3" label={{ value: "Target 15%", fill: "var(--color-danger-text)", fontSize: 10, position: "right" }} />
                     <Bar dataKey="v0" name="v0 Statistical" fill="#94a3b8" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="v1" name="v1 Sales" fill="#7a4100" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="v1" name="v1 Sales" fill="var(--color-warning-text)" radius={[2, 2, 0, 0]} />
                     <Bar dataKey="v2" name="v2 CN Input" fill="#2563EB" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="v3" name="v3 Consensus" fill="#00714d" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="v3" name="v3 Consensus" fill="var(--color-success-text)" radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -515,12 +515,12 @@ export default function MonitoringPage() {
                     <XAxis dataKey="month" tick={{ fontSize: 11, fill: "var(--color-text-3)" }} />
                     <YAxis tick={{ fontSize: 11, fill: "var(--color-text-3)" }} unit="%" domain={[30, 100]} />
                     <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                    <ReferenceLine y={80} stroke="#991b1b" strokeDasharray="6 3" label={{ value: "Min 80%", fill: "#991b1b", fontSize: 10, position: "right" }} />
+                    <ReferenceLine y={80} stroke="var(--color-danger-text)" strokeDasharray="6 3" label={{ value: "Min 80%", fill: "var(--color-danger-text)", fontSize: 10, position: "right" }} />
                     <Line type="monotone" dataKey="Mikado" stroke="#2563EB" strokeWidth={2} dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="Toko" stroke="#991b1b" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="Toko" stroke="var(--color-danger-text)" strokeWidth={2} dot={{ r: 3 }} />
                     <Line type="monotone" dataKey="Phú Mỹ" stroke="#dc2626" strokeWidth={2} dot={{ r: 3 }} strokeDasharray="4 2" />
-                    <Line type="monotone" dataKey="Đồng Tâm" stroke="#00714d" strokeWidth={2} dot={{ r: 3 }} />
-                    <Line type="monotone" dataKey="Vigracera" stroke="#7a4100" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="Đồng Tâm" stroke="var(--color-success-text)" strokeWidth={2} dot={{ r: 3 }} />
+                    <Line type="monotone" dataKey="Vigracera" stroke="var(--color-warning-text)" strokeWidth={2} dot={{ r: 3 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -643,7 +643,7 @@ export default function MonitoringPage() {
                       <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                       <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                         {waterfallData.map((entry, index) => (
-                          <Cell key={index} fill={entry.value < 0 ? "#00714d" : entry.name === "Budget" || entry.name === "Actual" ? "#2563EB" : "#991b1b"} />
+                          <Cell key={index} fill={entry.value < 0 ? "var(--color-success-text)" : entry.name === "Budget" || entry.name === "Actual" ? "#2563EB" : "var(--color-danger-text)"} />
                         ))}
                       </Bar>
                     </BarChart>

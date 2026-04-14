@@ -335,7 +335,7 @@ const confidenceData = [
   { period: "2 tháng", confidence: 60, fill: "#eab308" },
   { period: "3 tháng", confidence: 45, fill: "#f97316" },
   { period: "6 tháng", confidence: 35, fill: "#ef4444" },
-  { period: "12 tháng", confidence: 20, fill: "#991b1b" },
+  { period: "12 tháng", confidence: 20, fill: "var(--color-danger-text)" },
 ];
 
 const tab3Nodes: LogicNodeData[] = [
