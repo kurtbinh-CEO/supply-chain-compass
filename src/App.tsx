@@ -11,6 +11,7 @@ import { RbacProvider } from "@/components/RbacContext";
 import { SafetyStockProvider } from "@/components/SafetyStockContext";
 import { ThemeProvider } from "@/components/ThemeContext";
 import { I18nProvider } from "@/components/i18n/I18nContext";
+import { ActivityLogProvider } from "@/components/ActivityLogContext";
 import Index from "./pages/Index";
 import DesignTest from "./pages/DesignTest";
 import WorkspacePage from "./pages/WorkspacePage";
@@ -45,6 +46,7 @@ const App = () => (
           <TenantProvider>
           <RbacProvider>
           <WorkspaceProvider>
+          <ActivityLogProvider>
           <WorkflowProvider>
           <SafetyStockProvider>
             <Routes>
@@ -70,6 +72,7 @@ const App = () => (
             </Routes>
           </SafetyStockProvider>
           </WorkflowProvider>
+          </ActivityLogProvider>
           </WorkspaceProvider>
           </RbacProvider>
           </TenantProvider>
