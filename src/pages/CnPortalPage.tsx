@@ -299,6 +299,7 @@ export default function CnPortalPage() {
     }));
   };
 
+  const handleSubmit = () => {
     const edited = rows.filter((r) => r.adjust !== null && r.adjust !== r.forecast);
     const needReason = edited.filter((r) => {
       const pct = Math.abs((r.adjust! - r.forecast) / r.forecast) * 100;
