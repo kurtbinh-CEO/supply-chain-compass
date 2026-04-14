@@ -1,5 +1,5 @@
-import { Download, FileText, ChevronRight, Clock, GitBranch, Database, Shield, Cpu } from "lucide-react";
-import { useState } from "react";
+import { Download, FileText, ChevronRight, Clock, GitBranch, Database, Shield, Cpu, FileSpreadsheet, ChevronDown } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useActivityLog, LogEntry, LogEventType } from "@/components/ActivityLogContext";
 import { cn } from "@/lib/utils";
@@ -9,24 +9,71 @@ interface ScreenHeaderProps {
   title: string;
   subtitle?: string;
   actions?: React.ReactNode;
+  badges?: React.ReactNode;
 }
 
-export function ScreenHeader({ title, subtitle, actions }: ScreenHeaderProps) {
+function ExportDropdown() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
   return (
-    <div className="flex items-center justify-between mb-6">
-      <div>
-        <h1 className="font-display text-screen-title text-text-1">{title}</h1>
-        {subtitle && <p className="text-table text-text-2 mt-0.5">{subtitle}</p>}
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-surface-3 bg-surface-0 px-3 py-1.5 text-table-sm font-medium text-text-2 hover:border-primary/30 hover:text-text-1 transition-all hover:shadow-sm"
+      >
+        <Download className="h-3.5 w-3.5" />
+        <span>Export</span>
+        <ChevronDown className={cn("h-3 w-3 text-text-3 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 w-44 rounded-card border border-surface-3 bg-surface-2 shadow-lg py-1 z-50 animate-fade-in">
+          <button
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-table-sm text-text-2 hover:bg-surface-3 hover:text-text-1 transition-colors"
+          >
+            <FileSpreadsheet className="h-4 w-4 text-success" />
+            <div className="text-left">
+              <div className="font-medium">Excel (.xlsx)</div>
+              <div className="text-caption text-text-3">Dữ liệu chi tiết</div>
+            </div>
+          </button>
+          <button
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-table-sm text-text-2 hover:bg-surface-3 hover:text-text-1 transition-colors"
+          >
+            <FileText className="h-4 w-4 text-danger" />
+            <div className="text-left">
+              <div className="font-medium">PDF (.pdf)</div>
+              <div className="text-caption text-text-3">Báo cáo tổng hợp</div>
+            </div>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ScreenHeader({ title, subtitle, actions, badges }: ScreenHeaderProps) {
+  return (
+    <div className="flex items-start justify-between mb-6">
+      <div className="flex items-center gap-4">
+        <div>
+          <h1 className="font-display text-screen-title text-text-1 leading-tight">{title}</h1>
+          {subtitle && <p className="text-table text-text-2 mt-0.5">{subtitle}</p>}
+        </div>
+        {badges && <div className="flex items-center gap-2 ml-1">{badges}</div>}
       </div>
       <div className="flex items-center gap-2">
-        <button className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 py-1.5 text-table-sm text-text-2 hover:bg-surface-3 transition-colors">
-          <Download className="h-3.5 w-3.5" />
-          Excel
-        </button>
-        <button className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 py-1.5 text-table-sm text-text-2 hover:bg-surface-3 transition-colors">
-          <FileText className="h-3.5 w-3.5" />
-          PDF
-        </button>
+        <ExportDropdown />
         {actions}
       </div>
     </div>
