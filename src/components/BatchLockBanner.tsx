@@ -217,11 +217,10 @@ export function PreLockDialog({ editors, onNotifyWait, onForceLock, onClose }: {
 }
 
 /* ═══ CN Ownership Banner ═══ */
-export function CnOwnershipBanner({ cn, editorName, isAvailable }: { cn: string; editorName?: string; isAvailable: boolean }) {
+export function CnOwnershipBanner({ cnName, editorName, isAvailable }: { cnName: string; editorName?: string; isAvailable: boolean }) {
   return (
-    <div className={cn("flex items-center gap-2 text-table-sm px-3 py-1.5 rounded-lg", 
-      isAvailable ? "bg-success/10 text-success" : "bg-warning/10 text-warning")}>
-      <span className="font-medium">{cn}</span>
+    <div className={`flex items-center gap-2 text-table-sm px-3 py-1.5 rounded-lg ${isAvailable ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
+      <span className="font-medium">{cnName}</span>
       {isAvailable ? (
         <span>— 🟢 Available</span>
       ) : (
