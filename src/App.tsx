@@ -12,6 +12,7 @@ import { SafetyStockProvider } from "@/components/SafetyStockContext";
 import { ThemeProvider } from "@/components/ThemeContext";
 import { I18nProvider } from "@/components/i18n/I18nContext";
 import { ActivityLogProvider } from "@/components/ActivityLogContext";
+import { WalkthroughProvider } from "@/components/WalkthroughContext";
 import Index from "./pages/Index";
 import DesignTest from "./pages/DesignTest";
 import WorkspacePage from "./pages/WorkspacePage";
@@ -50,6 +51,7 @@ const App = () => (
           <ActivityLogProvider>
           <WorkflowProvider>
           <SafetyStockProvider>
+          <WalkthroughProvider>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/workspace" element={<WorkspacePage />} />
@@ -72,6 +74,7 @@ const App = () => (
               <Route path="/design-test" element={<DesignTest />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+          </WalkthroughProvider>
           </SafetyStockProvider>
           </WorkflowProvider>
           </ActivityLogProvider>
