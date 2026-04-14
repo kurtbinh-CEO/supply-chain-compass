@@ -2,6 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
+import { LogicTooltip } from "@/components/LogicTooltip";
 
 interface Props { scale: number }
 
@@ -92,6 +93,10 @@ export function ReconciliationTab({ scale }: Props) {
           <option>Tháng 4 (closed)</option>
           <option>Tháng 3 (closed)</option>
         </select>
+        <LogicTooltip
+          title="Honoring% & Lock Logic"
+          content={"Honoring% = delivered ÷ committed per tháng.\nPeriod: FIXED MONTH (01-30). Không rolling.\nLock: ngày cuối tháng 23:59 ICT → auto-snapshot → LOCK 🔒.\nSau lock: số không sửa được. Feed → /monitoring tab 3 NM Performance.\nTháng hiện tại: 'đang chạy' — số delivered cập nhật realtime."}
+        />
         <div className="flex-1" />
       </div>
 
@@ -124,8 +129,14 @@ export function ReconciliationTab({ scale }: Props) {
                       <td className="px-4 py-2.5 tabular-nums text-text-2">{r.released.toLocaleString()} ({r.releasedRpos} RPOs)</td>
                       <td className="px-4 py-2.5 tabular-nums text-text-2">{r.delivered.toLocaleString()} ({r.deliveredAsns} ASNs)</td>
                       <td className="px-4 py-2.5">
-                        <span className={cn("tabular-nums font-bold", honoringPct >= 80 ? "text-success" : honoringPct >= 60 ? "text-warning" : "text-danger")}>
-                          {honoringPct}%
+                        <span className="inline-flex items-center gap-1">
+                          <span className={cn("tabular-nums font-bold", honoringPct >= 80 ? "text-success" : honoringPct >= 60 ? "text-warning" : "text-danger")}>
+                            {honoringPct}%
+                          </span>
+                          <LogicTooltip
+                            title={`${r.nm} Th5 Honoring`}
+                            content={`${r.nm} Th5: committed ${r.committed.toLocaleString()}. Delivered so far: ${r.delivered.toLocaleString()} (${honoringPct}%).\n${r.releasedRpos} RPO tạo, ${r.deliveredAsns} shipped/received.\nETA remaining: ${(r.released - r.delivered).toLocaleString()}m²\nProjected honoring: ${Math.min(100, Math.round((r.delivered + (r.released - r.delivered) * 0.8) / r.committed * 100))}% nếu NM giao đúng ETA.`}
+                          />
                         </span>
                       </td>
                       <td className="px-4 py-2.5">

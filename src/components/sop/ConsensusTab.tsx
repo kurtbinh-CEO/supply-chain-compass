@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
+import { LogicTooltip } from "@/components/LogicTooltip";
 import { ViewPivotToggle, usePivotMode, WorstCnCell, CnGapBadge } from "@/components/ViewPivotToggle";
 import type { ConsensusRow } from "@/pages/SopPage";
 
@@ -315,7 +316,15 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
                       <td className={cn("px-4 py-3 tabular-nums font-medium", aopColor)}>
                         {delta > 0 ? "+" : ""}{(row.v3 - row.aop).toLocaleString()} ({delta > 0 ? "+" : ""}{delta}%) {absDelta > 5 ? "⚠" : ""}
                       </td>
-                      <td className="px-4 py-3 text-table-sm text-text-2">{row.fvaBest}</td>
+                      <td className="px-4 py-3 text-table-sm text-text-2">
+                        <span className="inline-flex items-center gap-1">
+                          {row.fvaBest}
+                          <LogicTooltip
+                            title={`FVA — ${row.cn}`}
+                            content={`FVA = Forecast Value Add = ai dự báo chính xác nhất THÁNG TRƯỚC?\n\nTháng 4 actual ${row.cn} = ${Math.round(row.v3 * 0.87).toLocaleString()}m²\nv0 Statistical: FC = ${row.v0.toLocaleString()} → MAPE 8,1%\nv1 Sales: FC = ${row.v1.toLocaleString()} → MAPE 16,6%\nv2 CN Input: FC = ${row.v2.toLocaleString()} → MAPE 2,2% ★ Best\nv3 Consensus: FC = ${row.v3.toLocaleString()} → MAPE 1,3%\n\nFVA v2 = MAPE(v0) − MAPE(v2) = 8,1% − 2,2% = +5,9% (tốt hơn model)\nFVA v1 = 8,1% − 16,6% = −8,5% (xấu hơn model!)\n→ v2 CN Input có giá trị cao nhất → recommend dùng cho ${row.cn}.`}
+                          />
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         <button onClick={() => setDrillCn(i)} className="text-primary text-table-sm font-medium hover:underline flex items-center gap-0.5">
                           Detail <ChevronRight className="h-3.5 w-3.5" />

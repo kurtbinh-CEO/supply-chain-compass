@@ -6,6 +6,7 @@ import { useWorkspace } from "@/components/WorkspaceContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronDown, Clock, Check, X as XIcon, AlertTriangle, Info, Paperclip, AtSign, MessageSquare, Volume2, History, Filter } from "lucide-react";
+import { LogicTooltip } from "@/components/LogicTooltip";
 import { VoiceInput } from "@/components/VoiceInput";
 import { VoiceMessage, AudioPlayerInline } from "@/components/VoiceMessage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -532,6 +533,14 @@ export default function CnPortalPage() {
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
+          <LogicTooltip
+            title="Trust Score"
+            content={"Trust score = bao nhiêu % lần adjust của bạn gần đúng thực tế.\n12 tuần gần nhất:\nTuần 10: adjust +44 → actual +38 → sai 14% ✅ (< threshold 20%)\nTuần 11: adjust −30 → actual −25 → sai 17% ✅\nTuần 12: adjust +80 → actual +95 → sai 16% ✅\n10/12 tuần < threshold → trust = 10/12 = 83%\n\nTrust > 85%: adjust tự duyệt + tolerance ±40%\nTrust 60-85%: SC Manager duyệt + tolerance ±30% ← Bạn đang đây\nTrust < 60%: tolerance thu hẹp ±15% + cần giải trình tất cả\nCải thiện: nhập lý do rõ + data support (PO, hợp đồng)."}
+          >
+            <span className="inline-flex items-center gap-1 rounded-button bg-success-bg text-success text-table-sm font-medium px-2.5 py-1 cursor-pointer hover:opacity-80">
+              Trust: 82% 🟢
+            </span>
+          </LogicTooltip>
           <span className={cn("rounded-full px-3 py-1 text-table-sm font-medium flex items-center gap-1.5",
             cutoff.pastCutoff ? "bg-danger-bg text-danger" : "bg-warning-bg text-warning"
           )}>
@@ -735,6 +744,13 @@ export default function CnPortalPage() {
               </table>
             </div>
           </div>
+
+          {/* #8 Tolerance rules */}
+          <LogicTooltip
+            alwaysVisible
+            title="📋 Quy tắc điều chỉnh"
+            content={"• Thay đổi < ±10%: ✅ Tự động duyệt\n• Thay đổi 10-30%: 🟡 SC Manager duyệt\n• Thay đổi > 30%: 🔴 Cần giải trình + file đính kèm\n• Cutoff: 18:00. Sau cutoff = dùng số HQ.\n• Trust score bạn: 82% → tolerance ±30%\n  Trust >85% → tolerance mở rộng ±40%. Trust <60% → thu hẹp ±15%."}
+          />
 
           {/* Mobile Card Layout */}
           <div className="sm:hidden space-y-3 pb-20">

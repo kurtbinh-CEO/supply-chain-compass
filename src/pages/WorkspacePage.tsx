@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Play, ChevronDown, TrendingUp, TrendingDown, AlertTriangle, BarChart3, Package, Activity } from "lucide-react";
+import { LogicTooltip } from "@/components/LogicTooltip";
 import { VoiceInput } from "@/components/VoiceInput";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
@@ -283,7 +284,13 @@ export default function WorkspacePage() {
         {/* ─── SECTION 1: Cần làm ─── */}
         <div className="rounded-card border border-surface-3 bg-surface-2">
           <div className="px-5 py-3.5 border-b border-surface-3 flex items-center justify-between">
-            <h2 className="font-display text-body font-semibold text-text-1">Cần làm</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-body font-semibold text-text-1">Cần làm</h2>
+              <LogicTooltip
+                title="Priority Sort Rule"
+                content={"Sắp xếp theo:\n 1. Severity: 🔴 Critical → 🟡 Warning → 🔵 Info\n 2. Cùng severity: theo thời gian (cũ nhất trước)\n 3. Cùng severity + thời gian: theo risk ₫ (cao nhất trước)\n Config tại /config → Notifications."}
+              />
+            </div>
             <div className="flex items-center gap-1">
               {filters.map((f) => (
                 <button

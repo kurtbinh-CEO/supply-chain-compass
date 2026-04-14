@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { ChevronRight, ChevronDown, Upload, Download, Pencil, Bell, FileSpreadsheet } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
+import { LogicTooltip } from "@/components/LogicTooltip";
 
 /* ─── Upload Zone ─── */
 function UploadZone() {
@@ -141,7 +142,13 @@ function SkuTable({ nm, skus, share, onUpdate }: { nm: string; skus: NMSkuRow[];
               </tr>
             </tbody>
           </table>
-          <p className="text-caption text-text-3 mt-3 italic">Nguồn: Upload Excel {skus[0]?.updatedAt || ""} hôm nay bởi Thúy</p>
+          <div className="flex items-center gap-2 mt-3">
+            <p className="text-caption text-text-3 italic">Nguồn: Upload Excel {skus[0]?.updatedAt || ""} hôm nay bởi Thúy</p>
+            <LogicTooltip
+              title="Share% Logic"
+              content={`Share% ${nm} = % tồn kho dành cho UNIS.\nNghĩa: UNIS được sử dụng ${Math.round(share * 100)}% tồn kho ${nm}.\nPhần còn lại (${Math.round((1 - share) * 100)}%) dành cho khách khác.\n\nSửa share% → /master-data → NM/Suppliers → ${nm} → field Share%\nShare% thay đổi → UNIS dùng tự recalculate → /sop Cân đối update.`}
+            />
+          </div>
         </div>
       </td>
     </tr>

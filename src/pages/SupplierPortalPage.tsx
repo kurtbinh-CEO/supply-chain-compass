@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { toast } from "sonner";
 import { Check, X, Upload, Truck, Plus } from "lucide-react";
+import { LogicTooltip } from "@/components/LogicTooltip";
 import { VoiceInput } from "@/components/VoiceInput";
 import { cn } from "@/lib/utils";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
@@ -164,7 +165,16 @@ export default function SupplierPortalPage() {
                       <p className={cn("mt-0.5", poNumClasses, getPoTypeBadge("BPO").text)}>Blanket: {o.blanket}</p>
                     )}
                     <p className="text-table text-text-2 mt-1">{o.item} {o.variant}: {o.qty.toLocaleString()}m²
-                      {o.tier && <span className="text-text-3 ml-1">({o.tier})</span>}
+                      {o.tier && (
+                        <span className="inline-flex items-center gap-0.5 ml-1">
+                          <span className="text-text-3">({o.tier})</span>
+                          <LogicTooltip
+                            title="FC Commitment Tiers"
+                            content={"Hard (M+1, ±5%): Tháng tới. UNIS CAM KẾT lấy hàng.\n  Nếu UNIS lấy ít hơn 5% → UNIS chịu phạt.\n  NM: YÊN TÂM sản xuất, đã có đơn chắc.\n\nFirm (M+2, ±15%): Tháng sau nữa. Có thể thay đổi ±15%.\n  NM: Chuẩn bị nguyên liệu, chưa cần chạy line.\n\nSoft (M+3, ±30%): 3 tháng sau. Chỉ tham khảo.\n  NM: Biết xu hướng, chưa cam kết."}
+                          />
+                        </span>
+                      )}
+                    </p>
                     </p>
                   </div>
                   <span className="text-table-sm text-text-3">Hạn {o.deadline}</span>
