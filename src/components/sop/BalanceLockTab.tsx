@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Lock, CheckCircle, ChevronRight, ChevronLeft, AlertTriangle, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
@@ -189,21 +189,44 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
                 </tr>
               </thead>
               <tbody>
-                {skuPivotData.map((row, i) => (
-                  <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors cursor-pointer", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
-                    onClick={() => { const k = `${row.item}|${row.variant}`; setExpandedSkuKeys(prev => { const n = new Set(prev); n.has(k) ? n.delete(k) : n.add(k); return n; }); }}>
-                    <td className="px-3 py-2.5 font-medium text-text-1">{row.item}</td>
-                    <td className="px-3 py-2.5 text-text-2">{row.variant}</td>
-                    <td className="px-3 py-2.5 tabular-nums text-text-1 font-medium">{row.demand.toLocaleString()}</td>
-                    <td className="px-3 py-2.5 tabular-nums text-text-1">{row.stock.toLocaleString()}</td>
-                    <td className="px-3 py-2.5 tabular-nums text-text-2">{row.pipeline.toLocaleString()}</td>
-                    <td className={cn("px-3 py-2.5 tabular-nums font-medium", row.netReq > 0 ? "text-danger" : "text-success")}>{row.netReq.toLocaleString()}</td>
-                    <td className="px-3 py-2.5"><WorstCnCell cnName={row.worstCn} hstk={row.worstCover} /></td>
-                    <td className="px-3 py-2.5"><CnGapBadge count={row.cnGapCount} /></td>
-                    <td className="px-3 py-2.5">{row.lcnb ? <LcnbBadge text={row.lcnb} /> : <span className="text-text-3">—</span>}</td>
-                    <td className="px-3 py-2.5"><ChevronRight className="h-3.5 w-3.5 text-text-3" /></td>
-                  </tr>
-                ))}
+                {skuPivotData.map((row, i) => {
+                  const skuKey = `${row.item}|${row.variant}`;
+                  const isExp = expandedSkuKeys.has(skuKey);
+                  return (<React.Fragment key={`sku-${i}`}>
+                    <tr className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors cursor-pointer", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
+                      onClick={() => setExpandedSkuKeys(prev => { const n = new Set(prev); n.has(skuKey) ? n.delete(skuKey) : n.add(skuKey); return n; })}>
+                      <td className="px-3 py-2.5 font-medium text-text-1">
+                        <span className="flex items-center gap-1">{isExp ? <ChevronDown className="h-3.5 w-3.5 text-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-text-3" />}{row.item}</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-text-2">{row.variant}</td>
+                      <td className="px-3 py-2.5 tabular-nums text-text-1 font-medium">{row.demand.toLocaleString()}</td>
+                      <td className="px-3 py-2.5 tabular-nums text-text-1">{row.stock.toLocaleString()}</td>
+                      <td className="px-3 py-2.5 tabular-nums text-text-2">{row.pipeline.toLocaleString()}</td>
+                      <td className={cn("px-3 py-2.5 tabular-nums font-medium", row.netReq > 0 ? "text-danger" : "text-success")}>{row.netReq.toLocaleString()}</td>
+                      <td className="px-3 py-2.5"><WorstCnCell cnName={row.worstCn} hstk={row.worstCover} /></td>
+                      <td className="px-3 py-2.5"><CnGapBadge count={row.cnGapCount} /></td>
+                      <td className="px-3 py-2.5">{row.lcnb ? <LcnbBadge text={row.lcnb} /> : <span className="text-text-3">—</span>}</td>
+                      <td className="px-3 py-2.5">{isExp ? <ChevronDown className="h-3.5 w-3.5 text-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-text-3" />}</td>
+                    </tr>
+                    {isExp && row.cnBreakdown.map((cb, ci) => (
+                      <tr key={`cn-${ci}`} className="bg-surface-1/60 border-b border-surface-3/30 animate-fade-in">
+                        <td className="px-3 py-2 pl-8 text-text-3 text-caption">└</td>
+                        <td className="px-3 py-2 text-text-2 font-medium">{cb.cn}</td>
+                        <td className="px-3 py-2 tabular-nums text-text-2">{cb.demand.toLocaleString()}</td>
+                        <td className="px-3 py-2 tabular-nums text-text-2">{cb.stock.toLocaleString()}</td>
+                        <td className="px-3 py-2 tabular-nums text-text-3">{cb.pipeline.toLocaleString()}</td>
+                        <td className={cn("px-3 py-2 tabular-nums font-medium", cb.netReq > 0 ? "text-danger" : "text-success")}>{cb.netReq.toLocaleString()}</td>
+                        <td className="px-3 py-2 tabular-nums text-text-3">{cb.cover}d</td>
+                        <td className="px-3 py-2">
+                          <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
+                            cb.status === "CRITICAL" ? "bg-danger-bg text-danger" : cb.status === "EXCESS" ? "bg-info-bg text-info" : "bg-success-bg text-success"
+                          )}>{cb.status}</span>
+                        </td>
+                        <td colSpan={2} />
+                      </tr>
+                    ))}
+                  </React.Fragment>);
+                })}
                 <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
                   <td className="px-3 py-2.5 text-text-1">TOTAL</td>
                   <td />
@@ -241,41 +264,71 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
                 const isExcess = cover > 12 && ssGap > 0;
                 const status = isCrit ? "CRITICAL" : isExcess ? "EXCESS" : "OK";
                 const coverPct = Math.min(100, (cover / 15) * 100);
+                const isExp = expandedCns.has(i);
 
                 return (
-                  <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
-                    <td className="px-3 py-2.5 font-medium text-text-1">{row.cn}</td>
-                    <td className="px-3 py-2.5 tabular-nums text-text-1 font-medium">{row.demand.toLocaleString()}</td>
-                    <td className="px-3 py-2.5 tabular-nums text-text-1">{row.stock.toLocaleString()}</td>
-                    <td className="px-3 py-2.5 tabular-nums text-text-2">{row.pipeline.toLocaleString()}</td>
-                    <td className="px-3 py-2.5 tabular-nums text-text-1">{avail.toLocaleString()}</td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-14 h-2 rounded-full bg-surface-3 overflow-hidden">
-                          <div className={cn("h-full rounded-full", cover < 5 ? "bg-danger" : cover < 10 ? "bg-warning" : "bg-success")}
-                            style={{ width: `${coverPct}%` }} />
+                  <React.Fragment key={i}>
+                    <tr className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors cursor-pointer", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
+                      onClick={() => setExpandedCns(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; })}>
+                      <td className="px-3 py-2.5 font-medium text-text-1">
+                        <span className="flex items-center gap-1">{isExp ? <ChevronDown className="h-3.5 w-3.5 text-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-text-3" />}{row.cn}</span>
+                      </td>
+                      <td className="px-3 py-2.5 tabular-nums text-text-1 font-medium">{row.demand.toLocaleString()}</td>
+                      <td className="px-3 py-2.5 tabular-nums text-text-1">{row.stock.toLocaleString()}</td>
+                      <td className="px-3 py-2.5 tabular-nums text-text-2">{row.pipeline.toLocaleString()}</td>
+                      <td className="px-3 py-2.5 tabular-nums text-text-1">{avail.toLocaleString()}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="w-14 h-2 rounded-full bg-surface-3 overflow-hidden">
+                            <div className={cn("h-full rounded-full", cover < 5 ? "bg-danger" : cover < 10 ? "bg-warning" : "bg-success")}
+                              style={{ width: `${coverPct}%` }} />
+                          </div>
+                          <span className={cn("tabular-nums font-medium text-table-sm", isCrit ? "text-danger" : "text-success")}>
+                            {cover}d {isCrit ? "🔴" : "🟢"}
+                          </span>
                         </div>
-                        <span className={cn("tabular-nums font-medium text-table-sm", isCrit ? "text-danger" : "text-success")}>
-                          {cover}d {isCrit ? "🔴" : "🟢"}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 tabular-nums text-text-1">{row.ssTarget.toLocaleString()}</td>
-                    <td className={cn("px-3 py-2.5 tabular-nums font-medium", ssGap < 0 ? "text-danger" : "text-success")}>
-                      {ssGap > 0 ? "+" : ""}{ssGap.toLocaleString()}
-                    </td>
-                    <td className="px-3 py-2.5 tabular-nums font-medium text-text-1">{rowNet.toLocaleString()}</td>
-                    <td className="px-3 py-2.5">
-                      <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
-                        status === "CRITICAL" ? "bg-danger-bg text-danger" : status === "EXCESS" ? "bg-info-bg text-info" : "bg-success-bg text-success"
-                      )}>{status}</span>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <button onClick={() => setExpandedCns(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; })} className="text-primary text-table-sm font-medium hover:underline flex items-center gap-0.5">
-                        Xem SKU <ChevronRight className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="px-3 py-2.5 tabular-nums text-text-1">{row.ssTarget.toLocaleString()}</td>
+                      <td className={cn("px-3 py-2.5 tabular-nums font-medium", ssGap < 0 ? "text-danger" : "text-success")}>
+                        {ssGap > 0 ? "+" : ""}{ssGap.toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2.5 tabular-nums font-medium text-text-1">{rowNet.toLocaleString()}</td>
+                      <td className="px-3 py-2.5">
+                        <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
+                          status === "CRITICAL" ? "bg-danger-bg text-danger" : status === "EXCESS" ? "bg-info-bg text-info" : "bg-success-bg text-success"
+                        )}>{status}</span>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {isExp ? <ChevronDown className="h-3.5 w-3.5 text-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-text-3" />}
+                      </td>
+                    </tr>
+                    {isExp && row.skus.map((sk, si) => {
+                      const skAvail = sk.stock + sk.pipeline;
+                      const skCover = sk.demand > 0 ? +(sk.stock / (sk.demand / 30)).toFixed(1) : 0;
+                      const skNet = Math.max(0, sk.demand - skAvail);
+                      return (
+                        <tr key={`sku-${si}`} className="bg-surface-1/60 border-b border-surface-3/30 animate-fade-in">
+                          <td className="px-3 py-2 pl-8 text-text-2 font-medium">└ {sk.item} {sk.variant}</td>
+                          <td className="px-3 py-2 tabular-nums text-text-2">{sk.demand.toLocaleString()}</td>
+                          <td className="px-3 py-2 tabular-nums text-text-2">{sk.stock.toLocaleString()}</td>
+                          <td className="px-3 py-2 tabular-nums text-text-3">{sk.pipeline.toLocaleString()} <span className="text-caption text-text-3">{sk.pipelineSource}</span></td>
+                          <td className="px-3 py-2 tabular-nums text-text-2">{skAvail.toLocaleString()}</td>
+                          <td className="px-3 py-2 tabular-nums text-text-3">{skCover}d</td>
+                          <td className="px-3 py-2 tabular-nums text-text-3">{sk.ss.toLocaleString()}</td>
+                          <td className={cn("px-3 py-2 tabular-nums font-medium", (sk.stock - sk.ss) < 0 ? "text-danger" : "text-success")}>
+                            {(sk.stock - sk.ss) > 0 ? "+" : ""}{(sk.stock - sk.ss).toLocaleString()}
+                          </td>
+                          <td className={cn("px-3 py-2 tabular-nums font-medium", skNet > 0 ? "text-danger" : "text-success")}>{skNet.toLocaleString()}</td>
+                          <td className="px-3 py-2">
+                            <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
+                              sk.match.includes("SHORT") ? "bg-danger-bg text-danger" : "bg-success-bg text-success"
+                            )}>{sk.match}</span>
+                          </td>
+                          <td />
+                        </tr>
+                      );
+                    })}
+                  </React.Fragment>
                 );
               })}
               {/* Total */}
