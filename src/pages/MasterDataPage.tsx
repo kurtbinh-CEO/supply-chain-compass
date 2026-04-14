@@ -4,6 +4,7 @@ import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Search, Plus, Upload, X, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
+import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 
 /* ── Generic CRUD table data ── */
 const itemsData = [

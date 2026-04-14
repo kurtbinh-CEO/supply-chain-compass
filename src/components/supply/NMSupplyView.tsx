@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ChevronRight, ChevronDown, Upload, Download, Pencil, Bell, FileSpreadsheet } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicTooltip } from "@/components/LogicTooltip";
+import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 
 /* ─── Upload Zone ─── */
 function UploadZone() {
