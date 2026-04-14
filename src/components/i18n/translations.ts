@@ -125,9 +125,40 @@ export const translations: Record<Locale, Record<string, string>> = {
     // Orders
     "orders.title": "Orders & Tracking",
 
-    // Pivot toggle
-    "pivot.cnFirst": "CN-first",
-    "pivot.skuFirst": "SKU-first",
+    // Workflow bar
+    "wf.dailyOps": "Vận hành ngày",
+    "wf.monthlyPlan": "Kế hoạch tháng",
+    "wf.completeStep": "Hoàn tất bước",
+    "wf.completeSession": "Hoàn tất phiên",
+    "wf.sessionComplete": "Phiên làm việc hoàn tất",
+    "wf.allDone": "Tất cả đã xong",
+    "wf.completeBefore": "Hoàn thành bước {n} trước",
+
+    // Workflow leave dialog
+    "wf.leaveTitle": "Rời khỏi phiên làm việc?",
+    "wf.leaveDesc": "Bạn đang ở bước",
+    "wf.leaveOf": "của workflow",
+    "wf.leaveRemaining": "bước chưa hoàn tất.",
+    "wf.backToWorkflow": "Quay lại workflow",
+    "wf.leave": "Rời đi",
+    "wf.leaveNote": "Workflow sẽ vẫn hoạt động. Bạn có thể quay lại từ sidebar.",
+
+    // Activity log
+    "log.workflow": "Workflow",
+    "log.data": "Dữ liệu",
+    "log.approval": "Phê duyệt",
+    "log.system": "Hệ thống",
+    "log.all": "Tất cả",
+    "log.totalEvents": "Tổng sự kiện",
+    "log.search": "Tìm kiếm...",
+    "log.noEvents": "Chưa có sự kiện nào",
+    "log.events": "sự kiện",
+    "log.justNow": "Vừa xong",
+    "log.minutesAgo": "phút trước",
+    "log.today": "Hôm nay",
+    "log.activityLog": "Activity Log",
+    "log.eventsOnPage": "sự kiện trên trang này",
+    "log.viewAuditLog": "Xem audit log",
   },
   en: {
     // TopBar
@@ -256,5 +287,40 @@ export const translations: Record<Locale, Record<string, string>> = {
     // Pivot toggle
     "pivot.cnFirst": "CN-first",
     "pivot.skuFirst": "SKU-first",
+
+    // Workflow bar
+    "wf.dailyOps": "Daily Operations",
+    "wf.monthlyPlan": "Monthly Planning",
+    "wf.completeStep": "Complete step",
+    "wf.completeSession": "Complete session",
+    "wf.sessionComplete": "Session complete",
+    "wf.allDone": "All steps done",
+    "wf.completeBefore": "Complete step {n} first",
+
+    // Workflow leave dialog
+    "wf.leaveTitle": "Leave work session?",
+    "wf.leaveDesc": "You are at step",
+    "wf.leaveOf": "of workflow",
+    "wf.leaveRemaining": "steps remaining.",
+    "wf.backToWorkflow": "Back to workflow",
+    "wf.leave": "Leave",
+    "wf.leaveNote": "Workflow will remain active. You can return from the sidebar.",
+
+    // Activity log
+    "log.workflow": "Workflow",
+    "log.data": "Data",
+    "log.approval": "Approval",
+    "log.system": "System",
+    "log.all": "All",
+    "log.totalEvents": "Total events",
+    "log.search": "Search...",
+    "log.noEvents": "No events yet",
+    "log.events": "events",
+    "log.justNow": "Just now",
+    "log.minutesAgo": "min ago",
+    "log.today": "Today",
+    "log.activityLog": "Activity Log",
+    "log.eventsOnPage": "events on this page",
+    "log.viewAuditLog": "View audit log",
   },
 };
