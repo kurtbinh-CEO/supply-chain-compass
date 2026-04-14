@@ -175,7 +175,7 @@ export function InventorySSTab({ scale: s }: Props) {
       </div>
 
       {/* ═══ SECTION B: 2-layer table ═══ */}
-      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setDrillCn(null); setDrillSku(null); }} />
+      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setExpandedCns(new Set()); setExpandedSkuPivot(new Set()); }} />
 
       {(() => {
         /* ═══ SKU-first pivot data ═══ */
@@ -186,10 +186,8 @@ export function InventorySSTab({ scale: s }: Props) {
         }
 
         if (pivotMode === "sku") {
-          // Build SKU pivot from all CN data
           const skuMap = new Map<string, InvSkuPivot>();
           cnData.forEach(r => {
-            // For CNs with SKU data, use per-sku. For others, create a single aggregate entry.
             if (r.skus.length > 0) {
               r.skus.forEach(sk => {
                 const key = `${sk.item}|${sk.variant}`;
@@ -197,7 +195,7 @@ export function InventorySSTab({ scale: s }: Props) {
                   skuMap.set(key, { item: sk.item, variant: sk.variant, totalTon: 0, totalAvail: 0, totalSsTarget: 0, totalSsGap: 0, worstCn: "", worstHstk: Infinity, cnGapCount: 0, lcnb: null, cnBreakdown: [] });
                 }
                 const p = skuMap.get(key)!;
-                p.totalTon += sk.ton; p.totalAvail += sk.ton; // approximate
+                p.totalTon += sk.ton; p.totalAvail += sk.ton;
                 p.totalSsTarget += sk.ssTarget; p.totalSsGap += sk.ssGap;
                 const hstk = sk.demand > 0 ? (sk.ton / (sk.demand / 30)) : 30;
                 if (hstk < p.worstHstk) { p.worstHstk = +hstk.toFixed(1); p.worstCn = r.cn; }
@@ -206,7 +204,6 @@ export function InventorySSTab({ scale: s }: Props) {
               });
             }
           });
-          // detect LCNB
           skuMap.forEach(p => {
             const excess = p.cnBreakdown.filter(c => c.ssGap > 0);
             const short = p.cnBreakdown.filter(c => c.ssGap < 0);
@@ -215,63 +212,6 @@ export function InventorySSTab({ scale: s }: Props) {
             }
           });
           const skuRows = Array.from(skuMap.values()).sort((a, b) => Math.abs(b.totalSsGap) - Math.abs(a.totalSsGap));
-
-          if (drillSku) {
-            const skuRow = skuRows.find(r => `${r.item}|${r.variant}` === drillSku);
-            if (!skuRow) return null;
-            return (
-              <div className="space-y-3">
-                <button onClick={() => setDrillSku(null)} className="text-table-sm text-primary hover:underline flex items-center gap-1">
-                  <ChevronLeft className="h-3.5 w-3.5" /> Per SKU
-                </button>
-                <p className="text-caption text-text-3">
-                  Per SKU › <span className="text-text-1 font-medium">{skuRow.item} {skuRow.variant}</span>
-                  {" "}(SS gap <span className={cn("font-medium", skuRow.totalSsGap < 0 ? "text-danger" : "text-success")}>{skuRow.totalSsGap >= 0 ? "+" : ""}{skuRow.totalSsGap.toLocaleString()}</span>)
-                </p>
-                <div className="rounded-card border border-surface-3 bg-surface-2">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-surface-3 bg-surface-1/50">
-                          {["CN", "Tồn", "SS target", "SS gap", "HSTK", "Replenish", "Status"].map(h => (
-                            <th key={h} className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {skuRow.cnBreakdown.map((cb, i) => (
-                          <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", cb.ssGap < 0 && "bg-danger-bg/10")}>
-                            <td className="px-3 py-2.5 text-table font-medium text-text-1">{cb.cn}</td>
-                            <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{cb.ton.toLocaleString()}</td>
-                            <td className="px-3 py-2.5 text-table tabular-nums text-text-3">{cb.ssTarget.toLocaleString()}</td>
-                            <td className="px-3 py-2.5 text-table tabular-nums">
-                              <span className={cn("font-medium", cb.ssGap < 0 ? "text-danger" : "text-success")}>
-                                {cb.ssGap >= 0 ? "+" : ""}{cb.ssGap.toLocaleString()} {cb.ssGap < 0 ? "🔴" : "🟢"}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2.5">
-                              <span className={cn("text-table-sm font-medium tabular-nums", hstkColor(cb.hstk))}>{cb.hstk}d</span>
-                            </td>
-                            <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{cb.replenish.toLocaleString()} m²</td>
-                            <td className="px-3 py-2.5">
-                              <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
-                                cb.status === "THIẾU SS" ? "bg-danger-bg text-danger" : cb.status === "THỪA" ? "bg-info-bg text-info" : "bg-success-bg text-success"
-                              )}>{cb.status}</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                {skuRow.lcnb && (
-                  <div className="rounded-card border border-info/30 bg-info-bg p-3 text-table-sm">
-                    <span className="font-medium text-info">💡 LCNB opportunity: {skuRow.lcnb}</span>
-                  </div>
-                )}
-              </div>
-            );
-          }
 
           return (
             <div className="rounded-card border border-surface-3 bg-surface-2">
@@ -283,30 +223,58 @@ export function InventorySSTab({ scale: s }: Props) {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-surface-3 bg-surface-1/50">
-                      {["Item", "Variant", "Tồn total", "SS target", "SS gap", "Worst CN", "# CN gap", "LCNB", ""].map(h => (
+                      {["", "Item", "Variant", "Tồn total", "SS target", "SS gap", "Worst CN", "# CN gap", "LCNB"].map(h => (
                         <th key={h} className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {skuRows.map((r, i) => (
-                      <tr key={i} className={cn("border-b border-surface-3/50 cursor-pointer hover:bg-surface-1/30 transition-colors", r.totalSsGap < 0 && "bg-danger-bg/20")}
-                        onClick={() => setDrillSku(`${r.item}|${r.variant}`)}>
-                        <td className="px-3 py-3 text-table font-medium text-text-1">{r.item}</td>
-                        <td className="px-3 py-3 text-table text-text-2">{r.variant}</td>
-                        <td className="px-3 py-3 text-table tabular-nums text-text-1">{r.totalTon.toLocaleString()}</td>
-                        <td className="px-3 py-3 text-table tabular-nums text-text-3">{r.totalSsTarget.toLocaleString()}</td>
-                        <td className="px-3 py-3 text-table tabular-nums">
-                          <span className={cn("font-medium", r.totalSsGap < 0 ? "text-danger" : "text-success")}>
-                            {r.totalSsGap >= 0 ? "+" : ""}{r.totalSsGap.toLocaleString()} {r.totalSsGap < 0 ? "🔴" : "🟢"}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3"><WorstCnCell cnName={r.worstCn} hstk={r.worstHstk} /></td>
-                        <td className="px-3 py-3"><CnGapBadge count={r.cnGapCount} /></td>
-                        <td className="px-3 py-3">{r.lcnb ? <LcnbBadge text={r.lcnb} /> : <span className="text-text-3">—</span>}</td>
-                        <td className="px-3 py-3"><ChevronRight className="h-4 w-4 text-text-3" /></td>
-                      </tr>
-                    ))}
+                    {skuRows.map((r, i) => {
+                      const key = `${r.item}|${r.variant}`;
+                      const isExpanded = expandedSkuPivot.has(key);
+                      return (
+                        <>
+                          <tr key={key} className={cn("border-b border-surface-3/50 cursor-pointer hover:bg-surface-1/30 transition-colors", isExpanded && "bg-primary/5", r.totalSsGap < 0 && "bg-danger-bg/20")}
+                            onClick={() => setExpandedSkuPivot(prev => { const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next; })}>
+                            <td className="px-3 py-3 w-8 text-text-3">{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</td>
+                            <td className="px-3 py-3 text-table font-medium text-text-1">{r.item}</td>
+                            <td className="px-3 py-3 text-table text-text-2">{r.variant}</td>
+                            <td className="px-3 py-3 text-table tabular-nums text-text-1">{r.totalTon.toLocaleString()}</td>
+                            <td className="px-3 py-3 text-table tabular-nums text-text-3">{r.totalSsTarget.toLocaleString()}</td>
+                            <td className="px-3 py-3 text-table tabular-nums">
+                              <span className={cn("font-medium", r.totalSsGap < 0 ? "text-danger" : "text-success")}>
+                                {r.totalSsGap >= 0 ? "+" : ""}{r.totalSsGap.toLocaleString()} {r.totalSsGap < 0 ? "🔴" : "🟢"}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3"><WorstCnCell cnName={r.worstCn} hstk={r.worstHstk} /></td>
+                            <td className="px-3 py-3"><CnGapBadge count={r.cnGapCount} /></td>
+                            <td className="px-3 py-3">{r.lcnb ? <LcnbBadge text={r.lcnb} /> : <span className="text-text-3">—</span>}</td>
+                          </tr>
+                          {isExpanded && r.cnBreakdown.map((cb, ci) => (
+                            <tr key={`${key}-${cb.cn}`} className={cn("border-b border-surface-3/30 bg-surface-0 animate-fade-in", cb.ssGap < 0 && "bg-danger-bg/10")}>
+                              <td />
+                              <td colSpan={2} className="px-3 py-2 text-table text-text-2 pl-8">↳ {cb.cn}</td>
+                              <td className="px-3 py-2 text-table tabular-nums text-text-3">{cb.ton.toLocaleString()}</td>
+                              <td className="px-3 py-2 text-table tabular-nums text-text-3">{cb.ssTarget.toLocaleString()}</td>
+                              <td className="px-3 py-2 text-table tabular-nums">
+                                <span className={cn("font-medium", cb.ssGap < 0 ? "text-danger" : "text-success")}>
+                                  {cb.ssGap >= 0 ? "+" : ""}{cb.ssGap.toLocaleString()}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2">
+                                <span className={cn("text-table-sm tabular-nums", hstkColor(cb.hstk))}>{cb.hstk}d</span>
+                              </td>
+                              <td className="px-3 py-2 text-table tabular-nums text-text-3">{cb.replenish.toLocaleString()} m²</td>
+                              <td className="px-3 py-2">
+                                <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
+                                  cb.status === "THIẾU SS" ? "bg-danger-bg text-danger" : cb.status === "THỪA" ? "bg-info-bg text-info" : "bg-success-bg text-success"
+                                )}>{cb.status}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -314,8 +282,8 @@ export function InventorySSTab({ scale: s }: Props) {
           );
         }
 
-        /* ═══ CN-FIRST (existing) ═══ */
-        return !activeCn ? (
+        /* ═══ CN-FIRST with expandable SKU rows ═══ */
+        return (
         <div className="rounded-card border border-surface-3 bg-surface-2">
           <div className="px-5 py-3 border-b border-surface-3 flex items-center justify-between">
             <h3 className="font-display text-body font-semibold text-text-1">Tồn kho & SS per CN → per SKU</h3>
@@ -332,148 +300,104 @@ export function InventorySSTab({ scale: s }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {cnData.map((r) => (
-                  <tr key={r.cn}
-                    className={cn("border-b border-surface-3/50 cursor-pointer hover:bg-surface-1/30 transition-colors", r.ssGap < 0 && "bg-danger-bg/20")}
-                    onClick={() => r.skus.length > 0 && setDrillCn(r.cn)}
-                  >
-                    <td className="px-3 py-3 text-text-3">{r.skus.length > 0 && <ChevronRight className="h-4 w-4" />}</td>
-                    <td className="px-3 py-3 text-table font-medium text-text-1">{r.cn}</td>
-                    <td className="px-3 py-3 text-table tabular-nums text-text-1">{r.ton.toLocaleString()}</td>
-                    <td className="px-3 py-3 text-table tabular-nums text-text-2">{r.available.toLocaleString()}</td>
-                    <td className="px-3 py-3 text-table tabular-nums text-text-3">{r.ssTarget.toLocaleString()}</td>
-                    <td className="px-3 py-3 text-table tabular-nums text-text-2">{r.ssActual.toLocaleString()}</td>
-                    <td className="px-3 py-3 text-table tabular-nums">
-                      <span className={cn("font-medium", r.ssGap < 0 ? "text-danger" : "text-success")}>
-                        {r.ssGap >= 0 ? "+" : ""}{r.ssGap.toLocaleString()} {r.ssGap < 0 ? "🔴" : "🟢"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-14 h-2 rounded-full bg-surface-3 overflow-hidden">
-                          <div className={cn("h-full rounded-full", hstkBg(r.hstk))} style={{ width: `${Math.min((r.hstk / 20) * 100, 100)}%` }} />
-                        </div>
-                        <span className={cn("text-table-sm font-medium tabular-nums", hstkColor(r.hstk))}>{r.hstk}d</span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-table tabular-nums text-text-1">{r.replenish.toLocaleString()} m²</td>
-                    <td className="px-3 py-3">
-                      <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
-                        r.status === "THIẾU SS" ? "bg-danger-bg text-danger" :
-                        r.status === "THỪA" ? "bg-info-bg text-info" :
-                        "bg-success-bg text-success"
-                      )}>{r.status}</span>
-                    </td>
-                  </tr>
-                ))}
+                {cnData.map((r) => {
+                  const isExpanded = expandedCns.has(r.cn);
+                  return (
+                    <>
+                      <tr key={r.cn}
+                        className={cn("border-b border-surface-3/50 cursor-pointer hover:bg-surface-1/30 transition-colors", isExpanded && "bg-primary/5", r.ssGap < 0 && "bg-danger-bg/20")}
+                        onClick={() => r.skus.length > 0 && setExpandedCns(prev => { const next = new Set(prev); next.has(r.cn) ? next.delete(r.cn) : next.add(r.cn); return next; })}
+                      >
+                        <td className="px-3 py-3 text-text-3">{r.skus.length > 0 && (isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />)}</td>
+                        <td className="px-3 py-3 text-table font-medium text-text-1">{r.cn}</td>
+                        <td className="px-3 py-3 text-table tabular-nums text-text-1">{r.ton.toLocaleString()}</td>
+                        <td className="px-3 py-3 text-table tabular-nums text-text-2">{r.available.toLocaleString()}</td>
+                        <td className="px-3 py-3 text-table tabular-nums text-text-3">{r.ssTarget.toLocaleString()}</td>
+                        <td className="px-3 py-3 text-table tabular-nums text-text-2">{r.ssActual.toLocaleString()}</td>
+                        <td className="px-3 py-3 text-table tabular-nums">
+                          <span className={cn("font-medium", r.ssGap < 0 ? "text-danger" : "text-success")}>
+                            {r.ssGap >= 0 ? "+" : ""}{r.ssGap.toLocaleString()} {r.ssGap < 0 ? "🔴" : "🟢"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-14 h-2 rounded-full bg-surface-3 overflow-hidden">
+                              <div className={cn("h-full rounded-full", hstkBg(r.hstk))} style={{ width: `${Math.min((r.hstk / 20) * 100, 100)}%` }} />
+                            </div>
+                            <span className={cn("text-table-sm font-medium tabular-nums", hstkColor(r.hstk))}>{r.hstk}d</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-table tabular-nums text-text-1">{r.replenish.toLocaleString()} m²</td>
+                        <td className="px-3 py-3">
+                          <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
+                            r.status === "THIẾU SS" ? "bg-danger-bg text-danger" :
+                            r.status === "THỪA" ? "bg-info-bg text-info" :
+                            "bg-success-bg text-success"
+                          )}>{r.status}</span>
+                        </td>
+                      </tr>
+                      {isExpanded && r.skus.map((sk) => {
+                        const key = `${sk.item}-${sk.variant}`;
+                        const bridgeOpen = expandedBridge === key;
+                        return (
+                          <>
+                            <tr key={key} className={cn("border-b border-surface-3/30 bg-surface-0 animate-fade-in", sk.ssGap < 0 && "bg-danger-bg/10")}>
+                              <td />
+                              <td className="px-3 py-2 text-table text-text-2 pl-6">↳ {sk.item} {sk.variant}</td>
+                              <td className="px-3 py-2 text-table tabular-nums text-text-3">{sk.ton.toLocaleString()}</td>
+                              <td className="px-3 py-2 text-table tabular-nums text-text-3">{sk.pipeline > 0 ? sk.pipeline.toLocaleString() : "—"}</td>
+                              <td className="px-3 py-2 text-table tabular-nums text-text-3">{sk.ssTarget.toLocaleString()}</td>
+                              <td className="px-3 py-2 text-table tabular-nums text-text-3">{sk.demand.toLocaleString()}</td>
+                              <td className="px-3 py-2 text-table tabular-nums">
+                                <span className={cn("font-medium", sk.ssGap < 0 ? "text-danger" : "text-success")}>
+                                  {sk.ssGap >= 0 ? "+" : ""}{sk.ssGap.toLocaleString()}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2 text-table tabular-nums text-text-3">{sk.netReq > 0 ? sk.netReq.toLocaleString() : "—"}</td>
+                              <td className="px-3 py-2 text-table tabular-nums font-bold text-text-1">{sk.order > 0 ? sk.order.toLocaleString() : "—"}</td>
+                              <td className="px-3 py-2">
+                                {sk.order > 0 && (
+                                  <button onClick={(e) => { e.stopPropagation(); setExpandedBridge(bridgeOpen ? null : key); }}
+                                    className="text-primary text-table-sm font-medium hover:underline flex items-center gap-0.5">
+                                    Bridge {bridgeOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                            {bridgeOpen && (
+                              <tr key={`${key}-bridge`}>
+                                <td colSpan={10} className="px-4 py-3 bg-surface-0">
+                                  <DemandToOrderBridge
+                                    item={sk.item} variant={sk.variant} cn={r.cn}
+                                    steps={buildFullBridgeSteps({
+                                      demand: sk.demand, fcPhased: sk.fcPhased, cnAdj: sk.cnAdj, po: sk.po, overlap: sk.overlap,
+                                      onHand: sk.onHand, pipeline: sk.pipeline, pipelineSource: sk.pipelineSource,
+                                      ssTarget: sk.ssTarget, zVal: sk.zVal, sigma: sk.sigma, lt: sk.lt,
+                                      moq: sk.moq, moqNm: sk.moqNm, finalOrder: sk.order, rpoNum: sk.rpoNum,
+                                    })}
+                                    footer={{
+                                      demandQty: sk.demand, orderQty: sk.order,
+                                      reasons: [
+                                        { label: `+${sk.ssTarget} SS buffer`, value: `dự phòng forecast sai` },
+                                        sk.pipeline > 0 ? { label: `−${sk.pipeline} pipeline`, value: `hàng đang về` } : null,
+                                        sk.moq > 0 ? { label: `MOQ round ${sk.moqNm}`, value: `min ${sk.moq.toLocaleString()}/container` } : null,
+                                      ].filter(Boolean) as { label: string; value: string }[]
+                                    }}
+                                  />
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })}
+                    </>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
-      ) : (
-        /* ═══ Lớp 2: per SKU + Bridge ═══ */
-        <div className="space-y-3">
-          <button onClick={() => { setDrillCn(null); setExpandedBridge(null); }} className="text-table-sm text-primary hover:underline flex items-center gap-1">
-            <ChevronLeft className="h-3.5 w-3.5" /> Per CN
-          </button>
-          <p className="text-caption text-text-3">
-            Per CN › <span className="text-text-1 font-medium">{activeCn.cn}</span>
-            {" "}(SS gap <span className={cn("font-medium", activeCn.ssGap < 0 ? "text-danger" : "text-success")}>{activeCn.ssGap >= 0 ? "+" : ""}{activeCn.ssGap.toLocaleString()}</span>, HSTK {activeCn.hstk}d)
-          </p>
-          <div className="rounded-card border border-surface-3 bg-surface-2">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-surface-3 bg-surface-1/50">
-                    {["Item", "Variant", "Demand", "Tồn", "Pipeline", "SS target", "SS gap", "Net req", "MOQ", "Order", "Status", ""].map((h) => (
-                      <th key={h} className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {activeCn.skus.map((sk) => {
-                    const key = `${sk.item}-${sk.variant}`;
-                    const bridgeOpen = expandedBridge === key;
-                    return (
-                      <>
-                        <tr key={key} className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", sk.ssGap < 0 && "bg-danger-bg/10")}>
-                          <td className="px-3 py-2.5 text-table font-medium text-text-1">{sk.item}</td>
-                          <td className="px-3 py-2.5 text-table text-text-2">{sk.variant}</td>
-                          <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{sk.demand.toLocaleString()}</td>
-                          <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{sk.ton.toLocaleString()}</td>
-                          <td className="px-3 py-2.5 text-table tabular-nums text-text-2">{sk.pipeline > 0 ? sk.pipeline.toLocaleString() : "—"}</td>
-                          <td className="px-3 py-2.5 text-table tabular-nums text-text-3">{sk.ssTarget.toLocaleString()}</td>
-                          <td className="px-3 py-2.5 text-table tabular-nums">
-                            <span className={cn("font-medium", sk.ssGap < 0 ? "text-danger" : "text-success")}>
-                              {sk.ssGap >= 0 ? "+" : ""}{sk.ssGap.toLocaleString()} {sk.ssGap < 0 ? "🔴" : "🟢"}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{sk.netReq > 0 ? sk.netReq.toLocaleString() : "—"}</td>
-                          <td className="px-3 py-2.5 text-table tabular-nums text-text-3">{sk.moq > 0 ? sk.moq.toLocaleString() : "—"}</td>
-                          <td className="px-3 py-2.5 text-table tabular-nums font-bold text-text-1">{sk.order > 0 ? sk.order.toLocaleString() : "—"}</td>
-                          <td className="px-3 py-2.5">
-                            <span className={cn("text-caption font-medium",
-                              sk.status.includes("draft") ? "text-warning" :
-                              sk.status.includes("Pending") ? "text-info" :
-                              sk.status.includes("✅") ? "text-success" : "text-text-2"
-                            )}>{sk.status}</span>
-                          </td>
-                          <td className="px-3 py-2.5">
-                            {sk.order > 0 && (
-                              <button
-                                onClick={() => setExpandedBridge(bridgeOpen ? null : key)}
-                                className="text-primary text-table-sm font-medium hover:underline flex items-center gap-0.5"
-                              >
-                                Bridge {bridgeOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                        {bridgeOpen && (
-                          <tr key={`${key}-bridge`}>
-                            <td colSpan={12} className="px-4 py-3 bg-surface-0">
-                              <DemandToOrderBridge
-                                item={sk.item}
-                                variant={sk.variant}
-                                cn={activeCn.cn}
-                                steps={buildFullBridgeSteps({
-                                  demand: sk.demand, fcPhased: sk.fcPhased, cnAdj: sk.cnAdj, po: sk.po, overlap: sk.overlap,
-                                  onHand: sk.onHand, pipeline: sk.pipeline, pipelineSource: sk.pipelineSource,
-                                  ssTarget: sk.ssTarget, zVal: sk.zVal, sigma: sk.sigma, lt: sk.lt,
-                                  moq: sk.moq, moqNm: sk.moqNm, finalOrder: sk.order, rpoNum: sk.rpoNum,
-                                })}
-                                footer={{
-                                  demandQty: sk.demand, orderQty: sk.order,
-                                  reasons: [
-                                    { label: `+${sk.ssTarget} SS buffer`, value: `dự phòng forecast sai` },
-                                    sk.pipeline > 0 ? { label: `−${sk.pipeline} pipeline`, value: `hàng đang về` } : null,
-                                    sk.moq > 0 ? { label: `MOQ round ${sk.moqNm}`, value: `min ${sk.moq.toLocaleString()}/container` } : null,
-                                  ].filter(Boolean) as { label: string; value: string }[]
-                                }}
-                              />
-                            </td>
-                          </tr>
-                        )}
-                      </>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            {/* Summary strip */}
-            <div className="px-5 py-3 border-t border-surface-3 bg-surface-1/30 text-table-sm text-text-2">
-              <span className="font-medium text-text-1">{activeCn.cn}:</span>
-              {" "}{activeCn.skus.filter(sk => sk.order > 0).length}/{activeCn.skus.length} SKU cần đặt NM.
-              {" "}Tổng order: <span className="font-bold text-text-1">{activeCn.skus.reduce((a, sk) => a + sk.order, 0).toLocaleString()}m²</span>.
-              {" "}{activeCn.skus.filter(sk => sk.ssGap < 0).length > 0 && (
-                <span className="text-danger font-medium">
-                  {activeCn.skus.filter(sk => sk.ssGap < 0).length} SKU thiếu SS ({activeCn.skus.filter(sk => sk.ssGap < 0).map(sk => `${sk.item} ${sk.variant}`).join(", ")}).
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      );
+        );
       })()}
 
       {/* ═══ SECTION C: SS Management ═══ */}
