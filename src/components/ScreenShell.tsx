@@ -33,23 +33,29 @@ export function ScreenHeader({ title, subtitle, actions }: ScreenHeaderProps) {
   );
 }
 
-const typeConfig: Record<LogEventType, { icon: React.ElementType; color: string; label: string }> = {
-  workflow: { icon: GitBranch, color: "text-primary", label: "Workflow" },
-  data: { icon: Database, color: "text-info", label: "Dữ liệu" },
-  approval: { icon: Shield, color: "text-success", label: "Phê duyệt" },
-  system: { icon: Cpu, color: "text-warning", label: "Hệ thống" },
-};
+function useTypeConfig() {
+  const { t } = useI18n();
+  return {
+    workflow: { icon: GitBranch, color: "text-primary", label: t("log.workflow") },
+    data: { icon: Database, color: "text-info", label: t("log.data") },
+    approval: { icon: Shield, color: "text-success", label: t("log.approval") },
+    system: { icon: Cpu, color: "text-warning", label: t("log.system") },
+  } as Record<LogEventType, { icon: React.ElementType; color: string; label: string }>;
+}
 
-function formatTime(ts: number) {
-  const now = Date.now();
-  const diff = now - ts;
-  if (diff < 60_000) return "Vừa xong";
-  if (diff < 3600_000) return `${Math.floor(diff / 60_000)} phút trước`;
-  const d = new Date(ts);
-  const hours = String(d.getHours()).padStart(2, "0");
-  const mins = String(d.getMinutes()).padStart(2, "0");
-  if (diff < 86400_000) return `${hours}:${mins} · Hôm nay`;
-  return `${hours}:${mins} · ${d.toLocaleDateString("vi-VN")}`;
+function useFormatTime() {
+  const { t } = useI18n();
+  return (ts: number) => {
+    const now = Date.now();
+    const diff = now - ts;
+    if (diff < 60_000) return t("log.justNow");
+    if (diff < 3600_000) return `${Math.floor(diff / 60_000)} ${t("log.minutesAgo")}`;
+    const d = new Date(ts);
+    const hours = String(d.getHours()).padStart(2, "0");
+    const mins = String(d.getMinutes()).padStart(2, "0");
+    if (diff < 86400_000) return `${hours}:${mins} · ${t("log.today")}`;
+    return `${hours}:${mins} · ${d.toLocaleDateString("vi-VN")}`;
+  };
 }
 
 function LogEntryCard({ entry }: { entry: LogEntry }) {
