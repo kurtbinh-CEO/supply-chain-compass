@@ -206,6 +206,15 @@ export function NMSupplyView() {
 
   return (
     <div className="space-y-5 animate-fade-in">
+      {/* Version Conflict */}
+      {supplyConflict && (
+        <VersionConflictDialog
+          conflict={supplyConflict}
+          onReload={clearSupplyConflict}
+          onForceUpdate={() => { clearSupplyConflict(); toast.success("Đã ghi đè. Audit logged."); }}
+          onClose={clearSupplyConflict}
+        />
+      )}
       {/* Header actions */}
       <div className="flex items-center gap-3">
         <button className="rounded-button bg-gradient-primary text-primary-foreground px-4 py-2 text-table-sm font-medium flex items-center gap-2">

@@ -173,6 +173,16 @@ export default function MasterDataPage() {
   return (
     <AppLayout>
       <ScreenHeader title="Master Data" subtitle="Dữ liệu nền tảng" />
+
+      {/* Version Conflict */}
+      {mdConflict && (
+        <VersionConflictDialog
+          conflict={mdConflict}
+          onReload={clearMdConflict}
+          onForceUpdate={() => { clearMdConflict(); toast.success("Đã ghi đè. Audit logged."); }}
+          onClose={clearMdConflict}
+        />
+      )}
       <Tabs defaultValue="items">
         <TabsList className="bg-surface-1 border border-surface-3 mb-4">
           {tabDefs.map(t => (
