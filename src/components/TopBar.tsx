@@ -68,7 +68,7 @@ function TenantDropdown({ tenant, setTenant, tenants }: { tenant: string; setTen
           {tenants.map(t => (
             <button
               key={t}
-              onClick={() => { setTenant(t); setOpen(false); }}
+              onClick={() => { setTenant(t as TenantName); setOpen(false); }}
               className={`flex items-center gap-2 w-full px-3 py-2 text-table-sm transition-colors ${
                 t === tenant ? "bg-primary/5 text-primary font-medium" : "text-text-2 hover:bg-surface-3"
               }`}
