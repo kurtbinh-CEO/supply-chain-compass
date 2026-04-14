@@ -41,6 +41,9 @@
     backdrop-filter: blur(12px);
     background: rgba(247, 248, 252, 0.88);
   }
+  .dark .frosted-glass {
+    background: rgba(15, 23, 42, 0.88);
+  }
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }

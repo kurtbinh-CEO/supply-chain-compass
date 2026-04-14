@@ -11,68 +11,69 @@ import { useWorkflow } from "@/components/WorkflowContext";
 import { useWorkspace } from "@/components/WorkspaceContext";
 import { useRbac, UserRole } from "@/components/RbacContext";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useI18n } from "@/components/i18n/I18nContext";
 
 interface NavItem {
-  title: string;
+  titleKey: string;
   icon: React.ElementType;
   url: string;
-  roles?: UserRole[]; // if undefined, visible to all
+  roles?: UserRole[];
 }
 
 interface NavGroup {
-  label: string;
+  labelKey: string;
   items: NavItem[];
 }
 
 const navGroups: NavGroup[] = [
   {
-    label: "Nơi làm việc",
+    labelKey: "nav.workplace",
     items: [
-      { title: "Workspace", icon: ClipboardCheck, url: "/workspace" },
+      { titleKey: "nav.workspace", icon: ClipboardCheck, url: "/workspace" },
     ],
   },
   {
-    label: "Giám sát",
+    labelKey: "nav.monitoring",
     items: [
-      { title: "Monitoring", icon: Activity, url: "/monitoring" },
+      { titleKey: "nav.monitoringItem", icon: Activity, url: "/monitoring" },
     ],
   },
   {
-    label: "Kế hoạch tháng",
+    labelKey: "nav.monthlyPlan",
     items: [
-      { title: "Demand Review", icon: BarChart3, url: "/demand" },
-      { title: "S&OP Consensus", icon: Handshake, url: "/sop" },
-      { title: "Hub & Commitment", icon: Boxes, url: "/hub" },
+      { titleKey: "nav.demandReview", icon: BarChart3, url: "/demand" },
+      { titleKey: "nav.sopConsensus", icon: Handshake, url: "/sop" },
+      { titleKey: "nav.hubCommitment", icon: Boxes, url: "/hub" },
     ],
   },
   {
-    label: "Vận hành ngày",
+    labelKey: "nav.dailyOps",
     items: [
-      { title: "NM Supply", icon: Package, url: "/supply" },
-      { title: "Demand tuần", icon: CalendarDays, url: "/demand-weekly" },
-      { title: "DRP & Phân bổ", icon: GitBranch, url: "/drp" },
-      { title: "Orders", icon: ShoppingCart, url: "/orders" },
+      { titleKey: "nav.nmSupply", icon: Package, url: "/supply" },
+      { titleKey: "nav.demandWeekly", icon: CalendarDays, url: "/demand-weekly" },
+      { titleKey: "nav.drpAllocation", icon: GitBranch, url: "/drp" },
+      { titleKey: "nav.orders", icon: ShoppingCart, url: "/orders" },
     ],
   },
   {
-    label: "Đối tác",
+    labelKey: "nav.partners",
     items: [
-      { title: "CN Portal", icon: Building, url: "/cn-portal", roles: ["CN_MANAGER", "SC_MANAGER", "SALES"] },
-      { title: "Supplier Portal", icon: Users, url: "/supplier-portal", roles: ["SC_MANAGER"] },
+      { titleKey: "nav.cnPortal", icon: Building, url: "/cn-portal", roles: ["CN_MANAGER", "SC_MANAGER", "SALES"] },
+      { titleKey: "nav.supplierPortal", icon: Users, url: "/supplier-portal", roles: ["SC_MANAGER"] },
     ],
   },
   {
-    label: "Cấu hình",
+    labelKey: "nav.config",
     items: [
-      { title: "Master Data", icon: Database, url: "/master-data" },
-      { title: "Reports", icon: FileBarChart, url: "/reports" },
-      { title: "Config", icon: Settings, url: "/config", roles: ["SC_MANAGER"] },
+      { titleKey: "nav.masterData", icon: Database, url: "/master-data" },
+      { titleKey: "nav.reports", icon: FileBarChart, url: "/reports" },
+      { titleKey: "nav.configItem", icon: Settings, url: "/config", roles: ["SC_MANAGER"] },
     ],
   },
   {
-    label: "Hỗ trợ",
+    labelKey: "nav.support",
     items: [
-      { title: "Logic vận hành", icon: BookOpen, url: "/logic" },
+      { titleKey: "nav.logicOps", icon: BookOpen, url: "/logic" },
     ],
   },
 ];
@@ -84,6 +85,7 @@ export function AppSidebar() {
   const { user } = useRbac();
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const handleStartWorkflow = (type: "daily" | "monthly") => {
     startWorkflow(type);
@@ -112,17 +114,16 @@ export function AppSidebar() {
       {/* Nav groups */}
       <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
         {navGroups.map((group) => {
-          // Filter items by role
           const visibleItems = group.items.filter((item) =>
             !item.roles || item.roles.includes(user.role)
           );
           if (visibleItems.length === 0) return null;
 
           return (
-            <div key={group.label}>
+            <div key={group.labelKey}>
               {!collapsed && (
                 <p className="px-3 mb-1.5 font-display text-caption font-semibold uppercase tracking-wider text-text-3">
-                  {group.label}
+                  {t(group.labelKey)}
                 </p>
               )}
               <div className="space-y-0.5">
@@ -146,7 +147,7 @@ export function AppSidebar() {
                       <item.icon className="h-[18px] w-[18px] shrink-0" />
                       {!collapsed && (
                         <>
-                          <span className="flex-1 truncate">{item.title}</span>
+                          <span className="flex-1 truncate">{t(item.titleKey)}</span>
                           {item.url === "/workspace" && pendingCount > 0 && (
                             <span className="rounded-full bg-danger-bg text-danger text-caption font-semibold px-1.5 py-0.5 min-w-[20px] text-center">
                               {pendingCount}
@@ -172,14 +173,14 @@ export function AppSidebar() {
               className="flex w-full items-center gap-2 rounded-button px-3 py-2 text-body text-primary font-medium hover:bg-info-bg transition-colors"
             >
               <Play className="h-4 w-4" />
-              <span>Quy trình ngày</span>
+              <span>{t("workflow.daily")}</span>
             </button>
             <button
               onClick={() => handleStartWorkflow("monthly")}
               className="flex w-full items-center gap-2 rounded-button px-3 py-2 text-body text-primary font-medium hover:bg-info-bg transition-colors"
             >
               <Play className="h-4 w-4" />
-              <span>Quy trình tháng</span>
+              <span>{t("workflow.monthly")}</span>
             </button>
           </div>
         ) : (
