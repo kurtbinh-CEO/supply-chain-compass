@@ -129,9 +129,16 @@ export function ReconciliationTab({ scale }: Props) {
                       <td className="px-4 py-2.5 tabular-nums text-text-2">{r.released.toLocaleString()} ({r.releasedRpos} RPOs)</td>
                       <td className="px-4 py-2.5 tabular-nums text-text-2">{r.delivered.toLocaleString()} ({r.deliveredAsns} ASNs)</td>
                       <td className="px-4 py-2.5">
-                        <span className={cn("tabular-nums font-bold", honoringPct >= 80 ? "text-success" : honoringPct >= 60 ? "text-warning" : "text-danger")}>
-                          {honoringPct}%
+                        <span className="inline-flex items-center gap-1">
+                          <span className={cn("tabular-nums font-bold", honoringPct >= 80 ? "text-success" : honoringPct >= 60 ? "text-warning" : "text-danger")}>
+                            {honoringPct}%
+                          </span>
+                          <LogicTooltip
+                            title={`${r.nm} Th5 Honoring`}
+                            content={`${r.nm} Th5: committed ${r.committed.toLocaleString()}. Delivered so far: ${r.delivered.toLocaleString()} (${honoringPct}%).\n${r.releasedRpos} RPO tạo, ${r.deliveredAsns} shipped/received.\nETA remaining: ${(r.released - r.delivered).toLocaleString()}m²\nProjected honoring: ${Math.min(100, Math.round((r.delivered + (r.released - r.delivered) * 0.8) / r.committed * 100))}% nếu NM giao đúng ETA.`}
+                          />
                         </span>
+                      </td>
                       </td>
                       <td className="px-4 py-2.5">
                         <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium",
