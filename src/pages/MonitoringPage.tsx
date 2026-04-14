@@ -712,6 +712,10 @@ export default function MonitoringPage() {
           </CollapsibleSection>
         </div>
       )}
+
+      {/* ═══ TAB 4: Activity Log ═══ */}
+      {activeTab === "activity" && <ActivityLogTab />}
+
       <ScreenFooter actionCount={11} />
     </AppLayout>
   );
