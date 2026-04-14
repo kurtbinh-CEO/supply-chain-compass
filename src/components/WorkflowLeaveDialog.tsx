@@ -1,10 +1,12 @@
 import { useWorkflow } from "@/components/WorkflowContext";
 import { useNavigate } from "react-router-dom";
 import { AlertTriangle, ArrowLeft, ArrowRight } from "lucide-react";
+import { useI18n } from "@/components/i18n/I18nContext";
 
 export function WorkflowLeaveDialog() {
   const { showLeaveConfirm, pendingNavigation, confirmLeave, cancelLeave, workflowType, currentStepIndex, steps, completedSteps } = useWorkflow();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   if (!showLeaveConfirm) return null;
 
@@ -23,24 +25,21 @@ export function WorkflowLeaveDialog() {
       <div className="fixed inset-0 bg-text-1/40 z-50 animate-fade-in" onClick={cancelLeave} />
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[440px] rounded-card bg-surface-2 border border-surface-3 shadow-xl animate-scale-in">
         <div className="p-6 space-y-4">
-          {/* Icon */}
           <div className={`flex items-center justify-center h-12 w-12 rounded-full ${isDaily ? "bg-primary/10" : "bg-info/10"}`}>
             <AlertTriangle className={`h-6 w-6 ${isDaily ? "text-primary" : "text-info"}`} />
           </div>
 
-          {/* Title */}
           <div>
-            <h3 className="font-display text-section-header text-text-1">Rời khỏi phiên làm việc?</h3>
+            <h3 className="font-display text-section-header text-text-1">{t("wf.leaveTitle")}</h3>
             <p className="text-table text-text-2 mt-1">
-              Bạn đang ở bước <strong>{currentStepIndex + 1}/{steps.length}</strong> của workflow{" "}
+              {t("wf.leaveDesc")} <strong>{currentStepIndex + 1}/{steps.length}</strong> {t("wf.leaveOf")}{" "}
               <span className={`font-semibold ${isDaily ? "text-primary" : "text-info"}`}>
-                {isDaily ? "Vận hành ngày" : "Kế hoạch tháng"}
+                {isDaily ? t("wf.dailyOps") : t("wf.monthlyPlan")}
               </span>.
-              Còn <strong>{remaining} bước</strong> chưa hoàn tất.
+              {" "}<strong>{remaining}</strong> {t("wf.leaveRemaining")}
             </p>
           </div>
 
-          {/* Current progress */}
           <div className="flex items-center gap-1.5">
             {steps.map((step, i) => (
               <div
@@ -56,7 +55,6 @@ export function WorkflowLeaveDialog() {
             ))}
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-3 pt-2">
             <button
               onClick={cancelLeave}
@@ -67,19 +65,19 @@ export function WorkflowLeaveDialog() {
               }`}
             >
               <ArrowLeft className="h-4 w-4" />
-              Quay lại workflow
+              {t("wf.backToWorkflow")}
             </button>
             <button
               onClick={handleConfirm}
               className="flex-1 inline-flex items-center justify-center gap-2 rounded-button border border-surface-3 bg-surface-2 px-4 py-2.5 text-table font-medium text-text-2 hover:bg-surface-3 transition-colors"
             >
-              Rời đi
+              {t("wf.leave")}
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
 
           <p className="text-caption text-text-3 text-center">
-            Workflow sẽ vẫn hoạt động. Bạn có thể quay lại từ sidebar.
+            {t("wf.leaveNote")}
           </p>
         </div>
       </div>

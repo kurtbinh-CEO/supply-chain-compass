@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { X, ChevronRight, Check, Lock, Clock, Zap, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
+import { useI18n } from "@/components/i18n/I18nContext";
 
 function SessionTimer({ startTime }: { startTime: number }) {
   const [elapsed, setElapsed] = useState(0);
@@ -26,6 +27,7 @@ export function WorkflowBar() {
     sessionStartTime, nextStep, closeWorkflow, goToStep, isStepUnlocked,
   } = useWorkflow();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   if (!isBarVisible) return null;
 
@@ -57,8 +59,8 @@ export function WorkflowBar() {
               <Check className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-table font-semibold text-success">Phiên làm việc hoàn tất</p>
-              <p className="text-caption text-text-3">{steps.length}/{steps.length} bước · Tất cả đã xong</p>
+              <p className="text-table font-semibold text-success">{t("wf.sessionComplete")}</p>
+              <p className="text-caption text-text-3">{steps.length}/{steps.length} · {t("wf.allDone")}</p>
             </div>
           </div>
           <button onClick={closeWorkflow} className="text-text-3 hover:text-text-1 transition-colors p-1.5 rounded-button hover:bg-surface-3">
@@ -71,7 +73,6 @@ export function WorkflowBar() {
 
   return (
     <div className="relative border-b border-surface-3 bg-surface-1">
-      {/* Progress bar */}
       <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-surface-3">
         <div
           className={cn("h-full transition-all duration-500 ease-out", isDaily ? "bg-primary" : "bg-info")}
@@ -80,16 +81,14 @@ export function WorkflowBar() {
       </div>
 
       <div className="flex items-center gap-4 px-6 py-2.5">
-        {/* Workflow type badge */}
         <div className={cn(
           "flex items-center gap-1.5 rounded-full px-3 py-1 text-caption font-semibold shrink-0",
           isDaily ? "bg-primary/10 text-primary" : "bg-info/10 text-info"
         )}>
           {isDaily ? <Zap className="h-3 w-3" /> : <CalendarDays className="h-3 w-3" />}
-          {isDaily ? "Vận hành ngày" : "Kế hoạch tháng"}
+          {isDaily ? t("wf.dailyOps") : t("wf.monthlyPlan")}
         </div>
 
-        {/* Step stepper */}
         <div className="flex items-center gap-0.5 flex-1">
           {steps.map((step, i) => {
             const isDone = step.status === "done";
@@ -117,7 +116,6 @@ export function WorkflowBar() {
                     isLocked && "text-text-3/50 cursor-not-allowed opacity-60",
                   )}
                 >
-                  {/* Step indicator */}
                   <span className={cn(
                     "flex items-center justify-center h-5 w-5 rounded-full text-caption font-bold shrink-0 transition-all",
                     isDone && "bg-success text-white",
@@ -128,10 +126,9 @@ export function WorkflowBar() {
                     {isDone ? <Check className="h-3 w-3" /> : isLocked ? <Lock className="h-2.5 w-2.5" /> : i + 1}
                   </span>
                   <span className="hidden xl:inline whitespace-nowrap">{step.label}</span>
-                  {/* Tooltip for locked */}
                   {isLocked && (
                     <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-text-1 text-surface-0 text-caption px-2 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                      Hoàn thành bước {i} trước
+                      {t("wf.completeBefore").replace("{n}", String(i))}
                     </span>
                   )}
                 </button>
@@ -140,15 +137,9 @@ export function WorkflowBar() {
           })}
         </div>
 
-        {/* Session info */}
         <div className="flex items-center gap-3 shrink-0">
           {sessionStartTime && <SessionTimer startTime={sessionStartTime} />}
-
-          <span className="text-caption text-text-3">
-            {completedSteps.length}/{steps.length}
-          </span>
-
-          {/* Next / Complete button */}
+          <span className="text-caption text-text-3">{completedSteps.length}/{steps.length}</span>
           <button
             onClick={handleNext}
             className={cn(
@@ -159,13 +150,11 @@ export function WorkflowBar() {
             )}
           >
             {currentStepIndex < steps.length - 1 ? (
-              <>Hoàn tất bước <ChevronRight className="h-3 w-3" /></>
+              <>{t("wf.completeStep")} <ChevronRight className="h-3 w-3" /></>
             ) : (
-              <>Hoàn tất phiên <Check className="h-3 w-3" /></>
+              <>{t("wf.completeSession")} <Check className="h-3 w-3" /></>
             )}
           </button>
-
-          {/* Close */}
           <button onClick={closeWorkflow} className="text-text-3 hover:text-text-1 transition-colors p-1.5 rounded-button hover:bg-surface-3">
             <X className="h-4 w-4" />
           </button>
