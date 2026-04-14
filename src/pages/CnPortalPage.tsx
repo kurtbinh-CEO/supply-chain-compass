@@ -497,6 +497,11 @@ export default function CnPortalPage() {
                 {allMsgs.length}
               </span>
             )}
+            {tab.key === "history" && auditEntries.length > 0 && (
+              <span className="ml-1.5 rounded-full bg-info/10 text-info text-[10px] font-bold px-1.5 py-0.5">
+                {auditEntries.length}
+              </span>
+            )}
             {activeTab === tab.key && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t" />}
           </button>
         ))}
