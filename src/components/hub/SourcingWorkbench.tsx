@@ -686,11 +686,9 @@ export function SourcingWorkbench({ scale, objective: externalObjective, onObjec
   const currentSku = selectedSku ? skus.find(s => s.item === selectedSku.item && s.variant === selectedSku.variant) : null;
   const currentRankings = useMemo(() => selectedSku ? getRanking(selectedSku.item, selectedSku.variant, currentSku?.eligibleNms || [], objective) : [], [selectedSku, currentSku, objective]);
 
-  // Auto-recalculate allocations when objective changes
-  const handleObjectiveChange = (newObj: Objective) => {
-    setInternalObjective(newObj);
-    externalOnChange?.(newObj);
-    // Recompute allocations for all sourcing SKUs based on new rankings
+  const prevObjectiveRef = useRef(objective);
+
+  const recalcAllocations = (newObj: Objective) => {
     const needSourcing = skus.filter(s => s.urgency !== "OK");
     const newAllocations: Record<string, Allocation[]> = {};
     for (const sk of needSourcing) {
@@ -710,6 +708,23 @@ export function SourcingWorkbench({ scale, objective: externalObjective, onObjec
       }
     }
     setAllocations(newAllocations);
+  };
+
+  // React to external objective changes (header dropdown)
+  useEffect(() => {
+    if (objective !== prevObjectiveRef.current) {
+      prevObjectiveRef.current = objective;
+      recalcAllocations(objective);
+      toast.info(`Ranking re-sorted theo ${OBJECTIVE_LABELS[objective]}`, { description: "Bước 2 & 3 đã tự động recalculate." });
+    }
+  }, [objective]);
+
+  // Auto-recalculate allocations when objective changes (from Step2 dropdown)
+  const handleObjectiveChange = (newObj: Objective) => {
+    prevObjectiveRef.current = newObj;
+    setInternalObjective(newObj);
+    externalOnChange?.(newObj);
+    recalcAllocations(newObj);
     toast.info(`Ranking re-sorted theo ${OBJECTIVE_LABELS[newObj]}`, { description: "Bước 2 & 3 đã tự động recalculate." });
   };
 
