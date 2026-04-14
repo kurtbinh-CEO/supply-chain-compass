@@ -40,3 +40,30 @@
   --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
   --shadow-card-hover: 0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
 }
+
+/* ===== Dark Mode ===== */
+.dark {
+  --color-primary: #3b82f6;
+  --color-primary-dark: #2563eb;
+
+  --color-surface-0: #0f172a;
+  --color-surface-1: #1e293b;
+  --color-surface-2: #1e293b;
+  --color-surface-3: #334155;
+
+  --color-text-1: #f1f5f9;
+  --color-text-2: #94a3b8;
+  --color-text-3: #64748b;
+
+  --color-success-text: #34d399;
+  --color-success-bg: #064e3b;
+  --color-warning-text: #fbbf24;
+  --color-warning-bg: #451a03;
+  --color-danger-text: #f87171;
+  --color-danger-bg: #450a0a;
+  --color-info-text: #60a5fa;
+  --color-info-bg: #172554;
+
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.2), 0 1px 2px -1px rgba(0, 0, 0, 0.15);
+  --shadow-card-hover: 0 4px 12px -2px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+}

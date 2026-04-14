@@ -9,6 +9,8 @@ import { WorkspaceProvider } from "@/components/WorkspaceContext";
 import { TenantProvider } from "@/components/TenantContext";
 import { RbacProvider } from "@/components/RbacContext";
 import { SafetyStockProvider } from "@/components/SafetyStockContext";
+import { ThemeProvider } from "@/components/ThemeContext";
+import { I18nProvider } from "@/components/i18n/I18nContext";
 import Index from "./pages/Index";
 import DesignTest from "./pages/DesignTest";
 import WorkspacePage from "./pages/WorkspacePage";
@@ -33,6 +35,8 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
+    <I18nProvider>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -72,6 +76,8 @@ const App = () => (
         </SidebarProvider>
       </BrowserRouter>
     </TooltipProvider>
+    </I18nProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

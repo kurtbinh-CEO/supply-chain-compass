@@ -1,28 +1,41 @@
-import { Search, Bell, ChevronRight } from "lucide-react";
+import { Search, Bell, ChevronRight, Sun, Moon, Monitor, Globe } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useTenant, TenantName } from "@/components/TenantContext";
+import { useThemeMode } from "@/components/ThemeContext";
+import { useI18n } from "@/components/i18n/I18nContext";
+import type { Locale } from "@/components/i18n/translations";
 
-const routeNames: Record<string, string> = {
-  "/workspace": "Workspace",
-  "/monitoring": "Monitoring",
-  "/demand": "Demand Review",
-  "/sop": "S&OP Consensus",
-  "/hub": "Hub & Commitment",
-  "/supply": "NM Supply Sync",
-  "/demand-weekly": "Demand Weekly",
-  "/drp": "DRP",
-  "/allocation": "Allocation",
-  "/orders": "Orders & Tracking",
-  "/supplier-portal": "Supplier Portal",
-  "/master-data": "Master Data",
-  "/reports": "Reports",
-  "/config": "Config",
+const routeKeys: Record<string, string> = {
+  "/workspace": "route.workspace",
+  "/monitoring": "route.monitoring",
+  "/demand": "route.demand",
+  "/sop": "route.sop",
+  "/hub": "route.hub",
+  "/supply": "route.supply",
+  "/demand-weekly": "route.demandWeekly",
+  "/drp": "route.drp",
+  "/allocation": "route.allocation",
+  "/orders": "route.orders",
+  "/supplier-portal": "route.supplierPortal",
+  "/master-data": "route.masterData",
+  "/reports": "route.reports",
+  "/config": "route.config",
 };
 
 export function TopBar() {
   const location = useLocation();
-  const pageName = routeNames[location.pathname] || "Tổng quan";
   const { tenant, setTenant, tenants } = useTenant();
+  const { theme, setTheme } = useThemeMode();
+  const { locale, setLocale, t } = useI18n();
+
+  const routeKey = routeKeys[location.pathname];
+  const pageName = routeKey ? t(routeKey) : t("route.overview");
+
+  const themeOptions: { value: "light" | "dark" | "system"; icon: React.ElementType; label: string }[] = [
+    { value: "light", icon: Sun, label: t("theme.light") },
+    { value: "dark", icon: Moon, label: t("theme.dark") },
+    { value: "system", icon: Monitor, label: t("theme.system") },
+  ];
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center border-b border-surface-3 bg-surface-2 px-6 gap-4">
@@ -53,13 +66,41 @@ export function TopBar() {
       {/* Search */}
       <button className="flex items-center gap-2 rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-table-sm text-text-3 hover:border-primary/40 transition-colors">
         <Search className="h-3.5 w-3.5" />
-        <span>Tìm kiếm...</span>
+        <span>{t("search.placeholder")}</span>
         <kbd className="ml-4 rounded bg-surface-1 px-1.5 py-0.5 text-caption font-mono">⌘K</kbd>
       </button>
 
+      {/* Language toggle */}
+      <button
+        onClick={() => setLocale(locale === "vi" ? "en" : "vi")}
+        className="flex items-center gap-1.5 rounded-full border border-surface-3 px-2.5 py-1 text-caption font-medium text-text-2 hover:border-primary/40 transition-colors"
+        title={locale === "vi" ? "Switch to English" : "Chuyển sang Tiếng Việt"}
+      >
+        <Globe className="h-3.5 w-3.5" />
+        <span className="uppercase">{locale}</span>
+      </button>
+
+      {/* Theme toggle */}
+      <div className="flex items-center rounded-full border border-surface-3 p-0.5">
+        {themeOptions.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => setTheme(opt.value)}
+            className={`rounded-full p-1.5 transition-colors ${
+              theme === opt.value
+                ? "bg-primary/10 text-primary"
+                : "text-text-3 hover:text-text-1"
+            }`}
+            title={opt.label}
+          >
+            <opt.icon className="h-3.5 w-3.5" />
+          </button>
+        ))}
+      </div>
+
       {/* Role pill */}
       <span className="rounded-full bg-info-bg text-info text-caption font-medium px-2.5 py-0.5">
-        SC Planner
+        {t("role.planner")}
       </span>
 
       {/* Bell */}
