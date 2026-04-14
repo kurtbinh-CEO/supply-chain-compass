@@ -188,7 +188,8 @@ const roleData: Record<RoleKey, RoleData> = {
       },
     ],
     formulas: [
-      { title: "Trust Score", content: "Trust = Σ(|adjust−actual| < 20%) / total_adjustments × 100%\n\nTrust >85% → auto-approve + tolerance ±40%\nTrust 60-85% → SC Manager duyệt + tolerance ±30%\nTrust <60% → tolerance ±15% + giải trình tất cả" },
+      { title: "Trust Score", content: "Trust = Σ(|adjust−actual| < 20%) / total_adjustments × 100%\n\nTrust >85% → auto-approve + tolerance ±40%\nTrust 60-85% → SC Manager duyệt + tolerance ±30%\nTrust <60% → tolerance ±15% + giải trình tất cả\n\nCách tăng trust: adjust chính xác liên tục → trust tăng tự nhiên." },
+      { title: "Tolerance Rules", content: "Delta < 10% → auto-approve ✅ (nếu trust ≥60%)\nDelta 10-30% → chờ SC Manager duyệt 🟡\nDelta > 30% → blocked 🔴 (cần giải trình + evidence)\n\nTrust cao → tolerance mở rộng:\nTrust >85%: auto-approve tất cả ≤40%\nTrust 60-85%: auto-approve ≤10%, duyệt ≤30%\nTrust <60%: giải trình tất cả ≤15%" },
     ],
   },
   SALES: {
@@ -222,31 +223,67 @@ const roleData: Record<RoleKey, RoleData> = {
     ],
     dailySteps: [],
     formulas: [
-      { title: "B2B Weighted Demand", content: "Weighted = qty × probability%\nVD: 12.000 × 85% = 10.200m²\n\nChỉ deals ≥30% mới tính vào demand.\nPO signed (100%) → chuyển sang PO confirmed, trừ overlap." },
+      { title: "FVA (Forecast Value Added)", content: "FVA = MAPE(v0_statistical) − MAPE(vX_your_input)\n\nFVA dương → bạn tốt hơn model → input có giá trị\nFVA âm → model tốt hơn → xem lại cách estimate\nFVA = 0 → không khác biệt\n\nTracking: hệ thống so sánh mỗi tháng. FVA trending up = bạn ngày càng giỏi estimate." },
     ],
   },
   BUYER: {
-    heroDesc: "Bạn đặt hàng NM, theo dõi PO lifecycle, và đảm bảo NM giao hàng đúng hạn. Mỗi ngày check PO status và NM supply.",
+    heroDesc: "Chọn NM tối ưu, đặt hàng, theo dõi giao hàng. 15 phút/ngày + 30 phút/tháng.",
     daily: [
-      { route: "/workspace", label: "Cần làm", time: "3 phút" },
-      { route: "/supply", label: "Check NM supply", time: "3 phút" },
-      { route: "/orders", label: "Quản lý PO/TO", time: "8 phút" },
-      { route: "/hub", label: "Xem commitment NM", time: "2 phút" },
+      { route: "/supply", label: "Update tồn NM", time: "5 phút" },
+      { route: "/orders tab 1", label: "Duyệt & Post PO", time: "5 phút" },
+      { route: "/orders tab 2", label: "Tracking & POD", time: "5 phút" },
     ],
-    dailyTotal: "~16 phút/ngày",
+    dailyTotal: "~15 phút/ngày",
+    dailyIntro: "Mỗi ngày 15 phút: Supply → Orders Duyệt → Orders Tracking.",
     monthly: [
-      { route: "/hub", label: "Tạo BPO (sau S&OP Lock)", days: "Day 7-8" },
-      { route: "/supplier-portal", label: "Review NM performance", days: "Day 10" },
+      { route: "/hub", label: "Sourcing NM + BPO", days: "Day 7-8" },
     ],
+    monthlyIntro: "Mỗi tháng 30 phút: Sourcing NM sau S&OP Lock → tạo BPO.",
     tips: [
-      { text: "ATP check: mỗi RPO auto-check NM có hàng không. Pass/Fail visible." },
-      { text: "BPO quota: RPO trừ vào BPO. Over-commit → warning + options." },
-      { text: "Force-release: bypass ATP → cần 3 cấp duyệt. Dùng khi khẩn cấp." },
+      { text: "NM Score transparent: hover row → breakdown LT/Cost/Reliability. Không pre-allocated ẩn." },
+      { text: "Dual-source: chọn 2 NM (primary 80% + backup 20%) giảm risk." },
+      { text: "BPO quota: RPO > BPO remaining → warning. Monitor quota mỗi tuần." },
+      { text: "SHIP/HOLD: HSTK<3d → SHIP ngay (urgent). >14d → HOLD gộp container (tiết kiệm freight)." },
     ],
-    steps: [],
-    dailySteps: [],
+    steps: [
+      {
+        route: "/hub", title: "Sourcing NM + BPO", badge: "30 phút/tháng",
+        collapsed: "Chọn NM quyết định: giá, tốc độ, độ tin cậy. Hệ thống ranking transparent — bạn quyết định.",
+        why: "Chọn NM quyết định: giá (cost), tốc độ (LT), độ tin cậy (reliability). Sai NM = overdue + stockout + premium freight. Hệ thống ranking transparent — bạn quyết định, không phải hộp đen.",
+        what: "4-step Sourcing Workbench:\nBước 1 'Cần gì?': 7 SKU, 5 cần sourcing (2 đủ hàng). Sort urgency (CRITICAL first).\nBước 2 'NM nào có?': 5 NM ranked. Score = weighted hybrid. Objective chọn được.\nBước 3 'Phân bổ': allocate qty per NM. Single/dual/custom. Sửa ratio slider hoặc input.\nBước 4 'MOQ + Gửi': round MOQ + POQ gộp tuần + container fit → [Tạo BPO].",
+        how: "1. Bước 1: 'GA-300 A4 CRITICAL (HSTK 1,2d), 4 NM eligible.'\n2. Bước 2: click GA-300 A4 → ranking: Mikado 88★, Đồng Tâm 82, Vigracera 75, Toko 52⚠, Phú Mỹ offline.\n   Hover Mikado → score breakdown: LT 64×50% + Cost 0×30% + Reliability 92×20% = 88.\n   Đổi objective [Lowest Cost ▼] → Đồng Tâm #1 (170K vs 185K).\n3. Bước 3: chọn Mikado primary (700) + Đồng Tâm backup (140) = 840 covered ✅.\n4. Bước 4: Mikado total 1.067 → MOQ 1.000 → round 2.000. Surplus 933 → dùng tháng sau.\n   [Xác nhận & Tạo BPO] → BPO-MKD-2605 (2.000m²), BPO-DTM-2605 (500m²).",
+        formula: "Score = W₁×(1−LT/max) + W₂×(1−cost/max) + W₃×reliability\nHybrid: 50/30/20. Shortest LT: 80/10/10. Lowest Cost: 10/80/10.\n\nMOQ = ceil(allocated ÷ MOQ_NM) × MOQ_NM\nPOQ = gộp 2 tuần demand → đặt 1 lần → tiết kiệm 1 chuyến container\nBPO = Purchase Agreement (Bravo). RPO = Purchase Order. ASN = Goods Receipt.",
+      },
+    ],
+    dailySteps: [
+      {
+        route: "/supply", title: "Update tồn NM", badge: "5 phút",
+        collapsed: "DRP cần data NM fresh. Stale >24h → DRP tính sai → PO fail.",
+        why: "DRP cần data NM fresh. UNIS NM thường manual (Excel/phone), không API. Stale >24h → DRP tính sai → PO fail.",
+        what: "Upload Excel hoặc nhập tay. 'UNIS dùng' = tồn × share% auto. Lớp 1 per NM. Stale → [Nhắc NM].",
+        how: "1. Drag-drop file NM gửi sáng.\n2. Preview → [Xác nhận].\n3. NM chưa gửi → [Nhắc NM] push Supplier Portal.",
+        formula: "UNIS_dùng = on_hand × share%\nVD: Mikado tồn 2.500 × 60% = 1.500 − reserved 120 = 1.380.",
+      },
+      {
+        route: "/orders tab 1", title: "Duyệt & Post PO", badge: "5 phút",
+        collapsed: "RPO từ DRP đêm qua = draft. Bạn là người duyệt cuối cùng trước khi NM nhận đơn.",
+        why: "RPO từ DRP đêm qua = draft. Bạn là người duyệt cuối cùng trước khi NM nhận đơn trong Bravo.",
+        what: "Per status summary → click drill. ATP check per PO. Force-release 3 cấp nếu cần.",
+        how: "1. [Gửi ATP tất cả] → 4 DRAFT → 3 ATP Pass + 1 ATP Fail.\n2. ATP Fail (Toko stale): [Nhắc NM update tồn] → chờ → re-ATP. Hoặc [Force 3 cấp].\n3. ATP Pass → [Duyệt tất cả] → [Post Bravo]. Idempotent (safe retry).\n4. SHIP/HOLD: 'HSTK CN-BD 1,2d → SHIP ngay. HSTK CN-ĐN 19d → HOLD gộp container.'",
+        formula: "ATP = on_hand × share% × honoring_rate\nVD: Mikado 2.500 × 60% × 92% = 1.380. RPO 1.000 ≤ 1.380 → Pass ✅.\n\nToko: data stale 18h → ATP = undefined → Fail ❌.\nForce-release: SC Manager → Director → CEO (3 cấp, risk-based).",
+      },
+      {
+        route: "/orders tab 2", title: "Tracking & POD", badge: "5 phút",
+        collapsed: "NM giao trễ = stockout CN. Track sớm = escalate sớm = ít impact.",
+        why: "NM giao trễ = stockout CN. Track sớm = escalate sớm = ít impact.",
+        what: "Per NM → per RPO → per ASN. Honoring% + On-time%. Overdue highlight.",
+        how: "1. Toko overdue 8 ngày → [Nhắc NM].\n2. Click Toko honoring 68% → breakdown per RPO.\n3. Trend 3 tháng: 70% → 65% → 68% = getting worse → [Review meeting].",
+        formula: "Honoring% = Σ(delivered) ÷ Σ(committed) × 100%\nOn-time% = (# PO on-time) ÷ (# PO total) × 100%\nOn-time = delivered ≤ ETA + grace 2d.\n\nNM Grade: A≥90% | B≥80% | C≥60% | D<60%\nGrade C → ATP auto-discount (×0.68). Grade D → xem xét thay NM.",
+      },
+    ],
     formulas: [
-      { title: "ATP Check", content: "ATP = on_hand × share% × honoring_rate\nVD: 2.500 × 60% × 92% = 1.380\nATP Pass: 1.380 ≥ RPO 1.000 ✅\n\nBPO_remaining = committed − Σ(RPO_qty)\nRPO > remaining → over-commitment warning" },
+      { title: "NM Grade", content: "NM Grade: A≥90% | B≥80% | C≥60% | D<60%\n\nAuto-actions per grade:\nA: full ATP credit (×1.0), priority allocation\nB: standard (×0.9)\nC: ATP discount (×honoring%), review quarterly\nD: xem xét thay NM, escalate Director\n\nGrade = weighted(Honoring% × 60% + On-time% × 40%)" },
+      { title: "ATP Check", content: "ATP = on_hand × share% × honoring_rate\nVD: 2.500 × 60% × 92% = 1.380\nATP Pass: 1.380 ≥ RPO 1.000 ✅\n\nBPO_remaining = committed − Σ(RPO_qty)\nRPO > remaining → over-commitment warning\n\nForce-release: bypass ATP → 3 cấp duyệt (SC → Director → CEO)" },
     ],
   },
 };
@@ -498,30 +535,24 @@ export default function GuidePage() {
       {/* ═══ TAB: Công thức ═══ */}
       {activeTab === "formulas" && (
         <div className="space-y-4 animate-fade-in">
-          {data.formulas.length > 0 ? (
-            data.formulas.map((f, i) => (
-              <div key={i} className="rounded-card border border-surface-3 overflow-hidden">
-                <div className="px-5 py-3 bg-surface-2 border-b border-surface-3">
-                  <h3 className="font-display text-body font-semibold text-text-1">{f.title}</h3>
-                </div>
-                <div className="px-5 py-4 bg-[#111827]">
-                  <pre className="text-table-sm text-emerald-300 whitespace-pre-wrap font-mono leading-relaxed">{f.content}</pre>
-                </div>
+          {/* Role-specific formula cards */}
+          {data.formulas.length > 0 && data.formulas.map((f, i) => (
+            <div key={`rf-${i}`} className="rounded-card border border-surface-3 overflow-hidden">
+              <div className="px-5 py-3 bg-surface-2 border-b border-surface-3">
+                <h3 className="font-display text-body font-semibold text-text-1">{f.title}</h3>
               </div>
-            ))
-          ) : (
-            <div className="rounded-card border border-surface-3 bg-surface-2 p-8 text-center">
-              <p className="text-text-2">Chọn role <span className="font-medium text-text-1">SC Manager</span> để xem đầy đủ công thức.</p>
-              <p className="text-table-sm text-text-3 mt-1">Hoặc truy cập <span className="font-mono text-primary">/logic</span> để xem chi tiết.</p>
+              <div className="px-5 py-4 bg-[#111827]">
+                <pre className="text-table-sm text-emerald-300 whitespace-pre-wrap font-mono leading-relaxed">{f.content}</pre>
+              </div>
             </div>
-          )}
+          ))}
 
           {/* Step formulas (monthly + daily) */}
           {[...data.steps, ...data.dailySteps].filter(s => s.formula).length > 0 && (
             <>
               <h3 className="font-display text-body font-semibold text-text-1 mt-6">Công thức theo bước</h3>
               {[...data.steps, ...data.dailySteps].filter(s => s.formula).map((step, i) => (
-                <div key={i} className="rounded-card border border-surface-3 overflow-hidden">
+                <div key={`sf-${i}`} className="rounded-card border border-surface-3 overflow-hidden">
                   <div className="px-5 py-3 bg-surface-2 border-b border-surface-3 flex items-center gap-2">
                     <span className="flex items-center justify-center h-5 w-5 rounded-full bg-primary/10 text-primary text-caption font-bold">{i + 1}</span>
                     <h4 className="font-display text-table font-semibold text-text-1">{step.title}</h4>
@@ -533,8 +564,37 @@ export default function GuidePage() {
               ))}
             </>
           )}
+
+          {/* SC Manager only: key insight */}
+          {selectedRole === "SC_MANAGER" && (
+            <div className="rounded-card border-2 border-[#b45309]/40 bg-[#b45309]/5 p-5">
+              <p className="text-table font-semibold text-[#b45309] mb-1">⚡ Insight quan trọng nhất</p>
+              <p className="text-table-sm text-text-2 leading-relaxed">
+                SS dùng <span className="font-mono font-semibold text-text-1">σ_fc_error</span> (sai số FC) không phải <span className="font-mono font-semibold text-text-1">σ_demand</span>.
+                Tiết kiệm ~54% vốn. Đầu tư FC accuracy = cách tiết kiệm vốn tốt nhất.
+              </p>
+            </div>
+          )}
+
+          {data.formulas.length === 0 && [...data.steps, ...data.dailySteps].filter(s => s.formula).length === 0 && (
+            <div className="rounded-card border border-surface-3 bg-surface-2 p-8 text-center">
+              <p className="text-text-2">Chọn role <span className="font-medium text-text-1">SC Manager</span> để xem đầy đủ công thức.</p>
+              <p className="text-table-sm text-text-3 mt-1">Hoặc truy cập <span className="font-mono text-primary">/logic</span> để xem chi tiết.</p>
+            </div>
+          )}
         </div>
       )}
+
+      {/* ═══ Quick links + Footer ═══ */}
+      <div className="mt-10 pt-6 border-t border-surface-3 space-y-3">
+        <p className="text-table text-text-2">
+          📚 Xem thêm:{" "}
+          <a href="/logic" className="font-mono text-primary hover:underline">/logic — Logic vận hành chi tiết</a>
+          {" | "}
+          <a href="/config" className="font-mono text-primary hover:underline">/config — Cấu hình hệ thống</a>
+        </p>
+        <p className="text-caption text-text-3">SCP Smartlog v5.0 LEAN · 14 screens · 30 views</p>
+      </div>
     </AppLayout>
   );
 }
