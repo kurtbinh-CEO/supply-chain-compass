@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useActivityLog, LogEntry, LogEventType } from "@/components/ActivityLogContext";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n/I18nContext";
 
 interface ScreenHeaderProps {
   title: string;
