@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenShell";
 import { cn } from "@/lib/utils";
 import { useRbac, UserRole } from "@/components/RbacContext";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import { useWalkthrough } from "@/components/WalkthroughContext";
 
 /* ═══ TYPES ═══ */
 type RoleKey = "SC_MANAGER" | "CN_MANAGER" | "SALES" | "BUYER";
@@ -305,12 +307,24 @@ function ExpandSection({ title, defaultOpen = false, children }: { title: string
 /* ═══ Step Card with WHY/WHAT/HOW/FORMULA ═══ */
 function StepCardComponent({ step, index, accentBg }: { step: StepCard; index: number; accentBg: string }) {
   const [expanded, setExpanded] = useState(false);
+  const navigate = useNavigate();
+  const { start } = useWalkthrough();
+
+  // Extract navigable route (e.g. "/orders tab 1" → "/orders")
+  const navRoute = step.route.split(" ")[0];
+
+  const handleNavigate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    start({ route: step.route, title: step.title, badge: step.badge, what: step.what, how: step.how });
+    navigate(navRoute);
+  };
+
   return (
     <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
       <button onClick={() => setExpanded(!expanded)} className="w-full px-5 py-4 flex items-center gap-4 hover:bg-surface-1/30 transition-colors text-left">
         <span className="flex items-center justify-center h-7 w-7 rounded-full bg-primary/10 text-primary text-table font-bold shrink-0">{index + 1}</span>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-display text-body font-semibold text-text-1">{step.route} — {step.title}</span>
             <span className="rounded-sm bg-primary/10 text-primary text-caption font-medium px-1.5 py-0.5">{step.badge}</span>
           </div>
@@ -320,6 +334,17 @@ function StepCardComponent({ step, index, accentBg }: { step: StepCard; index: n
       </button>
       {expanded && (
         <div className="border-t border-surface-3 space-y-0">
+          {/* Navigate button */}
+          <div className="px-5 py-3 bg-surface-1/50 flex items-center justify-between">
+            <span className="text-table-sm text-text-3">Xem trực tiếp trên màn hình</span>
+            <button
+              onClick={handleNavigate}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-button bg-primary text-primary-foreground text-table-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Mở {navRoute}
+            </button>
+          </div>
           <div className="px-5 py-4 bg-[#004AC6]/5">
             <h4 className="text-table font-semibold text-[#004AC6] mb-1.5">💡 TẠI SAO</h4>
             <p className="text-table-sm text-text-2 whitespace-pre-wrap leading-relaxed">{step.why}</p>

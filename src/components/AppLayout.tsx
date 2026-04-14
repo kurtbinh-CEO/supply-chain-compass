@@ -3,6 +3,7 @@ import { TopBar } from "@/components/TopBar";
 import { WorkflowBar } from "@/components/WorkflowBar";
 import { WorkflowLeaveDialog } from "@/components/WorkflowLeaveDialog";
 import { useSidebarState } from "@/components/SidebarContext";
+import { WalkthroughOverlay } from "@/components/WalkthroughOverlay";
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
   const { collapsed } = useSidebarState();
@@ -15,6 +16,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         <main className="p-6">{children}</main>
       </div>
       <WorkflowLeaveDialog />
+      <WalkthroughOverlay />
     </div>
   );
 }
