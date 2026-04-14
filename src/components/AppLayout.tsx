@@ -1,6 +1,7 @@
 import { AppSidebar } from "@/components/AppSidebar";
 import { TopBar } from "@/components/TopBar";
 import { WorkflowBar } from "@/components/WorkflowBar";
+import { WorkflowLeaveDialog } from "@/components/WorkflowLeaveDialog";
 import { useSidebarState } from "@/components/SidebarContext";
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
@@ -13,6 +14,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
         <WorkflowBar />
         <main className="p-6">{children}</main>
       </div>
+      <WorkflowLeaveDialog />
     </div>
   );
 }
