@@ -395,12 +395,24 @@ export default function CnPortalPage() {
   };
 
   const handleReject = (idx: number, reason: string) => {
+    const r = rows[idx];
     setDemandData((prev) => {
       const copy = JSON.parse(JSON.stringify(prev));
       copy[activeCn][idx].status = "blocked";
       return copy;
     });
-    toast.info("Đã từ chối", { description: `${rows[idx].item} ${rows[idx].variant}: ${reason}` });
+    addAuditEntry({
+      who: user.name,
+      role: user.role,
+      action: "reject",
+      sku: r.item,
+      variant: r.variant,
+      detail: `Từ chối điều chỉnh — ${reason}`,
+      oldValue: r.forecast,
+      newValue: r.adjust ?? r.forecast,
+      reason,
+    });
+    toast.info("Đã từ chối", { description: `${r.item} ${r.variant}: ${reason}` });
   };
 
   const sendMessage = (skuTag?: string) => {
