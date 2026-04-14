@@ -200,15 +200,22 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   }, [workflowType, rawSteps]);
 
   const confirmLeave = useCallback(() => {
+    if (workflowType) {
+      addEntry({
+        type: "workflow",
+        route: "/workspace",
+        user: "Người dùng",
+        message: `Rời khỏi phiên ${workflowType === "daily" ? "Vận hành ngày" : "Kế hoạch tháng"} (${completedSteps.length}/${rawSteps.length} bước)`,
+      });
+    }
     setShowLeaveConfirm(false);
     setPendingNavigation(null);
-    // Close the workflow session
     setWorkflowType(null);
     setCurrentStepIndex(0);
     setCompleted(false);
     setCompletedSteps([]);
     setSessionStartTime(null);
-  }, []);
+  }, [workflowType, completedSteps.length, rawSteps.length, addEntry]);
 
   const cancelLeave = useCallback(() => {
     setShowLeaveConfirm(false);
