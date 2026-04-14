@@ -5,7 +5,7 @@ import { useRbac, AppUser } from "@/components/RbacContext";
 import { useWorkspace } from "@/components/WorkspaceContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronDown, Clock, Check, X as XIcon, AlertTriangle, Info, Paperclip, AtSign, MessageSquare, Volume2 } from "lucide-react";
+import { ChevronDown, Clock, Check, X as XIcon, AlertTriangle, Info, Paperclip, AtSign, MessageSquare, Volume2, History, Filter } from "lucide-react";
 import { VoiceInput } from "@/components/VoiceInput";
 import { VoiceMessage, AudioPlayerInline } from "@/components/VoiceMessage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -110,6 +110,55 @@ const baseMessages: Record<string, Message[]> = {
   ],
   "CN-HN": [],
   "CN-CT": [],
+};
+
+/* ═══ AUDIT LOG DATA ═══ */
+interface AuditEntry {
+  id: string;
+  time: string;
+  date: string;
+  week: string;
+  who: string;
+  role: string;
+  action: "adjust" | "approve" | "reject" | "submit" | "revert" | "auto_approve";
+  sku: string;
+  variant: string;
+  detail: string;
+  oldValue?: number;
+  newValue?: number;
+  reason?: string;
+}
+
+const baseAuditLog: Record<string, AuditEntry[]> = {
+  "CN-BD": [
+    { id: "a1", time: "14:32", date: "12/05", week: "W17", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 524, newValue: 568, reason: "Nhà thầu mới Q2, tăng 10%" },
+    { id: "a2", time: "15:10", date: "12/05", week: "W17", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "approve", sku: "GA-300", variant: "A4", detail: "Duyệt điều chỉnh +44 (+8.4%)", reason: "Có PO xác nhận" },
+    { id: "a3", time: "14:45", date: "12/05", week: "W17", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-400", variant: "A4", detail: "Điều chỉnh demand", oldValue: 294, newValue: 264, reason: "Dự án delay sang Th6" },
+    { id: "a4", time: "16:00", date: "12/05", week: "W17", who: "System", role: "SYSTEM", action: "auto_approve", sku: "GA-600", variant: "A4", detail: "Auto-approve (delta < 10%)", oldValue: 748, newValue: 828 },
+    { id: "a5", time: "09:30", date: "11/05", week: "W17", who: "Minh Trần", role: "CN_MANAGER", action: "submit", sku: "GA-300", variant: "A4", detail: "Gửi batch 3 SKU điều chỉnh" },
+    { id: "a6", time: "10:15", date: "05/05", week: "W16", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 510, newValue: 530, reason: "Tăng nhẹ theo trend" },
+    { id: "a7", time: "11:00", date: "05/05", week: "W16", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "approve", sku: "GA-300", variant: "A4", detail: "Duyệt điều chỉnh +20 (+3.9%)" },
+    { id: "a8", time: "14:00", date: "05/05", week: "W16", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-600", variant: "A4", detail: "Điều chỉnh demand", oldValue: 700, newValue: 740, reason: "Deal Vingroup phase 1" },
+    { id: "a9", time: "14:30", date: "05/05", week: "W16", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "reject", sku: "GA-600", variant: "B2", detail: "Từ chối điều chỉnh +80 (+22%)", oldValue: 360, newValue: 440, reason: "Không có PO" },
+    { id: "a10", time: "15:00", date: "05/05", week: "W16", who: "Minh Trần", role: "CN_MANAGER", action: "revert", sku: "GA-600", variant: "B2", detail: "Revert về forecast gốc", oldValue: 440, newValue: 360 },
+    { id: "a11", time: "09:00", date: "28/04", week: "W15", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 500, newValue: 510, reason: "Micro adjust" },
+    { id: "a12", time: "09:30", date: "28/04", week: "W15", who: "System", role: "SYSTEM", action: "auto_approve", sku: "GA-300", variant: "A4", detail: "Auto-approve (delta < 5%)", oldValue: 500, newValue: 510 },
+  ],
+  "CN-ĐN": [
+    { id: "a20", time: "08:30", date: "12/05", week: "W17", who: "Hà Lê", role: "CN_MANAGER", action: "submit", sku: "—", variant: "—", detail: "Chưa adjust — chờ data từ Sales team ĐN" },
+    { id: "a21", time: "10:00", date: "05/05", week: "W16", who: "Hà Lê", role: "CN_MANAGER", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 400, newValue: 420, reason: "Tăng nhẹ" },
+    { id: "a22", time: "11:00", date: "05/05", week: "W16", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "approve", sku: "GA-300", variant: "A4", detail: "Duyệt +20 (+5%)" },
+  ],
+  "CN-HN": [
+    { id: "a30", time: "09:00", date: "12/05", week: "W17", who: "Phong Vũ", role: "SALES", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 380, newValue: 400, reason: "Dự báo tăng nhẹ" },
+    { id: "a31", time: "10:00", date: "12/05", week: "W17", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "approve", sku: "GA-300", variant: "A4", detail: "Duyệt +20 (+5.3%)" },
+    { id: "a32", time: "11:00", date: "12/05", week: "W17", who: "Phong Vũ", role: "SALES", action: "adjust", sku: "GA-600", variant: "A4", detail: "Điều chỉnh demand", oldValue: 500, newValue: 520, reason: "Nhu cầu tăng" },
+    { id: "a33", time: "11:30", date: "12/05", week: "W17", who: "System", role: "SYSTEM", action: "auto_approve", sku: "GA-600", variant: "A4", detail: "Auto-approve (delta < 5%)", oldValue: 500, newValue: 520 },
+  ],
+  "CN-CT": [
+    { id: "a40", time: "08:00", date: "12/05", week: "W17", who: "Tuấn Phạm", role: "SALES", action: "adjust", sku: "GA-400", variant: "A4", detail: "Điều chỉnh demand", oldValue: 180, newValue: 200, reason: "Dự án mới" },
+    { id: "a41", time: "09:00", date: "12/05", week: "W17", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "approve", sku: "GA-400", variant: "A4", detail: "Duyệt +20 (+11.1%)" },
+  ],
 };
 
 /* Mentionable users */
@@ -357,7 +406,22 @@ export default function CnPortalPage() {
     { key: "adjust", label: "Điều chỉnh demand" },
     { key: "inv", label: "Tồn kho CN" },
     { key: "chat", label: "Trao đổi" },
+    { key: "history", label: "Lịch sử" },
   ];
+
+  // Audit log state
+  const auditEntries = baseAuditLog[activeCn] || [];
+  const [auditWeekFilter, setAuditWeekFilter] = useState("all");
+  const [auditSkuFilter, setAuditSkuFilter] = useState("all");
+  const [auditActionFilter, setAuditActionFilter] = useState("all");
+  const auditWeeks = Array.from(new Set(auditEntries.map(e => e.week))).sort().reverse();
+  const auditSkus = Array.from(new Set(auditEntries.filter(e => e.sku !== "—").map(e => `${e.sku} ${e.variant}`)));
+  const filteredAudit = auditEntries.filter(e => {
+    if (auditWeekFilter !== "all" && e.week !== auditWeekFilter) return false;
+    if (auditSkuFilter !== "all" && `${e.sku} ${e.variant}` !== auditSkuFilter) return false;
+    if (auditActionFilter !== "all" && e.action !== auditActionFilter) return false;
+    return true;
+  });
 
   const cnLabel: Record<string, string> = {
     "CN-BD": "CN Bình Dương", "CN-ĐN": "CN Đà Nẵng", "CN-HN": "CN Hà Nội", "CN-CT": "CN Cần Thơ",
@@ -431,6 +495,11 @@ export default function CnPortalPage() {
             {tab.key === "chat" && allMsgs.length > 0 && (
               <span className="ml-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold px-1.5 py-0.5">
                 {allMsgs.length}
+              </span>
+            )}
+            {tab.key === "history" && auditEntries.length > 0 && (
+              <span className="ml-1.5 rounded-full bg-info/10 text-info text-[10px] font-bold px-1.5 py-0.5">
+                {auditEntries.length}
               </span>
             )}
             {activeTab === tab.key && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t" />}
@@ -856,6 +925,167 @@ export default function CnPortalPage() {
                     Gửi
                   </Button>
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ TAB 4: Lịch sử ═══ */}
+      {activeTab === "history" && (
+        <div className="space-y-4 animate-fade-in">
+          {/* Filters */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5 text-table-sm text-text-2">
+              <Filter className="h-3.5 w-3.5" />
+              <span>Lọc:</span>
+            </div>
+            <Select value={auditWeekFilter} onValueChange={setAuditWeekFilter}>
+              <SelectTrigger className="w-28 h-8 text-table-sm bg-surface-0 border-surface-3">
+                <SelectValue placeholder="Tuần" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả tuần</SelectItem>
+                {auditWeeks.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={auditSkuFilter} onValueChange={setAuditSkuFilter}>
+              <SelectTrigger className="w-32 h-8 text-table-sm bg-surface-0 border-surface-3">
+                <SelectValue placeholder="SKU" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả SKU</SelectItem>
+                {auditSkus.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={auditActionFilter} onValueChange={setAuditActionFilter}>
+              <SelectTrigger className="w-32 h-8 text-table-sm bg-surface-0 border-surface-3">
+                <SelectValue placeholder="Hành động" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="adjust">Điều chỉnh</SelectItem>
+                <SelectItem value="approve">Duyệt</SelectItem>
+                <SelectItem value="reject">Từ chối</SelectItem>
+                <SelectItem value="auto_approve">Auto-approve</SelectItem>
+                <SelectItem value="submit">Gửi batch</SelectItem>
+                <SelectItem value="revert">Revert</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-caption text-text-3 ml-auto">{filteredAudit.length} bản ghi</span>
+          </div>
+
+          {/* Timeline */}
+          <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+            {(() => {
+              // Group by date
+              const grouped: Record<string, AuditEntry[]> = {};
+              filteredAudit.forEach(e => {
+                const key = `${e.date} (${e.week})`;
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(e);
+              });
+
+              const actionConfig: Record<string, { icon: React.ReactNode; color: string; bgColor: string; label: string }> = {
+                adjust: { icon: <span className="text-[11px]">✏️</span>, color: "text-info", bgColor: "bg-info/10 border-info/30", label: "Điều chỉnh" },
+                approve: { icon: <Check className="h-3.5 w-3.5" />, color: "text-success", bgColor: "bg-success/10 border-success/30", label: "Duyệt" },
+                reject: { icon: <XIcon className="h-3.5 w-3.5" />, color: "text-danger", bgColor: "bg-danger/10 border-danger/30", label: "Từ chối" },
+                auto_approve: { icon: <Check className="h-3.5 w-3.5" />, color: "text-success", bgColor: "bg-success/5 border-success/20", label: "Auto ✓" },
+                submit: { icon: <span className="text-[11px]">📤</span>, color: "text-primary", bgColor: "bg-primary/10 border-primary/30", label: "Gửi" },
+                revert: { icon: <History className="h-3.5 w-3.5" />, color: "text-warning", bgColor: "bg-warning/10 border-warning/30", label: "Revert" },
+              };
+
+              return Object.entries(grouped).map(([dateLabel, entries]) => (
+                <div key={dateLabel}>
+                  {/* Date header */}
+                  <div className="px-5 py-2.5 bg-surface-1/50 border-b border-surface-3 sticky top-0 z-10">
+                    <span className="text-table-sm font-semibold text-text-1">{dateLabel}</span>
+                    <span className="text-caption text-text-3 ml-2">{entries.length} thay đổi</span>
+                  </div>
+
+                  {/* Timeline entries */}
+                  <div className="relative">
+                    {/* Vertical line */}
+                    <div className="absolute left-[29px] top-0 bottom-0 w-[2px] bg-surface-3/60" />
+
+                    {entries.map((entry, idx) => {
+                      const cfg = actionConfig[entry.action] || actionConfig.adjust;
+                      return (
+                        <div key={entry.id} className="relative px-5 py-3 flex items-start gap-3 hover:bg-surface-1/20 transition-colors">
+                          {/* Timeline dot */}
+                          <div className={cn(
+                            "relative z-10 h-[22px] w-[22px] rounded-full border flex items-center justify-center shrink-0 mt-0.5",
+                            cfg.bgColor
+                          )}>
+                            <span className={cfg.color}>{cfg.icon}</span>
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold border", cfg.bgColor, cfg.color)}>
+                                {cfg.label}
+                              </span>
+                              {entry.sku !== "—" && (
+                                <span className="text-table-sm font-mono font-medium text-text-1 bg-surface-1 rounded px-1.5 py-0.5">
+                                  {entry.sku} {entry.variant}
+                                </span>
+                              )}
+                              <span className="text-caption text-text-3">{entry.time}</span>
+                            </div>
+
+                            <p className="text-table text-text-1 mt-1">{entry.detail}</p>
+
+                            {/* Value change */}
+                            {entry.oldValue !== undefined && entry.newValue !== undefined && (
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <span className="text-table-sm text-text-3 tabular-nums">{entry.oldValue.toLocaleString()}</span>
+                                <span className="text-text-3">→</span>
+                                <span className={cn(
+                                  "text-table-sm font-semibold tabular-nums",
+                                  entry.newValue > entry.oldValue ? "text-success" : entry.newValue < entry.oldValue ? "text-danger" : "text-text-1"
+                                )}>
+                                  {entry.newValue.toLocaleString()}
+                                </span>
+                                {(() => {
+                                  const delta = entry.newValue - entry.oldValue;
+                                  const pct = entry.oldValue > 0 ? ((delta / entry.oldValue) * 100).toFixed(1) : "0";
+                                  return (
+                                    <span className={cn(
+                                      "text-caption font-medium px-1.5 py-0.5 rounded",
+                                      delta > 0 ? "bg-success/10 text-success" : delta < 0 ? "bg-danger/10 text-danger" : ""
+                                    )}>
+                                      {delta > 0 ? "+" : ""}{delta} ({delta > 0 ? "+" : ""}{pct}%)
+                                    </span>
+                                  );
+                                })()}
+                              </div>
+                            )}
+
+                            {/* Reason */}
+                            {entry.reason && (
+                              <p className="text-caption text-text-2 mt-1 italic">"{entry.reason}"</p>
+                            )}
+
+                            {/* Who */}
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              <Avatar name={entry.who} role={entry.role} />
+                              <span className="text-caption text-text-2">{entry.who}</span>
+                              <RoleBadge role={entry.role} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ));
+            })()}
+
+            {filteredAudit.length === 0 && (
+              <div className="px-5 py-12 text-center text-text-3">
+                <History className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p>Chưa có lịch sử điều chỉnh cho bộ lọc này.</p>
               </div>
             )}
           </div>
