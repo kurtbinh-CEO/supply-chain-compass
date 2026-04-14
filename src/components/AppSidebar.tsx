@@ -75,6 +75,7 @@ const navGroups: NavGroup[] = [
     labelKey: "nav.support",
     items: [
       { titleKey: "nav.logicOps", icon: BookOpen, url: "/logic" },
+      { titleKey: "nav.guide", icon: BookOpen, url: "/guide" },
     ],
   },
 ];

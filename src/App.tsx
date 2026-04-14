@@ -29,6 +29,7 @@ import MasterDataPage from "./pages/MasterDataPage";
 import ReportsPage from "./pages/ReportsPage";
 import ConfigPage from "./pages/ConfigPage";
 import LogicPage from "./pages/LogicPage";
+import GuidePage from "./pages/GuidePage";
 import NotFound from "./pages/NotFound";
 import CnPortalPage from "./pages/CnPortalPage";
 
@@ -67,6 +68,7 @@ const App = () => (
               <Route path="/config" element={<ConfigPage />} />
               <Route path="/cn-portal" element={<CnPortalPage />} />
               <Route path="/logic" element={<LogicPage />} />
+              <Route path="/guide" element={<GuidePage />} />
               <Route path="/design-test" element={<DesignTest />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
