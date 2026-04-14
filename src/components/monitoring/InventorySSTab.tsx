@@ -152,7 +152,7 @@ export function InventorySSTab({ scale: s }: Props) {
             </ResponsiveContainer>
             <div className="flex items-center gap-5 mt-2 text-[10px] text-text-3">
               <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[var(--color-success-text)] rounded" /> Available</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-[#94a3b8] rounded" /> Reserved</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-text-3 rounded" /> Reserved</span>
               <span className="flex items-center gap-1"><span className="w-3 h-0.5 rounded" style={{ borderTop: "1.5px dashed var(--color-danger-text)" }} /> SS Target</span>
             </div>
           </div>
