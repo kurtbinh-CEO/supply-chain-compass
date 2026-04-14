@@ -32,11 +32,16 @@ export interface SsCnSummary {
 }
 
 /* ═══ BASE DATA ═══ */
+/* sigma here is σ_daily demand; SS = z × σ × √LT */
 const baseSsSkuData: SsSkuEntry[] = [
-  { cn: "CN-BD", item: "GA-300", variant: "A4", ssCurrent: 900, z: 1.65, sigma: 28.5, lt: 14, ssProposed: 1035, delta: 135, wcImpact: "+25M₫" },
-  { cn: "CN-BD", item: "GA-300", variant: "B2", ssCurrent: 700, z: 1.65, sigma: 22.1, lt: 12, ssProposed: 700, delta: 0, wcImpact: "0" },
-  { cn: "CN-BD", item: "GA-400", variant: "A4", ssCurrent: 600, z: 1.65, sigma: 18.3, lt: 14, ssProposed: 600, delta: 0, wcImpact: "0" },
-  { cn: "CN-BD", item: "GA-600", variant: "A4", ssCurrent: 1000, z: 1.65, sigma: 32.0, lt: 10, ssProposed: 950, delta: -50, wcImpact: "−9M₫" },
+  // z=1.65, σ=145.8, LT=14 → SS_current = 1.65*145.8*√14 ≈ 900;  proposed z=1.90 → 1038 (+138)
+  { cn: "CN-BD", item: "GA-300", variant: "A4", ssCurrent: 900, z: 1.90, sigma: 145.8, lt: 14, ssProposed: 1038, delta: 138, wcImpact: "+26M₫" },
+  // z=1.65, σ=122.4, LT=12 → 700; keep z=1.65 → 700
+  { cn: "CN-BD", item: "GA-300", variant: "B2", ssCurrent: 700, z: 1.65, sigma: 122.4, lt: 12, ssProposed: 700, delta: 0, wcImpact: "0" },
+  // z=1.65, σ=97.2, LT=14 → 600; keep z=1.65 → 600
+  { cn: "CN-BD", item: "GA-400", variant: "A4", ssCurrent: 600, z: 1.65, sigma: 97.2, lt: 14, ssProposed: 600, delta: 0, wcImpact: "0" },
+  // z=1.65, σ=191.6, LT=10 → 1000; proposed z=1.50 → 909 (−91)
+  { cn: "CN-BD", item: "GA-600", variant: "A4", ssCurrent: 1000, z: 1.50, sigma: 191.6, lt: 10, ssProposed: 909, delta: -91, wcImpact: "−17M₫" },
 ];
 
 const baseSsCnData: SsCnSummary[] = [
