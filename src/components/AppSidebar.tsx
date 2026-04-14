@@ -12,8 +12,7 @@ import { useWorkspace } from "@/components/WorkspaceContext";
 import { useRbac, UserRole } from "@/components/RbacContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useI18n } from "@/components/i18n/I18nContext";
-import smartlogLogo from "@/assets/smartlog-logo.png";
-import smartlogLogoFull from "@/assets/smartlog-logo-full.png";
+import smartlogIcon from "@/assets/smartlog-icon.png";
 
 interface NavItem {
   titleKey: string;
@@ -108,12 +107,12 @@ export function AppSidebar() {
       )}>
         {collapsed ? (
           <button onClick={toggle} className="flex items-center justify-center rounded-button p-1 hover:bg-surface-3 transition-colors">
-            <img src={smartlogLogo} alt="Smartlog" className="h-7 w-7 object-contain" />
+            <img src={smartlogIcon} alt="Smartlog" className="h-7 w-7 rounded-md object-contain" />
           </button>
         ) : (
           <>
-            <div className="flex items-center gap-2">
-              <img src={smartlogLogoFull} alt="Supply Chain Planning Intelligence" className="h-8 w-8 object-contain shrink-0" />
+            <div className="flex items-center gap-2.5">
+              <img src={smartlogIcon} alt="Smartlog" className="h-8 w-8 rounded-lg object-contain shrink-0" />
               <div className="flex flex-col -space-y-0.5">
                 <span className="font-display text-[12px] font-bold text-text-1 tracking-tight leading-tight">Supply Chain</span>
                 <span className="font-display text-[9px] font-semibold text-primary tracking-[0.15em] uppercase leading-tight">Planning Intelligence</span>
