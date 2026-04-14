@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronRight, ChevronDown, Info } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
