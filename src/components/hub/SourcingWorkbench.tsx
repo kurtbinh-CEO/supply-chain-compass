@@ -36,26 +36,54 @@ const baseSkus: SkuReq[] = [
   { item: "GA-600", variant: "B2", netReq: 0, ssBuffer: 500, fcMin: 0, urgency: "OK", urgencyLabel: "ĐỦ HÀNG", eligibleNms: [] },
 ];
 
-const baseNmRanks: Record<string, NmRank[]> = {
+// Raw NM data (without pre-computed score — score is computed per objective)
+type NmRaw = Omit<NmRank, "score">;
+
+const baseNmRaws: Record<string, NmRaw[]> = {
   "GA-300|A4": [
-    { nm: "Mikado", atp: 1500, lt: 14, costPerM2: 185000, reliability: 92, honoring: 92, dataFresh: "32m", dataFreshStatus: "green", score: 88 },
-    { nm: "Đồng Tâm", atp: 450, lt: 7, costPerM2: 170000, reliability: 90, honoring: 90, dataFresh: "4h", dataFreshStatus: "amber", score: 82 },
-    { nm: "Vigracera", atp: 455, lt: 10, costPerM2: 175000, reliability: 88, honoring: 88, dataFresh: "2h", dataFreshStatus: "green", score: 75 },
-    { nm: "Toko", atp: 960, lt: 14, costPerM2: 180000, reliability: 68, honoring: 68, dataFresh: "18h", dataFreshStatus: "red", score: 52 },
-    { nm: "Phú Mỹ", atp: 0, lt: 18, costPerM2: 160000, reliability: 45, honoring: 45, dataFresh: "3d", dataFreshStatus: "red", score: 20, offline: true },
+    { nm: "Mikado", atp: 1500, lt: 14, costPerM2: 185000, reliability: 92, honoring: 92, dataFresh: "32m", dataFreshStatus: "green" },
+    { nm: "Đồng Tâm", atp: 450, lt: 7, costPerM2: 170000, reliability: 90, honoring: 90, dataFresh: "4h", dataFreshStatus: "amber" },
+    { nm: "Vigracera", atp: 455, lt: 10, costPerM2: 175000, reliability: 88, honoring: 88, dataFresh: "2h", dataFreshStatus: "green" },
+    { nm: "Toko", atp: 960, lt: 14, costPerM2: 180000, reliability: 68, honoring: 68, dataFresh: "18h", dataFreshStatus: "red" },
+    { nm: "Phú Mỹ", atp: 0, lt: 18, costPerM2: 160000, reliability: 45, honoring: 45, dataFresh: "3d", dataFreshStatus: "red", offline: true },
   ],
 };
 
-// Generate default rankings for other SKUs
-function getRanking(item: string, variant: string, eligibleNms: string[]): NmRank[] {
+const OBJECTIVE_WEIGHTS: Record<Objective, [number, number, number]> = {
+  hybrid: [0.5, 0.3, 0.2],
+  lt: [0.8, 0.1, 0.1],
+  cost: [0.1, 0.8, 0.1],
+};
+
+function computeScores(raws: NmRaw[], objective: Objective): NmRank[] {
+  const [w1, w2, w3] = OBJECTIVE_WEIGHTS[objective];
+  const maxLt = Math.max(...raws.map(r => r.lt));
+  const maxCost = Math.max(...raws.map(r => r.costPerM2));
+
+  const scored = raws.map(r => {
+    if (r.offline) return { ...r, score: Math.round(r.reliability * w3 * 100 / 100) };
+    const ltScore = 1 - r.lt / maxLt;
+    const costScore = 1 - r.costPerM2 / maxCost;
+    const relScore = r.reliability / 100;
+    const raw = (w1 * ltScore + w2 * costScore + w3 * relScore) * 100;
+    return { ...r, score: Math.round(raw) };
+  });
+
+  return scored.sort((a, b) => {
+    if (a.offline && !b.offline) return 1;
+    if (!a.offline && b.offline) return -1;
+    return b.score - a.score;
+  });
+}
+
+function getRanking(item: string, variant: string, eligibleNms: string[], objective: Objective): NmRank[] {
   const key = `${item}|${variant}`;
-  if (baseNmRanks[key]) return baseNmRanks[key];
-  return eligibleNms.map((nm, i) => ({
+  const raws: NmRaw[] = baseNmRaws[key] || eligibleNms.map((nm, i) => ({
     nm, atp: 300 + i * 200, lt: 7 + i * 3, costPerM2: 170000 + i * 5000,
     reliability: 92 - i * 4, honoring: 92 - i * 4,
     dataFresh: i < 2 ? "1h" : "6h", dataFreshStatus: (i < 2 ? "green" : "amber") as "green" | "amber",
-    score: 85 - i * 10,
   }));
+  return computeScores(raws, objective);
 }
 
 const defaultAllocations: Record<string, Allocation[]> = {
