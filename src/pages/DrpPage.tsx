@@ -38,24 +38,9 @@ interface CnRow {
   rpos: number;
 }
 
-/* ═══ SS DATA ═══ */
-interface SsCnRow { cn: string; ssTotal: number; adequate: number; breaches: number; wc: string; rec: string }
-interface SsSkuRow { item: string; variant: string; ssCurrent: number; z: number; sigma: number; lt: number; ssProposed: number; delta: number; wcImpact: string }
-
-const baseSsCn: SsCnRow[] = [
-  { cn: "CN-BD", ssTotal: 2900, adequate: 72, breaches: 12, wc: "389M₫", rec: "↑ Tăng SS 15% → +58M₫" },
-  { cn: "CN-ĐN", ssTotal: 2400, adequate: 146, breaches: 0, wc: "650M₫", rec: "↓ Giảm SS 10% → −65M₫" },
-  { cn: "CN-HN", ssTotal: 2100, adequate: 105, breaches: 2, wc: "407M₫", rec: "→ Giữ" },
-  { cn: "CN-CT", ssTotal: 1500, adequate: 107, breaches: 1, wc: "296M₫", rec: "→ Giữ" },
-];
-
-const ssBdSkus: SsSkuRow[] = [
-  { item: "GA-300", variant: "A4", ssCurrent: 900, z: 1.65, sigma: 28.5, lt: 14, ssProposed: 1035, delta: 135, wcImpact: "+25M₫/tháng" },
-  { item: "GA-300", variant: "B2", ssCurrent: 700, z: 1.65, sigma: 22.1, lt: 12, ssProposed: 700, delta: 0, wcImpact: "0" },
-  { item: "GA-400", variant: "A4", ssCurrent: 600, z: 1.65, sigma: 18.3, lt: 14, ssProposed: 600, delta: 0, wcImpact: "0" },
-  { item: "GA-600", variant: "A4", ssCurrent: 1000, z: 1.65, sigma: 32.0, lt: 10, ssProposed: 950, delta: -50, wcImpact: "−9M₫/tháng" },
-];
-
+/* ═══ SS DATA — now from shared SafetyStockContext ═══ */
+// SsCnRow and SsSkuRow types kept for Layer 3 params table only
+type SsCnRow = { cn: string; ssTotal: number; adequate: number; breaches: number; wc: string; rec: string };
 
 const changeLog = [
   { time: "12/05 14:30", who: "Thúy", change: "SS GA-300 A4 CN-BD: 900→1.035", reason: "Stockout 2x tháng qua" },
