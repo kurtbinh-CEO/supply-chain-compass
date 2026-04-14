@@ -5,7 +5,7 @@ import { useRbac, AppUser } from "@/components/RbacContext";
 import { useWorkspace } from "@/components/WorkspaceContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronDown, Clock, Check, X as XIcon, AlertTriangle, Info, Paperclip, AtSign, MessageSquare, Volume2 } from "lucide-react";
+import { ChevronDown, Clock, Check, X as XIcon, AlertTriangle, Info, Paperclip, AtSign, MessageSquare, Volume2, History, Filter } from "lucide-react";
 import { VoiceInput } from "@/components/VoiceInput";
 import { VoiceMessage, AudioPlayerInline } from "@/components/VoiceMessage";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
