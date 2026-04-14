@@ -314,6 +314,14 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
                   <td className="px-3 py-3 text-center tabular-nums text-text-1">{c.b2b.toLocaleString()}</td>
                   <td className="px-3 py-3 text-center tabular-nums text-text-2">{c.po.toLocaleString()}</td>
                   <td className="px-3 py-3 text-center tabular-nums font-bold text-primary border-l border-surface-3">{c.total.toLocaleString()}</td>
+                  <td className="px-3 py-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5 group relative cursor-help">
+                      <MiniSparkline data={cnTrend3m[c.cn] || [c.total * 0.9, c.total * 0.95, c.total]} />
+                      <span className="hidden group-hover:block absolute -top-8 left-1/2 -translate-x-1/2 bg-text-1 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-20">
+                        T3→T5: {(cnTrend3m[c.cn] || []).map(v => v.toLocaleString()).join(" → ")}
+                      </span>
+                    </div>
+                  </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2 justify-center">
                       <CompositionBar fc={c.fc} b2b={c.b2b} po={c.po} total={c.total} />
