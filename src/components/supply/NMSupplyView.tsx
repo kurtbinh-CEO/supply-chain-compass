@@ -4,7 +4,7 @@ import { NMSummary, NMSkuRow } from "./supplyData";
 import { useInventoryData } from "@/hooks/useInventoryData";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronRight, ChevronDown, Upload, Download, Pencil, Bell, FileSpreadsheet, Loader2 } from "lucide-react";
+import { ChevronRight, ChevronDown, Upload, Download, Pencil, Bell, FileSpreadsheet, Loader2, PackageOpen } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
@@ -233,7 +233,36 @@ export function NMSupplyView() {
       {/* Upload zone */}
       <UploadZone />
 
-      {/* NM Table */}
+      {/* Empty state */}
+      {!inventoryLoading && nmData.length === 0 ? (
+        <div className="rounded-card border border-surface-3 bg-surface-2 py-16 flex flex-col items-center gap-4">
+          <div className="rounded-full bg-surface-1 p-4">
+            <PackageOpen className="h-10 w-10 text-text-3" />
+          </div>
+          <div className="text-center space-y-1">
+            <p className="text-body font-semibold text-text-1">Chưa có dữ liệu tồn kho</p>
+            <p className="text-table text-text-3 max-w-md">
+              Upload file Excel từ nhà máy hoặc nhập tay để bắt đầu theo dõi tồn kho. Dữ liệu sẽ tự động đồng bộ lên hệ thống.
+            </p>
+          </div>
+          <button
+            className="rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table-sm font-medium flex items-center gap-2 mt-2"
+            onClick={() => {
+              const input = document.createElement("input");
+              input.type = "file";
+              input.accept = ".xlsx,.xls,.csv";
+              input.onchange = (e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (file) toast.success(`Đã nhận file "${file.name}"`, { description: "Preview & validate trước khi import." });
+              };
+              input.click();
+            }}
+          >
+            <Upload className="h-4 w-4" /> Upload Excel ngay
+          </button>
+        </div>
+      ) : (
+      /* NM Table */
       <div className="rounded-card border border-surface-3 bg-surface-2" data-tour="supply-nm-table">
         <div className="overflow-x-auto">
           <table className="w-full">
