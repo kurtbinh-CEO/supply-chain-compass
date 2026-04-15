@@ -160,17 +160,14 @@ function SkuTable({ nm, skus, share, onUpdate }: { nm: string; skus: NMSkuRow[];
 /* ─── Main View ─── */
 export function NMSupplyView() {
   const { tenant } = useTenant();
-  const { data: inventoryData, loading: inventoryLoading, setData: setInventoryData } = useInventoryData();
-  const [nmData, setNmData] = useState<NMSummary[]>(inventoryData);
+  const { data: inventoryData, loading: inventoryLoading } = useInventoryData();
+  const [localEdits, setLocalEdits] = useState<Record<string, NMSummary>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reminded, setReminded] = useState<Set<string>>(new Set());
   const { conflict: supplyConflict, triggerConflict: triggerSupplyConflict, clearConflict: clearSupplyConflict } = useVersionConflict();
 
-  // Sync from hook data
-  if (JSON.stringify(inventoryData.map(n => n.id)) !== JSON.stringify(nmData.map(n => n.id)) ||
-      inventoryData[0]?.tongTon !== nmData[0]?.tongTon) {
-    setNmData(inventoryData);
-  }
+  // Merge DB data with local edits
+  const nmData = inventoryData.map(nm => localEdits[nm.id] || nm);
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
@@ -182,15 +179,18 @@ export function NMSupplyView() {
   };
 
   const handleSkuUpdate = (nmId: string, skuIdx: number, newVal: number) => {
-    setNmData(prev => prev.map(nm => {
-      if (nm.id !== nmId) return nm;
-      const newSkus = [...nm.skus];
-      const oldSku = newSkus[skuIdx];
-      const newUnis = Math.round(newVal * nm.share);
-      newSkus[skuIdx] = { ...oldSku, tonKho: newVal, unisDung: newUnis, updatedAt: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) };
-      const newTongTon = newSkus.reduce((s, r) => s + r.tonKho, 0);
-      const newUnisDung = newSkus.reduce((s, r) => s + r.unisDung, 0);
-      return { ...nm, tongTon: newTongTon, unisDung: newUnisDung, skus: newSkus, updatedAt: `Hôm nay ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`, updatedAgo: "today" as const };
+    const base = inventoryData.find(n => n.id === nmId);
+    if (!base) return;
+    const edited = localEdits[nmId] || base;
+    const newSkus = [...edited.skus];
+    const oldSku = newSkus[skuIdx];
+    const newUnis = Math.round(newVal * edited.share);
+    newSkus[skuIdx] = { ...oldSku, tonKho: newVal, unisDung: newUnis, updatedAt: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) };
+    const newTongTon = newSkus.reduce((s, r) => s + r.tonKho, 0);
+    const newUnisDung = newSkus.reduce((s, r) => s + r.unisDung, 0);
+    setLocalEdits(prev => ({
+      ...prev,
+      [nmId]: { ...edited, tongTon: newTongTon, unisDung: newUnisDung, skus: newSkus, updatedAt: `Hôm nay ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`, updatedAgo: "today" as const },
     }));
   };
 

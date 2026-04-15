@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/components/TenantContext";
 import type { NMSummary, NMSkuRow } from "@/components/supply/supplyData";
-import { getNMSummaries } from "@/components/supply/supplyData";
 
 // Map warehouse codes to NM names for display
 const warehouseToNm: Record<string, { nm: string; id: string }> = {
@@ -20,13 +19,13 @@ const tenantMap: Record<string, string> = {
 
 export function useInventoryData() {
   const { tenant } = useTenant();
-  const [data, setData] = useState<NMSummary[]>(() => getNMSummaries(tenant));
+  const [data, setData] = useState<NMSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    async function fetch() {
+    async function fetchData() {
       setLoading(true);
       const tenantCode = tenantMap[tenant] || "UNIS";
       const { data: rows, error: err } = await supabase
@@ -36,10 +35,15 @@ export function useInventoryData() {
 
       if (cancelled) return;
 
-      if (err || !rows || rows.length === 0) {
-        // Fallback to mock
-        setData(getNMSummaries(tenant));
-        setError(err?.message || null);
+      if (err) {
+        setError(err.message);
+        setData([]);
+        setLoading(false);
+        return;
+      }
+
+      if (!rows || rows.length === 0) {
+        setData([]);
         setLoading(false);
         return;
       }
@@ -82,12 +86,12 @@ export function useInventoryData() {
         };
       });
 
-      setData(summaries.length > 0 ? summaries : getNMSummaries(tenant));
+      setData(summaries);
       setLoading(false);
     }
-    fetch();
+    fetchData();
     return () => { cancelled = true; };
   }, [tenant]);
 
-  return { data, loading, error, setData };
+  return { data, loading, error };
 }
