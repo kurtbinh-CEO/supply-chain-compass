@@ -515,7 +515,7 @@ function NmGradeViz() {
 /*  FLOW TIMELINE COMPONENT                   */
 /* ═══════════════════════════════════════════ */
 
-function FlowTimeline({ nodes, accentColor, onNavigate }: { nodes: FlowNode[]; accentColor: string; onNavigate: (node: FlowNode) => void }) {
+function FlowTimeline({ nodes, accentColor, onNavigate }: { nodes: FlowNode[]; accentColor: string; onNavigate: (node: FlowNode, flowArray?: FlowNode[], nodeIdx?: number) => void }) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   if (nodes.length === 0) return (
@@ -591,7 +591,7 @@ function FlowTimeline({ nodes, accentColor, onNavigate }: { nodes: FlowNode[]; a
                         </div>
                       </div>
                       <button
-                        onClick={(e) => { e.stopPropagation(); onNavigate(node); }}
+                        onClick={(e) => { e.stopPropagation(); onNavigate(node, nodes, i); }}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-button bg-primary text-primary-foreground text-table-sm font-medium hover:bg-primary/90 transition-colors shrink-0"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
