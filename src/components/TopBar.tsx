@@ -89,6 +89,7 @@ export function TopBar() {
   const { tenant, setTenant, tenants } = useTenant();
   const { theme, setTheme } = useThemeMode();
   const { locale, setLocale, t } = useI18n();
+  const { profile, signOut } = useAuth();
 
   const routeKey = routeKeys[location.pathname];
   const pageName = routeKey ? t(routeKey) : t("route.overview");
