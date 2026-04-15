@@ -4,7 +4,7 @@ import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronRight, Send, Truck, Upload, ShieldAlert } from "lucide-react";
+import { ChevronRight, Send, Truck, Upload, ShieldAlert, Loader2, Database } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 import { useNavigate } from "react-router-dom";
 import { ClickableNumber } from "@/components/ClickableNumber";
@@ -12,6 +12,7 @@ import { LogicLink } from "@/components/LogicLink";
 import { LogicTooltip, LogicExpand } from "@/components/LogicTooltip";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
+import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
