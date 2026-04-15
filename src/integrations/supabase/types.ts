@@ -65,6 +65,51 @@ export type Database = {
         }
         Relationships: []
       }
+      fc_accuracy: {
+        Row: {
+          best_model: string | null
+          cn_code: string
+          created_at: string
+          fva: string | null
+          id: string
+          mape_ai: number
+          mape_hw: number
+          stdev_ai: number
+          stdev_hw: number
+          tenant: string
+          updated_at: string
+          week: string
+        }
+        Insert: {
+          best_model?: string | null
+          cn_code: string
+          created_at?: string
+          fva?: string | null
+          id?: string
+          mape_ai?: number
+          mape_hw?: number
+          stdev_ai?: number
+          stdev_hw?: number
+          tenant?: string
+          updated_at?: string
+          week: string
+        }
+        Update: {
+          best_model?: string | null
+          cn_code?: string
+          created_at?: string
+          fva?: string | null
+          id?: string
+          mape_ai?: number
+          mape_hw?: number
+          stdev_ai?: number
+          stdev_hw?: number
+          tenant?: string
+          updated_at?: string
+          week?: string
+        }
+        Relationships: []
+      }
       inventory: {
         Row: {
           batch_number: string | null
@@ -107,6 +152,48 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           warehouse_code?: string
+        }
+        Relationships: []
+      }
+      nm_performance: {
+        Row: {
+          created_at: string
+          grade: string | null
+          honoring_pct: number
+          id: string
+          lt_delta: string | null
+          nm_code: string
+          nm_name: string
+          ontime_pct: number
+          tenant: string
+          trend: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          grade?: string | null
+          honoring_pct?: number
+          id?: string
+          lt_delta?: string | null
+          nm_code: string
+          nm_name: string
+          ontime_pct?: number
+          tenant?: string
+          trend?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          grade?: string | null
+          honoring_pct?: number
+          id?: string
+          lt_delta?: string | null
+          nm_code?: string
+          nm_name?: string
+          ontime_pct?: number
+          tenant?: string
+          trend?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

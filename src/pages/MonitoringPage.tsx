@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { useFcAccuracy, useNmPerformance } from "@/hooks/useMonitoringData";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
@@ -17,21 +18,7 @@ import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
-/* ═══ SHARED DATA ═══ */
-const fcData = [
-  { cn: "CN-BD", mapeNow: 12, mapePrev: 15, trend: "↗ improving", best: "v2 CN Input", fva: "+3%" },
-  { cn: "CN-ĐN", mapeNow: 22, mapePrev: 20, trend: "↘ worse", best: "v1 Sales", fva: "−2%" },
-  { cn: "CN-HN", mapeNow: 31, mapePrev: 28, trend: "↘ worse", best: "v0 Statistical", fva: "−3%" },
-  { cn: "CN-CT", mapeNow: 15, mapePrev: 14, trend: "→ stable", best: "v3 Consensus", fva: "+1%" },
-];
-
-const nmPerfData = [
-  { nm: "Mikado", honoring: 92, ontime: 88, ltDelta: "+1,2d", trend: "→ stable", grade: "A" },
-  { nm: "Toko", honoring: 68, ontime: 52, ltDelta: "+5,5d", trend: "↘ worse", grade: "C" },
-  { nm: "Phú Mỹ", honoring: 45, ontime: 38, ltDelta: "+8d", trend: "→ stable bad", grade: "D" },
-  { nm: "Đồng Tâm", honoring: 90, ontime: 85, ltDelta: "+0,8d", trend: "↗ better", grade: "A" },
-  { nm: "Vigracera", honoring: 88, ontime: 80, ltDelta: "+1,5d", trend: "→ stable", grade: "B" },
-];
+/* ═══ SHARED DATA — mock fallbacks, overridden by DB when available ═══ */
 
 const finKpis = [
   { label: "Working Capital", value: "1,2B", target: "1,0B", delta: "+20%", bad: true },
@@ -358,6 +345,8 @@ const tabs = [
 export default function MonitoringPage() {
   const { tenant } = useTenant();
   const s = tenantScales[tenant] || 1;
+  const { summaryData: fcData, weeklyData: fcWeeklyFromDb, loading: fcLoading } = useFcAccuracy();
+  const { data: nmPerfData, loading: nmLoading } = useNmPerformance();
 
   const ssBatch = useBatchLock({
     batchType: "SS Recalculation",
