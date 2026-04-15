@@ -179,15 +179,18 @@ export function NMSupplyView() {
   };
 
   const handleSkuUpdate = (nmId: string, skuIdx: number, newVal: number) => {
-    setNmData(prev => prev.map(nm => {
-      if (nm.id !== nmId) return nm;
-      const newSkus = [...nm.skus];
-      const oldSku = newSkus[skuIdx];
-      const newUnis = Math.round(newVal * nm.share);
-      newSkus[skuIdx] = { ...oldSku, tonKho: newVal, unisDung: newUnis, updatedAt: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) };
-      const newTongTon = newSkus.reduce((s, r) => s + r.tonKho, 0);
-      const newUnisDung = newSkus.reduce((s, r) => s + r.unisDung, 0);
-      return { ...nm, tongTon: newTongTon, unisDung: newUnisDung, skus: newSkus, updatedAt: `Hôm nay ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`, updatedAgo: "today" as const };
+    const base = inventoryData.find(n => n.id === nmId);
+    if (!base) return;
+    const edited = localEdits[nmId] || base;
+    const newSkus = [...edited.skus];
+    const oldSku = newSkus[skuIdx];
+    const newUnis = Math.round(newVal * edited.share);
+    newSkus[skuIdx] = { ...oldSku, tonKho: newVal, unisDung: newUnis, updatedAt: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) };
+    const newTongTon = newSkus.reduce((s, r) => s + r.tonKho, 0);
+    const newUnisDung = newSkus.reduce((s, r) => s + r.unisDung, 0);
+    setLocalEdits(prev => ({
+      ...prev,
+      [nmId]: { ...edited, tongTon: newTongTon, unisDung: newUnisDung, skus: newSkus, updatedAt: `Hôm nay ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`, updatedAgo: "today" as const },
     }));
   };
 
