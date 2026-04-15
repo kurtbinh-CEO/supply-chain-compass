@@ -158,7 +158,7 @@ function TrendIcon({ value }: { value: number }) {
   return <Minus className="h-3 w-3 text-text-3 inline" />;
 }
 
-export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
+export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
   const [view, setView] = useState<View>("12m");
   const [expandedCns, setExpandedCns] = useState<Set<string>>(new Set());
   const [expandedSkus, setExpandedSkus] = useState<Set<string>>(new Set());
