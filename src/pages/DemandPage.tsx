@@ -54,7 +54,25 @@ export default function DemandPage() {
         />
       </div>
 
-      {/* Tab bar */}
+      {/* DB Forecast Summary */}
+      {cnSummaries.length > 0 && (
+        <div className="mb-4 rounded-card border border-primary/20 bg-primary/5 p-4 animate-fade-in">
+          <div className="flex items-center gap-2 mb-2">
+            <Database className="h-4 w-4 text-primary" />
+            <span className="text-table-sm font-medium text-text-1">Database Forecasts</span>
+            {forecastLoading && <Loader2 className="h-3 w-3 animate-spin text-text-3" />}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {cnSummaries.map((cs) => (
+              <div key={cs.cn} className="rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-caption">
+                <span className="font-medium text-text-1">{cs.cn}</span>
+                <span className="text-text-3 ml-1">({cs.skus.length} SKU · {cs.fc.toLocaleString()}m²)</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div data-tour="demand-tabs" className="flex items-center gap-0 border-b border-surface-3 mb-6">
         {tabs.map((tab) => (
           <button
