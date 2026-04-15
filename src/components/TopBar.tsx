@@ -172,9 +172,17 @@ export function TopBar() {
           <span className="text-table-sm font-medium text-text-1 leading-tight">{profile?.display_name || "User"}</span>
           <span className="text-caption text-primary font-medium leading-tight">{t("role.planner")}</span>
         </div>
-        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-caption font-bold text-white shadow-sm">
-          {(profile?.display_name || "U").slice(0, 2).toUpperCase()}
-        </div>
+        <button
+          onClick={() => navigate("/profile")}
+          className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-caption font-bold text-white shadow-sm hover:opacity-80 transition-opacity cursor-pointer"
+          title="Hồ sơ cá nhân"
+        >
+          {profile?.avatar_url ? (
+            <img src={profile.avatar_url} alt="Avatar" className="h-8 w-8 rounded-lg object-cover" />
+          ) : (
+            (profile?.display_name || "U").slice(0, 2).toUpperCase()
+          )}
+        </button>
         <button
           onClick={signOut}
           className="rounded-lg p-1.5 hover:bg-surface-3 transition-colors text-text-3 hover:text-danger"
