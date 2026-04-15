@@ -137,36 +137,59 @@ export default function SopPage() {
         ))}
       </div>
 
-      <div data-tour="sop-consensus">
-        {activeTab === "consensus" && (
-          <ConsensusTab
-            data={consensusData}
-            totalAop={totalAop}
-            totalV3={totalV3}
-            locked={locked}
-            onUpdateV3={handleUpdateV3}
-            onUpdateNote={handleUpdateNote}
-          />
-        )}
-      </div>
-      <div data-tour="sop-balance">
-        {activeTab === "balance" && (
-          <BalanceLockTab
-            data={consensusData}
-            totalV3={totalV3}
-            totalAop={totalAop}
-            locked={locked}
-            onLock={() => {
-              if (cellPresence.onlineUsers.length > 1) {
-                setShowPreLock(true);
-              } else {
-                setLocked(true);
-              }
-            }}
-            tenant={tenant}
-          />
-        )}
-      </div>
+      {/* Loading */}
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && consensusData.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <PackageOpen className="h-16 w-16 text-text-3 mb-4" />
+          <h3 className="text-heading-3 font-semibold text-text-1 mb-2">Chưa có dữ liệu S&OP</h3>
+          <p className="text-body text-text-3 max-w-md">
+            Chưa có dữ liệu consensus cho kỳ này. Hãy tạo forecast trước khi bắt đầu S&OP.
+          </p>
+        </div>
+      )}
+
+      {/* Content */}
+      {!loading && consensusData.length > 0 && (
+        <>
+          <div data-tour="sop-consensus">
+            {activeTab === "consensus" && (
+              <ConsensusTab
+                data={consensusData}
+                totalAop={totalAop}
+                totalV3={totalV3}
+                locked={locked}
+                onUpdateV3={handleUpdateV3}
+                onUpdateNote={handleUpdateNote}
+              />
+            )}
+          </div>
+          <div data-tour="sop-balance">
+            {activeTab === "balance" && (
+              <BalanceLockTab
+                data={consensusData}
+                totalV3={totalV3}
+                totalAop={totalAop}
+                locked={locked}
+                onLock={() => {
+                  if (cellPresence.onlineUsers.length > 1) {
+                    setShowPreLock(true);
+                  } else {
+                    setLocked(true);
+                  }
+                }}
+                tenant={tenant}
+              />
+            )}
+          </div>
+        </>
+      )}
 
       {/* Concurrency: Pre-Lock Dialog */}
       {showPreLock && (
