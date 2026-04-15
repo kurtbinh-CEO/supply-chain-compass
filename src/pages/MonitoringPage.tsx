@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { useFcAccuracy, useNmPerformance } from "@/hooks/useMonitoringData";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
