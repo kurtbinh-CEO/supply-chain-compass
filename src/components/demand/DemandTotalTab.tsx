@@ -327,9 +327,9 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
           {cnData.map((c, i) => {
             const isExpanded = expandedCns.has(c.cn);
             const skus = (skuPerCn[c.cn] || []).map(sk => {
-              const fc = Math.round(sk.fc * s);
-              const b2b = Math.round(sk.b2b * s);
-              const po = Math.round(sk.po * s);
+              const fc = useDbData ? sk.fc : Math.round(sk.fc * s);
+              const b2b = useDbData ? sk.b2b : Math.round(sk.b2b * s);
+              const po = useDbData ? sk.po : Math.round(sk.po * s);
               return { ...sk, fc, b2b, po, total: fc + b2b + po };
             });
             const shareOfTotal = totals.total > 0 ? Math.round((c.total / totals.total) * 100) : 0;
