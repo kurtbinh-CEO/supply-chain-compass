@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
 import { useTenant } from "@/components/TenantContext";
-import { getNMSummaries, NMSummary, NMSkuRow } from "./supplyData";
+import { NMSummary, NMSkuRow } from "./supplyData";
+import { useInventoryData } from "@/hooks/useInventoryData";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronRight, ChevronDown, Upload, Download, Pencil, Bell, FileSpreadsheet } from "lucide-react";
+import { ChevronRight, ChevronDown, Upload, Download, Pencil, Bell, FileSpreadsheet, Loader2 } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
@@ -159,17 +160,16 @@ function SkuTable({ nm, skus, share, onUpdate }: { nm: string; skus: NMSkuRow[];
 /* ─── Main View ─── */
 export function NMSupplyView() {
   const { tenant } = useTenant();
-  const initialData = getNMSummaries(tenant);
-  const [nmData, setNmData] = useState<NMSummary[]>(initialData);
+  const { data: inventoryData, loading: inventoryLoading, setData: setInventoryData } = useInventoryData();
+  const [nmData, setNmData] = useState<NMSummary[]>(inventoryData);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reminded, setReminded] = useState<Set<string>>(new Set());
   const { conflict: supplyConflict, triggerConflict: triggerSupplyConflict, clearConflict: clearSupplyConflict } = useVersionConflict();
 
-  // Reset data when tenant changes
-  const currentData = getNMSummaries(tenant);
-  if (JSON.stringify(currentData.map(n => n.id)) !== JSON.stringify(nmData.map(n => n.id)) ||
-      currentData[0]?.tongTon !== nmData[0]?.tongTon) {
-    setNmData(currentData);
+  // Sync from hook data
+  if (JSON.stringify(inventoryData.map(n => n.id)) !== JSON.stringify(nmData.map(n => n.id)) ||
+      inventoryData[0]?.tongTon !== nmData[0]?.tongTon) {
+    setNmData(inventoryData);
   }
 
   const toggleExpand = (id: string) => {
