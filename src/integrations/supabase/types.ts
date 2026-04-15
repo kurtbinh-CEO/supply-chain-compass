@@ -14,6 +14,102 @@ export type Database = {
   }
   public: {
     Tables: {
+      demand_forecasts: {
+        Row: {
+          actual_qty: number | null
+          adjustment_qty: number | null
+          cn_code: string
+          confidence: number | null
+          created_at: string
+          created_by: string | null
+          forecast_qty: number
+          id: string
+          period_end: string
+          period_start: string
+          sku: string
+          source: Database["public"]["Enums"]["forecast_source"]
+          tenant: string
+          updated_at: string
+        }
+        Insert: {
+          actual_qty?: number | null
+          adjustment_qty?: number | null
+          cn_code: string
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          forecast_qty?: number
+          id?: string
+          period_end: string
+          period_start: string
+          sku: string
+          source?: Database["public"]["Enums"]["forecast_source"]
+          tenant?: string
+          updated_at?: string
+        }
+        Update: {
+          actual_qty?: number | null
+          adjustment_qty?: number | null
+          cn_code?: string
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          forecast_qty?: number
+          id?: string
+          period_end?: string
+          period_start?: string
+          sku?: string
+          source?: Database["public"]["Enums"]["forecast_source"]
+          tenant?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      inventory: {
+        Row: {
+          batch_number: string | null
+          cn_code: string
+          created_at: string
+          id: string
+          quantity: number
+          safety_stock: number
+          sku: string
+          tenant: string
+          unit: string
+          updated_at: string
+          updated_by: string | null
+          warehouse_code: string
+        }
+        Insert: {
+          batch_number?: string | null
+          cn_code: string
+          created_at?: string
+          id?: string
+          quantity?: number
+          safety_stock?: number
+          sku: string
+          tenant?: string
+          unit?: string
+          updated_at?: string
+          updated_by?: string | null
+          warehouse_code?: string
+        }
+        Update: {
+          batch_number?: string | null
+          cn_code?: string
+          created_at?: string
+          id?: string
+          quantity?: number
+          safety_stock?: number
+          sku?: string
+          tenant?: string
+          unit?: string
+          updated_at?: string
+          updated_by?: string | null
+          warehouse_code?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -38,6 +134,63 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      purchase_orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          currency: string
+          expected_date: string | null
+          id: string
+          notes: string | null
+          order_date: string
+          po_number: string
+          quantity: number
+          received_date: string | null
+          sku: string
+          status: Database["public"]["Enums"]["po_status"]
+          supplier: string
+          tenant: string
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          expected_date?: string | null
+          id?: string
+          notes?: string | null
+          order_date?: string
+          po_number: string
+          quantity?: number
+          received_date?: string | null
+          sku: string
+          status?: Database["public"]["Enums"]["po_status"]
+          supplier: string
+          tenant?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          currency?: string
+          expected_date?: string | null
+          id?: string
+          notes?: string | null
+          order_date?: string
+          po_number?: string
+          quantity?: number
+          received_date?: string | null
+          sku?: string
+          status?: Database["public"]["Enums"]["po_status"]
+          supplier?: string
+          tenant?: string
+          unit_price?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -74,6 +227,14 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "sc_manager" | "cn_manager" | "sales" | "viewer"
+      forecast_source: "system" | "manual" | "b2b"
+      po_status:
+        | "draft"
+        | "submitted"
+        | "confirmed"
+        | "shipped"
+        | "received"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -202,6 +363,15 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "sc_manager", "cn_manager", "sales", "viewer"],
+      forecast_source: ["system", "manual", "b2b"],
+      po_status: [
+        "draft",
+        "submitted",
+        "confirmed",
+        "shipped",
+        "received",
+        "cancelled",
+      ],
     },
   },
 } as const
