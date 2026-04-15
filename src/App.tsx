@@ -35,6 +35,7 @@ import LogicPage from "./pages/LogicPage";
 import GuidePage from "./pages/GuidePage";
 import NotFound from "./pages/NotFound";
 import CnPortalPage from "./pages/CnPortalPage";
+import ProfilePage from "./pages/ProfilePage";
 
 const queryClient = new QueryClient();
 
@@ -85,6 +86,7 @@ function ProtectedRoutes() {
           <Route path="/logic" element={<LogicPage />} />
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/design-test" element={<DesignTest />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </WalkthroughProvider>
