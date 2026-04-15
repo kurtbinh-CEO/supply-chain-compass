@@ -35,6 +35,7 @@ import LogicPage from "./pages/LogicPage";
 import GuidePage from "./pages/GuidePage";
 import NotFound from "./pages/NotFound";
 import CnPortalPage from "./pages/CnPortalPage";
+import ProfilePage from "./pages/ProfilePage";
 
 const queryClient = new QueryClient();
 
