@@ -5,24 +5,27 @@ import { LogicTooltip } from "@/components/LogicTooltip";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { toast } from "sonner";
 import { ViewPivotToggle, usePivotMode, CnGapBadge } from "@/components/ViewPivotToggle";
+import type { DemandCnSummary } from "@/hooks/useDemandForecasts";
 
 interface Props {
   tenant: string;
   b2bPerCn: Record<string, number>;
+  cnSummaries?: DemandCnSummary[];
 }
 
 type View = "12m" | "3m" | "week";
 
 const tenantScale: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.72, "Mondelez": 1.35 };
 
-const baseCnData = [
+// Mock fallback data
+const baseCnDataMock = [
   { cn: "CN-BD", fc: 1600, b2b: 680, po: 345, vsLm: 14, stock: 210 },
   { cn: "CN-ĐN", fc: 1150, b2b: 420, po: 280, vsLm: 7, stock: 840 },
   { cn: "CN-HN", fc: 1350, b2b: 520, po: 310, vsLm: -4, stock: 630 },
   { cn: "CN-CT", fc: 700, b2b: 380, po: 165, vsLm: -4, stock: 440 },
 ];
 
-const skuPerCn: Record<string, { item: string; variant: string; fc: number; b2b: number; po: number; vsLm: number; source: string; mape: number }[]> = {
+const skuPerCnMock: Record<string, { item: string; variant: string; fc: number; b2b: number; po: number; vsLm: number; source: string; mape: number }[]> = {
   "CN-BD": [
     { item: "GA-300", variant: "A4", fc: 580, b2b: 340, po: 155, vsLm: 8, source: "Holt-Winters", mape: 18.4 },
     { item: "GA-300", variant: "B2", fc: 120, b2b: 40, po: 20, vsLm: -3, source: "XGBoost", mape: 12.1 },
@@ -155,7 +158,7 @@ function TrendIcon({ value }: { value: number }) {
   return <Minus className="h-3 w-3 text-text-3 inline" />;
 }
 
-export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
+export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
   const [view, setView] = useState<View>("12m");
   const [expandedCns, setExpandedCns] = useState<Set<string>>(new Set());
   const [expandedSkus, setExpandedSkus] = useState<Set<string>>(new Set());
@@ -180,15 +183,29 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
     });
   };
 
-  const cnData = useMemo(() => baseCnData.map(c => {
-    const fc = Math.round(c.fc * s);
-    const b2b = b2bPerCn[c.cn.replace("CN-", "")] || Math.round(c.b2b * s);
-    const po = Math.round(c.po * s);
-    const total = fc + b2b + po;
-    const stock = Math.round(c.stock * s);
-    const cover = total > 0 ? Math.round((stock / (total / 30)) * 10) / 10 : 0;
-    return { ...c, fc, b2b, po, total, stock, cover };
-  }), [s, b2bPerCn]);
+  // Use DB data if available, otherwise fall back to mock
+  const useDbData = cnSummaries.length > 0;
+
+  const cnData = useMemo(() => {
+    if (useDbData) {
+      return cnSummaries.map(c => {
+        const b2b = b2bPerCn[c.cn.replace("CN-", "")] || c.b2b;
+        const total = c.fc + b2b + c.po;
+        const stock = Math.round(total * 0.15); // estimated
+        const cover = total > 0 ? Math.round((stock / (total / 30)) * 10) / 10 : 0;
+        return { cn: c.cn, fc: c.fc, b2b, po: c.po, total, stock, cover, vsLm: 0, skus: c.skus };
+      });
+    }
+    return baseCnDataMock.map(c => {
+      const fc = Math.round(c.fc * s);
+      const b2b = b2bPerCn[c.cn.replace("CN-", "")] || Math.round(c.b2b * s);
+      const po = Math.round(c.po * s);
+      const total = fc + b2b + po;
+      const stock = Math.round(c.stock * s);
+      const cover = total > 0 ? Math.round((stock / (total / 30)) * 10) / 10 : 0;
+      return { ...c, fc, b2b, po, total, stock, cover, skus: [] as any[] };
+    });
+  }, [s, b2bPerCn, cnSummaries, useDbData]);
 
   const totals = useMemo(() => ({
     fc: cnData.reduce((a, c) => a + c.fc, 0),
@@ -199,6 +216,27 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
     cover: 8.5,
   }), [cnData]);
 
+  // Build skuPerCn from DB data or mock
+  const skuPerCn = useMemo(() => {
+    if (useDbData) {
+      const result: Record<string, { item: string; variant: string; fc: number; b2b: number; po: number; vsLm: number; source: string; mape: number }[]> = {};
+      cnSummaries.forEach(cs => {
+        result[cs.cn] = cs.skus.map(sk => ({
+          item: sk.item,
+          variant: sk.variant,
+          fc: sk.fc,
+          b2b: Math.round(sk.fc * 0.3), // estimated B2B split
+          po: Math.round(sk.fc * 0.15), // estimated PO split
+          vsLm: Math.round((sk.adjustment / Math.max(sk.fc, 1)) * 100),
+          source: sk.source === "system" ? "XGBoost" : sk.source === "manual" ? "Holt-Winters" : "B2B-Input",
+          mape: Math.round((1 - sk.confidence) * 100 * 10) / 10,
+        }));
+      });
+      return result;
+    }
+    return skuPerCnMock;
+  }, [cnSummaries, useDbData]);
+
   // SKU-first aggregation
   const skuAggregated = useMemo(() => {
     const skuMap: Record<string, { item: string; variant: string; totalFc: number; totalB2b: number; totalPo: number; totalDemand: number;
@@ -207,9 +245,9 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
     Object.entries(skuPerCn).forEach(([cnKey, skus]) => {
       skus.forEach(sk => {
         const key = `${sk.item}-${sk.variant}`;
-        const fc = Math.round(sk.fc * s);
-        const b2b = Math.round(sk.b2b * s);
-        const po = Math.round(sk.po * s);
+        const fc = useDbData ? sk.fc : Math.round(sk.fc * s);
+        const b2b = useDbData ? sk.b2b : Math.round(sk.b2b * s);
+        const po = useDbData ? sk.po : Math.round(sk.po * s);
         if (!skuMap[key]) {
           skuMap[key] = { item: sk.item, variant: sk.variant, totalFc: 0, totalB2b: 0, totalPo: 0, totalDemand: 0, cnDetails: [] };
         }
@@ -221,8 +259,7 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
       });
     });
     return Object.values(skuMap).sort((a, b) => b.totalDemand - a.totalDemand);
-  }, [s]);
-
+  }, [s, skuPerCn, useDbData]);
   // ═══════════════════════════════════════════
   // SECTION 1: KPI Summary Cards
   // ═══════════════════════════════════════════
@@ -290,9 +327,9 @@ export function DemandTotalTab({ tenant, b2bPerCn }: Props) {
           {cnData.map((c, i) => {
             const isExpanded = expandedCns.has(c.cn);
             const skus = (skuPerCn[c.cn] || []).map(sk => {
-              const fc = Math.round(sk.fc * s);
-              const b2b = Math.round(sk.b2b * s);
-              const po = Math.round(sk.po * s);
+              const fc = useDbData ? sk.fc : Math.round(sk.fc * s);
+              const b2b = useDbData ? sk.b2b : Math.round(sk.b2b * s);
+              const po = useDbData ? sk.po : Math.round(sk.po * s);
               return { ...sk, fc, b2b, po, total: fc + b2b + po };
             });
             const shareOfTotal = totals.total > 0 ? Math.round((c.total / totals.total) * 100) : 0;

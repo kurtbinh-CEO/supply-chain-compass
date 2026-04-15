@@ -93,7 +93,7 @@ export default function DemandPage() {
         ))}
       </div>
 
-      <div data-tour="demand-total-table">{activeTab === "total" && <DemandTotalTab tenant={tenant} b2bPerCn={b2bPerCn} />}</div>
+      <div data-tour="demand-total-table">{activeTab === "total" && <DemandTotalTab tenant={tenant} b2bPerCn={b2bPerCn} cnSummaries={cnSummaries} />}</div>
       <div data-tour="demand-b2b-table">{activeTab === "b2b" && <B2BInputTab deals={b2bDeals} setDeals={setB2bDeals} tenant={tenant} />}</div>
       <ScreenFooter actionCount={8} />
     </AppLayout>
