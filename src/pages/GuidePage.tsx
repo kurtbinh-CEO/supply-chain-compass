@@ -69,24 +69,42 @@ const scFlows: RoleFlows = {
       keyAction: "Scan → Duyệt → Navigate", kpi: "0 đỏ",
       why: "1 list thay 3 list. Sort: đỏ → vàng → xanh.", what: "List unified: duyệt + exceptions + thông báo. 4 KPI mini + 2 CTA workflow.",
       how: "1. Scan đỏ trước\n2. [Duyệt] inline\n3. [Xử lý →] navigate\n4. [▶ Vận hành ngày]", formula: "",
+      highlights: [
+        { selector: "workspace-kpi", label: "4 KPI Cards", description: "Demand, Exceptions, HSTK, FC Accuracy — click số để xem breakdown chi tiết." },
+        { selector: "workspace-actions", label: "Danh sách Cần làm", description: "Unified list: đỏ → vàng → xanh. [Duyệt] inline hoặc [Xử lý →] navigate tới trang liên quan." },
+      ],
     },
     {
       route: "/supply", label: "Tồn NM", time: "2'", icon: <Package className="h-5 w-5" />,
       keyAction: "Upload Excel → Xác nhận", kpi: "Fresh <24h",
       why: "DRP cần data NM fresh. Stale >24h → DRP sai.", what: "Upload Excel hoặc nhập tay. UNIS dùng = tồn × share%.",
       how: "1. Drag-drop file NM\n2. Preview → [Xác nhận]\n3. NM chưa gửi → [Nhắc NM]", formula: "UNIS_dùng = on_hand × share%\nMikado: 2.500 × 60% = 1.500 − 120 = 1.380",
+      highlights: [
+        { selector: "supply-upload", label: "Upload Excel / Template", description: "Drag-drop file NM vào zone, hoặc click [Upload Excel]. Hệ thống validate trước khi import." },
+        { selector: "supply-nm-table", label: "Bảng tồn kho NM", description: "Per NM: tổng tồn, UNIS dùng (= tồn × share%), đang về. NM stale → hàng đỏ, click [Nhắc NM]." },
+      ],
     },
     {
       route: "/drp", label: "DRP Exceptions", time: "10'", icon: <AlertTriangle className="h-5 w-5" />,
       keyAction: "Xử lý 5% exceptions", kpi: "Fill ≥95%",
       why: "DRP đêm qua tính 95% OK. Focus 5% exceptions.", what: "3 lớp: Kết quả → Cách tính → Điều chỉnh.",
       how: "1. CN-BD 86%, 2 exceptions\n2. GA-300 SHORTAGE 345\n3. Lateral / PO mới / Kết hợp", formula: "Net = Demand − On_hand − Pipeline + SS\n617 − 120 − 557 + 900 = 840\nSS = z × σ_fc_error × √LT",
+      highlights: [
+        { selector: "drp-header", label: "Header & Chạy DRP", description: "Xem lần chạy cuối + badge exceptions. Click [Chạy DRP] để chạy lại ngay bất kỳ lúc nào." },
+        { selector: "drp-exceptions-badge", label: "Exceptions Badge", description: "Số exceptions đỏ = các SKU cần xử lý thủ công. Focus 5% này, 95% OK auto." },
+        { selector: "drp-controls", label: "Controls: Tham số & Pivot", description: "Toggle Tham số (Lớp 3) hoặc đổi Pivot CN↔SKU để xem 2 góc nhìn khác nhau." },
+        { selector: "drp-results-table", label: "Bảng kết quả per CN", description: "Click hàng CN-BD (fill 86%) → drill xuống Lớp 2 xem SKU exceptions + 3 options giải quyết." },
+      ],
     },
     {
       route: "/orders", label: "Duyệt PO", time: "5'", icon: <Truck className="h-5 w-5" />,
       keyAction: "ATP → Duyệt → Post Bravo", kpi: "0 pending",
       why: "NM chỉ sản xuất khi nhận PO trong Bravo.", what: "ATP check → Duyệt → Post. SHIP/HOLD inline.",
       how: "1. [Gửi ATP tất cả]\n2. Pass → [Duyệt tất cả]\n3. [Post Bravo]", formula: "ATP = on_hand × share% × honoring\n2.500 × 60% × 92% = 1.380",
+      highlights: [
+        { selector: "orders-tabs", label: "2 Tab: PO & Tracking", description: "Tab 1: Quản lý PO lifecycle (Draft → ATP → Approved → Posted → Shipped). Tab 2: Theo dõi giao hàng per NM." },
+        { selector: "orders-status-table", label: "Status Summary Table", description: "Click hàng status → drill xuống danh sách PO cụ thể. Action buttons per status: [Gửi ATP] → [Duyệt] → [Post Bravo]." },
+      ],
     },
   ],
   monthly: [
