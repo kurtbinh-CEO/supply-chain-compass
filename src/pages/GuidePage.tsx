@@ -648,13 +648,19 @@ export default function GuidePage() {
   const role = roleMeta.find(r => r.key === selectedRole)!;
   const flows = allFlows[selectedRole];
 
-  const handleNavigate = (node: FlowNode) => {
+  const handleNavigate = (node: FlowNode, flowArray?: FlowNode[], nodeIdx?: number) => {
     const navRoute = node.route.split(" ")[0];
+    // Build full flow sequence from the array
+    const flowSeq = flowArray?.filter(n => n.highlights && n.highlights.length > 0).map(n => ({
+      route: n.route, title: n.label, badge: n.time,
+      what: n.what, how: n.how, highlights: n.highlights,
+    })) || [];
+    const stepInFlow = flowSeq.findIndex(s => s.route === node.route);
     start({
       route: node.route, title: node.label, badge: node.time,
       what: node.what, how: node.how,
       highlights: node.highlights,
-    });
+    }, flowSeq.length > 1 ? flowSeq : undefined, stepInFlow >= 0 ? stepInFlow : 0);
     navigate(navRoute);
   };
 
