@@ -1,5 +1,5 @@
 import { useWalkthrough } from "./WalkthroughContext";
-import { X, BookOpen, ArrowLeft, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { X, BookOpen, ArrowLeft, ChevronLeft, ChevronRight, Eye, SkipForward } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -9,7 +9,7 @@ interface SpotlightRect {
 }
 
 export function WalkthroughOverlay() {
-  const { active, currentHighlight, dismiss, nextHighlight, prevHighlight } = useWalkthrough();
+  const { active, currentHighlight, dismiss, nextHighlight, prevHighlight, hasNextFlowStep, nextFlowStep, flowSteps, flowIndex } = useWalkthrough();
   const navigate = useNavigate();
   const [spotRect, setSpotRect] = useState<SpotlightRect | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number; arrowSide: "top" | "bottom" } | null>(null);
@@ -220,6 +220,20 @@ export function WalkthroughOverlay() {
                 >
                   Tiếp <ChevronRight className="h-3 w-3" />
                 </button>
+              ) : hasNextFlowStep ? (
+                <button
+                  onClick={() => {
+                    const next = nextFlowStep();
+                    if (next) {
+                      const navRoute = next.route.split(" ")[0];
+                      navigate(navRoute);
+                    }
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-button bg-[#00714d] text-white text-caption font-medium hover:bg-[#00714d]/90 transition-colors"
+                >
+                  <SkipForward className="h-3 w-3" />
+                  Bước tiếp ({flowSteps[flowIndex + 1]?.title})
+                </button>
               ) : (
                 <button
                   onClick={dismiss}
@@ -233,13 +247,29 @@ export function WalkthroughOverlay() {
         </div>
       )}
 
-      {/* Back to guide floating button */}
-      <button
-        onClick={() => { dismiss(); navigate("/guide"); }}
-        className="fixed bottom-6 right-6 z-[94] flex items-center gap-2 px-4 py-2.5 rounded-full bg-surface-0 border border-surface-3 shadow-lg text-table-sm font-medium text-text-2 hover:text-text-1 hover:shadow-xl transition-all"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" /> Quay lại Guide
-      </button>
+      {/* Back to guide + flow progress */}
+      <div className="fixed bottom-6 right-6 z-[94] flex items-center gap-2">
+        {flowSteps.length > 1 && (
+          <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-surface-0 border border-surface-3 shadow-lg">
+            {flowSteps.map((s, i) => (
+              <div
+                key={i}
+                className={cn("h-2 rounded-full transition-all",
+                  i === flowIndex ? "w-5 bg-primary" : i < flowIndex ? "w-2 bg-primary/40" : "w-2 bg-surface-3"
+                )}
+                title={s.title}
+              />
+            ))}
+            <span className="text-caption text-text-3 ml-1.5 font-mono">{flowIndex + 1}/{flowSteps.length}</span>
+          </div>
+        )}
+        <button
+          onClick={() => { dismiss(); navigate("/guide"); }}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-surface-0 border border-surface-3 shadow-lg text-table-sm font-medium text-text-2 hover:text-text-1 hover:shadow-xl transition-all"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Quay lại Guide
+        </button>
+      </div>
     </>
   );
 }
