@@ -4,7 +4,7 @@ import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronRight, Send, Truck, Upload, ShieldAlert } from "lucide-react";
+import { ChevronRight, Send, Truck, Upload, ShieldAlert, Loader2, Database } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 import { useNavigate } from "react-router-dom";
 import { ClickableNumber } from "@/components/ClickableNumber";
@@ -12,6 +12,7 @@ import { LogicLink } from "@/components/LogicLink";
 import { LogicTooltip, LogicExpand } from "@/components/LogicTooltip";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
+import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -138,6 +139,7 @@ const tabs = [
 export default function OrdersPage() {
   const { tenant } = useTenant();
   const navigate = useNavigate();
+  const { groups: dbGroups, allOrders, loading: poLoading } = usePurchaseOrders();
 
   const ordersBatch = useBatchLock(null);
   const { conflict: ordersConflict, triggerConflict, clearConflict } = useVersionConflict();
@@ -217,6 +219,25 @@ export default function OrdersPage() {
           </button>
         ))}
       </div>
+
+      {/* DB PO Summary */}
+      {activeTab === "po" && dbGroups.length > 0 && (
+        <div className="mb-4 rounded-card border border-primary/20 bg-primary/5 p-4 animate-fade-in">
+          <div className="flex items-center gap-2 mb-2">
+            <Database className="h-4 w-4 text-primary" />
+            <span className="text-table-sm font-medium text-text-1">Database PO ({allOrders.length} đơn)</span>
+            {poLoading && <Loader2 className="h-3 w-3 animate-spin text-text-3" />}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {dbGroups.map((g) => (
+              <div key={g.status} className="rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-caption">
+                <span className="font-medium text-text-1 capitalize">{g.status}</span>
+                <span className="text-text-3 ml-1">({g.count} PO · {g.totalQty.toLocaleString()}m² · {g.totalVnd})</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {activeTab === "po" && (
         <div className="animate-fade-in">
