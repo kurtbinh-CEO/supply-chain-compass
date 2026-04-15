@@ -39,7 +39,7 @@ export default function HubPage() {
         }
       />
 
-      <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
+      <div data-tour="hub-tabs" className="flex items-center gap-0 border-b border-surface-3 mb-6">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -57,14 +57,18 @@ export default function HubPage() {
         ))}
       </div>
 
-      {activeTab === "sourcing" && (
-        <SourcingWorkbench
-          scale={scale}
-          objective={objective}
-          onObjectiveChange={setObjective}
-        />
-      )}
-      {activeTab === "recon" && <ReconciliationTab scale={scale} />}
+      <div data-tour="hub-sourcing">
+        {activeTab === "sourcing" && (
+          <SourcingWorkbench
+            scale={scale}
+            objective={objective}
+            onObjectiveChange={setObjective}
+          />
+        )}
+      </div>
+      <div data-tour="hub-recon">
+        {activeTab === "recon" && <ReconciliationTab scale={scale} />}
+      </div>
       <ScreenFooter actionCount={9} />
     </AppLayout>
   );
