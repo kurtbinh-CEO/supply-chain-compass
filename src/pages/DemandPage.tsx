@@ -6,7 +6,8 @@ import { DemandTotalTab } from "@/components/demand/DemandTotalTab";
 import { B2BInputTab } from "@/components/demand/B2BInputTab";
 import { useTenant } from "@/components/TenantContext";
 import { useDemandForecasts } from "@/hooks/useDemandForecasts";
-import { Loader2, Database } from "lucide-react";
+import { Loader2, PackageOpen } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const tabs = [
   { key: "total", label: "Demand tổng" },
@@ -16,6 +17,7 @@ const tabs = [
 export default function DemandPage() {
   const [activeTab, setActiveTab] = useState("total");
   const { tenant } = useTenant();
+  const navigate = useNavigate();
   const { cnSummaries, loading: forecastLoading } = useDemandForecasts();
 
   // B2B deals state lives here so Tab1 can read aggregated B2B per CN
@@ -38,6 +40,8 @@ export default function DemandPage() {
     }
   });
 
+  const isEmpty = !forecastLoading && cnSummaries.length === 0;
+
   return (
     <AppLayout>
       {/* Header */}
@@ -54,22 +58,9 @@ export default function DemandPage() {
         />
       </div>
 
-      {/* DB Forecast Summary */}
-      {cnSummaries.length > 0 && (
-        <div className="mb-4 rounded-card border border-primary/20 bg-primary/5 p-4 animate-fade-in">
-          <div className="flex items-center gap-2 mb-2">
-            <Database className="h-4 w-4 text-primary" />
-            <span className="text-table-sm font-medium text-text-1">Database Forecasts</span>
-            {forecastLoading && <Loader2 className="h-3 w-3 animate-spin text-text-3" />}
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {cnSummaries.map((cs) => (
-              <div key={cs.cn} className="rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-caption">
-                <span className="font-medium text-text-1">{cs.cn}</span>
-                <span className="text-text-3 ml-1">({cs.skus.length} SKU · {cs.fc.toLocaleString()}m²)</span>
-              </div>
-            ))}
-          </div>
+      {forecastLoading && (
+        <div className="flex items-center gap-2 text-text-3 text-table-sm mb-4">
+          <Loader2 className="h-4 w-4 animate-spin" /> Đang tải dữ liệu forecast...
         </div>
       )}
 
@@ -93,7 +84,30 @@ export default function DemandPage() {
         ))}
       </div>
 
-      <div data-tour="demand-total-table">{activeTab === "total" && <DemandTotalTab tenant={tenant} b2bPerCn={b2bPerCn} cnSummaries={cnSummaries} />}</div>
+      {/* Empty state */}
+      {isEmpty && activeTab === "total" && (
+        <div className="rounded-card border border-surface-3 bg-surface-2 py-16 flex flex-col items-center gap-4 animate-fade-in">
+          <div className="rounded-full bg-surface-1 p-4">
+            <PackageOpen className="h-10 w-10 text-text-3" />
+          </div>
+          <div className="text-center space-y-1">
+            <p className="text-body font-semibold text-text-1">Chưa có dữ liệu forecast</p>
+            <p className="text-table text-text-3 max-w-md">
+              Nhập dữ liệu forecast từ hệ thống hoặc tạo thủ công qua tab B2B nhập liệu để bắt đầu review demand.
+            </p>
+          </div>
+          <button
+            onClick={() => setActiveTab("b2b")}
+            className="rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table-sm font-medium mt-2"
+          >
+            Nhập B2B ngay
+          </button>
+        </div>
+      )}
+
+      {!isEmpty && (
+        <div data-tour="demand-total-table">{activeTab === "total" && <DemandTotalTab tenant={tenant} b2bPerCn={b2bPerCn} cnSummaries={cnSummaries} />}</div>
+      )}
       <div data-tour="demand-b2b-table">{activeTab === "b2b" && <B2BInputTab deals={b2bDeals} setDeals={setB2bDeals} tenant={tenant} />}</div>
       <ScreenFooter actionCount={8} />
     </AppLayout>
@@ -110,7 +124,7 @@ export interface B2BDealInput {
   qty: number;
   probability: number;
   deliveryMonths: string[];
-  poStatus: string | null; // null = chưa, "PO 8.500" = có
+  poStatus: string | null;
 }
 
 function getInitialDeals(tenant: string): B2BDealInput[] {
