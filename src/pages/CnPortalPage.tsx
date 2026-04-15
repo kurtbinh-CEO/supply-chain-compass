@@ -524,7 +524,7 @@ export default function CnPortalPage() {
   return (
     <AppLayout>
       {/* Header */}
-      <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+      <div data-tour="cn-header" className="flex items-center justify-between mb-1 flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <div>
             <h1 className="font-display text-screen-title text-text-1">
@@ -582,7 +582,7 @@ export default function CnPortalPage() {
       <div className="text-caption text-text-3 mb-4">Tháng 5 / 2025 — W17 (12-18/05)</div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-5 border-b border-surface-3 overflow-x-auto">
+      <div data-tour="cn-tabs" className="flex gap-1 mb-5 border-b border-surface-3 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -610,7 +610,7 @@ export default function CnPortalPage() {
 
       {/* ═══ TAB 1: Điều chỉnh demand ═══ */}
       {activeTab === "adjust" && (
-        <div className="space-y-4 animate-fade-in">
+        <div data-tour="cn-adjust-table" className="space-y-4 animate-fade-in">
           {/* Status strip */}
           <div className="rounded-lg border border-surface-3 bg-surface-1/50 px-4 py-2.5 text-table-sm text-text-2 flex items-center gap-4 flex-wrap">
             <span>{rows.length} SKU:</span>
