@@ -194,6 +194,11 @@ const cnFlows: RoleFlows = {
       keyAction: "Nhập số → Gửi", kpi: "FVA +29%",
       why: "Bạn biết thị trường mà hệ thống không biết.", what: "Per SKU: Dự kiến → CN điều chỉnh → Delta auto. Lý do >5%.",
       how: "1. Click ô → nhập 568 (thay 524)\n2. Lý do hoặc 🎤 voice\n3. [Gửi] → <10% auto ✅", formula: "Trust = Σ(|adjust−actual|<20%) / total\n>85% auto-approve · 60-85% SC duyệt · <60% giải trình",
+      highlights: [
+        { selector: "cn-header", label: "Header & Trust Score", description: "Trust Score 82% 🟢 — auto-approve nếu >85%. Cutoff 18:00 — nhập sớm!" },
+        { selector: "cn-tabs", label: "4 Tab: Adjust / Tồn / Chat / Audit", description: "Tab 1: Điều chỉnh demand. Tab 2: Tồn kho CN. Tab 3: Trao đổi với SC. Tab 4: Lịch sử." },
+        { selector: "cn-adjust-table", label: "Bảng điều chỉnh demand", description: "Per SKU: Dự kiến (HQ) → CN điều chỉnh → Delta auto. Lý do bắt buộc nếu delta >5%." },
+      ],
     },
     {
       route: "/cn-portal", label: "Tồn kho", time: "1'", icon: <Package className="h-5 w-5" />,
