@@ -206,6 +206,11 @@ export function NMSupplyView() {
 
   return (
     <div className="space-y-5 animate-fade-in">
+      {inventoryLoading && (
+        <div className="flex items-center gap-2 text-text-3 text-table-sm">
+          <Loader2 className="h-4 w-4 animate-spin" /> Đang tải dữ liệu tồn kho...
+        </div>
+      )}
       {/* Version Conflict */}
       {supplyConflict && (
         <VersionConflictDialog
