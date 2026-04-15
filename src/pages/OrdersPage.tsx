@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronRight, Send, Truck, Upload, ShieldAlert, Loader2, Database } from "lucide-react";
+import { ChevronRight, Send, Upload, ShieldAlert, Loader2, PackageOpen } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 import { useNavigate } from "react-router-dom";
 import { ClickableNumber } from "@/components/ClickableNumber";
@@ -12,9 +12,7 @@ import { LogicLink } from "@/components/LogicLink";
 import { LogicTooltip, LogicExpand } from "@/components/LogicTooltip";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
-import { usePurchaseOrders } from "@/hooks/usePurchaseOrders";
-
-const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
+import { usePurchaseOrders, type PurchaseOrderRow } from "@/hooks/usePurchaseOrders";
 
 type POType = "RPO" | "TO";
 
@@ -61,75 +59,39 @@ interface RpoTracking {
   status: string;
 }
 
-const baseStatusGroups: StatusGroup[] = [
-  {
-    status: "Draft — chờ gửi", count: 4, totalQty: 3200, totalVnd: "1,2B", action: "Gửi ATP tất cả",
-    pos: [
-      { type: "RPO", poNum: "RPO-MKD-2605-W17-001", blanket: "BPO-MKD-2605", nm: "Mikado", item: "GA-300 A4", qty: 1200, status: "Draft" },
-      { type: "RPO", poNum: "RPO-TKO-2605-W17-001", blanket: "BPO-TKO-2605", nm: "Toko", item: "GA-300 A4", qty: 800, status: "Draft" },
-      { type: "RPO", poNum: "RPO-VGR-2605-W16-001", blanket: "BPO-VGR-2605", nm: "Vigracera", item: "GA-600 A4", qty: 700, status: "Draft" },
-      { type: "TO", poNum: "TO-DN-BD-2605-001", blanket: "—", nm: "CN-ĐN→BD", item: "GA-300 A4", qty: 500, status: "Draft" },
-    ],
-  },
-  {
-    status: "ATP Pass — chờ duyệt", count: 3, totalQty: 2400, totalVnd: "890M", action: "Gửi duyệt tất cả",
-    pos: [
-      { type: "RPO", poNum: "RPO-DTM-2605-W16-001", blanket: "BPO-DTM-2605", nm: "Đồng Tâm", item: "GA-600 B2", qty: 900, status: "ATP Pass" },
-      { type: "RPO", poNum: "RPO-MKD-2605-W16-002", blanket: "BPO-MKD-2605", nm: "Mikado", item: "GA-600 A4", qty: 1000, status: "ATP Pass" },
-      { type: "RPO", poNum: "RPO-TKO-2605-W16-002", blanket: "BPO-TKO-2605", nm: "Toko", item: "GA-300 A4", qty: 500, status: "ATP Pass" },
-    ],
-  },
-  {
-    status: "Approved — chờ post", count: 2, totalQty: 1500, totalVnd: "560M", action: "Post tất cả",
-    pos: [
-      { type: "RPO", poNum: "RPO-MKD-2605-W15-001", blanket: "BPO-MKD-2605", nm: "Mikado", item: "GA-300 A4", qty: 800, status: "Approved" },
-      { type: "TO", poNum: "TO-HN-CT-2605-001", blanket: "—", nm: "CN-HN→CT", item: "GA-400 A4", qty: 700, status: "Approved" },
-    ],
-  },
-  {
-    status: "Posted — chờ ship", count: 2, totalQty: 1200, totalVnd: "450M", action: "",
-    pos: [
-      { type: "RPO", poNum: "RPO-TKO-2605-W15-001", blanket: "BPO-TKO-2605", nm: "Toko", item: "GA-600 A4", qty: 600, status: "Posted" },
-      { type: "RPO", poNum: "RPO-DTM-2605-W15-001", blanket: "BPO-DTM-2605", nm: "Đồng Tâm", item: "GA-300 A4", qty: 600, status: "Posted" },
-    ],
-  },
-  {
-    status: "Shipped — đang vận chuyển", count: 3, totalQty: 2100, totalVnd: "780M", action: "",
-    pos: [
-      { type: "RPO", poNum: "RPO-MKD-2605-W16-001", blanket: "BPO-MKD-2605", nm: "Mikado", item: "GA-300 A4", qty: 800, status: "Shipped", vehicle: "Container 28T", fillPct: 72, shipHoldReason: "HSTK<3d → nên SHIP" },
-      { type: "RPO", poNum: "RPO-TKO-2605-W16-001", blanket: "BPO-TKO-2605", nm: "Toko", item: "GA-600 A4", qty: 700, status: "Shipped", vehicle: "Truck 10T", fillPct: 45, shipHoldReason: "HSTK 19d → có thể HOLD" },
-      { type: "RPO", poNum: "RPO-DTM-2605-W16-002", blanket: "BPO-DTM-2605", nm: "Đồng Tâm", item: "GA-600 B2", qty: 600, status: "Shipped", vehicle: "Truck 5T", fillPct: 90, shipHoldReason: "HSTK 5d → SHIP" },
-    ],
-  },
-];
+const statusConfig: Record<string, { label: string; action: string }> = {
+  draft: { label: "Draft — chờ gửi", action: "Gửi ATP tất cả" },
+  submitted: { label: "Submitted — chờ xác nhận", action: "Xác nhận tất cả" },
+  confirmed: { label: "Confirmed — đã xác nhận", action: "Post tất cả" },
+  shipped: { label: "Shipped — đang vận chuyển", action: "" },
+  received: { label: "Received — đã nhận", action: "" },
+  cancelled: { label: "Cancelled — đã hủy", action: "" },
+};
 
-const baseNmTracking: NmTracking[] = [
-  {
-    nm: "Mikado", bpo: "BPO-MKD-2605", bpoTotal: 5500, released: 2500, delivered: 1050, completionPct: 19,
-    rpos: [
-      { rpo: "RPO-MKD-2605-W16-001", item: "GA-300 A4", qty: 1200, asn: "ASN-MKD-2605-001", shipDate: "10/05", eta: "17/05", actual: 800, status: "SHIPPED" },
-      { rpo: "RPO-MKD-2605-W16-002", item: "GA-600 A4", qty: 800, asn: "—", shipDate: "—", eta: "20/05", actual: 0, status: "IN_PRODUCTION" },
-    ],
-  },
-  {
-    nm: "Toko", bpo: "BPO-TKO-2605", bpoTotal: 6000, released: 1200, delivered: 500, completionPct: 8,
-    rpos: [
-      { rpo: "RPO-TKO-2605-W16-001", item: "GA-300 A4", qty: 557, asn: "ASN-TKO-2605-001", shipDate: "12/05", eta: "19/05", actual: 500, status: "SHIPPED" },
-    ],
-  },
-  {
-    nm: "Đồng Tâm", bpo: "BPO-DTM-2605", bpoTotal: 2500, released: 900, delivered: 900, completionPct: 36,
-    rpos: [
-      { rpo: "RPO-DTM-2605-W16-001", item: "GA-400 A4", qty: 900, asn: "ASN-DTM-2605-001", shipDate: "09/05", eta: "16/05", actual: 900, status: "RECEIVED" },
-    ],
-  },
-  {
-    nm: "Vigracera", bpo: "BPO-VGR-2605", bpoTotal: 1500, released: 500, delivered: 500, completionPct: 33,
-    rpos: [
-      { rpo: "RPO-VGR-2605-W16-001", item: "GA-600 A4", qty: 500, asn: "ASN-VGR-2605-001", shipDate: "10/05", eta: "17/05", actual: 500, status: "RECEIVED" },
-    ],
-  },
-];
+const supplierToNm: Record<string, string> = {
+  "Mikado": "Mikado",
+  "Toko": "Toko",
+  "Đồng Tâm": "Đồng Tâm",
+  "Vigracera": "Vigracera",
+};
+
+function dbRowToPoRow(r: PurchaseOrderRow): PoRow {
+  return {
+    type: r.po_number.startsWith("TO-") ? "TO" : "RPO",
+    poNum: r.po_number,
+    blanket: r.po_number.startsWith("TO-") ? "—" : `BPO-${r.supplier.substring(0, 3).toUpperCase()}`,
+    nm: supplierToNm[r.supplier] || r.supplier,
+    item: r.sku,
+    qty: Number(r.quantity),
+    status: r.status,
+  };
+}
+
+function formatVndTotal(v: number): string {
+  if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(0)}M`;
+  return v.toLocaleString();
+}
 
 const tabs = [
   { key: "po", label: "Quản lý PO" },
@@ -142,30 +104,66 @@ export default function OrdersPage() {
   const { groups: dbGroups, allOrders, loading: poLoading } = usePurchaseOrders();
 
   const ordersBatch = useBatchLock(null);
-  const { conflict: ordersConflict, triggerConflict, clearConflict } = useVersionConflict();
-  const s = tenantScales[tenant] || 1;
+  const { conflict: ordersConflict, clearConflict } = useVersionConflict();
   const [activeTab, setActiveTab] = useState("po");
   const [drillStatus, setDrillStatus] = useState<string | null>(null);
   const [drillNm, setDrillNm] = useState<string | null>(null);
   const [forceReleasePoNum, setForceReleasePoNum] = useState<string | null>(null);
   const [forceReleaseReason, setForceReleaseReason] = useState("");
 
-  const groups = baseStatusGroups.map((g) => ({
-    ...g,
-    totalQty: Math.round(g.totalQty * s),
-    pos: g.pos.map((p) => ({ ...p, qty: Math.round(p.qty * s) })),
-  }));
+  const groups: StatusGroup[] = useMemo(() => {
+    return dbGroups.map((g) => {
+      const cfg = statusConfig[g.status] || { label: g.status, action: "" };
+      return {
+        status: cfg.label,
+        count: g.count,
+        totalQty: g.totalQty,
+        totalVnd: g.totalVnd,
+        action: cfg.action,
+        pos: g.orders.map(dbRowToPoRow),
+      };
+    });
+  }, [dbGroups]);
 
-  const nmTracking = baseNmTracking.map((n) => ({
-    ...n,
-    bpoTotal: Math.round(n.bpoTotal * s),
-    released: Math.round(n.released * s),
-    delivered: Math.round(n.delivered * s),
-    rpos: n.rpos.map(r => ({ ...r, qty: Math.round(r.qty * s), actual: Math.round(r.actual * s) })),
-  }));
+  const nmTracking: NmTracking[] = useMemo(() => {
+    const bySupplier: Record<string, PurchaseOrderRow[]> = {};
+    allOrders.forEach((o) => {
+      const nm = supplierToNm[o.supplier] || o.supplier;
+      if (!bySupplier[nm]) bySupplier[nm] = [];
+      bySupplier[nm].push(o);
+    });
+
+    return Object.entries(bySupplier).map(([nm, orders]) => {
+      const bpoTotal = orders.reduce((s, o) => s + Number(o.quantity), 0);
+      const delivered = orders.filter((o) => o.status === "received").reduce((s, o) => s + Number(o.quantity), 0);
+      const shipped = orders.filter((o) => o.status === "shipped").reduce((s, o) => s + Number(o.quantity), 0);
+      const released = delivered + shipped + orders.filter((o) => o.status === "confirmed").reduce((s, o) => s + Number(o.quantity), 0);
+      const completionPct = bpoTotal > 0 ? Math.round((delivered / bpoTotal) * 100) : 0;
+
+      const rpos: RpoTracking[] = orders.map((o) => ({
+        rpo: o.po_number,
+        item: o.sku,
+        qty: Number(o.quantity),
+        asn: o.status === "shipped" || o.status === "received" ? `ASN-${o.po_number.slice(-3)}` : "—",
+        shipDate: o.status === "shipped" || o.status === "received"
+          ? (o.expected_date ? new Date(o.expected_date).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }) : "—")
+          : "—",
+        eta: o.expected_date ? new Date(o.expected_date).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }) : "—",
+        actual: o.status === "received" ? Number(o.quantity) : 0,
+        status: o.status.toUpperCase(),
+      }));
+
+      return { nm, bpo: `BPO-${nm.substring(0, 3).toUpperCase()}`, bpoTotal, released, delivered, completionPct, rpos };
+    });
+  }, [allOrders]);
 
   const totalPos = groups.reduce((a, g) => a + g.count, 0);
   const totalQty = groups.reduce((a, g) => a + g.totalQty, 0);
+  const totalVnd = useMemo(() => {
+    const total = allOrders.reduce((s, o) => s + Number(o.quantity) * Number(o.unit_price), 0);
+    return formatVndTotal(total);
+  }, [allOrders]);
+
   const activeGroup = drillStatus ? groups.find((g) => g.status === drillStatus) : null;
   const activeNmData = drillNm ? nmTracking.find((n) => n.nm === drillNm) : null;
 
@@ -173,9 +171,10 @@ export default function OrdersPage() {
     toast.success(action, { description: "Đã thực hiện thành công." });
   };
 
+  const isEmpty = !poLoading && allOrders.length === 0;
+
   return (
     <AppLayout>
-      {/* Batch Lock Banner for auto-gen PO */}
       {ordersBatch.batch && (
         <div className="mb-4">
           <BatchLockBanner
@@ -190,7 +189,6 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Version Conflict */}
       {ordersConflict && (
         <VersionConflictDialog
           conflict={ordersConflict}
@@ -220,26 +218,33 @@ export default function OrdersPage() {
         ))}
       </div>
 
-      {/* DB PO Summary */}
-      {activeTab === "po" && dbGroups.length > 0 && (
-        <div className="mb-4 rounded-card border border-primary/20 bg-primary/5 p-4 animate-fade-in">
-          <div className="flex items-center gap-2 mb-2">
-            <Database className="h-4 w-4 text-primary" />
-            <span className="text-table-sm font-medium text-text-1">Database PO ({allOrders.length} đơn)</span>
-            {poLoading && <Loader2 className="h-3 w-3 animate-spin text-text-3" />}
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {dbGroups.map((g) => (
-              <div key={g.status} className="rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-caption">
-                <span className="font-medium text-text-1 capitalize">{g.status}</span>
-                <span className="text-text-3 ml-1">({g.count} PO · {g.totalQty.toLocaleString()}m² · {g.totalVnd})</span>
-              </div>
-            ))}
-          </div>
+      {poLoading && (
+        <div className="flex items-center gap-2 text-text-3 text-table-sm mb-4">
+          <Loader2 className="h-4 w-4 animate-spin" /> Đang tải dữ liệu PO...
         </div>
       )}
 
-      {activeTab === "po" && (
+      {isEmpty && (
+        <div className="rounded-card border border-surface-3 bg-surface-2 py-16 flex flex-col items-center gap-4 animate-fade-in">
+          <div className="rounded-full bg-surface-1 p-4">
+            <PackageOpen className="h-10 w-10 text-text-3" />
+          </div>
+          <div className="text-center space-y-1">
+            <p className="text-body font-semibold text-text-1">Chưa có đơn hàng nào</p>
+            <p className="text-table text-text-3 max-w-md">
+              Tạo PO mới từ DRP hoặc Hub để bắt đầu theo dõi đơn hàng. Dữ liệu sẽ hiển thị theo trạng thái và NM.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/hub")}
+            className="rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table-sm font-medium mt-2"
+          >
+            Đi tới Hub & Commitment
+          </button>
+        </div>
+      )}
+
+      {activeTab === "po" && !isEmpty && (
         <div className="animate-fade-in">
           {!activeGroup ? (
             <div className="rounded-card border border-surface-3 bg-surface-2" data-tour="orders-status-table">
@@ -264,7 +269,6 @@ export default function OrdersPage() {
                               label: p.poNum,
                               value: `${p.qty.toLocaleString()}m² ${p.item}`,
                             }))}
-                            note={g.status.includes("ATP_FAIL") ? "NM chưa cập nhật tồn kho." : undefined}
                           />
                         </td>
                         <td className="px-4 py-3 text-table tabular-nums text-text-1">
@@ -292,7 +296,7 @@ export default function OrdersPage() {
                       <td className="px-4 py-3 text-table text-text-1">TOTAL</td>
                       <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalPos}</td>
                       <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalQty.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-table tabular-nums text-text-1">3,88B</td>
+                      <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalVnd}</td>
                       <td colSpan={2}></td>
                     </tr>
                   </tbody>
@@ -308,7 +312,7 @@ export default function OrdersPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-surface-3 bg-surface-1/50">
-                        {["Type", "PO#", "Blanket#", "NM", "Item", "Qty (m²)", "Status", "ATP", "BPO check",
+                        {["Type", "PO#", "Blanket#", "NM", "Item", "Qty (m²)", "Status",
                           ...(activeGroup.status.includes("Shipped") ? ["Vehicle", "Fill%"] : []),
                           "Action"
                         ].map((h, i) => (
@@ -339,25 +343,7 @@ export default function OrdersPage() {
                             <td className="px-4 py-3 text-table text-text-2">{po.nm}</td>
                             <td className="px-4 py-3 text-table text-text-2">{po.item}</td>
                             <td className="px-4 py-3 text-table tabular-nums text-text-1">{po.qty.toLocaleString()}</td>
-                            <td className="px-4 py-3 text-table text-text-2">{po.status}</td>
-                            {/* ATP check */}
-                            <td className="px-4 py-3">
-                              {po.nm === "Toko" ? (
-                                <LogicExpand label="ATP Fail 🔴" content={`ATP Check cho ${po.poNum} (${po.item}, ${po.qty.toLocaleString()}m²):\nNM: ${po.nm}\nNM on-hand: ??? (data stale 18h!)\n× share% UNIS: 32%\n= NM ATP raw: không tính được (stale)\n→ 🔴 FAIL: data stale > 24h threshold\nOptions:\n[Nhắc NM cập nhật] → NM update → re-check ATP\n[Force-release 3 cấp] → bypass ATP check`} title="ATP Check" />
-                              ) : (
-                                <LogicExpand label="ATP Pass ✅" content={`ATP Check cho ${po.poNum} (${po.item}, ${po.qty.toLocaleString()}m²):\nNM: ${po.nm}\nNM on-hand: 2.500\n× share% UNIS: 60%\n= NM ATP raw: 1.500\n× honoring factor: 92% (${po.nm} reliable)\n= Effective ATP: 1.380\nRPO qty: ${po.qty.toLocaleString()} ≤ 1.380 → ✅ PASS\nFormula: effective_ATP = on_hand × share% × honoring_rate\nData fresh: 32 phút ago.`} title="ATP Check" />
-                              )}
-                            </td>
-                            {/* BPO quota check */}
-                            <td className="px-4 py-3">
-                              {po.blanket !== "—" ? (
-                                po.nm === "Vigracera" ? (
-                                  <LogicExpand label="⚠ OVER 200" content={`RPO ${po.qty.toLocaleString()} > BPO remaining 500. Over-commitment 200m².\nOptions:\n[Giảm RPO → 500] — fit BPO quota\n[Tăng BPO → +200] — cần NM confirm → gửi Workspace\n[Tạo anyway] — vượt BPO, ghi nhận over-commitment`} title="BPO Quota Check" />
-                                ) : (
-                                  <span className="text-caption text-success font-medium">✅ OK</span>
-                                )
-                              ) : <span className="text-text-3">—</span>}
-                            </td>
+                            <td className="px-4 py-3 text-table text-text-2 capitalize">{po.status}</td>
                             {activeGroup.status.includes("Shipped") && (
                               <>
                                 <td className="px-4 py-3 text-table text-text-2">{po.vehicle || "—"}</td>
@@ -366,25 +352,17 @@ export default function OrdersPage() {
                             )}
                             <td className="px-4 py-3">
                               <div className="flex gap-1.5 items-center">
-                                {po.status === "Draft" && (
-                                  <>
-                                    <button onClick={() => handleAction(`Gửi ATP ${po.poNum}`)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium flex items-center gap-1">
-                                      <Send className="h-3 w-3" /> Gửi ATP
-                                    </button>
-                                    {po.nm === "Toko" && (
-                                      <button onClick={() => setForceReleasePoNum(po.poNum)} className="rounded-button bg-danger-bg text-danger px-2.5 py-1 text-caption font-medium flex items-center gap-1">
-                                        <ShieldAlert className="h-3 w-3" /> Force-release
-                                      </button>
-                                    )}
-                                  </>
+                                {po.status === "draft" && (
+                                  <button onClick={() => handleAction(`Gửi ATP ${po.poNum}`)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium flex items-center gap-1">
+                                    <Send className="h-3 w-3" /> Gửi ATP
+                                  </button>
                                 )}
-                                {po.status === "ATP Pass" && <button onClick={() => handleAction(`Gửi duyệt ${po.poNum}`)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">Gửi duyệt</button>}
-                                {po.status === "Approved" && <button onClick={() => handleAction(`Post ${po.poNum}`)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">Post Bravo</button>}
-                                {po.status === "Shipped" && (
+                                {po.status === "submitted" && <button onClick={() => handleAction(`Xác nhận ${po.poNum}`)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">Xác nhận</button>}
+                                {po.status === "confirmed" && <button onClick={() => handleAction(`Post ${po.poNum}`)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">Post Bravo</button>}
+                                {po.status === "shipped" && (
                                   <>
                                     <button onClick={() => handleAction(`SHIP ${po.poNum}`)} className="rounded-button bg-success/10 text-success px-2.5 py-1 text-caption font-medium">SHIP</button>
                                     <button onClick={() => handleAction(`HOLD ${po.poNum}`)} className="rounded-button bg-warning-bg text-warning px-2.5 py-1 text-caption font-medium">HOLD</button>
-                                    {po.shipHoldReason && <span className="text-caption text-text-3 ml-1">{po.shipHoldReason}</span>}
                                   </>
                                 )}
                               </div>
@@ -401,7 +379,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {activeTab === "tracking" && (
+      {activeTab === "tracking" && !isEmpty && (
         <div className="animate-fade-in">
           {!activeNmData ? (
             <div className="rounded-card border border-surface-3 bg-surface-2">
@@ -446,7 +424,7 @@ export default function OrdersPage() {
                                 value={`${n.completionPct}%`}
                                 label={`Honoring ${n.nm}`}
                                 color="text-table tabular-nums font-medium text-text-1"
-                                formula={`Delivered ${n.delivered.toLocaleString()} ÷ Released ${n.released.toLocaleString()} = ${n.completionPct}%`}
+                                formula={`Delivered ${n.delivered.toLocaleString()} ÷ BPO Total ${n.bpoTotal.toLocaleString()} = ${n.completionPct}%`}
                                 breakdown={n.rpos.map(r => ({
                                   label: r.rpo,
                                   value: `plan ${r.qty.toLocaleString()}, actual ${r.actual.toLocaleString()}`,
@@ -517,7 +495,7 @@ export default function OrdersPage() {
           )}
         </div>
       )}
-      {/* Force-release modal */}
+
       {forceReleasePoNum && (
         <>
           <div className="fixed inset-0 bg-text-1/30 z-50" onClick={() => setForceReleasePoNum(null)} />
@@ -532,8 +510,6 @@ export default function OrdersPage() {
                   <p>Cấp 3: CEO (Kurt) → <span className="text-text-3">Chưa tới</span></p>
                 </div>
                 <p className="text-text-3 mt-2">Risk: NM có thể không đủ hàng → PO_OVERDUE.</p>
-                <p className="text-text-3">History: 2 force-releases tháng này (Toko×2).</p>
-                <p className="text-text-3 italic">Config: /config → PO → force_release_levels = 3.</p>
               </div>
               <div>
                 <label className="text-caption text-text-3 uppercase">Lý do bắt buộc</label>
