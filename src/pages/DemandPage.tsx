@@ -5,6 +5,8 @@ import { cn } from "@/lib/utils";
 import { DemandTotalTab } from "@/components/demand/DemandTotalTab";
 import { B2BInputTab } from "@/components/demand/B2BInputTab";
 import { useTenant } from "@/components/TenantContext";
+import { useDemandForecasts } from "@/hooks/useDemandForecasts";
+import { Loader2, Database } from "lucide-react";
 
 const tabs = [
   { key: "total", label: "Demand tổng" },
