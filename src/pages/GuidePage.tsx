@@ -5,7 +5,7 @@ import { ScreenHeader } from "@/components/ScreenShell";
 import { cn } from "@/lib/utils";
 import { useRbac, UserRole } from "@/components/RbacContext";
 import { ChevronDown, ChevronRight, ExternalLink, Clock, ArrowRight, Zap, Target, Building2, Briefcase, Factory, TrendingUp, BarChart3, ShieldCheck, Package, Truck, Calculator, MousePointerClick, Mic, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
-import { useWalkthrough } from "@/components/WalkthroughContext";
+import { useWalkthrough, TourHighlight } from "@/components/WalkthroughContext";
 
 /* ═══ TYPES ═══ */
 type RoleKey = "SC_MANAGER" | "CN_MANAGER" | "SALES" | "BUYER";
@@ -48,6 +48,7 @@ interface FlowNode {
   route: string; label: string; time: string; icon: React.ReactNode;
   keyAction: string; kpi?: string;
   why: string; what: string; how: string; formula: string;
+  highlights?: TourHighlight[];
 }
 
 interface FormulaViz {
