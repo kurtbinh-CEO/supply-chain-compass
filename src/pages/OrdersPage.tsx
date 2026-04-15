@@ -203,7 +203,7 @@ export default function OrdersPage() {
         <LogicLink tab="daily" node={4} tooltip="Logic PO Release: BPO → RPO → ASN" />
       </div>
 
-      <div className="flex items-center gap-1 mb-6 rounded-full border border-surface-3 bg-surface-0 p-0.5 w-fit">
+      <div className="flex items-center gap-1 mb-6 rounded-full border border-surface-3 bg-surface-0 p-0.5 w-fit" data-tour="orders-tabs">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -221,7 +221,7 @@ export default function OrdersPage() {
       {activeTab === "po" && (
         <div className="animate-fade-in">
           {!activeGroup ? (
-            <div className="rounded-card border border-surface-3 bg-surface-2">
+            <div className="rounded-card border border-surface-3 bg-surface-2" data-tour="orders-status-table">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
