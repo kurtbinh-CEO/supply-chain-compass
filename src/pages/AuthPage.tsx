@@ -169,6 +169,55 @@ export default function AuthPage() {
               {isLogin ? "Đăng ký" : "Đăng nhập"}
             </button>
           </p>
+
+          {/* DEV: Quick role login */}
+          <div className="mt-8 border-t border-surface-3 pt-6">
+            <p className="text-table-sm text-text-3 text-center mb-3">⚡ Dev Quick Login</p>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { role: "admin", label: "Admin", color: "bg-red-500" },
+                { role: "sc_manager", label: "SC Manager", color: "bg-blue-500" },
+                { role: "cn_manager", label: "CN Manager", color: "bg-green-500" },
+                { role: "viewer", label: "Viewer", color: "bg-gray-500" },
+              ] as const).map(({ role, label, color }) => (
+                <button
+                  key={role}
+                  type="button"
+                  disabled={loading}
+                  onClick={async () => {
+                    setLoading(true);
+                    const testEmail = `test-${role}@smartlog.dev`;
+                    const testPw = "Test1234!";
+                    try {
+                      // Try sign in first
+                      const { error: signInErr } = await supabase.auth.signInWithPassword({ email: testEmail, password: testPw });
+                      if (signInErr) {
+                        // Account doesn't exist, create it
+                        const { error: signUpErr } = await supabase.auth.signUp({
+                          email: testEmail,
+                          password: testPw,
+                          options: { data: { full_name: `Test ${label}` } },
+                        });
+                        if (signUpErr) throw signUpErr;
+                        // Now sign in
+                        const { error: err2 } = await supabase.auth.signInWithPassword({ email: testEmail, password: testPw });
+                        if (err2) throw err2;
+                      }
+                      toast.success(`Đăng nhập ${label}`);
+                      navigate("/");
+                    } catch (err: any) {
+                      toast.error(err.message);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className={`${color} text-white rounded-button py-2 text-table-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
