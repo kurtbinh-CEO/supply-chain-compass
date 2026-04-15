@@ -165,15 +165,22 @@ export function TopBar() {
         <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-danger ring-2 ring-surface-2" />
       </button>
 
-      {/* Role + Avatar */}
+      {/* Role + Avatar + Sign out */}
       <div className="flex items-center gap-2 pl-1 border-l border-surface-3 ml-1">
         <div className="flex flex-col items-end">
-          <span className="text-table-sm font-medium text-text-1 leading-tight">Nguyễn Văn</span>
+          <span className="text-table-sm font-medium text-text-1 leading-tight">{profile?.display_name || "User"}</span>
           <span className="text-caption text-primary font-medium leading-tight">{t("role.planner")}</span>
         </div>
         <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-caption font-bold text-white shadow-sm">
-          NV
+          {(profile?.display_name || "U").slice(0, 2).toUpperCase()}
         </div>
+        <button
+          onClick={signOut}
+          className="rounded-lg p-1.5 hover:bg-surface-3 transition-colors text-text-3 hover:text-danger"
+          title="Đăng xuất"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
       </div>
     </header>
   );
