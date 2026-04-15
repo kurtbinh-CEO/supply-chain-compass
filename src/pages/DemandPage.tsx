@@ -39,19 +39,21 @@ export default function DemandPage() {
   return (
     <AppLayout>
       {/* Header */}
-      <ScreenHeader
-        title="Demand Review — Tháng 5"
-        subtitle=""
-        badges={
-          <>
-            <span className="rounded-full bg-info-bg text-info px-3 py-1 text-table-sm font-medium">AOP 2026: 60.000 m²</span>
-            <span className="rounded-full bg-success-bg text-success px-3 py-1 text-table-sm font-medium">YTD: 19.380 (32%)</span>
-          </>
-        }
-      />
+      <div data-tour="demand-header">
+        <ScreenHeader
+          title="Demand Review — Tháng 5"
+          subtitle=""
+          badges={
+            <>
+              <span className="rounded-full bg-info-bg text-info px-3 py-1 text-table-sm font-medium">AOP 2026: 60.000 m²</span>
+              <span className="rounded-full bg-success-bg text-success px-3 py-1 text-table-sm font-medium">YTD: 19.380 (32%)</span>
+            </>
+          }
+        />
+      </div>
 
       {/* Tab bar */}
-      <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
+      <div data-tour="demand-tabs" className="flex items-center gap-0 border-b border-surface-3 mb-6">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -71,8 +73,8 @@ export default function DemandPage() {
         ))}
       </div>
 
-      {activeTab === "total" && <DemandTotalTab tenant={tenant} b2bPerCn={b2bPerCn} />}
-      {activeTab === "b2b" && <B2BInputTab deals={b2bDeals} setDeals={setB2bDeals} tenant={tenant} />}
+      <div data-tour="demand-total-table">{activeTab === "total" && <DemandTotalTab tenant={tenant} b2bPerCn={b2bPerCn} />}</div>
+      <div data-tour="demand-b2b-table">{activeTab === "b2b" && <B2BInputTab deals={b2bDeals} setDeals={setB2bDeals} tenant={tenant} />}</div>
       <ScreenFooter actionCount={8} />
     </AppLayout>
   );
