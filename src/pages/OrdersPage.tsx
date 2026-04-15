@@ -4,7 +4,7 @@ import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronRight, Send, Truck, Upload, ShieldAlert, Loader2, PackageOpen } from "lucide-react";
+import { ChevronRight, Send, Upload, ShieldAlert, Loader2, PackageOpen } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 import { useNavigate } from "react-router-dom";
 import { ClickableNumber } from "@/components/ClickableNumber";
@@ -59,7 +59,6 @@ interface RpoTracking {
   status: string;
 }
 
-/* Map DB status to display labels and actions */
 const statusConfig: Record<string, { label: string; action: string }> = {
   draft: { label: "Draft — chờ gửi", action: "Gửi ATP tất cả" },
   submitted: { label: "Submitted — chờ xác nhận", action: "Xác nhận tất cả" },
@@ -69,7 +68,6 @@ const statusConfig: Record<string, { label: string; action: string }> = {
   cancelled: { label: "Cancelled — đã hủy", action: "" },
 };
 
-/* Map supplier name to NM short name */
 const supplierToNm: Record<string, string> = {
   "Mikado": "Mikado",
   "Toko": "Toko",
@@ -89,6 +87,12 @@ function dbRowToPoRow(r: PurchaseOrderRow): PoRow {
   };
 }
 
+function formatVndTotal(v: number): string {
+  if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(0)}M`;
+  return v.toLocaleString();
+}
+
 const tabs = [
   { key: "po", label: "Quản lý PO" },
   { key: "tracking", label: "Theo dõi & POD" },
@@ -100,14 +104,13 @@ export default function OrdersPage() {
   const { groups: dbGroups, allOrders, loading: poLoading } = usePurchaseOrders();
 
   const ordersBatch = useBatchLock(null);
-  const { conflict: ordersConflict, triggerConflict, clearConflict } = useVersionConflict();
+  const { conflict: ordersConflict, clearConflict } = useVersionConflict();
   const [activeTab, setActiveTab] = useState("po");
   const [drillStatus, setDrillStatus] = useState<string | null>(null);
   const [drillNm, setDrillNm] = useState<string | null>(null);
   const [forceReleasePoNum, setForceReleasePoNum] = useState<string | null>(null);
   const [forceReleaseReason, setForceReleaseReason] = useState("");
 
-  /* Convert DB groups to display groups */
   const groups: StatusGroup[] = useMemo(() => {
     return dbGroups.map((g) => {
       const cfg = statusConfig[g.status] || { label: g.status, action: "" };
@@ -122,7 +125,6 @@ export default function OrdersPage() {
     });
   }, [dbGroups]);
 
-  /* Build NM tracking from DB orders */
   const nmTracking: NmTracking[] = useMemo(() => {
     const bySupplier: Record<string, PurchaseOrderRow[]> = {};
     allOrders.forEach((o) => {
@@ -133,16 +135,9 @@ export default function OrdersPage() {
 
     return Object.entries(bySupplier).map(([nm, orders]) => {
       const bpoTotal = orders.reduce((s, o) => s + Number(o.quantity), 0);
-      const delivered = orders
-        .filter((o) => o.status === "received")
-        .reduce((s, o) => s + Number(o.quantity), 0);
-      const shipped = orders
-        .filter((o) => o.status === "shipped")
-        .reduce((s, o) => s + Number(o.quantity), 0);
-      const released = delivered + shipped + orders
-        .filter((o) => o.status === "confirmed")
-        .reduce((s, o) => s + Number(o.quantity), 0);
-
+      const delivered = orders.filter((o) => o.status === "received").reduce((s, o) => s + Number(o.quantity), 0);
+      const shipped = orders.filter((o) => o.status === "shipped").reduce((s, o) => s + Number(o.quantity), 0);
+      const released = delivered + shipped + orders.filter((o) => o.status === "confirmed").reduce((s, o) => s + Number(o.quantity), 0);
       const completionPct = bpoTotal > 0 ? Math.round((delivered / bpoTotal) * 100) : 0;
 
       const rpos: RpoTracking[] = orders.map((o) => ({
@@ -158,15 +153,7 @@ export default function OrdersPage() {
         status: o.status.toUpperCase(),
       }));
 
-      return {
-        nm,
-        bpo: `BPO-${nm.substring(0, 3).toUpperCase()}`,
-        bpoTotal,
-        released,
-        delivered,
-        completionPct,
-        rpos,
-      };
+      return { nm, bpo: `BPO-${nm.substring(0, 3).toUpperCase()}`, bpoTotal, released, delivered, completionPct, rpos };
     });
   }, [allOrders]);
 
@@ -174,9 +161,7 @@ export default function OrdersPage() {
   const totalQty = groups.reduce((a, g) => a + g.totalQty, 0);
   const totalVnd = useMemo(() => {
     const total = allOrders.reduce((s, o) => s + Number(o.quantity) * Number(o.unit_price), 0);
-    if (total >= 1e9) return `${(total / 1e9).toFixed(1)}B`;
-    if (total >= 1e6) return `${(total / 1e6).toFixed(0)}M`;
-    return total.toLocaleString();
+    return formatVndTotal(total);
   }, [allOrders]);
 
   const activeGroup = drillStatus ? groups.find((g) => g.status === drillStatus) : null;
@@ -190,7 +175,6 @@ export default function OrdersPage() {
 
   return (
     <AppLayout>
-      {/* Batch Lock Banner for auto-gen PO */}
       {ordersBatch.batch && (
         <div className="mb-4">
           <BatchLockBanner
@@ -205,7 +189,6 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Version Conflict */}
       {ordersConflict && (
         <VersionConflictDialog
           conflict={ordersConflict}
@@ -235,14 +218,12 @@ export default function OrdersPage() {
         ))}
       </div>
 
-      {/* Loading */}
       {poLoading && (
         <div className="flex items-center gap-2 text-text-3 text-table-sm mb-4">
           <Loader2 className="h-4 w-4 animate-spin" /> Đang tải dữ liệu PO...
         </div>
       )}
 
-      {/* Empty state */}
       {isEmpty && (
         <div className="rounded-card border border-surface-3 bg-surface-2 py-16 flex flex-col items-center gap-4 animate-fade-in">
           <div className="rounded-full bg-surface-1 p-4">
@@ -515,7 +496,6 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Force-release modal */}
       {forceReleasePoNum && (
         <>
           <div className="fixed inset-0 bg-text-1/30 z-50" onClick={() => setForceReleasePoNum(null)} />
