@@ -5,11 +5,12 @@ import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/TenantContext";
 import { ConsensusTab } from "@/components/sop/ConsensusTab";
 import { BalanceLockTab } from "@/components/sop/BalanceLockTab";
-import { FileText } from "lucide-react";
+import { FileText, Loader2, PackageOpen } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
 import { AvatarBar, AutoSaveIndicator, useCellPresence } from "@/components/CellPresence";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PreLockDialog } from "@/components/BatchLockBanner";
+import { useSopConsensus } from "@/hooks/useSopConsensus";
 
 const tabs = [
   { key: "consensus", label: "Consensus" },
