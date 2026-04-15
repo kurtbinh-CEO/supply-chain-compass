@@ -124,6 +124,7 @@ export default {
         "slide-down":      { from: { transform: "translateY(-100%)", opacity: "0" }, to: { transform: "translateY(0)", opacity: "1" } },
         "fade-in":         { from: { opacity: "0", transform: "translateY(4px)" }, to: { opacity: "1", transform: "translateY(0)" } },
         "scale-in":        { from: { opacity: "0", transform: "scale(0.95)" }, to: { opacity: "1", transform: "scale(1)" } },
+        "tour-pulse":      { "0%, 100%": { opacity: "1", transform: "scale(1)" }, "50%": { opacity: "0.5", transform: "scale(1.04)" } },
       },
       animation: {
         "slide-in-right":  "slide-in-right 0.3s ease-out",
