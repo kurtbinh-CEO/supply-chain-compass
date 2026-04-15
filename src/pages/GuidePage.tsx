@@ -283,61 +283,134 @@ const allFlows: Record<RoleKey, RoleFlows> = {
 };
 
 /* ═══════════════════════════════════════════ */
+/*  ANIMATION HOOKS                           */
+/* ═══════════════════════════════════════════ */
+
+function useInView(threshold = 0.3) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setInView(true); obs.disconnect(); }
+    }, { threshold });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, inView };
+}
+
+function useCountUp(target: number, inView: boolean, duration = 800) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!inView) return;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+      setValue(Math.round(target * eased));
+      if (t < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, [inView, target, duration]);
+  return value;
+}
+
+/* ═══════════════════════════════════════════ */
 /*  VISUAL COMPONENTS                         */
 /* ═══════════════════════════════════════════ */
 
 /* Formula bar visualization */
 function FormulaBarViz({ parts }: { parts: { label: string; value: string; sub: string; highlight?: boolean; result?: boolean }[] }) {
+  const { ref, inView } = useInView();
   return (
-    <div className="flex items-center gap-1.5 flex-wrap py-2">
+    <div ref={ref} className="flex items-center gap-1.5 flex-wrap py-2">
       {parts.map((p, i) => {
         if (p.label === "×" || p.label === "+" || p.label === "−" || p.label === "=" || p.label === "/")
           return <span key={i} className="text-text-3 font-mono text-body font-light mx-1">{p.label}</span>;
         return (
-          <div key={i} className={cn(
-            "flex flex-col items-center px-3 py-2 rounded-lg min-w-[56px] transition-all",
-            p.result ? "bg-primary/15 ring-2 ring-primary/30" :
-            p.highlight ? "bg-[#b45309]/10 ring-1 ring-[#b45309]/30" :
-            "bg-surface-1"
-          )}>
-            <span className={cn(
-              "font-mono text-body font-bold tabular-nums",
-              p.result ? "text-primary" : p.highlight ? "text-[#b45309]" : "text-text-1"
-            )}>{p.value}</span>
-            <span className="text-[10px] text-text-3 font-medium mt-0.5">{p.label}</span>
-            {p.sub && <span className="text-[9px] text-text-3/60">{p.sub}</span>}
-          </div>
+          <AnimatedFormulaCell key={i} part={p} inView={inView} delay={i * 80} />
         );
       })}
     </div>
   );
 }
 
+function AnimatedFormulaCell({ part: p, inView, delay }: {
+  part: { label: string; value: string; sub: string; highlight?: boolean; result?: boolean };
+  inView: boolean; delay: number;
+}) {
+  const numericValue = parseFloat(p.value.replace(/[,.]/g, ""));
+  const isNumeric = !isNaN(numericValue) && p.value.length > 0;
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (!inView) return;
+    const t = setTimeout(() => setShow(true), delay);
+    return () => clearTimeout(t);
+  }, [inView, delay]);
+
+  const countedValue = useCountUp(isNumeric ? numericValue : 0, show, 700);
+
+  const formatValue = (v: number) => {
+    if (p.value.includes(".")) {
+      const parts = p.value.split(".");
+      return v.toLocaleString("vi-VN") + (parts[1] ? "" : "");
+    }
+    if (p.value.includes(",")) return v.toLocaleString("vi-VN");
+    return v.toLocaleString("vi-VN");
+  };
+
+  return (
+    <div className={cn(
+      "flex flex-col items-center px-3 py-2 rounded-lg min-w-[56px] transition-all duration-500",
+      p.result ? "bg-primary/15 ring-2 ring-primary/30" :
+      p.highlight ? "bg-[#b45309]/10 ring-1 ring-[#b45309]/30" :
+      "bg-surface-1",
+      show ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95"
+    )}>
+      <span className={cn(
+        "font-mono text-body font-bold tabular-nums",
+        p.result ? "text-primary" : p.highlight ? "text-[#b45309]" : "text-text-1"
+      )}>
+        {isNumeric && show ? formatValue(countedValue) : p.value}
+      </span>
+      <span className="text-[10px] text-text-3 font-medium mt-0.5">{p.label}</span>
+      {p.sub && <span className="text-[9px] text-text-3/60">{p.sub}</span>}
+    </div>
+  );
+}
+
 /* NM Score radar-like viz */
 function NmScoreViz() {
+  const { ref, inView } = useInView();
   const nms = [
     { name: "Mikado", score: 88, lt: 64, cost: 100, rel: 92, star: true },
     { name: "Đồng Tâm", score: 82, lt: 78, cost: 82, rel: 85, star: false },
     { name: "Toko", score: 52, lt: 45, cost: 90, rel: 68, star: false },
   ];
   return (
-    <div className="space-y-2 py-2">
-      {nms.map((nm) => (
-        <div key={nm.name} className="flex items-center gap-3">
-          <span className={cn("font-display text-table font-semibold w-20 shrink-0", nm.star ? "text-primary" : nm.score < 60 ? "text-status-danger" : "text-text-1")}>
-            {nm.name} {nm.star && "★"}
-          </span>
-          <div className="flex-1 flex items-center gap-1.5">
-            <ScoreBar label="LT" value={nm.lt} max={100} color="#004AC6" />
-            <ScoreBar label="Cost" value={nm.cost} max={100} color="#00714d" />
-            <ScoreBar label="Rel" value={nm.rel} max={100} color="#b45309" />
+    <div ref={ref} className="space-y-2 py-2">
+      {nms.map((nm, idx) => {
+        const animScore = useCountUp(nm.score, inView, 900 + idx * 200);
+        return (
+          <div key={nm.name} className="flex items-center gap-3">
+            <span className={cn("font-display text-table font-semibold w-20 shrink-0", nm.star ? "text-primary" : nm.score < 60 ? "text-status-danger" : "text-text-1")}>
+              {nm.name} {nm.star && "★"}
+            </span>
+            <div className="flex-1 flex items-center gap-1.5">
+              <ScoreBar label="LT" value={nm.lt} max={100} color="#004AC6" animate={inView} delay={idx * 150} />
+              <ScoreBar label="Cost" value={nm.cost} max={100} color="#00714d" animate={inView} delay={idx * 150 + 50} />
+              <ScoreBar label="Rel" value={nm.rel} max={100} color="#b45309" animate={inView} delay={idx * 150 + 100} />
+            </div>
+            <span className={cn(
+              "font-mono text-body font-bold w-10 text-right tabular-nums",
+              nm.score >= 80 ? "text-primary" : nm.score < 60 ? "text-status-danger" : "text-text-1"
+            )}>{animScore}</span>
           </div>
-          <span className={cn(
-            "font-mono text-body font-bold w-10 text-right tabular-nums",
-            nm.score >= 80 ? "text-primary" : nm.score < 60 ? "text-status-danger" : "text-text-1"
-          )}>{nm.score}</span>
-        </div>
-      ))}
+        );
+      })}
       <div className="flex items-center gap-4 mt-1 text-[10px] text-text-3">
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#004AC6]" />LT ×50%</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#00714d]" />Cost ×30%</span>
@@ -347,11 +420,20 @@ function NmScoreViz() {
   );
 }
 
-function ScoreBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+function ScoreBar({ label, value, max, color, animate, delay }: { label: string; value: number; max: number; color: string; animate?: boolean; delay?: number }) {
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    if (!animate) return;
+    const t = setTimeout(() => setWidth((value / max) * 100), delay || 0);
+    return () => clearTimeout(t);
+  }, [animate, value, max, delay]);
   return (
     <div className="flex-1">
       <div className="h-3 rounded-full bg-surface-3 overflow-hidden">
-        <div className="h-full rounded-full transition-all" style={{ width: `${(value / max) * 100}%`, backgroundColor: color, opacity: 0.7 }} />
+        <div
+          className="h-full rounded-full transition-all duration-700 ease-out"
+          style={{ width: `${animate ? width : (value / max) * 100}%`, backgroundColor: color, opacity: 0.7 }}
+        />
       </div>
     </div>
   );
