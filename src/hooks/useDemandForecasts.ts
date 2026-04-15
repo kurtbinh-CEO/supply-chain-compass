@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/components/TenantContext";
 
@@ -32,56 +32,61 @@ export function useDemandForecasts() {
   const [cnSummaries, setCnSummaries] = useState<DemandCnSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function fetch() {
-      setLoading(true);
-      const tenantCode = tenantMap[tenant] || "UNIS";
-      const { data: rows, error } = await supabase
-        .from("demand_forecasts")
-        .select("*")
-        .eq("tenant", tenantCode);
+  const tenantCode = tenantMap[tenant] || "UNIS";
 
-      if (cancelled) return;
+  const fetchForecasts = useCallback(async () => {
+    setLoading(true);
+    const { data: rows, error } = await supabase
+      .from("demand_forecasts")
+      .select("*")
+      .eq("tenant", tenantCode);
 
-      if (error || !rows || rows.length === 0) {
-        setCnSummaries([]);
-        setLoading(false);
-        return;
-      }
-
-      // Group by cn_code
-      const byCn: Record<string, typeof rows> = {};
-      rows.forEach((r) => {
-        if (!byCn[r.cn_code]) byCn[r.cn_code] = [];
-        byCn[r.cn_code].push(r);
-      });
-
-      const summaries: DemandCnSummary[] = Object.entries(byCn).map(([cn, items]) => {
-        const fc = items.reduce((s, r) => s + Number(r.forecast_qty), 0);
-        const b2b = items.filter((r) => r.source === "b2b").reduce((s, r) => s + Number(r.forecast_qty), 0);
-        const po = items.filter((r) => r.source === "manual").reduce((s, r) => s + Number(r.forecast_qty), 0);
-        const skus: DemandSkuSummary[] = items.map((r) => {
-          const parts = r.sku.split(" ");
-          return {
-            sku: r.sku,
-            item: parts[0] || r.sku,
-            variant: parts[1] || "",
-            fc: Number(r.forecast_qty),
-            source: r.source,
-            adjustment: Number(r.adjustment_qty) || 0,
-            confidence: Number(r.confidence) || 0,
-          };
-        });
-        return { cn: `CN-${cn}`, fc, b2b, po, total: fc + b2b + po, skus };
-      });
-
-      setCnSummaries(summaries);
+    if (error || !rows || rows.length === 0) {
+      setCnSummaries([]);
       setLoading(false);
+      return;
     }
-    fetch();
-    return () => { cancelled = true; };
-  }, [tenant]);
+
+    const byCn: Record<string, typeof rows> = {};
+    rows.forEach((r) => {
+      if (!byCn[r.cn_code]) byCn[r.cn_code] = [];
+      byCn[r.cn_code].push(r);
+    });
+
+    const summaries: DemandCnSummary[] = Object.entries(byCn).map(([cn, items]) => {
+      const fc = items.reduce((s, r) => s + Number(r.forecast_qty), 0);
+      const b2b = items.filter((r) => r.source === "b2b").reduce((s, r) => s + Number(r.forecast_qty), 0);
+      const po = items.filter((r) => r.source === "manual").reduce((s, r) => s + Number(r.forecast_qty), 0);
+      const skus: DemandSkuSummary[] = items.map((r) => {
+        const parts = r.sku.split(" ");
+        return {
+          sku: r.sku,
+          item: parts[0] || r.sku,
+          variant: parts[1] || "",
+          fc: Number(r.forecast_qty),
+          source: r.source,
+          adjustment: Number(r.adjustment_qty) || 0,
+          confidence: Number(r.confidence) || 0,
+        };
+      });
+      return { cn: `CN-${cn}`, fc, b2b, po, total: fc + b2b + po, skus };
+    });
+
+    setCnSummaries(summaries);
+    setLoading(false);
+  }, [tenantCode]);
+
+  useEffect(() => {
+    fetchForecasts();
+  }, [fetchForecasts]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`demand_forecasts_${tenantCode}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "demand_forecasts", filter: `tenant=eq.${tenantCode}` }, () => fetchForecasts())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [tenantCode, fetchForecasts]);
 
   return { cnSummaries, loading };
 }
