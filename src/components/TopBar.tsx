@@ -86,6 +86,7 @@ function TenantDropdown({ tenant, setTenant, tenants }: { tenant: string; setTen
 
 export function TopBar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { tenant, setTenant, tenants } = useTenant();
   const { theme, setTheme } = useThemeMode();
   const { locale, setLocale, t } = useI18n();
