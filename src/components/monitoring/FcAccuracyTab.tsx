@@ -6,8 +6,9 @@ import { StatusChip } from "@/components/StatusChip";
 import { Sparkles, Shield, TrendingDown, TrendingUp, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useFcAccuracy } from "@/hooks/useMonitoringData";
 
-const mapeData = [
+const fallbackMapeData = [
   { week: "W01", hw: 28, ai: 22 }, { week: "W02", hw: 26, ai: 24 }, { week: "W03", hw: 30, ai: 25 },
   { week: "W04", hw: 27, ai: 23 }, { week: "W05", hw: 29, ai: 28 }, { week: "W06", hw: 25, ai: 27 },
   { week: "W07", hw: 24, ai: 30 }, { week: "W08", hw: 26, ai: 29 }, { week: "W09", hw: 23, ai: 26 },
