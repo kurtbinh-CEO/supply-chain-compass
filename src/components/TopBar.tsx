@@ -1,10 +1,11 @@
-import { Search, Bell, ChevronRight, Sun, Moon, Monitor, Globe, ChevronDown } from "lucide-react";
+import { Search, Bell, ChevronRight, Sun, Moon, Monitor, Globe, ChevronDown, LogOut } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useTenant, TenantName } from "@/components/TenantContext";
 import { useThemeMode } from "@/components/ThemeContext";
 import { useI18n } from "@/components/i18n/I18nContext";
 import type { Locale } from "@/components/i18n/translations";
 import { useState, useRef, useEffect } from "react";
+import { useAuth } from "@/components/AuthContext";
 
 const routeKeys: Record<string, string> = {
   "/workspace": "route.workspace",
