@@ -114,6 +114,11 @@ const scFlows: RoleFlows = {
       why: "Demand = nền tảng mọi quyết định. Sai demand → sai tất cả.", what: "Tab 1: tổng per CN. Tab 2: B2B deals. Click số → breakdown.",
       how: "1. /demand tab 1 → trend 12M\n2. Click cell → FC + B2B + PO breakdown\n3. Tab 2: review deals\n4. Ready → /sop",
       formula: "Demand = FC + Σ(B2B × prob%) + PO − Overlap\n4.800 + 2.200 + 1.100 − 450 = 7.650",
+      highlights: [
+        { selector: "demand-header", label: "Header & AOP Badges", description: "AOP 2026 target + YTD progress. Badges show bạn đang ở đâu vs. kế hoạch năm." },
+        { selector: "demand-tabs", label: "2 Tab: Demand tổng & B2B", description: "Tab 1: Demand per CN (FC + B2B + PO). Tab 2: Nhập/quản lý B2B deals." },
+        { selector: "demand-total-table", label: "Bảng Demand per CN", description: "Click số → breakdown FC/B2B/PO. Trend 12 tháng. Pivot CN↔SKU." },
+      ],
     },
     {
       route: "/sop", label: "S&OP Lock", time: "Day 5-7", icon: <ShieldCheck className="h-5 w-5" />,
@@ -121,6 +126,11 @@ const scFlows: RoleFlows = {
       why: "4 bộ phận, 4 con số → phải ĐỒNG Ý 1 số.", what: "Tab 1: 4 versions × FVA. Tab 2: FormulaBar 6 ô → Lock.",
       how: "1. v0/v1/v2 → FVA chọn best\n2. FormulaBar: D−S−P=Net+SS=FCMin\n3. [🔒 Lock] → phasing auto",
       formula: "Net = D − S − P = 7.650 − 3.200 − 1.757 = 2.693\nFVA = MAPE(v0) − MAPE(vX)\nFVA_CN = 8,1% − 2,2% = +5,9%",
+      highlights: [
+        { selector: "sop-status", label: "Status Strip & Lock Countdown", description: "Day 5/30, Lock Day 7 — còn 2 ngày. Sau lock, demand frozen cho DRP." },
+        { selector: "sop-consensus", label: "Consensus Tab: 4 Versions", description: "v0 (Stat) → v1 (Sales) → v2 (CN) → v3 (Consensus). FVA chọn version tốt nhất per CN." },
+        { selector: "sop-balance", label: "Cân đối & Lock", description: "FormulaBar: D − S − P = Net + SS = FC Min. Click [🔒 Lock] khi đồng ý 1 số." },
+      ],
     },
     {
       route: "/hub", label: "Sourcing", time: "Day 7-8", icon: <Factory className="h-5 w-5" />,
@@ -128,6 +138,10 @@ const scFlows: RoleFlows = {
       why: "NM nào cung cấp? Ranking transparent, bạn quyết định.", what: "4 bước: Cần gì → NM nào → Phân bổ → MOQ+BPO.",
       how: "1. GA-300 CRITICAL\n2. Mikado 88★ vs Toko 52⚠\n3. Mikado 700 + ĐT 140\n4. [Tạo BPO]",
       formula: "Score = W₁×LT + W₂×Cost + W₃×Reliability\nHybrid: 50/30/20\nMOQ = ceil(alloc ÷ MOQ) × MOQ",
+      highlights: [
+        { selector: "hub-tabs", label: "2 Tab: Sourcing & Đối chiếu", description: "Tab 1: Workbench 4 bước sourcing. Tab 2: Đối chiếu BPO vs delivery." },
+        { selector: "hub-sourcing", label: "Sourcing Workbench", description: "4 bước: ① SKU cần mua → ② NM ranking (Score = LT×50% + Cost×30% + Rel×20%) → ③ Phân bổ → ④ MOQ + BPO." },
+      ],
     },
   ],
   tips: [
