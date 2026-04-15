@@ -139,6 +139,7 @@ const tabs = [
 export default function OrdersPage() {
   const { tenant } = useTenant();
   const navigate = useNavigate();
+  const { groups: dbGroups, allOrders, loading: poLoading } = usePurchaseOrders();
 
   const ordersBatch = useBatchLock(null);
   const { conflict: ordersConflict, triggerConflict, clearConflict } = useVersionConflict();
