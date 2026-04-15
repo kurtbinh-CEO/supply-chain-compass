@@ -143,7 +143,7 @@ export default function SopPage() {
       />
 
       {/* Status strip */}
-      <div className="flex items-center gap-3 mb-5 flex-wrap">
+      <div data-tour="sop-status" className="flex items-center gap-3 mb-5 flex-wrap">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-info-bg text-info text-table-sm font-medium px-3 py-1">
           Day 5/30
         </span>
@@ -180,32 +180,36 @@ export default function SopPage() {
         ))}
       </div>
 
-      {activeTab === "consensus" && (
-        <ConsensusTab
-          data={consensusData}
-          totalAop={totalAop}
-          totalV3={totalV3}
-          locked={locked}
-          onUpdateV3={handleUpdateV3}
-          onUpdateNote={handleUpdateNote}
-        />
-      )}
-      {activeTab === "balance" && (
-        <BalanceLockTab
-          data={consensusData}
-          totalV3={totalV3}
-          totalAop={totalAop}
-          locked={locked}
-          onLock={() => {
-            if (cellPresence.onlineUsers.length > 1) {
-              setShowPreLock(true);
-            } else {
-              setLocked(true);
-            }
-          }}
-          tenant={tenant}
-        />
-      )}
+      <div data-tour="sop-consensus">
+        {activeTab === "consensus" && (
+          <ConsensusTab
+            data={consensusData}
+            totalAop={totalAop}
+            totalV3={totalV3}
+            locked={locked}
+            onUpdateV3={handleUpdateV3}
+            onUpdateNote={handleUpdateNote}
+          />
+        )}
+      </div>
+      <div data-tour="sop-balance">
+        {activeTab === "balance" && (
+          <BalanceLockTab
+            data={consensusData}
+            totalV3={totalV3}
+            totalAop={totalAop}
+            locked={locked}
+            onLock={() => {
+              if (cellPresence.onlineUsers.length > 1) {
+                setShowPreLock(true);
+              } else {
+                setLocked(true);
+              }
+            }}
+            tenant={tenant}
+          />
+        )}
+      </div>
 
       {/* Concurrency: Pre-Lock Dialog */}
       {showPreLock && (
