@@ -237,6 +237,10 @@ const salesFlows: RoleFlows = {
       why: "B2B = 29% demand. Không nhập → thiếu hàng.", what: "CRUD: Khách + SKU + Qty + Prob%. Upload Excel.",
       how: "1. [+ Thêm deal] → form\n2. Hoặc Upload Excel\n3. Update prob. nếu thay đổi",
       formula: "Weighted = qty × prob%\n12.000 × 85% = 10.200 m²",
+      highlights: [
+        { selector: "demand-tabs", label: "Tab B2B nhập liệu", description: "Click Tab 2 \'B2B nhập liệu\' để nhập/quản lý deals. Deals tự tính weighted demand." },
+        { selector: "demand-b2b-table", label: "Bảng B2B Deals", description: "CRUD: Khách + SKU + Qty + Prob%. Upload Excel. Deals ≥30% prob tự cộng vào Demand." },
+      ],
     },
   ],
   tips: [
@@ -281,6 +285,10 @@ const buyerFlows: RoleFlows = {
       why: "Sai NM = overdue + stockout. Ranking transparent.", what: "4 bước: Cần gì → NM rank → Phân bổ → MOQ + BPO.",
       how: "1. CRITICAL → 4 NM eligible\n2. Mikado 88★ #1\n3. Primary 700 + Backup 140\n4. [Tạo BPO]",
       formula: "Score = W₁×LT + W₂×Cost + W₃×Rel\nMOQ = ceil(alloc ÷ MOQ) × MOQ",
+      highlights: [
+        { selector: "hub-tabs", label: "Sourcing & Đối chiếu", description: "Tab 1: Sourcing Workbench 4 bước. Tab 2: Đối chiếu BPO vs NM delivery." },
+        { selector: "hub-sourcing", label: "4-Step Sourcing", description: "① SKU cần mua (CRITICAL/MEDIUM) → ② NM ranking → ③ Primary/Backup phân bổ → ④ MOQ round-up + BPO." },
+      ],
     },
   ],
   tips: [
