@@ -402,6 +402,7 @@ export function NMSupplyView() {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }
