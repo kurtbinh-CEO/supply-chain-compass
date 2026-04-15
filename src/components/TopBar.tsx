@@ -1,5 +1,5 @@
 import { Search, Bell, ChevronRight, Sun, Moon, Monitor, Globe, ChevronDown, LogOut } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useTenant, TenantName } from "@/components/TenantContext";
 import { useThemeMode } from "@/components/ThemeContext";
 import { useI18n } from "@/components/i18n/I18nContext";
