@@ -160,17 +160,14 @@ function SkuTable({ nm, skus, share, onUpdate }: { nm: string; skus: NMSkuRow[];
 /* ─── Main View ─── */
 export function NMSupplyView() {
   const { tenant } = useTenant();
-  const { data: inventoryData, loading: inventoryLoading, setData: setInventoryData } = useInventoryData();
-  const [nmData, setNmData] = useState<NMSummary[]>(inventoryData);
+  const { data: inventoryData, loading: inventoryLoading } = useInventoryData();
+  const [localEdits, setLocalEdits] = useState<Record<string, NMSummary>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [reminded, setReminded] = useState<Set<string>>(new Set());
   const { conflict: supplyConflict, triggerConflict: triggerSupplyConflict, clearConflict: clearSupplyConflict } = useVersionConflict();
 
-  // Sync from hook data
-  if (JSON.stringify(inventoryData.map(n => n.id)) !== JSON.stringify(nmData.map(n => n.id)) ||
-      inventoryData[0]?.tongTon !== nmData[0]?.tongTon) {
-    setNmData(inventoryData);
-  }
+  // Merge DB data with local edits
+  const nmData = inventoryData.map(nm => localEdits[nm.id] || nm);
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
