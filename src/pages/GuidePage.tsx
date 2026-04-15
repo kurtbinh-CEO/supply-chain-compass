@@ -568,7 +568,11 @@ export default function GuidePage() {
 
   const handleNavigate = (node: FlowNode) => {
     const navRoute = node.route.split(" ")[0];
-    start({ route: node.route, title: node.label, badge: node.time, what: node.what, how: node.how });
+    start({
+      route: node.route, title: node.label, badge: node.time,
+      what: node.what, how: node.how,
+      highlights: node.highlights,
+    });
     navigate(navRoute);
   };
 
