@@ -347,7 +347,6 @@ export default function MonitoringPage() {
   const s = tenantScales[tenant] || 1;
   const { summaryData: fcData, weeklyData: fcWeeklyFromDb, loading: fcLoading } = useFcAccuracy();
   const { data: nmPerfData, loading: nmLoading } = useNmPerformance();
-  const s = tenantScales[tenant] || 1;
 
   const ssBatch = useBatchLock({
     batchType: "SS Recalculation",
