@@ -86,6 +86,7 @@ function ProtectedRoutes() {
           <Route path="/logic" element={<LogicPage />} />
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/design-test" element={<DesignTest />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </WalkthroughProvider>
