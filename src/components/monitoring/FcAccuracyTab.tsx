@@ -22,6 +22,8 @@ const models = [
 
 export function FcAccuracyTab() {
   const [showSwitchModal, setShowSwitchModal] = useState(false);
+  const { weeklyData, loading } = useFcAccuracy();
+  const mapeData = weeklyData.length > 0 ? weeklyData : fallbackMapeData;
 
   const handleSwitchConfirm = () => {
     setShowSwitchModal(false);
