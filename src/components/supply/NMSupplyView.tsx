@@ -216,7 +216,7 @@ export function NMSupplyView() {
         />
       )}
       {/* Header actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3" data-tour="supply-upload">
         <button className="rounded-button bg-gradient-primary text-primary-foreground px-4 py-2 text-table-sm font-medium flex items-center gap-2">
           <Upload className="h-4 w-4" /> Upload Excel
         </button>
@@ -229,7 +229,7 @@ export function NMSupplyView() {
       <UploadZone />
 
       {/* NM Table */}
-      <div className="rounded-card border border-surface-3 bg-surface-2">
+      <div className="rounded-card border border-surface-3 bg-surface-2" data-tour="supply-nm-table">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>

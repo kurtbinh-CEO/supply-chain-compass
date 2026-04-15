@@ -215,7 +215,7 @@ export default function WorkspacePage() {
 
       <div className="space-y-5">
         {/* ─── KPI HERO CARDS ─── */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-4 gap-4" data-tour="workspace-kpi">
           {kpiCards.map((kpi) => (
             <div
               key={kpi.label}
@@ -282,7 +282,7 @@ export default function WorkspacePage() {
         </div>
 
         {/* ─── SECTION 1: Cần làm ─── */}
-        <div className="rounded-card border border-surface-3 bg-surface-2">
+        <div className="rounded-card border border-surface-3 bg-surface-2" data-tour="workspace-actions">
           <div className="px-5 py-3.5 border-b border-surface-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h2 className="font-display text-body font-semibold text-text-1">Cần làm</h2>

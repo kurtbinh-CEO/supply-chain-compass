@@ -268,12 +268,12 @@ export default function DrpPage() {
       )}
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-1" data-tour="drp-header">
         <div className="flex items-center gap-3">
           <ScreenHeader title="DRP & Phân bổ" subtitle="Distribution Requirements Planning + Allocation" />
           <LogicLink tab="daily" node={2} tooltip="Logic DRP Netting" />
           {totalExc > 0 && (
-            <span className="flex items-center gap-1 rounded-full bg-danger-bg px-3 py-1 text-table-sm font-medium text-danger">
+            <span data-tour="drp-exceptions-badge" className="flex items-center gap-1 rounded-full bg-danger-bg px-3 py-1 text-table-sm font-medium text-danger">
               <AlertTriangle className="h-3.5 w-3.5" /> {totalExc} exceptions
             </span>
           )}
@@ -284,6 +284,7 @@ export default function DrpPage() {
             <button onClick={() => setShowDrpConfirm(true)} className="text-caption text-primary font-medium hover:underline">Chạy lại ngay</button>
           </div>
           <button
+            data-tour="drp-run-button"
             onClick={() => setShowDrpConfirm(true)}
             className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow"
           >
@@ -333,7 +334,7 @@ export default function DrpPage() {
         )}
       </div>
 
-      <div className="flex items-center gap-3 mb-5 flex-wrap">
+      <div className="flex items-center gap-3 mb-5 flex-wrap" data-tour="drp-controls">
         <button
           onClick={() => { setShowLayer3(!showLayer3); setDrillCn(null); }}
           className={cn("flex items-center gap-1.5 rounded-full border px-3 py-1 text-table-sm font-medium transition-colors",
@@ -349,7 +350,7 @@ export default function DrpPage() {
 
       {/* ═══ LỚP 1: Per CN (default) ═══ */}
       {!activeCn && !showLayer3 && (
-        <div className="space-y-5 animate-slide-in-left">
+        <div className="space-y-5 animate-slide-in-left" data-tour="drp-results-table">
           <div className="flex items-center gap-2">
             <div className="flex-1">
               <FormulaBar
