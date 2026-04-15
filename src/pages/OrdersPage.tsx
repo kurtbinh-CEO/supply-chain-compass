@@ -220,6 +220,25 @@ export default function OrdersPage() {
         ))}
       </div>
 
+      {/* DB PO Summary */}
+      {activeTab === "po" && dbGroups.length > 0 && (
+        <div className="mb-4 rounded-card border border-primary/20 bg-primary/5 p-4 animate-fade-in">
+          <div className="flex items-center gap-2 mb-2">
+            <Database className="h-4 w-4 text-primary" />
+            <span className="text-table-sm font-medium text-text-1">Database PO ({allOrders.length} đơn)</span>
+            {poLoading && <Loader2 className="h-3 w-3 animate-spin text-text-3" />}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {dbGroups.map((g) => (
+              <div key={g.status} className="rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-caption">
+                <span className="font-medium text-text-1 capitalize">{g.status}</span>
+                <span className="text-text-3 ml-1">({g.count} PO · {g.totalQty.toLocaleString()}m² · {g.totalVnd})</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {activeTab === "po" && (
         <div className="animate-fade-in">
           {!activeGroup ? (
