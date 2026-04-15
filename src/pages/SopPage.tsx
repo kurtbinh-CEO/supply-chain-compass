@@ -5,11 +5,12 @@ import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/TenantContext";
 import { ConsensusTab } from "@/components/sop/ConsensusTab";
 import { BalanceLockTab } from "@/components/sop/BalanceLockTab";
-import { FileText } from "lucide-react";
+import { FileText, Loader2, PackageOpen } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
 import { AvatarBar, AutoSaveIndicator, useCellPresence } from "@/components/CellPresence";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PreLockDialog } from "@/components/BatchLockBanner";
+import { useSopConsensus } from "@/hooks/useSopConsensus";
 
 const tabs = [
   { key: "consensus", label: "Consensus" },
@@ -38,49 +39,9 @@ export interface SkuRow {
   note: string;
 }
 
-const baseData: ConsensusRow[] = [
-  {
-    cn: "CN-BD", v0: 2100, v1: 2800, v2: 2550, v3: 2550, aop: 1716, fvaBest: "v2 CN (MAPE 12%)",
-    skus: [
-      { item: "GA-300", variant: "A4", v0: 580, v1: 650, v2: 617, v3: 617, aop: 420, note: "Nhà thầu mới Q2" },
-      { item: "GA-300", variant: "B2", v0: 120, v1: 140, v2: 130, v3: 130, aop: 100, note: "" },
-      { item: "GA-300", variant: "C1", v0: 350, v1: 480, v2: 410, v3: 410, aop: 280, note: "" },
-      { item: "GA-400", variant: "A4", v0: 600, v1: 750, v2: 690, v3: 690, aop: 500, note: "" },
-      { item: "GA-600", variant: "A4", v0: 350, v1: 540, v2: 500, v3: 500, aop: 300, note: "Vingroup Grand Park" },
-      { item: "GA-600", variant: "B2", v0: 100, v1: 240, v2: 203, v3: 203, aop: 116, note: "" },
-    ],
-  },
-  {
-    cn: "CN-ĐN", v0: 1650, v1: 2000, v2: 1800, v3: 1800, aop: 1219, fvaBest: "v1 Sales (MAPE 18%)",
-    skus: [
-      { item: "GA-400", variant: "A4", v0: 800, v1: 950, v2: 870, v3: 870, aop: 600, note: "" },
-      { item: "GA-600", variant: "A4", v0: 500, v1: 620, v2: 560, v3: 560, aop: 380, note: "" },
-      { item: "GA-600", variant: "B2", v0: 350, v1: 430, v2: 370, v3: 370, aop: 239, note: "" },
-    ],
-  },
-  {
-    cn: "CN-HN", v0: 1900, v1: 2400, v2: 2100, v3: 2100, aop: 1326, fvaBest: "v0 Stat (MAPE 8%)",
-    skus: [
-      { item: "GA-300", variant: "A4", v0: 600, v1: 780, v2: 680, v3: 680, aop: 430, note: "" },
-      { item: "GA-300", variant: "C1", v0: 450, v1: 570, v2: 500, v3: 500, aop: 320, note: "" },
-      { item: "GA-400", variant: "D5", v0: 350, v1: 420, v2: 390, v3: 390, aop: 250, note: "" },
-      { item: "GA-600", variant: "B2", v0: 500, v1: 630, v2: 530, v3: 530, aop: 326, note: "" },
-    ],
-  },
-  {
-    cn: "CN-CT", v0: 1150, v1: 1300, v2: 1200, v3: 1200, aop: 939, fvaBest: "v3 Consensus",
-    skus: [
-      { item: "GA-400", variant: "D5", v0: 400, v1: 470, v2: 430, v3: 430, aop: 340, note: "" },
-      { item: "GA-600", variant: "A4", v0: 450, v1: 510, v2: 480, v3: 480, aop: 370, note: "" },
-      { item: "GA-600", variant: "B2", v0: 300, v1: 320, v2: 290, v3: 290, aop: 229, note: "" },
-    ],
-  },
-];
-
 export default function SopPage() {
   const [activeTab, setActiveTab] = useState("consensus");
   const { tenant } = useTenant();
-  const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
 
   const [locked, setLocked] = useState(false);
   const [showPreLock, setShowPreLock] = useState(false);
@@ -88,20 +49,16 @@ export default function SopPage() {
   const cellPresence = useCellPresence("sop-consensus", { id: "u-me", name: "Bạn", role: "Planner", color: "bg-primary text-primary-foreground" });
   const { conflict, triggerConflict, clearConflict } = useVersionConflict();
 
-  // Scale and make consensus data stateful
-  const [consensusData, setConsensusData] = useState<ConsensusRow[]>(() =>
-    baseData.map(r => ({
-      ...r,
-      v0: Math.round(r.v0 * scale), v1: Math.round(r.v1 * scale), v2: Math.round(r.v2 * scale),
-      v3: Math.round(r.v3 * scale), aop: Math.round(r.aop * scale),
-      skus: r.skus.map(s => ({
-        ...s,
-        v0: Math.round(s.v0 * scale), v1: Math.round(s.v1 * scale), v2: Math.round(s.v2 * scale),
-        v3: Math.round(s.v3 * scale), aop: Math.round(s.aop * scale),
-      })),
-    }))
-  );
+  // DB data
+  const { data: dbData, loading } = useSopConsensus();
 
+  // Make consensus data stateful for local edits
+  const [consensusData, setConsensusData] = useState<ConsensusRow[]>([]);
+  const [prevDbData, setPrevDbData] = useState<ConsensusRow[]>([]);
+  if (dbData !== prevDbData && dbData.length > 0) {
+    setPrevDbData(dbData);
+    setConsensusData(dbData);
+  }
   const handleUpdateV3 = useCallback((cnIdx: number, skuIdx: number | null, value: number) => {
     setConsensusData(prev => {
       const next = prev.map((r, i) => {
@@ -180,36 +137,59 @@ export default function SopPage() {
         ))}
       </div>
 
-      <div data-tour="sop-consensus">
-        {activeTab === "consensus" && (
-          <ConsensusTab
-            data={consensusData}
-            totalAop={totalAop}
-            totalV3={totalV3}
-            locked={locked}
-            onUpdateV3={handleUpdateV3}
-            onUpdateNote={handleUpdateNote}
-          />
-        )}
-      </div>
-      <div data-tour="sop-balance">
-        {activeTab === "balance" && (
-          <BalanceLockTab
-            data={consensusData}
-            totalV3={totalV3}
-            totalAop={totalAop}
-            locked={locked}
-            onLock={() => {
-              if (cellPresence.onlineUsers.length > 1) {
-                setShowPreLock(true);
-              } else {
-                setLocked(true);
-              }
-            }}
-            tenant={tenant}
-          />
-        )}
-      </div>
+      {/* Loading */}
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!loading && consensusData.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <PackageOpen className="h-16 w-16 text-text-3 mb-4" />
+          <h3 className="text-heading-3 font-semibold text-text-1 mb-2">Chưa có dữ liệu S&OP</h3>
+          <p className="text-body text-text-3 max-w-md">
+            Chưa có dữ liệu consensus cho kỳ này. Hãy tạo forecast trước khi bắt đầu S&OP.
+          </p>
+        </div>
+      )}
+
+      {/* Content */}
+      {!loading && consensusData.length > 0 && (
+        <>
+          <div data-tour="sop-consensus">
+            {activeTab === "consensus" && (
+              <ConsensusTab
+                data={consensusData}
+                totalAop={totalAop}
+                totalV3={totalV3}
+                locked={locked}
+                onUpdateV3={handleUpdateV3}
+                onUpdateNote={handleUpdateNote}
+              />
+            )}
+          </div>
+          <div data-tour="sop-balance">
+            {activeTab === "balance" && (
+              <BalanceLockTab
+                data={consensusData}
+                totalV3={totalV3}
+                totalAop={totalAop}
+                locked={locked}
+                onLock={() => {
+                  if (cellPresence.onlineUsers.length > 1) {
+                    setShowPreLock(true);
+                  } else {
+                    setLocked(true);
+                  }
+                }}
+                tenant={tenant}
+              />
+            )}
+          </div>
+        </>
+      )}
 
       {/* Concurrency: Pre-Lock Dialog */}
       {showPreLock && (

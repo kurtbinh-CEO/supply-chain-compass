@@ -194,6 +194,60 @@ export type Database = {
         }
         Relationships: []
       }
+      sop_consensus: {
+        Row: {
+          aop: number
+          cn_code: string
+          created_at: string
+          fva_best: string | null
+          id: string
+          locked: boolean
+          note: string | null
+          period: string
+          sku: string
+          tenant: string
+          updated_at: string
+          v0: number
+          v1: number
+          v2: number
+          v3: number
+        }
+        Insert: {
+          aop?: number
+          cn_code: string
+          created_at?: string
+          fva_best?: string | null
+          id?: string
+          locked?: boolean
+          note?: string | null
+          period?: string
+          sku: string
+          tenant?: string
+          updated_at?: string
+          v0?: number
+          v1?: number
+          v2?: number
+          v3?: number
+        }
+        Update: {
+          aop?: number
+          cn_code?: string
+          created_at?: string
+          fva_best?: string | null
+          id?: string
+          locked?: boolean
+          note?: string | null
+          period?: string
+          sku?: string
+          tenant?: string
+          updated_at?: string
+          v0?: number
+          v1?: number
+          v2?: number
+          v3?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
