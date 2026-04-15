@@ -16,6 +16,7 @@ const tabs = [
 export default function DemandPage() {
   const [activeTab, setActiveTab] = useState("total");
   const { tenant } = useTenant();
+  const { cnSummaries, loading: forecastLoading } = useDemandForecasts();
 
   // B2B deals state lives here so Tab1 can read aggregated B2B per CN
   const [b2bDeals, setB2bDeals] = useState(() => getInitialDeals(tenant));
@@ -30,7 +31,6 @@ export default function DemandPage() {
   // Aggregate B2B weighted qty per CN for current month (Th5)
   const b2bPerCn: Record<string, number> = {};
   b2bDeals.forEach(d => {
-    // Only count deals that include Th5
     if (d.deliveryMonths.includes("Th5")) {
       d.cnList.forEach(cn => {
         b2bPerCn[cn] = (b2bPerCn[cn] || 0) + Math.round(d.qty * (d.probability / 100) / d.cnList.length);
