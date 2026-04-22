@@ -317,6 +317,69 @@ export default function DrpPage() {
     { key: "onHand", label: "On-hand", cls: "border-success/30 bg-success-bg text-success" },
   ];
 
+  // Build flat export rows from current Layer 1 view (parent + child rows for sổ-out groups)
+  const buildExportRows = (): ExportRow[] => {
+    const rows: ExportRow[] = [];
+    if (pivotMode === "cn") {
+      const filteredCns = data.filter(r => {
+        if (sourceFilter.size === 0) return true;
+        const cs = r.allSkus.reduce((acc, sk) => ({
+          onHand: acc.onHand + sk.sources.onHand,
+          pipeline: acc.pipeline + sk.sources.pipeline,
+          hubPo: acc.hubPo + sk.sources.hubPo,
+          lcnbIn: acc.lcnbIn + sk.sources.lcnbIn,
+          internalTransfer: acc.internalTransfer + sk.sources.internalTransfer,
+        }), { onHand: 0, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 });
+        return matchesSourceFilter(cs);
+      });
+      filteredCns.forEach(r => {
+        const cs = r.allSkus.reduce((acc, sk) => ({
+          onHand: acc.onHand + sk.sources.onHand,
+          pipeline: acc.pipeline + sk.sources.pipeline,
+          hubPo: acc.hubPo + sk.sources.hubPo,
+          lcnbIn: acc.lcnbIn + sk.sources.lcnbIn,
+          internalTransfer: acc.internalTransfer + sk.sources.internalTransfer,
+        }), { onHand: 0, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 });
+        rows.push({
+          group: "CN", parentKey: r.cn, isParent: true,
+          demand: r.demand, allocated: r.demand - r.gap,
+          fillPct: r.fillRate, gap: r.gap, exceptions: r.exceptions,
+          sources: cs,
+        });
+        // Always include child SKUs for the chosen CNs (matching what the user can sổ ra)
+        r.allSkus.filter(sk => matchesSourceFilter(sk.sources)).forEach(sk => {
+          rows.push({
+            group: "CN", parentKey: r.cn, isParent: false,
+            childKey: `${sk.item} ${sk.variant}`,
+            demand: sk.demand, allocated: sk.allocated,
+            fillPct: sk.fillPct, gap: sk.demand - sk.allocated,
+            status: sk.status, sources: sk.sources,
+          });
+        });
+      });
+    } else {
+      const filteredSkus = skuAggDrp.filter(sk => matchesSourceFilter(sk.sources));
+      filteredSkus.forEach(sk => {
+        rows.push({
+          group: "SKU", parentKey: `${sk.item} ${sk.variant}`, isParent: true,
+          demand: sk.totalDemand, allocated: sk.totalAllocated,
+          fillPct: sk.fillPct, gap: sk.totalGap,
+          exceptions: sk.cnGapCount, sources: sk.sources,
+        });
+        sk.cnRows.filter(cr => matchesSourceFilter(cr.sources)).forEach(cr => {
+          rows.push({
+            group: "SKU", parentKey: `${sk.item} ${sk.variant}`, isParent: false,
+            childKey: cr.cn,
+            demand: cr.demand, allocated: cr.allocated,
+            fillPct: cr.fillPct, gap: cr.gap,
+            status: cr.status, sources: cr.sources,
+          });
+        });
+      });
+    }
+    return rows;
+  };
+
   const toggleException = (key: string) => {
     setExpandedExceptions((prev) => {
       const next = new Set(prev);
