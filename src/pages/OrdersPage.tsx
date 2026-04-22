@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   ChevronRight, Send, Upload, Loader2, PackageOpen, CheckCircle2, Truck, MapPin, Phone, User,
-  Package, ClipboardCheck, Clock, AlertTriangle, FileText, ArrowRight, Building2, X,
+  Package, PackageCheck, ClipboardCheck, Clock, AlertTriangle, FileText, ArrowRight, Building2, X,
+  Download, Filter as FilterIcon,
 } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 import { useNavigate } from "react-router-dom";
