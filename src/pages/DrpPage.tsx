@@ -596,7 +596,7 @@ export default function DrpPage() {
                           <CnGapBadge count={sk.cnGapCount} />
                           {sk.lcnb && <span className="ml-1"><LcnbBadge text={sk.lcnb} /></span>}
                         </td>
-                        <td className="px-4 py-3"><AllocSourceBar sources={sk.sources} compact /></td>
+                        <td className="px-4 py-3"><AllocSourceBar sources={sk.sources} compact demand={sk.totalDemand} allocated={sk.totalAllocated} /></td>
                         <td></td>
                       </tr>
                       {isOpen && (
