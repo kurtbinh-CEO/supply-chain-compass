@@ -151,6 +151,11 @@ export default function DrpPage() {
   const [drillSku, setDrillSku] = useState<string | null>(null);
   const [showAllSkus, setShowAllSkus] = useState(false);
   const [etaFilter, setEtaFilter] = useState<Set<"Same-day" | "1 ngày" | "Quá hạn">>(new Set());
+  const [selectedMove, setSelectedMove] = useState<null | {
+    direction: "in" | "out"; kind: "internal" | "lateral";
+    item: string; variant: string; qty: number; counterpart: string;
+    reason: string; eta: "Same-day" | "1 ngày" | "Quá hạn"; toCode: string;
+  }>(null);
   const [pivotMode, setPivotMode] = usePivotMode("drp");
   const [expandedExceptions, setExpandedExceptions] = useState<Set<string>>(new Set());
   const [expandOptions, setExpandOptions] = useState<string | null>(null);
