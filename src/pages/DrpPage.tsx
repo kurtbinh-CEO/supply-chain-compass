@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { useTenant } from "@/components/TenantContext";
@@ -16,6 +16,7 @@ import { ViewPivotToggle, usePivotMode, WorstCnCell, CnGapBadge, LcnbBadge } fro
 import { useSafetyStock } from "@/components/SafetyStockContext";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
+import { AllocSourceBar, ExpandedSkuBreakdown, ExpandedCnBreakdown, AllocSourceLegend } from "@/components/drp/AllocSourceBar";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -30,8 +31,17 @@ interface SkuException {
   options: { label: string; source: string; qty: number; cost: string; time: string; savingVsB: string; recommended?: boolean }[];
 }
 
+interface AllocSources {
+  onHand: number;          // Tồn kho có sẵn tại CN
+  pipeline: number;        // RPO/PO đang về (Hub đã đặt trước)
+  hubPo: number;           // PO mới từ Hub (NM ngoài) – sourcing fresh
+  lcnbIn: number;          // Lateral nhận từ CN khác (LCNB)
+  internalTransfer: number;// Luân chuyển nội bộ (TO giữa kho cùng CN hoặc tái phân bổ DC)
+}
+
 interface SkuFull {
   item: string; variant: string; demand: number; allocated: number; fillPct: number; status: string;
+  sources: AllocSources;
 }
 
 interface CnRow {
@@ -85,16 +95,48 @@ const baseData: CnRow[] = [
       },
     ],
     allSkus: [
-      { item: "GA-300", variant: "A4", demand: 617, allocated: 272, fillPct: 44, status: "SHORTAGE" },
-      { item: "GA-300", variant: "B2", demand: 178, allocated: 178, fillPct: 100, status: "OK" },
-      { item: "GA-400", variant: "A4", demand: 347, allocated: 297, fillPct: 86, status: "WATCH" },
-      { item: "GA-600", variant: "A4", demand: 881, allocated: 881, fillPct: 100, status: "OK" },
-      { item: "GA-600", variant: "B2", demand: 527, allocated: 527, fillPct: 100, status: "OK" },
+      // GA-300 A4: shortage covered by combo (LCNB 220 + Hub PO 125) + on-hand 272 net = 617
+      { item: "GA-300", variant: "A4", demand: 617, allocated: 272, fillPct: 44, status: "SHORTAGE",
+        sources: { onHand: 272, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
+      { item: "GA-300", variant: "B2", demand: 178, allocated: 178, fillPct: 100, status: "OK",
+        sources: { onHand: 128, pipeline: 50, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
+      { item: "GA-400", variant: "A4", demand: 347, allocated: 297, fillPct: 86, status: "WATCH",
+        sources: { onHand: 297, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
+      { item: "GA-600", variant: "A4", demand: 881, allocated: 881, fillPct: 100, status: "OK",
+        sources: { onHand: 600, pipeline: 281, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
+      // GA-600 B2: covered by Hub PO + internal transfer between BD warehouses
+      { item: "GA-600", variant: "B2", demand: 527, allocated: 527, fillPct: 100, status: "OK",
+        sources: { onHand: 200, pipeline: 0, hubPo: 250, lcnbIn: 0, internalTransfer: 77 } },
     ],
   },
-  { cn: "CN-ĐN", demand: 1800, available: 1600, fillRate: 100, gap: 0, exceptions: 0, rpos: 1, exceptionList: [], allSkus: [] },
-  { cn: "CN-HN", demand: 2100, available: 1300, fillRate: 100, gap: 0, exceptions: 0, rpos: 2, exceptionList: [], allSkus: [] },
-  { cn: "CN-CT", demand: 1200, available: 1050, fillRate: 100, gap: 0, exceptions: 0, rpos: 1, exceptionList: [], allSkus: [] },
+  { cn: "CN-ĐN", demand: 1800, available: 1600, fillRate: 100, gap: 0, exceptions: 0, rpos: 1, exceptionList: [],
+    allSkus: [
+      { item: "GA-300", variant: "A4", demand: 500, allocated: 500, fillPct: 100, status: "OK",
+        sources: { onHand: 720, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: -220 } }, // give 220 lateral to BD
+      { item: "GA-600", variant: "A4", demand: 800, allocated: 800, fillPct: 100, status: "OK",
+        sources: { onHand: 400, pipeline: 400, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
+      { item: "GA-400", variant: "A4", demand: 500, allocated: 500, fillPct: 100, status: "OK",
+        sources: { onHand: 350, pipeline: 0, hubPo: 150, lcnbIn: 0, internalTransfer: 0 } },
+    ],
+  },
+  { cn: "CN-HN", demand: 2100, available: 1300, fillRate: 100, gap: 0, exceptions: 0, rpos: 2, exceptionList: [],
+    allSkus: [
+      { item: "GA-300", variant: "A4", demand: 800, allocated: 800, fillPct: 100, status: "OK",
+        sources: { onHand: 200, pipeline: 0, hubPo: 600, lcnbIn: 0, internalTransfer: 0 } },
+      { item: "GA-400", variant: "A4", demand: 700, allocated: 700, fillPct: 100, status: "OK",
+        sources: { onHand: 200, pipeline: 500, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
+      { item: "GA-600", variant: "B2", demand: 600, allocated: 600, fillPct: 100, status: "OK",
+        sources: { onHand: 480, pipeline: 0, hubPo: 0, lcnbIn: 120, internalTransfer: 0 } }, // received lateral from CT
+    ],
+  },
+  { cn: "CN-CT", demand: 1200, available: 1050, fillRate: 100, gap: 0, exceptions: 0, rpos: 1, exceptionList: [],
+    allSkus: [
+      { item: "GA-600", variant: "B2", demand: 600, allocated: 600, fillPct: 100, status: "OK",
+        sources: { onHand: 750, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: -120 } }, // give 120 to HN
+      { item: "GA-300", variant: "A4", demand: 600, allocated: 600, fillPct: 100, status: "OK",
+        sources: { onHand: 150, pipeline: 0, hubPo: 450, lcnbIn: 0, internalTransfer: 0 } },
+    ],
+  },
 ];
 
 export default function DrpPage() {
@@ -154,7 +196,18 @@ export default function DrpPage() {
       allocLayers: e.allocLayers.map((l) => ({ ...l, qty: Math.round(l.qty * s), delta: l.delta ? Math.round(l.delta * s) : undefined })),
       options: e.options.map((o) => ({ ...o, qty: Math.round(o.qty * s) })),
     })),
-    allSkus: r.allSkus.map((sk) => ({ ...sk, demand: Math.round(sk.demand * s), allocated: Math.round(sk.allocated * s) })),
+    allSkus: r.allSkus.map((sk) => ({
+      ...sk,
+      demand: Math.round(sk.demand * s),
+      allocated: Math.round(sk.allocated * s),
+      sources: {
+        onHand: Math.round(sk.sources.onHand * s),
+        pipeline: Math.round(sk.sources.pipeline * s),
+        hubPo: Math.round(sk.sources.hubPo * s),
+        lcnbIn: Math.round(sk.sources.lcnbIn * s),
+        internalTransfer: Math.round(sk.sources.internalTransfer * s),
+      },
+    })),
   }));
 
   const totalDemand = data.reduce((a, r) => a + r.demand, 0);
@@ -168,19 +221,26 @@ export default function DrpPage() {
   const skuAggDrp = useMemo(() => {
     const map: Record<string, { item: string; variant: string; totalDemand: number; totalAllocated: number; totalGap: number; fillPct: number;
       worstCn: string; worstHstk: number; cnGapCount: number; lcnb: string | null;
-      cnRows: { cn: string; demand: number; allocated: number; fillPct: number; gap: number; status: string }[];
+      sources: AllocSources;
+      cnRows: { cn: string; demand: number; allocated: number; fillPct: number; gap: number; status: string; sources: AllocSources }[];
     }> = {};
     data.forEach(cn => {
       cn.allSkus.forEach(sk => {
         const key = `${sk.item}-${sk.variant}`;
         if (!map[key]) map[key] = { item: sk.item, variant: sk.variant, totalDemand: 0, totalAllocated: 0, totalGap: 0, fillPct: 0,
-          worstCn: "", worstHstk: 99, cnGapCount: 0, lcnb: null, cnRows: [] };
+          worstCn: "", worstHstk: 99, cnGapCount: 0, lcnb: null,
+          sources: { onHand: 0, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 }, cnRows: [] };
         map[key].totalDemand += sk.demand;
         map[key].totalAllocated += sk.allocated;
         const gap = sk.demand - sk.allocated;
         map[key].totalGap += gap;
         if (gap > 0) map[key].cnGapCount++;
-        map[key].cnRows.push({ cn: cn.cn, demand: sk.demand, allocated: sk.allocated, fillPct: sk.fillPct, gap, status: sk.status });
+        map[key].sources.onHand += sk.sources.onHand;
+        map[key].sources.pipeline += sk.sources.pipeline;
+        map[key].sources.hubPo += sk.sources.hubPo;
+        map[key].sources.lcnbIn += sk.sources.lcnbIn;
+        map[key].sources.internalTransfer += sk.sources.internalTransfer;
+        map[key].cnRows.push({ cn: cn.cn, demand: sk.demand, allocated: sk.allocated, fillPct: sk.fillPct, gap, status: sk.status, sources: sk.sources });
       });
     });
     Object.values(map).forEach(sk => {
@@ -200,6 +260,16 @@ export default function DrpPage() {
     });
     return Object.values(map).sort((a, b) => a.fillPct - b.fillPct);
   }, [data]);
+
+  // Inline expand state for Layer 1 (CN row → SKU breakdown, SKU row → CN breakdown)
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const toggleRow = (key: string) => {
+    setExpandedRows(prev => {
+      const n = new Set(prev);
+      n.has(key) ? n.delete(key) : n.add(key);
+      return n;
+    });
+  };
 
   const toggleException = (key: string) => {
     setExpandedExceptions((prev) => {
@@ -363,119 +433,134 @@ export default function DrpPage() {
             <LogicLink tab="monthly" node={2} tooltip="Logic cân đối Demand − Supply" />
           </div>
           <div className="rounded-card border border-surface-3 bg-surface-2">
+          <div className="px-4 py-2 border-b border-surface-3">
+            <AllocSourceLegend />
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-surface-3 bg-surface-1/50">
                   <th className="w-10 px-3 py-2.5"></th>
-                  {["CN", "Demand (m²)", "Có sẵn", "Fill rate", "Gap", "Exceptions", "RPOs planned", "Action"].map((h, i) => (
-                    <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
-                  ))}
+                  {pivotMode === "cn"
+                    ? ["CN", "Demand (m²)", "Có sẵn", "Fill rate", "Gap", "Exceptions", "Nguồn phân bổ", "Action"].map((h, i) => (
+                        <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
+                      ))
+                    : ["SKU", "Demand", "Allocated", "Fill rate", "Gap", "CN có gap", "Nguồn phân bổ", ""].map((h, i) => (
+                        <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
+                      ))
+                  }
                 </tr>
               </thead>
               <tbody>
-                {data.map((r) => (
-                  <tr key={r.cn} className={cn("border-b border-surface-3/50 cursor-pointer hover:bg-surface-1/30", r.gap > 0 && "bg-danger-bg/20")} onClick={() => setDrillCn(r.cn)}>
-                    <td className="px-3 py-3 text-text-3"><ChevronRight className="h-4 w-4" /></td>
-                    <td className="px-4 py-3 text-table font-medium text-text-1">{r.cn}</td>
-                    <td className="px-4 py-3 text-table tabular-nums text-text-1">
-                      <ClickableNumber
-                        value={r.demand}
-                        label={`Demand ${r.cn}`}
-                        color="text-text-1"
-                        formula={r.cn === "CN-BD"
-                          ? `FC phased ${Math.round(2142 * s).toLocaleString()} + CN adjust +${Math.round(94 * s)} + PO ${Math.round(757 * s).toLocaleString()} − overlap = ${r.demand.toLocaleString()}`
-                          : `Demand ${r.cn} = ${r.demand.toLocaleString()} m² (từ S&OP consensus)`}
-                        breakdown={r.cn === "CN-BD" ? r.allSkus.map(sk => ({
-                          label: `${sk.item} ${sk.variant}`,
-                          value: sk.demand,
-                          pct: `${Math.round(sk.demand / r.demand * 100)}%`,
-                        })) : undefined}
-                        links={[{ label: "→ /demand-weekly", to: "/demand-weekly" }, { label: "→ /sop Cân đối", to: "/sop" }]}
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-table tabular-nums text-text-2">
-                      <ClickableNumber
-                        value={r.available}
-                        label={`Có sẵn ${r.cn}`}
-                        color="text-text-2"
-                        formula={r.cn === "CN-BD"
-                          ? `On-hand ${Math.round(450 * s).toLocaleString()} + Pipeline ${Math.round(557 * s).toLocaleString()} = ${r.available.toLocaleString()} (available after SS guard)`
-                          : `Stock + Pipeline = ${r.available.toLocaleString()} m²`}
-                        breakdown={r.cn === "CN-BD" ? [
-                          { label: "On-hand tổng", value: Math.round(1800 * s), detail: "Tồn kho hiện tại" },
-                          { label: "− SS target", value: Math.round(-900 * s), color: "text-warning", detail: "Safety stock reserve" },
-                          { label: "+ Pipeline (RPO in-transit)", value: Math.round(557 * s), detail: "ETA W17-W18" },
-                          { label: "− Reserved/locked", value: Math.round(-450 * s), detail: "Đã allocate trước" },
-                          { label: "= Available", value: r.available, color: "text-text-1" },
-                        ] : undefined}
-                        links={[{ label: "→ /monitoring tab Tồn kho", to: "/monitoring" }]}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-2 rounded-full bg-surface-3 overflow-hidden">
-                          <div className={cn("h-full rounded-full", r.fillRate >= 95 ? "bg-success" : r.fillRate >= 85 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(r.fillRate, 100)}%` }} />
-                        </div>
-                        <ClickableNumber
-                          value={`${r.fillRate}%`}
-                          label={`Fill rate ${r.cn}`}
-                          color={cn("text-table-sm font-medium", r.fillRate >= 95 ? "text-success" : r.fillRate >= 85 ? "text-warning" : "text-danger")}
-                          formula={`Allocated ${r.available.toLocaleString()} ÷ Demand ${r.demand.toLocaleString()} = ${r.fillRate}%`}
-                          breakdown={r.exceptionList.length > 0 ? r.exceptionList.map(e => ({
-                            label: `${e.item} ${e.variant}`,
-                            value: `demand ${e.demand.toLocaleString()}, allocated ${e.allocated.toLocaleString()}, gap ${e.gap.toLocaleString()}`,
-                            detail: e.type,
-                          })) : [{ label: "Tất cả SKU", value: "100% allocated" }]}
-                          note={r.fillRate < 100 ? `${r.fillRate >= 95 ? "🟢" : r.fillRate >= 85 ? "🟡" : "🔴"}` : undefined}
-                        />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-table tabular-nums">
-                      {r.gap > 0 ? <span className="text-danger font-medium">{r.gap.toLocaleString()}</span> : <span className="text-text-3">0</span>}
-                    </td>
-                    <td className="px-4 py-3 text-table">
-                      {r.exceptions > 0 ? <span className="text-danger font-medium">{r.exceptions} items</span> : <span className="text-text-3">0</span>}
-                    </td>
-                    <td className="px-4 py-3 text-table text-text-2">
-                      <ClickableNumber
-                        value={`${r.rpos} RPO${r.rpos !== 1 ? "s" : ""}`}
-                        label={`RPOs planned ${r.cn}`}
-                        color="text-text-2"
-                        breakdown={r.cn === "CN-BD" ? [
-                          { label: "RPO-MKD-W17-002", value: "1.000m² GA-300 A4", detail: "MOQ round" },
-                          { label: "RPO-MKD-W17-003", value: "1.000m² GA-600 A4" },
-                          { label: "RPO-DTM-W17-001", value: "500m² GA-300 B2" },
-                        ] : r.cn === "CN-ĐN" ? [
-                          { label: "RPO-MKD-W18-001", value: `${Math.round(800 * s).toLocaleString()}m² GA-600 A4` },
-                        ] : r.cn === "CN-HN" ? [
-                          { label: "RPO-VGR-W17-001", value: `${Math.round(600 * s).toLocaleString()}m² GA-300 A4` },
-                          { label: "RPO-DTM-W18-001", value: `${Math.round(500 * s).toLocaleString()}m² GA-400 A4` },
-                        ] : [
-                          { label: "RPO-PMY-W18-001", value: `${Math.round(450 * s).toLocaleString()}m² GA-600 B2` },
-                        ]}
-                        formula={`Net req → MOQ round → ${r.rpos} RPO(s). Total ${r.cn === "CN-BD" ? "2.500" : r.cn === "CN-ĐN" ? Math.round(800 * s).toLocaleString() : r.cn === "CN-HN" ? Math.round(1100 * s).toLocaleString() : Math.round(450 * s).toLocaleString()}m²`}
-                        links={[{ label: "→ /orders tab 1 DRAFT", to: "/orders" }]}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      {r.exceptions > 0 ? (
-                        <span className="text-primary text-table-sm font-medium">Chi tiết ▸</span>
-                      ) : <span className="text-text-3">—</span>}
-                    </td>
+                {pivotMode === "cn" && data.map((r) => {
+                  const rowKey = `cn-${r.cn}`;
+                  const isOpen = expandedRows.has(rowKey);
+                  const cnSources = r.allSkus.reduce((acc, sk) => ({
+                    onHand: acc.onHand + sk.sources.onHand,
+                    pipeline: acc.pipeline + sk.sources.pipeline,
+                    hubPo: acc.hubPo + sk.sources.hubPo,
+                    lcnbIn: acc.lcnbIn + sk.sources.lcnbIn,
+                    internalTransfer: acc.internalTransfer + sk.sources.internalTransfer,
+                  }), { onHand: 0, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 });
+                  return (
+                    <Fragment key={r.cn}>
+                      <tr className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", r.gap > 0 && "bg-danger-bg/20", isOpen && "bg-surface-1/40")}>
+                        <td className="px-3 py-3 text-text-3 cursor-pointer" onClick={() => toggleRow(rowKey)}>
+                          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </td>
+                        <td className="px-4 py-3 text-table font-medium text-text-1 cursor-pointer" onClick={() => toggleRow(rowKey)}>{r.cn}</td>
+                        <td className="px-4 py-3 text-table tabular-nums text-text-1">{r.demand.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-table tabular-nums text-text-2">{r.available.toLocaleString()}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-2 rounded-full bg-surface-3 overflow-hidden">
+                              <div className={cn("h-full rounded-full", r.fillRate >= 95 ? "bg-success" : r.fillRate >= 85 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(r.fillRate, 100)}%` }} />
+                            </div>
+                            <span className={cn("text-table-sm font-medium", r.fillRate >= 95 ? "text-success" : r.fillRate >= 85 ? "text-warning" : "text-danger")}>{r.fillRate}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-table tabular-nums">
+                          {r.gap > 0 ? <span className="text-danger font-medium">{r.gap.toLocaleString()}</span> : <span className="text-text-3">0</span>}
+                        </td>
+                        <td className="px-4 py-3 text-table">
+                          {r.exceptions > 0 ? <span className="text-danger font-medium">{r.exceptions} items</span> : <span className="text-text-3">0</span>}
+                        </td>
+                        <td className="px-4 py-3"><AllocSourceBar sources={cnSources} compact /></td>
+                        <td className="px-4 py-3">
+                          {r.exceptions > 0 ? (
+                            <button onClick={(e) => { e.stopPropagation(); setDrillCn(r.cn); }} className="text-primary text-table-sm font-medium hover:underline">Xử lý ▸</button>
+                          ) : <span className="text-text-3">—</span>}
+                        </td>
+                      </tr>
+                      {isOpen && (
+                        <tr className="bg-surface-1/20">
+                          <td></td>
+                          <td colSpan={8} className="px-4 py-3">
+                            <ExpandedSkuBreakdown title={`SKU breakdown — ${r.cn}`} skus={r.allSkus} />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+
+                {pivotMode === "sku" && skuAggDrp.map((sk) => {
+                  const rowKey = `sku-${sk.item}-${sk.variant}`;
+                  const isOpen = expandedRows.has(rowKey);
+                  return (
+                    <Fragment key={rowKey}>
+                      <tr className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", sk.totalGap > 0 && "bg-danger-bg/20", isOpen && "bg-surface-1/40")}>
+                        <td className="px-3 py-3 text-text-3 cursor-pointer" onClick={() => toggleRow(rowKey)}>
+                          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </td>
+                        <td className="px-4 py-3 text-table font-medium text-text-1 cursor-pointer" onClick={() => toggleRow(rowKey)}>
+                          {sk.item} <span className="text-text-3 font-normal">{sk.variant}</span>
+                        </td>
+                        <td className="px-4 py-3 text-table tabular-nums text-text-1">{sk.totalDemand.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-table tabular-nums text-text-2">{sk.totalAllocated.toLocaleString()}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-2 rounded-full bg-surface-3 overflow-hidden">
+                              <div className={cn("h-full rounded-full", sk.fillPct >= 95 ? "bg-success" : sk.fillPct >= 85 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(sk.fillPct, 100)}%` }} />
+                            </div>
+                            <span className={cn("text-table-sm font-medium", sk.fillPct >= 95 ? "text-success" : sk.fillPct >= 85 ? "text-warning" : "text-danger")}>{sk.fillPct}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-table tabular-nums">
+                          {sk.totalGap > 0 ? <span className="text-danger font-medium">{sk.totalGap.toLocaleString()}</span> : <span className="text-text-3">0</span>}
+                        </td>
+                        <td className="px-4 py-3 text-table">
+                          <CnGapBadge count={sk.cnGapCount} />
+                          {sk.lcnb && <span className="ml-1"><LcnbBadge text={sk.lcnb} /></span>}
+                        </td>
+                        <td className="px-4 py-3"><AllocSourceBar sources={sk.sources} compact /></td>
+                        <td></td>
+                      </tr>
+                      {isOpen && (
+                        <tr className="bg-surface-1/20">
+                          <td></td>
+                          <td colSpan={8} className="px-4 py-3">
+                            <ExpandedCnBreakdown title={`CN breakdown — ${sk.item} ${sk.variant}`} cnRows={sk.cnRows} />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+
+                {pivotMode === "cn" && (
+                  <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
+                    <td></td>
+                    <td className="px-4 py-3 text-table text-text-1">TOTAL</td>
+                    <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalDemand.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-table tabular-nums text-text-2">{data.reduce((a, r) => a + r.available, 0).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-table-sm font-medium text-text-1">{totalFill}%</td>
+                    <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalGap.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-table text-text-1">{totalExc}</td>
+                    <td></td>
+                    <td></td>
                   </tr>
-                ))}
-                <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
-                  <td></td>
-                  <td className="px-4 py-3 text-table text-text-1">TOTAL</td>
-                  <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalDemand.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-table tabular-nums text-text-2">{data.reduce((a, r) => a + r.available, 0).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-table-sm font-medium text-text-1">{totalFill}%</td>
-                  <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalGap.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-table text-text-1">{totalExc}</td>
-                  <td className="px-4 py-3 text-table text-text-1">{totalRpos} RPOs</td>
-                  <td></td>
-                </tr>
+                )}
               </tbody>
             </table>
           </div>
