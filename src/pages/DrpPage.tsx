@@ -149,6 +149,7 @@ export default function DrpPage() {
   const [drillCn, setDrillCn] = useState<string | null>(null);
   const [drillSku, setDrillSku] = useState<string | null>(null);
   const [showAllSkus, setShowAllSkus] = useState(false);
+  const [etaFilter, setEtaFilter] = useState<Set<"Same-day" | "1 ngày" | "Quá hạn">>(new Set());
   const [pivotMode, setPivotMode] = usePivotMode("drp");
   const [expandedExceptions, setExpandedExceptions] = useState<Set<string>>(new Set());
   const [expandOptions, setExpandOptions] = useState<string | null>(null);
