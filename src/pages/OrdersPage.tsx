@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getShipmentDetail, etaTone, etaLabel, type ShipmentDetail } from "@/lib/shipment-data";
 import { BpoFlowCard } from "@/components/orders/BpoFlowCard";
+import { PodUploadPanel } from "@/components/orders/PodUploadPanel";
 import { LayoutGrid, GitBranch, Search, Filter, CalendarIcon, ArrowUpDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
