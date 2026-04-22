@@ -345,18 +345,6 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
             </span>
           </span>
         </div>
-
-        {/* Explicit reconciliation line — clarifies how cancelled affects remaining */}
-        {data.cancelled !== undefined && data.cancelled > 0 && (
-          <div className="mt-1.5 text-caption text-text-3 tabular-nums">
-            <span className="uppercase tracking-wide mr-1">Reconcile:</span>
-            BPO <span className="text-text-2 font-medium">{data.bpoTotal.toLocaleString()}</span>
-            {" − Delivered "}<span className="text-success font-medium">{data.delivered.toLocaleString()}</span>
-            {" = Còn lại "}<span className="text-warning font-medium">{data.remaining.toLocaleString()}</span>
-            {"  ·  Hủy "}<span className="text-danger font-medium">−{data.cancelled.toLocaleString()}</span>
-            <span className="text-text-3 ml-1">(không nằm trong BPO total)</span>
-          </div>
-        )}
       </div>
 
       {/* Drill-down children */}
