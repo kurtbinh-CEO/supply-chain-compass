@@ -437,114 +437,126 @@ export default function DrpPage() {
               <thead>
                 <tr className="border-b border-surface-3 bg-surface-1/50">
                   <th className="w-10 px-3 py-2.5"></th>
-                  {["CN", "Demand (m²)", "Có sẵn", "Fill rate", "Gap", "Exceptions", "RPOs planned", "Action"].map((h, i) => (
-                    <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
-                  ))}
+                  {pivotMode === "cn"
+                    ? ["CN", "Demand (m²)", "Có sẵn", "Fill rate", "Gap", "Exceptions", "Nguồn phân bổ", "Action"].map((h, i) => (
+                        <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
+                      ))
+                    : ["SKU", "Demand", "Allocated", "Fill rate", "Gap", "CN có gap", "Nguồn phân bổ", ""].map((h, i) => (
+                        <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
+                      ))
+                  }
                 </tr>
               </thead>
               <tbody>
-                {data.map((r) => (
-                  <tr key={r.cn} className={cn("border-b border-surface-3/50 cursor-pointer hover:bg-surface-1/30", r.gap > 0 && "bg-danger-bg/20")} onClick={() => setDrillCn(r.cn)}>
-                    <td className="px-3 py-3 text-text-3"><ChevronRight className="h-4 w-4" /></td>
-                    <td className="px-4 py-3 text-table font-medium text-text-1">{r.cn}</td>
-                    <td className="px-4 py-3 text-table tabular-nums text-text-1">
-                      <ClickableNumber
-                        value={r.demand}
-                        label={`Demand ${r.cn}`}
-                        color="text-text-1"
-                        formula={r.cn === "CN-BD"
-                          ? `FC phased ${Math.round(2142 * s).toLocaleString()} + CN adjust +${Math.round(94 * s)} + PO ${Math.round(757 * s).toLocaleString()} − overlap = ${r.demand.toLocaleString()}`
-                          : `Demand ${r.cn} = ${r.demand.toLocaleString()} m² (từ S&OP consensus)`}
-                        breakdown={r.cn === "CN-BD" ? r.allSkus.map(sk => ({
-                          label: `${sk.item} ${sk.variant}`,
-                          value: sk.demand,
-                          pct: `${Math.round(sk.demand / r.demand * 100)}%`,
-                        })) : undefined}
-                        links={[{ label: "→ /demand-weekly", to: "/demand-weekly" }, { label: "→ /sop Cân đối", to: "/sop" }]}
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-table tabular-nums text-text-2">
-                      <ClickableNumber
-                        value={r.available}
-                        label={`Có sẵn ${r.cn}`}
-                        color="text-text-2"
-                        formula={r.cn === "CN-BD"
-                          ? `On-hand ${Math.round(450 * s).toLocaleString()} + Pipeline ${Math.round(557 * s).toLocaleString()} = ${r.available.toLocaleString()} (available after SS guard)`
-                          : `Stock + Pipeline = ${r.available.toLocaleString()} m²`}
-                        breakdown={r.cn === "CN-BD" ? [
-                          { label: "On-hand tổng", value: Math.round(1800 * s), detail: "Tồn kho hiện tại" },
-                          { label: "− SS target", value: Math.round(-900 * s), color: "text-warning", detail: "Safety stock reserve" },
-                          { label: "+ Pipeline (RPO in-transit)", value: Math.round(557 * s), detail: "ETA W17-W18" },
-                          { label: "− Reserved/locked", value: Math.round(-450 * s), detail: "Đã allocate trước" },
-                          { label: "= Available", value: r.available, color: "text-text-1" },
-                        ] : undefined}
-                        links={[{ label: "→ /monitoring tab Tồn kho", to: "/monitoring" }]}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-2 rounded-full bg-surface-3 overflow-hidden">
-                          <div className={cn("h-full rounded-full", r.fillRate >= 95 ? "bg-success" : r.fillRate >= 85 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(r.fillRate, 100)}%` }} />
-                        </div>
-                        <ClickableNumber
-                          value={`${r.fillRate}%`}
-                          label={`Fill rate ${r.cn}`}
-                          color={cn("text-table-sm font-medium", r.fillRate >= 95 ? "text-success" : r.fillRate >= 85 ? "text-warning" : "text-danger")}
-                          formula={`Allocated ${r.available.toLocaleString()} ÷ Demand ${r.demand.toLocaleString()} = ${r.fillRate}%`}
-                          breakdown={r.exceptionList.length > 0 ? r.exceptionList.map(e => ({
-                            label: `${e.item} ${e.variant}`,
-                            value: `demand ${e.demand.toLocaleString()}, allocated ${e.allocated.toLocaleString()}, gap ${e.gap.toLocaleString()}`,
-                            detail: e.type,
-                          })) : [{ label: "Tất cả SKU", value: "100% allocated" }]}
-                          note={r.fillRate < 100 ? `${r.fillRate >= 95 ? "🟢" : r.fillRate >= 85 ? "🟡" : "🔴"}` : undefined}
-                        />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-table tabular-nums">
-                      {r.gap > 0 ? <span className="text-danger font-medium">{r.gap.toLocaleString()}</span> : <span className="text-text-3">0</span>}
-                    </td>
-                    <td className="px-4 py-3 text-table">
-                      {r.exceptions > 0 ? <span className="text-danger font-medium">{r.exceptions} items</span> : <span className="text-text-3">0</span>}
-                    </td>
-                    <td className="px-4 py-3 text-table text-text-2">
-                      <ClickableNumber
-                        value={`${r.rpos} RPO${r.rpos !== 1 ? "s" : ""}`}
-                        label={`RPOs planned ${r.cn}`}
-                        color="text-text-2"
-                        breakdown={r.cn === "CN-BD" ? [
-                          { label: "RPO-MKD-W17-002", value: "1.000m² GA-300 A4", detail: "MOQ round" },
-                          { label: "RPO-MKD-W17-003", value: "1.000m² GA-600 A4" },
-                          { label: "RPO-DTM-W17-001", value: "500m² GA-300 B2" },
-                        ] : r.cn === "CN-ĐN" ? [
-                          { label: "RPO-MKD-W18-001", value: `${Math.round(800 * s).toLocaleString()}m² GA-600 A4` },
-                        ] : r.cn === "CN-HN" ? [
-                          { label: "RPO-VGR-W17-001", value: `${Math.round(600 * s).toLocaleString()}m² GA-300 A4` },
-                          { label: "RPO-DTM-W18-001", value: `${Math.round(500 * s).toLocaleString()}m² GA-400 A4` },
-                        ] : [
-                          { label: "RPO-PMY-W18-001", value: `${Math.round(450 * s).toLocaleString()}m² GA-600 B2` },
-                        ]}
-                        formula={`Net req → MOQ round → ${r.rpos} RPO(s). Total ${r.cn === "CN-BD" ? "2.500" : r.cn === "CN-ĐN" ? Math.round(800 * s).toLocaleString() : r.cn === "CN-HN" ? Math.round(1100 * s).toLocaleString() : Math.round(450 * s).toLocaleString()}m²`}
-                        links={[{ label: "→ /orders tab 1 DRAFT", to: "/orders" }]}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      {r.exceptions > 0 ? (
-                        <span className="text-primary text-table-sm font-medium">Chi tiết ▸</span>
-                      ) : <span className="text-text-3">—</span>}
-                    </td>
+                {pivotMode === "cn" && data.map((r) => {
+                  const rowKey = `cn-${r.cn}`;
+                  const isOpen = expandedRows.has(rowKey);
+                  const cnSources = r.allSkus.reduce((acc, sk) => ({
+                    onHand: acc.onHand + sk.sources.onHand,
+                    pipeline: acc.pipeline + sk.sources.pipeline,
+                    hubPo: acc.hubPo + sk.sources.hubPo,
+                    lcnbIn: acc.lcnbIn + sk.sources.lcnbIn,
+                    internalTransfer: acc.internalTransfer + sk.sources.internalTransfer,
+                  }), { onHand: 0, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 });
+                  return (
+                    <Fragment key={r.cn}>
+                      <tr className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", r.gap > 0 && "bg-danger-bg/20", isOpen && "bg-surface-1/40")}>
+                        <td className="px-3 py-3 text-text-3 cursor-pointer" onClick={() => toggleRow(rowKey)}>
+                          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </td>
+                        <td className="px-4 py-3 text-table font-medium text-text-1 cursor-pointer" onClick={() => toggleRow(rowKey)}>{r.cn}</td>
+                        <td className="px-4 py-3 text-table tabular-nums text-text-1">{r.demand.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-table tabular-nums text-text-2">{r.available.toLocaleString()}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-2 rounded-full bg-surface-3 overflow-hidden">
+                              <div className={cn("h-full rounded-full", r.fillRate >= 95 ? "bg-success" : r.fillRate >= 85 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(r.fillRate, 100)}%` }} />
+                            </div>
+                            <span className={cn("text-table-sm font-medium", r.fillRate >= 95 ? "text-success" : r.fillRate >= 85 ? "text-warning" : "text-danger")}>{r.fillRate}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-table tabular-nums">
+                          {r.gap > 0 ? <span className="text-danger font-medium">{r.gap.toLocaleString()}</span> : <span className="text-text-3">0</span>}
+                        </td>
+                        <td className="px-4 py-3 text-table">
+                          {r.exceptions > 0 ? <span className="text-danger font-medium">{r.exceptions} items</span> : <span className="text-text-3">0</span>}
+                        </td>
+                        <td className="px-4 py-3"><AllocSourceBar sources={cnSources} compact /></td>
+                        <td className="px-4 py-3">
+                          {r.exceptions > 0 ? (
+                            <button onClick={(e) => { e.stopPropagation(); setDrillCn(r.cn); }} className="text-primary text-table-sm font-medium hover:underline">Xử lý ▸</button>
+                          ) : <span className="text-text-3">—</span>}
+                        </td>
+                      </tr>
+                      {isOpen && (
+                        <tr className="bg-surface-1/20">
+                          <td></td>
+                          <td colSpan={8} className="px-4 py-3">
+                            <ExpandedSkuBreakdown title={`SKU breakdown — ${r.cn}`} skus={r.allSkus} />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+
+                {pivotMode === "sku" && skuAggDrp.map((sk) => {
+                  const rowKey = `sku-${sk.item}-${sk.variant}`;
+                  const isOpen = expandedRows.has(rowKey);
+                  return (
+                    <Fragment key={rowKey}>
+                      <tr className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", sk.totalGap > 0 && "bg-danger-bg/20", isOpen && "bg-surface-1/40")}>
+                        <td className="px-3 py-3 text-text-3 cursor-pointer" onClick={() => toggleRow(rowKey)}>
+                          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </td>
+                        <td className="px-4 py-3 text-table font-medium text-text-1 cursor-pointer" onClick={() => toggleRow(rowKey)}>
+                          {sk.item} <span className="text-text-3 font-normal">{sk.variant}</span>
+                        </td>
+                        <td className="px-4 py-3 text-table tabular-nums text-text-1">{sk.totalDemand.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-table tabular-nums text-text-2">{sk.totalAllocated.toLocaleString()}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-2 rounded-full bg-surface-3 overflow-hidden">
+                              <div className={cn("h-full rounded-full", sk.fillPct >= 95 ? "bg-success" : sk.fillPct >= 85 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(sk.fillPct, 100)}%` }} />
+                            </div>
+                            <span className={cn("text-table-sm font-medium", sk.fillPct >= 95 ? "text-success" : sk.fillPct >= 85 ? "text-warning" : "text-danger")}>{sk.fillPct}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-table tabular-nums">
+                          {sk.totalGap > 0 ? <span className="text-danger font-medium">{sk.totalGap.toLocaleString()}</span> : <span className="text-text-3">0</span>}
+                        </td>
+                        <td className="px-4 py-3 text-table">
+                          <CnGapBadge count={sk.cnGapCount} />
+                          {sk.lcnb && <span className="ml-1"><LcnbBadge text={sk.lcnb} /></span>}
+                        </td>
+                        <td className="px-4 py-3"><AllocSourceBar sources={sk.sources} compact /></td>
+                        <td></td>
+                      </tr>
+                      {isOpen && (
+                        <tr className="bg-surface-1/20">
+                          <td></td>
+                          <td colSpan={8} className="px-4 py-3">
+                            <ExpandedCnBreakdown title={`CN breakdown — ${sk.item} ${sk.variant}`} cnRows={sk.cnRows} />
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+
+                {pivotMode === "cn" && (
+                  <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
+                    <td></td>
+                    <td className="px-4 py-3 text-table text-text-1">TOTAL</td>
+                    <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalDemand.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-table tabular-nums text-text-2">{data.reduce((a, r) => a + r.available, 0).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-table-sm font-medium text-text-1">{totalFill}%</td>
+                    <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalGap.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-table text-text-1">{totalExc}</td>
+                    <td></td>
+                    <td></td>
                   </tr>
-                ))}
-                <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
-                  <td></td>
-                  <td className="px-4 py-3 text-table text-text-1">TOTAL</td>
-                  <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalDemand.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-table tabular-nums text-text-2">{data.reduce((a, r) => a + r.available, 0).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-table-sm font-medium text-text-1">{totalFill}%</td>
-                  <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalGap.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-table text-text-1">{totalExc}</td>
-                  <td className="px-4 py-3 text-table text-text-1">{totalRpos} RPOs</td>
-                  <td></td>
-                </tr>
+                )}
               </tbody>
             </table>
           </div>
