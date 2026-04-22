@@ -7,6 +7,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "role.planner": "SC Planner",
 
     // Sidebar groups
+    "nav.overview": "Tổng quan",
     "nav.workplace": "Nơi làm việc",
     "nav.monitoring": "Giám sát",
     "nav.monthlyPlan": "Kế hoạch tháng",
@@ -16,6 +17,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "nav.support": "Hỗ trợ",
 
     // Sidebar items
+    "nav.dashboard": "Tổng quan SCP",
     "nav.workspace": "Workspace",
     "nav.monitoringItem": "Monitoring",
     "nav.demandReview": "Demand Review",
@@ -24,7 +26,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "nav.nmSupply": "NM Supply",
     "nav.demandWeekly": "Demand tuần",
     "nav.drpAllocation": "DRP & Phân bổ",
-    "nav.orders": "Orders",
+    "nav.orders": "PO Tracking",
     "nav.cnPortal": "CN Portal",
     "nav.supplierPortal": "Supplier Portal",
     "nav.masterData": "Master Data",
@@ -169,6 +171,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "role.planner": "SC Planner",
 
     // Sidebar groups
+    "nav.overview": "Overview",
     "nav.workplace": "Workplace",
     "nav.monitoring": "Monitoring",
     "nav.monthlyPlan": "Monthly Planning",
@@ -178,6 +181,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "nav.support": "Support",
 
     // Sidebar items
+    "nav.dashboard": "SCP Overview",
     "nav.workspace": "Workspace",
     "nav.monitoringItem": "Monitoring",
     "nav.demandReview": "Demand Review",
@@ -186,7 +190,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "nav.nmSupply": "NM Supply",
     "nav.demandWeekly": "Weekly Demand",
     "nav.drpAllocation": "DRP & Allocation",
-    "nav.orders": "Orders",
+    "nav.orders": "PO Tracking",
     "nav.cnPortal": "CN Portal",
     "nav.supplierPortal": "Supplier Portal",
     "nav.masterData": "Master Data",
