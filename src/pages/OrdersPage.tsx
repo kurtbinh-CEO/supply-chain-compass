@@ -245,6 +245,18 @@ export default function OrdersPage() {
     return c;
   }, [allOrders, statusOverrides]);
 
+  /* ── Tracking-tab: stages that actually have matching shipments ──
+     Shipments only exist for confirmed/shipped/received. Draft/Submitted/Cancelled
+     stages should be disabled on the rail when this tab is active. */
+  const trackingStageCounts = useMemo(() => {
+    const c: Record<string, number> = {};
+    stageOrder.forEach((s) => (c[s] = 0));
+    shipments.forEach((s: any) => {
+      if (c[s.status] !== undefined) c[s.status]++;
+    });
+    return c;
+  }, [shipments]);
+
   /* ── Pending-approval queue (draft + submitted) ── */
   const approvalQueue = useMemo(() => {
     return allOrders.filter((o) => {
