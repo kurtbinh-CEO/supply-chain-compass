@@ -24,6 +24,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getShipmentDetail, etaTone, etaLabel, type ShipmentDetail } from "@/lib/shipment-data";
+import { BpoFlowCard } from "@/components/orders/BpoFlowCard";
+import { LayoutGrid, GitBranch } from "lucide-react";
 
 /* ─────────── helpers ─────────── */
 const supplierToNm: Record<string, string> = {
