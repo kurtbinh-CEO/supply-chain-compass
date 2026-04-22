@@ -83,7 +83,7 @@ export function AllocSourceBar({ sources, compact = false }: Props) {
         </span>
       ))}
       {givingTransfer > 0 && (
-        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-400">
+        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border border-warning/30 bg-warning-bg text-warning">
           <ArrowLeftRight className="h-3 w-3" />
           Chuyển đi: −{givingTransfer.toLocaleString()}
         </span>
