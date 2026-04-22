@@ -1840,10 +1840,114 @@ export default function DrpPage() {
                   </ol>
                 </div>
 
-                {/* Reason */}
+                {/* Reason — editable when permitted */}
                 <div className="py-4">
-                  <div className="text-table-header uppercase text-text-3 tracking-wide mb-2">Lý do TO</div>
-                  <p className="text-table text-text-2 leading-relaxed">{m.reason}</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-table-header uppercase text-text-3 tracking-wide">Lý do TO</div>
+                    {canEdit && !editingReason && (
+                      <button
+                        onClick={() => { setReasonDraft(currentReason); setEditingReason(true); }}
+                        className="inline-flex items-center gap-1 rounded-button border border-surface-3 px-2 py-0.5 text-caption text-text-2 hover:text-text-1 hover:border-primary/40"
+                      >
+                        <Pencil className="h-3 w-3" /> Chỉnh sửa
+                      </button>
+                    )}
+                  </div>
+                  {editingReason ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={reasonDraft}
+                        onChange={(e) => setReasonDraft(e.target.value)}
+                        rows={3}
+                        className="text-table"
+                        placeholder="Nhập lý do điều chuyển..."
+                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setEditingReason(false)}
+                          className="inline-flex items-center gap-1 rounded-button border border-surface-3 px-2.5 py-1 text-caption text-text-2 hover:text-text-1"
+                        >
+                          <X className="h-3 w-3" /> Hủy
+                        </button>
+                        <button
+                          onClick={() => {
+                            const trimmed = reasonDraft.trim();
+                            if (!trimmed) { toast.error("Lý do không được để trống"); return; }
+                            setToReasons(prev => ({ ...prev, [m.toCode]: trimmed }));
+                            setEditingReason(false);
+                            toast.success("Đã cập nhật lý do TO", { description: `${m.toCode} • ${user.name}` });
+                          }}
+                          className="inline-flex items-center gap-1 rounded-button bg-primary text-primary-foreground px-2.5 py-1 text-caption font-medium hover:opacity-90"
+                        >
+                          <Check className="h-3 w-3" /> Lưu
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-table text-text-2 leading-relaxed">
+                      {currentReason}
+                      {toReasons[m.toCode] && (
+                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-accent text-accent-foreground px-1.5 py-0 text-[10px] font-medium align-middle">đã sửa</span>
+                      )}
+                    </p>
+                  )}
+                </div>
+
+                {/* Action footer */}
+                <div className="sticky bottom-0 -mx-6 px-6 py-3 border-t border-surface-3 bg-surface-1/95 backdrop-blur flex items-center gap-2 flex-wrap">
+                  {!canEdit && !canApprove && (
+                    <span className="text-caption text-text-3 italic">Bạn không có quyền hành động trên TO này.</span>
+                  )}
+                  <button
+                    disabled={!canApprove || baseApproved}
+                    onClick={() => {
+                      setToStatusOverrides(prev => ({ ...prev, [m.toCode]: "approved" }));
+                      toast.success(`Đã duyệt ${m.toCode}`, { description: `${m.qty.toLocaleString()} carton • bởi ${user.name}` });
+                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-button px-3 py-1.5 text-caption font-medium transition",
+                      !canApprove || baseApproved
+                        ? "bg-surface-2 text-text-3 cursor-not-allowed border border-surface-3"
+                        : "bg-success text-success-foreground hover:opacity-90",
+                    )}
+                    title={!canApprove ? "Cần quyền SC Manager" : baseApproved ? "TO đã được duyệt" : "Duyệt TO"}
+                  >
+                    <Check className="h-3.5 w-3.5" /> Duyệt TO
+                  </button>
+                  <button
+                    disabled={!canEdit || !baseApproved || baseShipped}
+                    onClick={() => {
+                      setToStatusOverrides(prev => ({ ...prev, [m.toCode]: "shipped" }));
+                      toast.success(`Đã xuất kho ${m.toCode}`, { description: `${lineItems.length} batch • ${m.qty.toLocaleString()} carton` });
+                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-button px-3 py-1.5 text-caption font-medium transition",
+                      !canEdit || !baseApproved || baseShipped
+                        ? "bg-surface-2 text-text-3 cursor-not-allowed border border-surface-3"
+                        : "bg-primary text-primary-foreground hover:opacity-90",
+                    )}
+                    title={!canEdit ? "Cần quyền SC/CN Manager" : !baseApproved ? "Cần duyệt TO trước" : baseShipped ? "Đã xuất kho" : "Xuất kho"}
+                  >
+                    <Truck className="h-3.5 w-3.5" /> Xuất kho
+                  </button>
+                  <button
+                    disabled={!canEdit}
+                    onClick={() => {
+                      const poId = `PO-${m.toCode.replace(/^TO-/, "")}-LK`;
+                      toast.success("Tạo PO liên kết", {
+                        description: `${poId} • ${m.item} ${m.variant} • ${m.qty.toLocaleString()} carton`,
+                      });
+                    }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-button px-3 py-1.5 text-caption font-medium transition border",
+                      !canEdit
+                        ? "border-surface-3 text-text-3 cursor-not-allowed"
+                        : "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10",
+                    )}
+                    title={!canEdit ? "Cần quyền SC/CN Manager" : "Tạo PO factory liên kết với TO này"}
+                  >
+                    <PackagePlus className="h-3.5 w-3.5" /> Tạo PO liên kết
+                  </button>
                 </div>
               </>
             );
