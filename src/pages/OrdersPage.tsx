@@ -328,21 +328,6 @@ export default function OrdersPage() {
             expected_date: o.expected_date,
           };
         });
-        .filter((o) => effectiveStatus(o) !== "cancelled")
-        .map((o) => {
-          const st = effectiveStatus(o);
-          return {
-            rpo: o.po_number,
-            status: st,
-            item: o.sku,
-            qty: Number(o.quantity),
-            asn: ["shipped", "received"].includes(st) ? `ASN-${o.po_number.slice(-3)}` : null,
-            shipDate: ["shipped", "received"].includes(st) ? fmtDate(o.expected_date) : "—",
-            eta: fmtDate(o.expected_date),
-            actual: st === "received" ? Number(o.quantity) : 0,
-            expected_date: o.expected_date,
-          };
-        });
 
       // Earliest ETA among unfulfilled (not received, not cancelled) lines
       const unfulfilledEtaTimes = orders
