@@ -611,7 +611,7 @@ export default function DrpPage() {
                   );
                 })}
 
-                {pivotMode === "cn" && (
+                {pivotMode === "cn" && sourceFilter.size === 0 && (
                   <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
                     <td></td>
                     <td className="px-4 py-3 text-table text-text-1">TOTAL</td>
