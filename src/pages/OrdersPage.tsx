@@ -1159,7 +1159,12 @@ export default function OrdersPage() {
                       <div className="mt-4 rounded-button border border-surface-3 bg-surface-1/40 overflow-hidden animate-fade-in">
                         <div className="px-3 py-2 border-b border-surface-3 flex items-center justify-between">
                           <p className="text-caption text-text-2 uppercase tracking-wide">RPO / ASN children</p>
-                          <p className="text-caption text-text-3">Waterfall: BPO {b.bpoTotal.toLocaleString()} − Delivered {b.delivered.toLocaleString()} = Còn {b.remaining.toLocaleString()}</p>
+                          <p className="text-caption text-text-3 tabular-nums">
+                            Waterfall: BPO {b.bpoTotal.toLocaleString()} − Delivered {b.delivered.toLocaleString()} = Còn {b.remaining.toLocaleString()}
+                            {b.cancelled > 0 && (
+                              <span className="ml-2 text-danger">· Hủy −{b.cancelled.toLocaleString()} (loại khỏi BPO)</span>
+                            )}
+                          </p>
                         </div>
                         <table className="w-full">
                           <thead>
