@@ -19,6 +19,10 @@ import { useVersionConflict, VersionConflictDialog } from "@/components/VersionC
 import { AllocSourceBar, ExpandedSkuBreakdown, ExpandedCnBreakdown, AllocSourceLegend } from "@/components/drp/AllocSourceBar";
 import { exportCsv, exportPdf, type ExportRow } from "@/components/drp/exportLayer1";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { useRbac } from "@/components/RbacContext";
+import { CheckCircle2, Truck, Link2, ShieldAlert } from "lucide-react";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
