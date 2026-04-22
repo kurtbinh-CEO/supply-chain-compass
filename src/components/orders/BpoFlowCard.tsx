@@ -177,6 +177,12 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
                   <p className="text-caption tabular-nums text-text-3">
                     {Math.round(pct)}%
                   </p>
+                  {/* Drop-off from previous stage */}
+                  {i > 0 && dropOff[s.key] > 0 && (
+                    <p className="text-caption tabular-nums text-warning font-medium" title={`Còn lại ở ${stageDefs[i - 1].label}, chưa chuyển sang ${s.label}`}>
+                      −{dropOff[s.key].toLocaleString()}
+                    </p>
+                  )}
                 </div>
               </button>
             );
@@ -194,11 +200,23 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
               )}>
                 {reachedQty[s.key].toLocaleString()}
               </span>
-              {i < stageDefs.length - 1 && <ChevronRight className="h-3 w-3 text-text-3" />}
+              {i < stageDefs.length - 1 && (
+                <>
+                  {dropOff[stageOrderArr[i + 1]] > 0 && (
+                    <span className="text-warning tabular-nums">
+                      (−{dropOff[stageOrderArr[i + 1]].toLocaleString()})
+                    </span>
+                  )}
+                  <ChevronRight className="h-3 w-3 text-text-3" />
+                </>
+              )}
             </span>
           ))}
           <span className="ml-auto">
-            Drop-off: <span className="text-warning tabular-nums font-medium">{(data.bpoTotal - data.delivered).toLocaleString()}</span> chưa nhận
+            {data.cancelled && data.cancelled > 0 && (
+              <span className="mr-3">Hủy: <span className="text-danger tabular-nums font-medium">{data.cancelled.toLocaleString()}</span></span>
+            )}
+            Chưa nhận: <span className="text-warning tabular-nums font-medium">{(data.bpoTotal - data.delivered).toLocaleString()}</span>
           </span>
         </div>
       </div>
