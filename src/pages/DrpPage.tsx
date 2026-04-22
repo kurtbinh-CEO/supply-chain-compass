@@ -1694,7 +1694,7 @@ export default function DrpPage() {
       <ScreenFooter actionCount={14} />
 
       {/* TO Detail slide-in panel */}
-      <Sheet open={!!selectedMove} onOpenChange={(o) => !o && setSelectedMove(null)}>
+      <Sheet open={!!selectedMove} onOpenChange={(o) => { if (!o) { setSelectedMove(null); setEditingReason(false); } }}>
         <SheetContent side="right" className="w-full sm:max-w-[480px] overflow-y-auto bg-surface-1">
           {selectedMove && (() => {
             const m = selectedMove;
