@@ -137,10 +137,46 @@ export default function OrdersPage() {
     });
   }, [allOrders, statusOverrides]);
 
+  /* ── Filter options for Burn-down ── */
+  const allNmList = useMemo(() => {
+    const set = new Set<string>();
+    allOrders.forEach((o) => set.add(supplierToNm[o.supplier] || o.supplier));
+    return Array.from(set).sort();
+  }, [allOrders]);
+  const allSkuList = useMemo(() => {
+    const set = new Set<string>();
+    allOrders.forEach((o) => set.add(o.sku));
+    return Array.from(set).sort();
+  }, [allOrders]);
+
+  /* ── Filtered orders for Burn-down ── */
+  const filteredBdOrders = useMemo(() => {
+    const q = bdSearch.trim().toLowerCase();
+    return allOrders.filter((o) => {
+      const nm = supplierToNm[o.supplier] || o.supplier;
+      if (bdNms.size > 0 && !bdNms.has(nm)) return false;
+      if (bdSkus.size > 0 && !bdSkus.has(o.sku)) return false;
+      if (bdDateRange?.from && o.expected_date) {
+        const d = new Date(o.expected_date);
+        if (d < bdDateRange.from) return false;
+        if (bdDateRange.to && d > bdDateRange.to) return false;
+      }
+      if (q) {
+        const hay = `${o.po_number} ${nm} ${o.sku}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [allOrders, bdSearch, bdNms, bdSkus, bdDateRange]);
+
+  const bdActiveFilterCount =
+    (bdSearch.trim() ? 1 : 0) + (bdNms.size > 0 ? 1 : 0) + (bdSkus.size > 0 ? 1 : 0) + (bdDateRange?.from ? 1 : 0);
+  const clearBdFilters = () => { setBdSearch(""); setBdNms(new Set()); setBdSkus(new Set()); setBdDateRange(undefined); };
+
   /* ── BPO burn-down aggregates ── */
   const burnDowns: BpoBurnDown[] = useMemo(() => {
     const bySupplier: Record<string, PurchaseOrderRow[]> = {};
-    allOrders.forEach((o) => {
+    filteredBdOrders.forEach((o) => {
       const nm = supplierToNm[o.supplier] || o.supplier;
       if (!bySupplier[nm]) bySupplier[nm] = [];
       bySupplier[nm].push(o);
@@ -178,7 +214,7 @@ export default function OrdersPage() {
         bpoTotal, released, shipped, delivered, remaining, completionPct, rpos,
       };
     });
-  }, [allOrders, statusOverrides]);
+  }, [filteredBdOrders, statusOverrides]);
 
   /* ── Shipment list (RPO with ASN) ── */
   const shipments = useMemo(() => {
