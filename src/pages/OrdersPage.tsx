@@ -422,7 +422,7 @@ export default function OrdersPage() {
     return c;
   }, [shipments]);
 
-
+  const filteredShipments = useMemo(() => {
     const q = trkSearch.trim().toLowerCase();
     const arr = shipments.filter((s: any) => {
       // Cross-tab pipeline filter (PO status from header rail)
