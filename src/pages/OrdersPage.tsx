@@ -25,7 +25,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getShipmentDetail, etaTone, etaLabel, type ShipmentDetail } from "@/lib/shipment-data";
 import { BpoFlowCard } from "@/components/orders/BpoFlowCard";
-import { LayoutGrid, GitBranch, Search, Filter, CalendarIcon } from "lucide-react";
+import { LayoutGrid, GitBranch, Search, Filter, CalendarIcon, ArrowUpDown } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -770,9 +771,27 @@ export default function OrdersPage() {
               </button>
             )}
 
-            <span className="ml-auto text-caption text-text-3 tabular-nums">
-              {filteredBdOrders.length}/{allOrders.length} PO · {burnDowns.length} NM
-            </span>
+            {/* Sort dropdown */}
+            <div className="ml-auto flex items-center gap-2">
+              <Select value={bdSort} onValueChange={(v) => setBdSort(v as typeof bdSort)}>
+                <SelectTrigger className="h-8 w-[200px] text-table-sm bg-surface-0">
+                  <ArrowUpDown className="h-3.5 w-3.5 text-text-3 mr-1" />
+                  <SelectValue placeholder="Sắp xếp" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="risk_desc">💰 Revenue at risk (cao → thấp)</SelectItem>
+                  <SelectItem value="risk_asc">💰 Revenue at risk (thấp → cao)</SelectItem>
+                  <SelectItem value="eta_asc">📅 ETA gần nhất (sớm → muộn)</SelectItem>
+                  <SelectItem value="eta_desc">📅 ETA gần nhất (muộn → sớm)</SelectItem>
+                  <SelectItem value="completion_asc">📊 Completion % (thấp → cao)</SelectItem>
+                  <SelectItem value="completion_desc">📊 Completion % (cao → thấp)</SelectItem>
+                  <SelectItem value="nm_asc">🔤 Tên NM (A → Z)</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-caption text-text-3 tabular-nums whitespace-nowrap">
+                {filteredBdOrders.length}/{allOrders.length} PO · {burnDowns.length} NM
+              </span>
+            </div>
           </div>
 
           {/* Active filter chips */}
@@ -852,14 +871,14 @@ export default function OrdersPage() {
             </div>
           ) : burndownView === "flow" ? (
             <div className="space-y-3">
-              {burnDowns.map((b) => (
+              {sortedBurnDowns.map((b) => (
                 <BpoFlowCard key={b.nm} data={b} />
               ))}
             </div>
           ) : (
           <div className="rounded-card border border-surface-3 bg-surface-2">
             <div className="divide-y divide-surface-3/50">
-              {burnDowns.map((b) => {
+              {sortedBurnDowns.map((b) => {
                 const releasedPct = b.bpoTotal > 0 ? (b.released / b.bpoTotal) * 100 : 0;
                 const shippedPct = b.bpoTotal > 0 ? (b.shipped / b.bpoTotal) * 100 : 0;
                 const deliveredPct = b.bpoTotal > 0 ? (b.delivered / b.bpoTotal) * 100 : 0;
