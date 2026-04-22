@@ -1100,6 +1100,84 @@ export default function DrpPage() {
                     <span className="font-display text-h3 font-bold text-primary tabular-nums">{fmtVnd(totalImpact)}</span>
                   </div>
                 </div>
+                {/* Qty basis: contributors to revenue/cost calc */}
+                {(() => {
+                  const inboundContribs = visibleMoves.filter(m => m.direction === "in");
+                  const outboundLcnbContribs = visibleMoves.filter(m => m.direction === "out" && m.kind === "lateral");
+                  if (inboundContribs.length === 0 && outboundLcnbContribs.length === 0) return null;
+                  return (
+                    <details className="border-b border-surface-3 group" open>
+                      <summary className="px-5 py-2 cursor-pointer flex items-center gap-2 text-caption text-text-3 hover:bg-surface-1/30 list-none [&::-webkit-details-marker]:hidden">
+                        <ChevronRight className="h-3 w-3 transition-transform group-open:rotate-90" />
+                        <span className="font-medium text-text-2">Qty basis</span>
+                        <span className="text-text-3">— {inboundContribs.length} inbound (Internal/LCNB) · {outboundLcnbContribs.length} outbound LCNB</span>
+                        {etaFilter.size > 0 && (
+                          <span className="ml-auto text-warning">Đang lọc ETA: {Array.from(etaFilter).join(", ")}</span>
+                        )}
+                      </summary>
+                      <div className="px-5 pb-3 grid md:grid-cols-2 gap-3">
+                        {/* Inbound contributors → revenue/margin */}
+                        <div className="rounded-card border border-surface-3 bg-surface-0">
+                          <div className="px-3 py-1.5 border-b border-surface-3 flex items-center justify-between">
+                            <span className="text-caption font-medium text-success">↘ Inbound (revenue/margin basis)</span>
+                            <span className="text-caption text-text-3 tabular-nums">
+                              Σ {inboundContribs.reduce((s, m) => s + m.qty, 0).toLocaleString()}
+                            </span>
+                          </div>
+                          {inboundContribs.length === 0 ? (
+                            <div className="px-3 py-2 text-caption text-text-3 italic">Không có inbound trong bộ lọc.</div>
+                          ) : (
+                            <ul className="divide-y divide-surface-3/60">
+                              {inboundContribs.map((m, i) => (
+                                <li key={i} className="px-3 py-1.5 flex items-center gap-2 text-caption hover:bg-surface-1/40">
+                                  <span className={cn("rounded px-1.5 py-0 text-[10px] font-medium border whitespace-nowrap",
+                                    m.kind === "internal" ? "border-accent bg-accent text-accent-foreground" : "border-warning/30 bg-warning/10 text-warning"
+                                  )}>{m.kind === "internal" ? "Int.TO" : "LCNB"}</span>
+                                  <span className="text-text-1 font-medium truncate">{m.item} {m.variant}</span>
+                                  <span className="text-text-3 truncate flex-1">· {m.counterpart}</span>
+                                  <span className={cn("text-text-3 whitespace-nowrap",
+                                    m.eta === "Same-day" && "text-success",
+                                    m.eta === "1 ngày" && "text-warning",
+                                    m.eta === "Quá hạn" && "text-danger",
+                                  )}>{m.eta}</span>
+                                  <span className="tabular-nums font-semibold text-success whitespace-nowrap">+{m.qty.toLocaleString()}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                        {/* Outbound LCNB contributors → cost saved */}
+                        <div className="rounded-card border border-surface-3 bg-surface-0">
+                          <div className="px-3 py-1.5 border-b border-surface-3 flex items-center justify-between">
+                            <span className="text-caption font-medium text-warning">↗ Outbound LCNB (cost-saved basis)</span>
+                            <span className="text-caption text-text-3 tabular-nums">
+                              Σ {outboundLcnbContribs.reduce((s, m) => s + m.qty, 0).toLocaleString()}
+                            </span>
+                          </div>
+                          {outboundLcnbContribs.length === 0 ? (
+                            <div className="px-3 py-2 text-caption text-text-3 italic">Không có outbound LCNB trong bộ lọc.</div>
+                          ) : (
+                            <ul className="divide-y divide-surface-3/60">
+                              {outboundLcnbContribs.map((m, i) => (
+                                <li key={i} className="px-3 py-1.5 flex items-center gap-2 text-caption hover:bg-surface-1/40">
+                                  <span className="rounded px-1.5 py-0 text-[10px] font-medium border border-warning/30 bg-warning/10 text-warning whitespace-nowrap">LCNB</span>
+                                  <span className="text-text-1 font-medium truncate">{m.item} {m.variant}</span>
+                                  <span className="text-text-3 truncate flex-1">· {m.counterpart}</span>
+                                  <span className={cn("text-text-3 whitespace-nowrap",
+                                    m.eta === "Same-day" && "text-success",
+                                    m.eta === "1 ngày" && "text-warning",
+                                    m.eta === "Quá hạn" && "text-danger",
+                                  )}>{m.eta}</span>
+                                  <span className="tabular-nums font-semibold text-warning whitespace-nowrap">−{m.qty.toLocaleString()}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      </div>
+                    </details>
+                  );
+                })()}
                 {/* ETA filter chips */}
                 <div className="px-5 py-2 border-b border-surface-3 flex items-center gap-2 flex-wrap bg-surface-1/30">
                   <span className="text-caption text-text-3 mr-1">Lọc ETA:</span>
