@@ -2,11 +2,12 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Building2, FileText, ClipboardCheck, PackageCheck, Truck, Warehouse, ChevronRight,
-  FileSpreadsheet, FileText as FileCsv,
+  FileSpreadsheet, FileText as FileCsv, AlertTriangle, Info, X,
 } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 import { exportToCsv, exportToXlsx, type ExportColumn } from "@/lib/export-utils";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export interface BpoFlowRpo {
   rpo: string;
@@ -146,6 +147,90 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
         </div>
       </div>
 
+      {/* ─── Exception-first reconciliation banner ─── */}
+      {data.cancelled !== undefined && data.cancelled > 0 && (() => {
+        const originalTotal = data.bpoTotal + data.cancelled;
+        const cancelPct = Math.round((data.cancelled / originalTotal) * 100);
+        return (
+          <div className="px-4 py-2.5 border-b border-warning/30 bg-warning-bg/40 flex items-center gap-3">
+            <div className="h-7 w-7 rounded-full bg-warning/15 flex items-center justify-center shrink-0">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+            </div>
+            <div className="flex-1 min-w-0 text-table-sm">
+              <p className="text-text-1 font-medium">
+                Tổng BPO không khớp do <span className="text-danger font-semibold">{data.cancelled.toLocaleString()}</span> đã hủy
+                <span className="text-text-3 font-normal"> ({cancelPct}% so với gốc {originalTotal.toLocaleString()})</span>
+              </p>
+              <p className="text-caption text-text-3 tabular-nums mt-0.5">
+                BPO {data.bpoTotal.toLocaleString()} − Delivered {data.delivered.toLocaleString()} = Còn lại {data.remaining.toLocaleString()}
+              </p>
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="rounded-button border border-warning/40 bg-surface-0 px-2.5 py-1.5 text-caption font-medium text-text-1 hover:bg-warning-bg flex items-center gap-1.5 shrink-0 transition-colors"
+                  aria-label="Giải thích reconciliation"
+                >
+                  <Info className="h-3.5 w-3.5 text-warning" /> Giải thích
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="bottom"
+                align="end"
+                className="w-[360px] p-0 border-surface-3 shadow-lg"
+              >
+                <div className="px-4 py-3 border-b border-surface-3 bg-warning-bg/30 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-table-sm font-semibold text-text-1">Vì sao tổng không khớp?</p>
+                    <p className="text-caption text-text-3 mt-0.5">Cách hệ thống tính khi có dòng PO bị hủy</p>
+                  </div>
+                </div>
+                <div className="p-4 space-y-3 text-table-sm">
+                  <div>
+                    <p className="text-caption uppercase tracking-wide text-text-3 mb-1">Quy tắc</p>
+                    <p className="text-text-2 leading-relaxed">
+                      Dòng PO ở trạng thái <span className="font-medium text-danger">Cancelled</span> bị loại khỏi
+                      <span className="font-medium text-text-1"> tất cả các bucket funnel</span> (Created, Approved, Released, Shipped, Received)
+                      để tránh thổi phồng tỉ lệ hoàn thành.
+                    </p>
+                  </div>
+                  <div className="rounded-card border border-surface-3 bg-surface-1/50 p-2.5 space-y-1.5 tabular-nums">
+                    <div className="flex justify-between text-text-2">
+                      <span>Tổng PO ban đầu</span>
+                      <span className="font-medium text-text-1">{originalTotal.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-danger">
+                      <span>− Đã hủy</span>
+                      <span className="font-medium">−{data.cancelled.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-surface-3 pt-1.5 text-text-1 font-semibold">
+                      <span>= BPO total (active)</span>
+                      <span>{data.bpoTotal.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-success pt-1">
+                      <span>− Delivered</span>
+                      <span className="font-medium">−{data.delivered.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-surface-3 pt-1.5 text-warning font-semibold">
+                      <span>= Còn lại</span>
+                      <span>{data.remaining.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <div className="rounded-card bg-info-bg/40 border border-info/20 px-2.5 py-2 flex gap-2">
+                    <Info className="h-3.5 w-3.5 text-info shrink-0 mt-0.5" />
+                    <p className="text-caption text-text-2 leading-relaxed">
+                      Số lượng đã hủy <span className="font-medium">không tính vào "Còn lại"</span> vì không cần phải giao thêm.
+                      Nếu muốn xem ảnh hưởng kinh doanh, dùng cột <span className="font-medium text-text-1">Risk ₫</span>.
+                    </p>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        );
+      })()}
+
       {/* Stage funnel */}
       <div className="px-4 pt-5 pb-3">
         <div className="relative flex items-stretch gap-1">
@@ -260,18 +345,6 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
             </span>
           </span>
         </div>
-
-        {/* Explicit reconciliation line — clarifies how cancelled affects remaining */}
-        {data.cancelled !== undefined && data.cancelled > 0 && (
-          <div className="mt-1.5 text-caption text-text-3 tabular-nums">
-            <span className="uppercase tracking-wide mr-1">Reconcile:</span>
-            BPO <span className="text-text-2 font-medium">{data.bpoTotal.toLocaleString()}</span>
-            {" − Delivered "}<span className="text-success font-medium">{data.delivered.toLocaleString()}</span>
-            {" = Còn lại "}<span className="text-warning font-medium">{data.remaining.toLocaleString()}</span>
-            {"  ·  Hủy "}<span className="text-danger font-medium">−{data.cancelled.toLocaleString()}</span>
-            <span className="text-text-3 ml-1">(không nằm trong BPO total)</span>
-          </div>
-        )}
       </div>
 
       {/* Drill-down children */}
