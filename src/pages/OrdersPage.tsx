@@ -469,6 +469,134 @@ export default function OrdersPage() {
     [filteredShipments, trkPageSafe]
   );
 
+  // ── Bulk-select helpers (tracking) ──
+  // Auto-prune selection when filters change so it never references hidden rows
+  useEffect(() => {
+    setTrkSelected((prev) => {
+      if (prev.size === 0) return prev;
+      const visible = new Set(filteredShipments.map((s: any) => s.asn));
+      const next = new Set<string>();
+      prev.forEach((id) => visible.has(id) && next.add(id));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [filteredShipments]);
+
+  const pageAsns = useMemo(() => pagedShipments.map((s: any) => s.asn), [pagedShipments]);
+  const pageAllSelected = pageAsns.length > 0 && pageAsns.every((a) => trkSelected.has(a));
+  const pageSomeSelected = pageAsns.some((a) => trkSelected.has(a));
+
+  const togglePageSelection = () => {
+    setTrkSelected((prev) => {
+      const next = new Set(prev);
+      if (pageAllSelected) pageAsns.forEach((a) => next.delete(a));
+      else pageAsns.forEach((a) => next.add(a));
+      return next;
+    });
+  };
+  const toggleRowSelection = (asn: string) => {
+    setTrkSelected((prev) => {
+      const next = new Set(prev);
+      next.has(asn) ? next.delete(asn) : next.add(asn);
+      return next;
+    });
+  };
+  const selectAllFiltered = () => setTrkSelected(new Set(filteredShipments.map((s: any) => s.asn)));
+  const clearSelection = () => setTrkSelected(new Set());
+
+  const selectedShipments = useMemo(
+    () => filteredShipments.filter((s: any) => trkSelected.has(s.asn)),
+    [filteredShipments, trkSelected]
+  );
+
+  // Bulk action: mark received
+  const [bulkReceiveOpen, setBulkReceiveOpen] = useState(false);
+  const performBulkReceive = () => {
+    const eligible = selectedShipments.filter((s: any) => s.currentStage !== "received");
+    if (eligible.length === 0) {
+      toast.info("Tất cả shipment đã chọn đều đã ở trạng thái Received");
+      setBulkReceiveOpen(false);
+      return;
+    }
+    setStatusOverrides((prev) => {
+      const next = { ...prev };
+      eligible.forEach((s: any) => { next[s.rpo] = "received"; });
+      return next;
+    });
+    toast.success(`Đã đánh dấu Received cho ${eligible.length} shipment`, {
+      description: selectedShipments.length > eligible.length
+        ? `${selectedShipments.length - eligible.length} shipment đã ở trạng thái Received nên bỏ qua`
+        : undefined,
+    });
+    setBulkReceiveOpen(false);
+    clearSelection();
+  };
+
+  // Bulk action: export CSV
+  const exportSelectedCsv = () => {
+    if (selectedShipments.length === 0) return;
+    const headers = ["ASN", "RPO", "NM", "Destination", "SKU", "Qty (m²)", "Driver", "Driver Phone", "Vehicle", "Vehicle Type", "Carrier", "Carrier Phone", "Origin", "Ship Date", "ETA", "Stage", "Fill %"];
+    const escape = (v: unknown) => {
+      const s = v === null || v === undefined ? "" : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows = selectedShipments.map((s: any) => [
+      s.asn, s.rpo, s.nm, s.destination, s.sku, s.qty,
+      s.driver, s.driverPhone, s.vehicle, s.vehicleType,
+      s.carrier, s.carrierPhone, s.origin, s.shipDate, s.eta,
+      s.currentStage, s.fillPct,
+    ].map(escape).join(","));
+    const csv = "\uFEFF" + [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const ts = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `shipments_${ts}_${selectedShipments.length}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Đã export ${selectedShipments.length} shipment ra CSV`);
+  };
+
+  // Bulk action: download PODs (mock — bundles a manifest of POD URLs since real files don't exist)
+  const downloadSelectedPods = () => {
+    if (selectedShipments.length === 0) return;
+    const withPod = selectedShipments.filter((s: any) => !!s.podUrl);
+    if (withPod.length === 0) {
+      toast.warning("Không có POD nào trong các shipment đã chọn", {
+        description: "POD chỉ tồn tại cho shipment đã ở trạng thái Received",
+      });
+      return;
+    }
+    const lines = [
+      `# POD Bundle Manifest`,
+      `# Generated: ${new Date().toLocaleString("vi-VN")}`,
+      `# Tenant: ${tenant}`,
+      `# Shipments selected: ${selectedShipments.length}`,
+      `# PODs available: ${withPod.length}`,
+      ``,
+      `ASN\tRPO\tNM\tSKU\tQty\tStage\tPOD File`,
+      ...withPod.map((s: any) =>
+        `${s.asn}\t${s.rpo}\t${s.nm}\t${s.sku}\t${s.qty}\t${s.currentStage}\t${s.podUrl}`
+      ),
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const ts = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `pod_manifest_${ts}_${withPod.length}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    const skipped = selectedShipments.length - withPod.length;
+    toast.success(`Đã chuẩn bị ${withPod.length} POD`, {
+      description: skipped > 0 ? `${skipped} shipment chưa có POD nên bỏ qua` : undefined,
+    });
+  };
+
   // Lists for tracking filter popovers (derived from current shipments)
   const trkNmList = useMemo(() => Array.from(new Set(shipments.map((s: any) => s.nm))).sort(), [shipments]);
   const trkSkuList = useMemo(() => Array.from(new Set(shipments.map((s: any) => s.sku))).sort(), [shipments]);
