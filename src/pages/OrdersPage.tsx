@@ -1280,8 +1280,21 @@ export default function OrdersPage() {
       {/* ═══════════════════ TAB 3: SHIPMENT TRACKING ═══════════════════ */}
       {activeTab === "tracking" && !isEmpty && (
         <div className="animate-fade-in space-y-3">
-          {/* Filter chips */}
-          <div className="flex items-center gap-1.5">
+          {/* Header + count */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Truck className="h-4 w-4 text-text-2" />
+              <p className="text-table-sm font-semibold text-text-1">Shipment Tracking</p>
+              <LogicTooltip
+                title="Shipment tracking logic"
+                content={`Mỗi shipment = 1 ASN gắn với RPO ở trạng thái confirmed/shipped/received\nETA tone: danger nếu quá hạn, warning ≤12h, success khi đã nhận\nTiến trình: picked → loaded → in_transit → at_gate → received`}
+              />
+              <span className="text-caption text-text-3 ml-2">{shipments.length} shipment</span>
+            </div>
+          </div>
+
+          {/* Quick status chips */}
+          <div className="flex items-center gap-1.5 flex-wrap">
             {([
               { k: "all", l: `Tất cả (${shipments.length})` },
               { k: "in_transit", l: `Đang vận chuyển (${shipments.filter(s => s.currentStage === "in_transit" || s.currentStage === "loaded").length})` },
@@ -1303,82 +1316,317 @@ export default function OrdersPage() {
             ))}
           </div>
 
-          <div className="rounded-card border border-surface-3 bg-surface-2">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-surface-3 bg-surface-1/50">
-                    {["ASN#", "RPO#", "NM → CN", "Tài xế / SDT", "Xe / Carrier", "SKU · Qty", "ETA", "Tiến trình", ""].map((h) => (
-                      <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredShipments.length === 0 && (
-                    <tr><td colSpan={9} className="px-4 py-8 text-center text-text-3 text-table-sm">Không có shipment phù hợp.</td></tr>
-                  )}
-                  {filteredShipments.map((s: any) => {
-                    const asnBadge = getPoTypeBadge("ASN");
-                    const rpoBadge = getPoTypeBadge("RPO");
-                    const tone = etaTone(s.etaCountdownH);
-                    const toneClass =
-                      tone === "danger" ? "bg-danger-bg text-danger" :
-                      tone === "warning" ? "bg-warning-bg text-warning" :
-                      tone === "success" ? "bg-success-bg text-success" :
-                      "bg-surface-1 text-text-3";
-                    const currentIdx = ["picked", "loaded", "in_transit", "at_gate", "received"].indexOf(s.currentStage);
-                    return (
-                      <tr key={s.asn} className="border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer" onClick={() => setOpenShipment(s)}>
-                        <td className="px-3 py-2.5">
-                          <span className={cn("rounded-sm px-1.5 py-0.5", poNumClasses, asnBadge.bg, asnBadge.text)}>{s.asn}</span>
-                        </td>
-                        <td className={cn("px-3 py-2.5", poNumClasses, rpoBadge.text)}>{s.rpo}</td>
-                        <td className="px-3 py-2.5 text-table text-text-2">
-                          <span className="text-text-1">{s.nm}</span>
-                          <ArrowRight className="inline h-3 w-3 mx-1 text-text-3" />
-                          {s.destination}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <p className="text-table text-text-1">{s.driver}</p>
-                          <p className={cn("text-caption text-text-3", poNumClasses)}>{s.driverPhone}</p>
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <p className={cn("text-table text-text-1", poNumClasses)}>{s.vehicle}</p>
-                          <p className="text-caption text-text-3">{s.carrier}</p>
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <p className="text-table text-text-1">{s.sku}</p>
-                          <p className="text-caption tabular-nums text-text-3">{s.qty.toLocaleString()} m²</p>
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", toneClass)}>
-                            {etaLabel(s.etaCountdownH)}
-                          </span>
-                          <p className={cn("text-caption text-text-3 mt-0.5", poNumClasses)}>ETA {s.eta}</p>
-                        </td>
-                        <td className="px-3 py-2.5">
-                          {/* Mini timeline */}
-                          <div className="flex items-center gap-0.5">
-                            {["picked", "loaded", "in_transit", "at_gate", "received"].map((stg, i) => (
-                              <div
-                                key={stg}
-                                className={cn(
-                                  "h-1.5 w-6 rounded-full",
-                                  i <= currentIdx ? (s.currentStage === "received" ? "bg-success" : "bg-info") : "bg-surface-1"
-                                )}
-                              />
-                            ))}
-                          </div>
-                          <p className="text-caption text-text-3 mt-0.5 capitalize">{s.currentStage.replace("_", " ")}</p>
-                        </td>
-                        <td className="px-3 py-2.5"><ChevronRight className="h-4 w-4 text-text-3" /></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {/* Filter bar (mirrors Burn-down) */}
+          <div className="rounded-card border border-surface-3 bg-surface-2 p-3 flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3" />
+              <Input
+                value={trkSearch}
+                onChange={(e) => setTrkSearch(e.target.value)}
+                placeholder="Tìm ASN, RPO, NM, SKU, tài xế, xe..."
+                className="h-8 pl-8 text-table-sm bg-surface-0"
+              />
+            </div>
+
+            {/* NM multi-select */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "h-8 inline-flex items-center gap-1.5 rounded-button border px-3 text-table-sm transition-colors",
+                  trkNms.size > 0
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-surface-3 bg-surface-0 text-text-2 hover:text-text-1"
+                )}>
+                  <Building2 className="h-3.5 w-3.5" />
+                  NM {trkNms.size > 0 && <span className="tabular-nums">({trkNms.size})</span>}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-56 p-0">
+                <div className="max-h-64 overflow-y-auto py-1">
+                  {trkNmList.map((nm) => (
+                    <button
+                      key={nm}
+                      onClick={() => {
+                        const next = new Set(trkNms);
+                        next.has(nm) ? next.delete(nm) : next.add(nm);
+                        setTrkNms(next);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-table-sm hover:bg-surface-1 text-left"
+                    >
+                      <Checkbox checked={trkNms.has(nm)} className="pointer-events-none" />
+                      <span className="text-text-1">{nm}</span>
+                    </button>
+                  ))}
+                  {trkNmList.length === 0 && <p className="px-3 py-2 text-caption text-text-3">Không có NM</p>}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* SKU multi-select */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "h-8 inline-flex items-center gap-1.5 rounded-button border px-3 text-table-sm transition-colors",
+                  trkSkus.size > 0
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-surface-3 bg-surface-0 text-text-2 hover:text-text-1"
+                )}>
+                  <Package className="h-3.5 w-3.5" />
+                  SKU {trkSkus.size > 0 && <span className="tabular-nums">({trkSkus.size})</span>}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-64 p-0">
+                <div className="max-h-64 overflow-y-auto py-1">
+                  {trkSkuList.map((sku) => (
+                    <button
+                      key={sku}
+                      onClick={() => {
+                        const next = new Set(trkSkus);
+                        next.has(sku) ? next.delete(sku) : next.add(sku);
+                        setTrkSkus(next);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-table-sm hover:bg-surface-1 text-left"
+                    >
+                      <Checkbox checked={trkSkus.has(sku)} className="pointer-events-none" />
+                      <span className={cn("text-text-1", poNumClasses)}>{sku}</span>
+                    </button>
+                  ))}
+                  {trkSkuList.length === 0 && <p className="px-3 py-2 text-caption text-text-3">Không có SKU</p>}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Date range (ETA) */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "h-8 inline-flex items-center gap-1.5 rounded-button border px-3 text-table-sm transition-colors",
+                  trkDateRange?.from
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-surface-3 bg-surface-0 text-text-2 hover:text-text-1"
+                )}>
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {trkDateRange?.from ? (
+                    trkDateRange.to
+                      ? `${format(trkDateRange.from, "dd/MM")} – ${format(trkDateRange.to, "dd/MM")}`
+                      : format(trkDateRange.from, "dd/MM/yyyy")
+                  ) : "ETA range"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0">
+                <Calendar
+                  mode="range"
+                  selected={trkDateRange}
+                  onSelect={setTrkDateRange}
+                  numberOfMonths={2}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+
+            {trkActiveFilterCount > 0 && (
+              <button
+                onClick={clearTrkFilters}
+                className="h-8 inline-flex items-center gap-1 rounded-button px-2 text-caption text-text-3 hover:text-danger"
+              >
+                <X className="h-3 w-3" /> Xóa filter ({trkActiveFilterCount})
+              </button>
+            )}
+
+            {/* Sort */}
+            <div className="ml-auto flex items-center gap-2">
+              <Select value={trkSort} onValueChange={(v) => setTrkSort(v as typeof trkSort)}>
+                <SelectTrigger className="h-8 w-[200px] text-table-sm bg-surface-0">
+                  <ArrowUpDown className="h-3.5 w-3.5 text-text-3 mr-1" />
+                  <SelectValue placeholder="Sắp xếp" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="eta_asc">📅 ETA gần nhất (sớm → muộn)</SelectItem>
+                  <SelectItem value="eta_desc">📅 ETA xa nhất (muộn → sớm)</SelectItem>
+                  <SelectItem value="stage_desc">🚚 Tiến trình (cao → thấp)</SelectItem>
+                  <SelectItem value="stage_asc">🚚 Tiến trình (thấp → cao)</SelectItem>
+                  <SelectItem value="qty_desc">📦 Qty (lớn → nhỏ)</SelectItem>
+                  <SelectItem value="nm_asc">🔤 Tên NM (A → Z)</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-caption text-text-3 tabular-nums whitespace-nowrap">
+                {filteredShipments.length}/{shipments.length} shipment
+              </span>
             </div>
           </div>
+
+          {/* Active filter chips */}
+          {trkActiveFilterCount > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 -mt-1 px-1 animate-fade-in">
+              <span className="text-caption text-text-3 uppercase tracking-wide mr-0.5">Đang lọc:</span>
+              {trkSearch.trim() && (
+                <FilterChip icon={Search} label="Tìm" value={`"${trkSearch.trim()}"`} onRemove={() => setTrkSearch("")} />
+              )}
+              {Array.from(trkNms).map((nm) => (
+                <FilterChip
+                  key={`tnm-${nm}`}
+                  icon={Building2}
+                  label="NM"
+                  value={nm}
+                  onRemove={() => { const next = new Set(trkNms); next.delete(nm); setTrkNms(next); }}
+                />
+              ))}
+              {Array.from(trkSkus).map((sku) => (
+                <FilterChip
+                  key={`tsku-${sku}`}
+                  icon={Package}
+                  label="SKU"
+                  value={sku}
+                  mono
+                  onRemove={() => { const next = new Set(trkSkus); next.delete(sku); setTrkSkus(next); }}
+                />
+              ))}
+              {trkDateRange?.from && (
+                <FilterChip
+                  icon={CalendarIcon}
+                  label="ETA"
+                  value={trkDateRange.to ? `${format(trkDateRange.from, "dd/MM")} – ${format(trkDateRange.to, "dd/MM")}` : format(trkDateRange.from, "dd/MM/yyyy")}
+                  onRemove={() => setTrkDateRange(undefined)}
+                />
+              )}
+              {trkActiveFilterCount > 1 && (
+                <button
+                  onClick={clearTrkFilters}
+                  className="inline-flex items-center gap-1 rounded-full border border-danger/30 bg-danger-bg/40 px-2 py-0.5 text-caption text-danger hover:bg-danger-bg transition-colors"
+                >
+                  <X className="h-3 w-3" /> Xóa tất cả
+                </button>
+              )}
+            </div>
+          )}
+
+          {filteredShipments.length === 0 ? (
+            <div className="rounded-card border border-surface-3 bg-surface-2 py-12 flex flex-col items-center gap-3">
+              <Filter className="h-8 w-8 text-text-3" />
+              <p className="text-table-sm text-text-2">Không có shipment nào khớp với filter hiện tại.</p>
+              {trkActiveFilterCount > 0 && (
+                <button onClick={clearTrkFilters} className="text-table-sm text-primary hover:underline">Xóa toàn bộ filter</button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="rounded-card border border-surface-3 bg-surface-2">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-surface-3 bg-surface-1/50">
+                        {["ASN#", "RPO#", "NM → CN", "Tài xế / SDT", "Xe / Carrier", "SKU · Qty", "ETA", "Tiến trình", ""].map((h) => (
+                          <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedShipments.map((s: any) => {
+                        const asnBadge = getPoTypeBadge("ASN");
+                        const rpoBadge = getPoTypeBadge("RPO");
+                        const tone = etaTone(s.etaCountdownH);
+                        const toneClass =
+                          tone === "danger" ? "bg-danger-bg text-danger" :
+                          tone === "warning" ? "bg-warning-bg text-warning" :
+                          tone === "success" ? "bg-success-bg text-success" :
+                          "bg-surface-1 text-text-3";
+                        const currentIdx = ["picked", "loaded", "in_transit", "at_gate", "received"].indexOf(s.currentStage);
+                        return (
+                          <tr key={s.asn} className="border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer" onClick={() => setOpenShipment(s)}>
+                            <td className="px-3 py-2.5">
+                              <span className={cn("rounded-sm px-1.5 py-0.5", poNumClasses, asnBadge.bg, asnBadge.text)}>{s.asn}</span>
+                            </td>
+                            <td className={cn("px-3 py-2.5", poNumClasses, rpoBadge.text)}>{s.rpo}</td>
+                            <td className="px-3 py-2.5 text-table text-text-2">
+                              <span className="text-text-1">{s.nm}</span>
+                              <ArrowRight className="inline h-3 w-3 mx-1 text-text-3" />
+                              {s.destination}
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <p className="text-table text-text-1">{s.driver}</p>
+                              <p className={cn("text-caption text-text-3", poNumClasses)}>{s.driverPhone}</p>
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <p className={cn("text-table text-text-1", poNumClasses)}>{s.vehicle}</p>
+                              <p className="text-caption text-text-3">{s.carrier}</p>
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <p className="text-table text-text-1">{s.sku}</p>
+                              <p className="text-caption tabular-nums text-text-3">{s.qty.toLocaleString()} m²</p>
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", toneClass)}>
+                                {etaLabel(s.etaCountdownH)}
+                              </span>
+                              <p className={cn("text-caption text-text-3 mt-0.5", poNumClasses)}>ETA {s.eta}</p>
+                            </td>
+                            <td className="px-3 py-2.5">
+                              <div className="flex items-center gap-0.5">
+                                {["picked", "loaded", "in_transit", "at_gate", "received"].map((stg, i) => (
+                                  <div
+                                    key={stg}
+                                    className={cn(
+                                      "h-1.5 w-6 rounded-full",
+                                      i <= currentIdx ? (s.currentStage === "received" ? "bg-success" : "bg-info") : "bg-surface-1"
+                                    )}
+                                  />
+                                ))}
+                              </div>
+                              <p className="text-caption text-text-3 mt-0.5 capitalize">{s.currentStage.replace("_", " ")}</p>
+                            </td>
+                            <td className="px-3 py-2.5"><ChevronRight className="h-4 w-4 text-text-3" /></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Pagination */}
+              <div className="flex items-center justify-between gap-3 px-1">
+                <p className="text-caption text-text-3 tabular-nums">
+                  Hiển thị <span className="text-text-1 font-medium">{(trkPageSafe - 1) * TRK_PAGE_SIZE + 1}</span>–
+                  <span className="text-text-1 font-medium">{Math.min(trkPageSafe * TRK_PAGE_SIZE, filteredShipments.length)}</span>
+                  {" "}/ {filteredShipments.length} shipment
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setTrkPage(1)}
+                    disabled={trkPageSafe === 1}
+                    className="h-8 px-2 rounded-button border border-surface-3 bg-surface-0 text-caption text-text-2 hover:text-text-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    « Đầu
+                  </button>
+                  <button
+                    onClick={() => setTrkPage((p) => Math.max(1, p - 1))}
+                    disabled={trkPageSafe === 1}
+                    className="h-8 px-2 rounded-button border border-surface-3 bg-surface-0 text-caption text-text-2 hover:text-text-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    ‹ Trước
+                  </button>
+                  <span className="px-2 text-caption text-text-2 tabular-nums">
+                    Trang <span className="text-text-1 font-medium">{trkPageSafe}</span> / {trkTotalPages}
+                  </span>
+                  <button
+                    onClick={() => setTrkPage((p) => Math.min(trkTotalPages, p + 1))}
+                    disabled={trkPageSafe === trkTotalPages}
+                    className="h-8 px-2 rounded-button border border-surface-3 bg-surface-0 text-caption text-text-2 hover:text-text-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Sau ›
+                  </button>
+                  <button
+                    onClick={() => setTrkPage(trkTotalPages)}
+                    disabled={trkPageSafe === trkTotalPages}
+                    className="h-8 px-2 rounded-button border border-surface-3 bg-surface-0 text-caption text-text-2 hover:text-text-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Cuối »
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
