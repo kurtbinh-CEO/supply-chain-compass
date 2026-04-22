@@ -459,8 +459,35 @@ export default function DrpPage() {
             <LogicLink tab="monthly" node={2} tooltip="Logic cân đối Demand − Supply" />
           </div>
           <div className="rounded-card border border-surface-3 bg-surface-2">
-          <div className="px-4 py-2 border-b border-surface-3">
+          <div className="px-4 py-2 border-b border-surface-3 flex items-center justify-between gap-3 flex-wrap">
             <AllocSourceLegend />
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-caption text-text-3 font-medium mr-1">Lọc nguồn:</span>
+              {SOURCE_FILTER_OPTIONS.map(opt => {
+                const active = sourceFilter.has(opt.key);
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => toggleSourceFilter(opt.key)}
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors",
+                      active ? opt.cls : "border-surface-3 bg-surface-1 text-text-3 hover:text-text-2"
+                    )}
+                    title={active ? `Bỏ lọc ${opt.label}` : `Chỉ xem rows có ${opt.label}`}
+                  >
+                    {active ? "✓ " : ""}{opt.label}
+                  </button>
+                );
+              })}
+              {sourceFilter.size > 0 && (
+                <button
+                  onClick={() => setSourceFilter(new Set())}
+                  className="text-[11px] text-text-3 hover:text-text-1 underline ml-1"
+                >
+                  Xóa lọc
+                </button>
+              )}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
