@@ -896,7 +896,7 @@ export default function OrdersPage() {
                           <p className={cn("text-caption", poNumClasses, "text-text-3")}>{b.bpo} · {b.rpos.length} RPO</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-6 text-table-sm tabular-nums shrink-0">
+                      <div className="flex items-center gap-5 text-table-sm tabular-nums shrink-0">
                         <div className="text-right">
                           <p className="text-caption text-text-3 uppercase">BPO total</p>
                           <p className="font-semibold text-text-1">{b.bpoTotal.toLocaleString()}</p>
@@ -907,7 +907,25 @@ export default function OrdersPage() {
                             {b.remaining.toLocaleString()}
                           </p>
                         </div>
-                        <div className="text-right w-16">
+                        <div className="text-right">
+                          <p className="text-caption text-text-3 uppercase">ETA gần</p>
+                          <p className={cn(
+                            "font-semibold",
+                            b.earliestEta === null ? "text-text-3"
+                              : b.earliestEta < Date.now() ? "text-danger"
+                              : b.earliestEta - Date.now() < 3 * 86400000 ? "text-warning"
+                              : "text-text-1"
+                          )}>
+                            {b.earliestEta === null ? "—" : new Date(b.earliestEta).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-caption text-text-3 uppercase">Risk ₫</p>
+                          <p className={cn("font-semibold", b.revenueAtRisk > 0 ? "text-danger" : "text-text-3")}>
+                            {b.revenueAtRisk > 0 ? formatVnd(b.revenueAtRisk) : "—"}
+                          </p>
+                        </div>
+                        <div className="text-right w-14">
                           <p className="text-caption text-text-3 uppercase">Done</p>
                           <p className="font-semibold text-text-1">{b.completionPct}%</p>
                         </div>
