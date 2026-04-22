@@ -695,9 +695,33 @@ export default function OrdersPage() {
           )}
 
           {/* All POs reference table */}
+          {(() => {
+            const filteredPos = pipelineFilter
+              ? allOrders.filter((po) => effectiveStatus(po) === pipelineFilter)
+              : allOrders;
+            return (
           <div className="rounded-card border border-surface-3 bg-surface-2">
-            <div className="px-4 py-3 border-b border-surface-3">
-              <p className="text-table-sm font-semibold text-text-1">Toàn bộ PO ({allOrders.length})</p>
+            <div className="px-4 py-3 border-b border-surface-3 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <p className="text-table-sm font-semibold text-text-1">
+                  {pipelineFilter ? `PO ở trạng thái ${stageLabels[pipelineFilter]}` : "Toàn bộ PO"}
+                </p>
+                <span className="text-caption text-text-3 tabular-nums">
+                  ({filteredPos.length}{pipelineFilter ? `/${allOrders.length}` : ""})
+                </span>
+                {pipelineFilter && (
+                  <button
+                    onClick={() => setPipelineFilter(null)}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-medium transition-colors",
+                      stageThemes[pipelineFilter]?.chip
+                    )}
+                  >
+                    {stageLabels[pipelineFilter]}
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -709,7 +733,7 @@ export default function OrdersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {allOrders.map((po) => {
+                  {filteredPos.map((po) => {
                     const st = effectiveStatus(po);
                     const type = po.po_number.startsWith("TO-") ? "TO" : "RPO";
                     const tb = getPoTypeBadge(type as any);
