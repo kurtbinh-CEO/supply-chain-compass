@@ -19,10 +19,12 @@ export interface BpoFlowRpo {
 export interface BpoFlowData {
   nm: string;
   bpo: string;
-  bpoTotal: number;
-  released: number;
-  shipped: number;
-  delivered: number;
+  bpoTotal: number;     // Created (all non-cancelled)
+  approved: number;     // past submitted gate
+  released: number;     // RPO issued
+  shipped: number;      // ASN issued
+  delivered: number;    // received
+  cancelled?: number;
   remaining: number;
   completionPct: number;
   rpos: BpoFlowRpo[];
@@ -46,21 +48,30 @@ const stageDefs: { key: StageKey; label: string; icon: typeof FileText; tone: st
 export function BpoFlowCard({ data }: { data: BpoFlowData }) {
   const [expandedStage, setExpandedStage] = useState<StageKey | null>(null);
 
-  // Compute qty per stage (waterfall — qty that has REACHED at least this stage)
+  // Qty per stage — each line counted at every stage it has REACHED.
+  // Sourced directly from aggregated PO statuses (not approximations).
   const reachedQty: Record<StageKey, number> = {
-    created:  data.bpoTotal,                                      // all PO lines created
-    approved: data.released + (data.bpoTotal - data.released) * 0, // approximate: released = approved+
+    created:  data.bpoTotal,
+    approved: data.approved,
     released: data.released,
     shipped:  data.shipped,
     received: data.delivered,
   };
-  // Approved = qty in confirmed/shipped/received → same as released for this dataset
-  reachedQty.approved = data.released;
 
-  // Filter children by stage
+  // Drop-off between consecutive stages (qty stuck at the previous stage)
+  const stageOrderArr: StageKey[] = ["created", "approved", "released", "shipped", "received"];
+  const dropOff: Record<StageKey, number> = {
+    created: 0,
+    approved: reachedQty.created  - reachedQty.approved,
+    released: reachedQty.approved - reachedQty.released,
+    shipped:  reachedQty.released - reachedQty.shipped,
+    received: reachedQty.shipped  - reachedQty.received,
+  };
+
+  // Filter children by stage — show lines whose furthest reached stage matches
   const childrenForStage = (s: StageKey): BpoFlowRpo[] => {
     if (s === "created")  return data.rpos;
-    if (s === "approved") return data.rpos.filter((r) => ["confirmed", "shipped", "received"].includes(r.status));
+    if (s === "approved") return data.rpos.filter((r) => ["submitted", "confirmed", "shipped", "received"].includes(r.status));
     if (s === "released") return data.rpos.filter((r) => ["confirmed", "shipped", "received"].includes(r.status));
     if (s === "shipped")  return data.rpos.filter((r) => ["shipped", "received"].includes(r.status));
     if (s === "received") return data.rpos.filter((r) => r.status === "received");
