@@ -735,16 +735,25 @@ export default function OrdersPage() {
           <div className="flex items-stretch gap-2">
             {stageOrder.map((s, i) => {
               const c = stageCounts[s];
-              const isActive = c.count > 0;
+              const hasShipments = trackingStageCounts[s] > 0;
+              // On Tracking tab, only confirmed/shipped/received can possibly have shipments.
+              // Disable any stage that has zero matching shipments (Draft/Submitted always; others if empty).
+              const disabledByTab = activeTab === "tracking" && !hasShipments;
+              const isActive = c.count > 0 && !disabledByTab;
               const isSelected = pipelineFilter === s;
               const theme = stageThemes[s];
               const Icon = theme.icon;
               const pctOfTotal = allOrders.length > 0 ? (c.count / allOrders.length) * 100 : 0;
+              const disabledTitle = disabledByTab
+                ? `Stage "${stageLabels[s]}" không có shipment nào — shipment chỉ phát sinh từ Confirmed trở đi`
+                : !isActive ? `Không có PO ở stage "${stageLabels[s]}"` : "";
               return (
                 <div key={s} className="flex-1 flex items-stretch gap-2">
                   <button
                     onClick={() => isActive && setPipelineFilter(isSelected ? null : s)}
                     disabled={!isActive}
+                    title={disabledTitle || undefined}
+                    aria-disabled={!isActive}
                     className={cn(
                       "group relative flex-1 text-left rounded-card border p-3 transition-all",
                       isActive ? "bg-surface-0 hover:shadow-md cursor-pointer" : "bg-surface-1/40 cursor-not-allowed opacity-60",
