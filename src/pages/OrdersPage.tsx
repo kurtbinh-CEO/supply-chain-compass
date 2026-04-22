@@ -1709,6 +1709,66 @@ export default function OrdersPage() {
                     <p className="text-caption text-text-3 uppercase">ETA</p>
                     <p className="text-table-sm font-semibold text-text-1">{openShipment.eta} · {etaLabel(openShipment.etaCountdownH)}</p>
                   </div>
+                  <div className="text-right">
+                    <p className="text-caption text-text-3 uppercase">Ship date</p>
+                    <p className={cn("text-table-sm font-semibold text-text-1", poNumClasses)}>{openShipment.shipDate}</p>
+                  </div>
+                </div>
+
+                {/* ASN ↔ RPO breakdown */}
+                <div className="rounded-card border border-surface-3 bg-surface-1/30 overflow-hidden">
+                  <div className="px-3 py-2 border-b border-surface-3 bg-surface-2/40 flex items-center gap-2">
+                    <PackageOpen className="h-3.5 w-3.5 text-text-2" />
+                    <p className="text-caption text-text-3 uppercase tracking-wide">Cấu trúc lô hàng</p>
+                  </div>
+                  <div className="grid grid-cols-2 divide-x divide-surface-3">
+                    <div className="p-3 space-y-1">
+                      <p className="text-caption text-text-3 uppercase">ASN</p>
+                      <p className={cn("text-table-sm font-semibold text-text-1", poNumClasses)}>{openShipment.asn}</p>
+                      <p className="text-caption text-text-3">Phiếu giao hàng</p>
+                    </div>
+                    <div className="p-3 space-y-1">
+                      <p className="text-caption text-text-3 uppercase">RPO nguồn</p>
+                      <p className={cn("text-table-sm font-semibold text-text-1", poNumClasses)}>{openShipment.rpo}</p>
+                      <p className="text-caption text-text-3">{(openShipment as any).nm ?? "—"}</p>
+                    </div>
+                  </div>
+                  <div className="border-t border-surface-3 px-3 py-2.5 bg-surface-2/20">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-caption text-text-3 uppercase">Mặt hàng</p>
+                      <span className="text-caption text-text-3">{openShipment.vehicleType}</span>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="text-table-sm font-medium text-text-1 truncate">{(openShipment as any).sku ?? "—"}</p>
+                      <p className={cn("text-table-sm font-semibold text-text-1 tabular-nums shrink-0", poNumClasses)}>
+                        {Number((openShipment as any).qty ?? 0).toLocaleString()} m²
+                      </p>
+                    </div>
+                    {/* Fill progress */}
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-caption text-text-3">Tỷ lệ lấp đầy xe</span>
+                        <span className={cn("text-caption font-medium tabular-nums",
+                          openShipment.fillPct >= 85 ? "text-success" :
+                          openShipment.fillPct >= 65 ? "text-info" : "text-warning"
+                        )}>{openShipment.fillPct}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                        <div
+                          className={cn("h-full rounded-full transition-all",
+                            openShipment.fillPct >= 85 ? "bg-success" :
+                            openShipment.fillPct >= 65 ? "bg-info" : "bg-warning"
+                          )}
+                          style={{ width: `${openShipment.fillPct}%` }}
+                        />
+                      </div>
+                    </div>
+                    {openShipment.temperature && (
+                      <p className="text-caption text-text-3 mt-2 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" /> {openShipment.temperature}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Route */}
