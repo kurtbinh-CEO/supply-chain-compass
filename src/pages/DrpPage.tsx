@@ -22,7 +22,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useRbac } from "@/components/RbacContext";
-import { CheckCircle2, Truck, Link2, ShieldAlert } from "lucide-react";
+import { CheckCircle2, Truck, Link2, ShieldAlert, Lock as LockIcon, AlertOctagon } from "lucide-react";
 import { DrpReleaseBar, type DrpBatch, type DrpBatchStatus } from "@/components/drp/DrpReleaseBar";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
@@ -610,16 +610,41 @@ export default function DrpPage() {
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <span className="text-caption text-text-3 block">Lần chạy cuối: 23:02 đêm qua</span>
-            <button onClick={() => setShowDrpConfirm(true)} className="text-caption text-primary font-medium hover:underline">Chạy lại ngay</button>
+            <span className="text-caption text-text-3 block">
+              {batchStatus === "released" ? `Đã release: ${drpBatchData?.createdAt ?? "—"}` :
+               batchStatus === "approved" ? `Đã approve: ${drpBatchData?.createdAt ?? "—"}` :
+               "Lần chạy cuối: 23:02 đêm qua"}
+            </span>
+            <button
+              onClick={() => setShowDrpConfirm(true)}
+              disabled={isPlanLocked}
+              className={cn(
+                "text-caption font-medium",
+                isPlanLocked ? "text-text-3 cursor-not-allowed" : "text-primary hover:underline"
+              )}
+            >
+              {isPlanLocked ? "Plan đã khoá" : "Chạy lại ngay"}
+            </button>
           </div>
-          <button
-            data-tour="drp-run-button"
-            onClick={() => setShowDrpConfirm(true)}
-            className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow"
-          >
-            <Play className="h-4 w-4" /> Chạy DRP
-          </button>
+          {isPlanLocked ? (
+            <div
+              data-tour="drp-run-button"
+              className="flex items-center gap-2 rounded-button bg-surface-2 text-text-3 px-5 py-2.5 text-table font-semibold border border-surface-3 cursor-not-allowed"
+              title={batchStatus === "released"
+                ? "Batch đã release sang Orders. Tạo kỳ DRP mới hoặc chờ batch tiếp theo."
+                : "Batch đã được approve. Hủy batch ở thanh trên để chạy lại."}
+            >
+              <LockIcon className="h-4 w-4" /> Plan locked
+            </div>
+          ) : (
+            <button
+              data-tour="drp-run-button"
+              onClick={() => setShowDrpConfirm(true)}
+              className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow"
+            >
+              <Play className="h-4 w-4" /> {batchStatus === "draft" || batchStatus === "reviewed" ? "Chạy lại DRP" : "Chạy DRP"}
+            </button>
+          )}
         </div>
       </div>
 
