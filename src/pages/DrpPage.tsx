@@ -4,7 +4,7 @@ import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronRight, ChevronDown, AlertTriangle, ArrowRight, Play, Settings, ChevronLeft, FileDown, FileText, Pencil, Check, Truck, PackagePlus, X } from "lucide-react";
+import { ChevronRight, ChevronDown, AlertTriangle, ArrowRight, Play, Settings, ChevronLeft, FileDown, FileText } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
 import { useNavigate } from "react-router-dom";
 import { ClickableNumber } from "@/components/ClickableNumber";
@@ -19,8 +19,10 @@ import { useVersionConflict, VersionConflictDialog } from "@/components/VersionC
 import { AllocSourceBar, ExpandedSkuBreakdown, ExpandedCnBreakdown, AllocSourceLegend } from "@/components/drp/AllocSourceBar";
 import { exportCsv, exportPdf, type ExportRow } from "@/components/drp/exportLayer1";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { useRbac } from "@/components/RbacContext";
+import { CheckCircle2, Truck, Link2, ShieldAlert } from "lucide-react";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -158,11 +160,14 @@ export default function DrpPage() {
     item: string; variant: string; qty: number; counterpart: string;
     reason: string; eta: "Same-day" | "1 ngày" | "Quá hạn"; toCode: string;
   }>(null);
-  const [toReasons, setToReasons] = useState<Record<string, string>>({});
+  const { canEdit, canApprove } = useRbac();
   const [toStatusOverrides, setToStatusOverrides] = useState<Record<string, "approved" | "shipped">>({});
-  const [editingReason, setEditingReason] = useState(false);
-  const [reasonDraft, setReasonDraft] = useState("");
-  const { canEdit, canApprove, user } = useRbac();
+  const [linkedPoCreated, setLinkedPoCreated] = useState<Record<string, string>>({});
+  const [pendingAction, setPendingAction] = useState<null | {
+    kind: "approve" | "ship" | "linkPo";
+    toCode: string;
+  }>(null);
+  const [actionNote, setActionNote] = useState("");
   const [pivotMode, setPivotMode] = usePivotMode("drp");
   const [expandedExceptions, setExpandedExceptions] = useState<Set<string>>(new Set());
   const [expandOptions, setExpandOptions] = useState<string | null>(null);
@@ -1694,7 +1699,7 @@ export default function DrpPage() {
       <ScreenFooter actionCount={14} />
 
       {/* TO Detail slide-in panel */}
-      <Sheet open={!!selectedMove} onOpenChange={(o) => { if (!o) { setSelectedMove(null); setEditingReason(false); } }}>
+      <Sheet open={!!selectedMove} onOpenChange={(o) => !o && setSelectedMove(null)}>
         <SheetContent side="right" className="w-full sm:max-w-[480px] overflow-y-auto bg-surface-1">
           {selectedMove && (() => {
             const m = selectedMove;
@@ -1716,20 +1721,19 @@ export default function DrpPage() {
               qty: q,
               uom: "carton",
             }));
-            // Apply status overrides from approve/ship actions
+            // Status timeline based on ETA + manual overrides
             const override = toStatusOverrides[m.toCode];
-            const baseApproved = m.eta !== "Quá hạn" || override === "approved" || override === "shipped";
-            const baseShipped = m.eta === "Same-day" || override === "shipped";
-            // Status timeline based on ETA + overrides
+            const isApproved = m.eta !== "Quá hạn" || override === "approved" || override === "shipped";
+            const isShipped = m.eta === "Same-day" || override === "shipped";
+            const linkedPo = linkedPoCreated[m.toCode];
             const statusSteps = [
               { key: "created", label: "Tạo TO", at: fmtDT(created), done: true },
-              { key: "approved", label: "Duyệt", at: baseApproved ? fmtDT(new Date(created.getTime() + 3 * 3600 * 1000)) : "—", done: baseApproved },
-              { key: "shipped", label: "Đã xuất kho", at: baseShipped ? fmtDT(today) : "—", done: baseShipped },
+              { key: "approved", label: "Duyệt", at: isApproved ? fmtDT(new Date(created.getTime() + 3 * 3600 * 1000)) : "—", done: isApproved },
+              { key: "shipped", label: "Đã xuất kho", at: isShipped ? fmtDT(today) : "—", done: isShipped },
               { key: "received", label: "Nhận", at: "—", done: false },
             ];
-            const currentStatus = baseShipped ? "Đang vận chuyển" : baseApproved ? "Đã duyệt" : "Chờ duyệt (trễ)";
-            const statusTone = baseShipped ? "bg-success-bg text-success" : baseApproved ? "bg-warning/10 text-warning" : "bg-danger-bg text-danger";
-            const currentReason = toReasons[m.toCode] ?? m.reason;
+            const currentStatus = isShipped ? "Đang vận chuyển" : !isApproved ? "Chờ duyệt (trễ)" : "Đã duyệt";
+            const statusTone = isShipped ? "bg-success-bg text-success" : !isApproved ? "bg-danger-bg text-danger" : "bg-warning/10 text-warning";
 
             return (
               <>
@@ -1840,120 +1844,171 @@ export default function DrpPage() {
                   </ol>
                 </div>
 
-                {/* Reason — editable when permitted */}
-                <div className="py-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-table-header uppercase text-text-3 tracking-wide">Lý do TO</div>
-                    {canEdit && !editingReason && (
-                      <button
-                        onClick={() => { setReasonDraft(currentReason); setEditingReason(true); }}
-                        className="inline-flex items-center gap-1 rounded-button border border-surface-3 px-2 py-0.5 text-caption text-text-2 hover:text-text-1 hover:border-primary/40"
-                      >
-                        <Pencil className="h-3 w-3" /> Chỉnh sửa
-                      </button>
-                    )}
-                  </div>
-                  {editingReason ? (
-                    <div className="space-y-2">
-                      <Textarea
-                        value={reasonDraft}
-                        onChange={(e) => setReasonDraft(e.target.value)}
-                        rows={3}
-                        className="text-table"
-                        placeholder="Nhập lý do điều chuyển..."
-                      />
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => setEditingReason(false)}
-                          className="inline-flex items-center gap-1 rounded-button border border-surface-3 px-2.5 py-1 text-caption text-text-2 hover:text-text-1"
-                        >
-                          <X className="h-3 w-3" /> Hủy
-                        </button>
-                        <button
-                          onClick={() => {
-                            const trimmed = reasonDraft.trim();
-                            if (!trimmed) { toast.error("Lý do không được để trống"); return; }
-                            setToReasons(prev => ({ ...prev, [m.toCode]: trimmed }));
-                            setEditingReason(false);
-                            toast.success("Đã cập nhật lý do TO", { description: `${m.toCode} • ${user.name}` });
-                          }}
-                          className="inline-flex items-center gap-1 rounded-button bg-primary text-primary-foreground px-2.5 py-1 text-caption font-medium hover:opacity-90"
-                        >
-                          <Check className="h-3 w-3" /> Lưu
-                        </button>
-                      </div>
+                {/* Reason */}
+                <div className="py-4 border-b border-surface-3">
+                  <div className="text-table-header uppercase text-text-3 tracking-wide mb-2">Lý do TO</div>
+                  <p className="text-table text-text-2 leading-relaxed">{m.reason}</p>
+                  {linkedPo && (
+                    <div className="mt-3 flex items-center gap-2 rounded-card border border-success/30 bg-success-bg/50 px-3 py-2">
+                      <Link2 className="h-3.5 w-3.5 text-success flex-shrink-0" />
+                      <span className="text-caption text-text-2">PO liên kết:</span>
+                      <span className="text-caption font-mono font-semibold text-success">{linkedPo}</span>
                     </div>
-                  ) : (
-                    <p className="text-table text-text-2 leading-relaxed">
-                      {currentReason}
-                      {toReasons[m.toCode] && (
-                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-accent text-accent-foreground px-1.5 py-0 text-[10px] font-medium align-middle">đã sửa</span>
-                      )}
-                    </p>
                   )}
                 </div>
 
                 {/* Action footer */}
-                <div className="sticky bottom-0 -mx-6 px-6 py-3 border-t border-surface-3 bg-surface-1/95 backdrop-blur flex items-center gap-2 flex-wrap">
+                <div className="sticky bottom-0 -mx-6 px-6 py-4 bg-surface-1/95 backdrop-blur border-t border-surface-3 space-y-2">
                   {!canEdit && !canApprove && (
-                    <span className="text-caption text-text-3 italic">Bạn không có quyền hành động trên TO này.</span>
+                    <div className="flex items-center gap-2 text-caption text-text-3">
+                      <ShieldAlert className="h-3.5 w-3.5" />
+                      <span>Bạn không có quyền thao tác trên TO này.</span>
+                    </div>
                   )}
-                  <button
-                    disabled={!canApprove || baseApproved}
-                    onClick={() => {
-                      setToStatusOverrides(prev => ({ ...prev, [m.toCode]: "approved" }));
-                      toast.success(`Đã duyệt ${m.toCode}`, { description: `${m.qty.toLocaleString()} carton • bởi ${user.name}` });
-                    }}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-button px-3 py-1.5 text-caption font-medium transition",
-                      !canApprove || baseApproved
-                        ? "bg-surface-2 text-text-3 cursor-not-allowed border border-surface-3"
-                        : "bg-success text-success-foreground hover:opacity-90",
-                    )}
-                    title={!canApprove ? "Cần quyền SC Manager" : baseApproved ? "TO đã được duyệt" : "Duyệt TO"}
-                  >
-                    <Check className="h-3.5 w-3.5" /> Duyệt TO
-                  </button>
-                  <button
-                    disabled={!canEdit || !baseApproved || baseShipped}
-                    onClick={() => {
-                      setToStatusOverrides(prev => ({ ...prev, [m.toCode]: "shipped" }));
-                      toast.success(`Đã xuất kho ${m.toCode}`, { description: `${lineItems.length} batch • ${m.qty.toLocaleString()} carton` });
-                    }}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-button px-3 py-1.5 text-caption font-medium transition",
-                      !canEdit || !baseApproved || baseShipped
-                        ? "bg-surface-2 text-text-3 cursor-not-allowed border border-surface-3"
-                        : "bg-primary text-primary-foreground hover:opacity-90",
-                    )}
-                    title={!canEdit ? "Cần quyền SC/CN Manager" : !baseApproved ? "Cần duyệt TO trước" : baseShipped ? "Đã xuất kho" : "Xuất kho"}
-                  >
-                    <Truck className="h-3.5 w-3.5" /> Xuất kho
-                  </button>
-                  <button
-                    disabled={!canEdit}
-                    onClick={() => {
-                      const poId = `PO-${m.toCode.replace(/^TO-/, "")}-LK`;
-                      toast.success("Tạo PO liên kết", {
-                        description: `${poId} • ${m.item} ${m.variant} • ${m.qty.toLocaleString()} carton`,
-                      });
-                    }}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-button px-3 py-1.5 text-caption font-medium transition border",
-                      !canEdit
-                        ? "border-surface-3 text-text-3 cursor-not-allowed"
-                        : "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10",
-                    )}
-                    title={!canEdit ? "Cần quyền SC/CN Manager" : "Tạo PO factory liên kết với TO này"}
-                  >
-                    <PackagePlus className="h-3.5 w-3.5" /> Tạo PO liên kết
-                  </button>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      disabled={!canApprove || isApproved}
+                      onClick={() => { setActionNote(""); setPendingAction({ kind: "approve", toCode: m.toCode }); }}
+                      className={cn(
+                        "flex items-center justify-center gap-1.5 rounded-button px-3 py-2 text-table-sm font-semibold transition-colors",
+                        !canApprove || isApproved
+                          ? "bg-surface-2 text-text-3 cursor-not-allowed"
+                          : "bg-gradient-primary text-primary-foreground hover:shadow-md"
+                      )}
+                      title={!canApprove ? "Cần quyền SC Manager" : isApproved ? "Đã duyệt" : "Duyệt TO"}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Duyệt TO
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canEdit || !isApproved || isShipped}
+                      onClick={() => { setActionNote(""); setPendingAction({ kind: "ship", toCode: m.toCode }); }}
+                      className={cn(
+                        "flex items-center justify-center gap-1.5 rounded-button px-3 py-2 text-table-sm font-semibold border transition-colors",
+                        !canEdit || !isApproved || isShipped
+                          ? "border-surface-3 bg-surface-2 text-text-3 cursor-not-allowed"
+                          : "border-success bg-success-bg text-success hover:bg-success/15"
+                      )}
+                      title={!isApproved ? "Cần duyệt trước" : isShipped ? "Đã xuất kho" : "Xuất kho"}
+                    >
+                      <Truck className="h-3.5 w-3.5" />
+                      Xuất kho
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canEdit || !!linkedPo}
+                      onClick={() => { setActionNote(""); setPendingAction({ kind: "linkPo", toCode: m.toCode }); }}
+                      className={cn(
+                        "flex items-center justify-center gap-1.5 rounded-button px-3 py-2 text-table-sm font-semibold border transition-colors",
+                        !canEdit || !!linkedPo
+                          ? "border-surface-3 bg-surface-2 text-text-3 cursor-not-allowed"
+                          : "border-primary text-primary hover:bg-primary/10"
+                      )}
+                      title={linkedPo ? "Đã có PO liên kết" : "Tạo PO liên kết"}
+                    >
+                      <Link2 className="h-3.5 w-3.5" />
+                      Tạo PO
+                    </button>
+                  </div>
                 </div>
               </>
             );
           })()}
         </SheetContent>
       </Sheet>
+
+      {/* Confirmation dialog for TO actions */}
+      <AlertDialog open={!!pendingAction} onOpenChange={(o) => { if (!o) { setPendingAction(null); setActionNote(""); } }}>
+        <AlertDialogContent>
+          {pendingAction && (() => {
+            const cfg = pendingAction.kind === "approve"
+              ? {
+                  title: "Xác nhận duyệt TO",
+                  desc: "TO sẽ chuyển sang trạng thái 'Đã duyệt' và sẵn sàng xuất kho. Hành động này được ghi vào nhật ký.",
+                  confirmLabel: "Duyệt TO",
+                  noteRequired: false,
+                  notePlaceholder: "Ghi chú duyệt (tuỳ chọn) — vd: ưu tiên giao trong ngày…",
+                  tone: "primary" as const,
+                }
+              : pendingAction.kind === "ship"
+              ? {
+                  title: "Xác nhận xuất kho",
+                  desc: "Hệ thống sẽ tạo phiếu xuất và khoá điều chỉnh số lượng. Vui lòng đảm bảo hàng đã sẵn sàng tại kho nguồn.",
+                  confirmLabel: "Xuất kho",
+                  noteRequired: false,
+                  notePlaceholder: "Ghi chú xuất kho (tuỳ chọn) — vd: số xe, tài xế…",
+                  tone: "success" as const,
+                }
+              : {
+                  title: "Tạo PO liên kết",
+                  desc: "Một Factory PO mới sẽ được tạo và liên kết với TO này để bù đắp tồn kho. Bắt buộc nhập lý do để theo dõi.",
+                  confirmLabel: "Tạo PO",
+                  noteRequired: true,
+                  notePlaceholder: "Lý do tạo PO liên kết (bắt buộc) — vd: bù tồn HUB sau LCNB…",
+                  tone: "primary" as const,
+                };
+            const noteEmpty = cfg.noteRequired && !actionNote.trim();
+            return (
+              <>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{cfg.title}</AlertDialogTitle>
+                  <AlertDialogDescription>{cfg.desc}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-2 py-2">
+                  <div className="flex items-center justify-between text-caption">
+                    <span className="text-text-3">Mã TO</span>
+                    <span className="font-mono font-semibold text-text-1">{pendingAction.toCode}</span>
+                  </div>
+                  <div>
+                    <label className="text-table-header uppercase text-text-3 tracking-wide block mb-1">
+                      Ghi chú {cfg.noteRequired ? <span className="text-danger normal-case">*</span> : <span className="text-text-3 normal-case">(tuỳ chọn)</span>}
+                    </label>
+                    <Textarea
+                      value={actionNote}
+                      onChange={(e) => setActionNote(e.target.value)}
+                      placeholder={cfg.notePlaceholder}
+                      rows={3}
+                      className="resize-none"
+                    />
+                  </div>
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Huỷ</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={noteEmpty}
+                    onClick={(e) => {
+                      if (noteEmpty) { e.preventDefault(); return; }
+                      const code = pendingAction.toCode;
+                      const noteSuffix = actionNote.trim() ? ` · ${actionNote.trim()}` : "";
+                      if (pendingAction.kind === "approve") {
+                        setToStatusOverrides(prev => ({ ...prev, [code]: prev[code] === "shipped" ? "shipped" : "approved" }));
+                        toast.success(`Đã duyệt TO ${code}${noteSuffix}`);
+                      } else if (pendingAction.kind === "ship") {
+                        setToStatusOverrides(prev => ({ ...prev, [code]: "shipped" }));
+                        toast.success(`Đã xuất kho TO ${code}${noteSuffix}`);
+                      } else {
+                        const poNum = `PO-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+                        setLinkedPoCreated(prev => ({ ...prev, [code]: poNum }));
+                        toast.success(`Đã tạo ${poNum} liên kết TO ${code}${noteSuffix}`);
+                      }
+                      setPendingAction(null);
+                      setActionNote("");
+                    }}
+                    className={cn(
+                      cfg.tone === "success" && "bg-success text-success-foreground hover:bg-success/90"
+                    )}
+                  >
+                    {cfg.confirmLabel}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </>
+            );
+          })()}
+        </AlertDialogContent>
+      </AlertDialog>
+
 
     </AppLayout>
   );
