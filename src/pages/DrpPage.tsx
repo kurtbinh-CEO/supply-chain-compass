@@ -603,7 +603,7 @@ export default function DrpPage() {
                         <tr className="bg-surface-1/20">
                           <td></td>
                           <td colSpan={8} className="px-4 py-3">
-                            <ExpandedCnBreakdown title={`CN breakdown — ${sk.item} ${sk.variant}`} cnRows={sk.cnRows} />
+                            <ExpandedCnBreakdown title={`CN breakdown — ${sk.item} ${sk.variant}`} cnRows={sk.cnRows.filter(cr => matchesSourceFilter(cr.sources))} />
                           </td>
                         </tr>
                       )}
