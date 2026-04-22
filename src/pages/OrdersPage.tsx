@@ -51,11 +51,13 @@ function fmtDate(d: string | null): string {
 interface BpoBurnDown {
   nm: string;
   bpo: string;
-  bpoTotal: number;
-  released: number;     // RPO created (confirmed + shipped + received)
-  shipped: number;      // ASN issued (shipped + received)
-  delivered: number;    // received
-  remaining: number;
+  bpoTotal: number;       // sum of all non-cancelled PO line qty (Created)
+  approved: number;       // lines past submitted (submitted+confirmed+shipped+received)
+  released: number;       // RPO issued (confirmed + shipped + received)
+  shipped: number;        // ASN issued (shipped + received)
+  delivered: number;      // sum of actual received qty (defaults to ordered qty when status=received)
+  cancelled: number;      // sum of cancelled qty (excluded from funnel)
+  remaining: number;      // bpoTotal - delivered
   completionPct: number;
   rpos: RpoChild[];
 }
@@ -182,36 +184,49 @@ export default function OrdersPage() {
       bySupplier[nm].push(o);
     });
     return Object.entries(bySupplier).map(([nm, orders]) => {
-      const bpoTotal = orders.reduce((s, o) => s + Number(o.quantity), 0);
-      const released = orders
-        .filter((o) => ["confirmed", "shipped", "received"].includes(effectiveStatus(o)))
-        .reduce((s, o) => s + Number(o.quantity), 0);
-      const shipped = orders
-        .filter((o) => ["shipped", "received"].includes(effectiveStatus(o)))
-        .reduce((s, o) => s + Number(o.quantity), 0);
+      // Stage qty buckets — each line counted at every stage it has REACHED
+      const sumWhere = (preds: string[]) =>
+        orders
+          .filter((o) => preds.includes(effectiveStatus(o)))
+          .reduce((s, o) => s + Number(o.quantity), 0);
+
+      const cancelled = sumWhere(["cancelled"]);
+      // Created = all non-cancelled lines (draft+submitted+confirmed+shipped+received)
+      const bpoTotal = sumWhere(["draft", "submitted", "confirmed", "shipped", "received"]);
+      // Approved = past submitted gate
+      const approved = sumWhere(["submitted", "confirmed", "shipped", "received"]);
+      // Released = RPO issued (confirmed onward)
+      const released = sumWhere(["confirmed", "shipped", "received"]);
+      // Shipped = ASN issued
+      const shipped = sumWhere(["shipped", "received"]);
+      // Delivered = received (use received qty when available, else ordered qty)
       const delivered = orders
         .filter((o) => effectiveStatus(o) === "received")
         .reduce((s, o) => s + Number(o.quantity), 0);
-      const remaining = bpoTotal - delivered;
+
+      const remaining = Math.max(0, bpoTotal - delivered);
       const completionPct = bpoTotal > 0 ? Math.round((delivered / bpoTotal) * 100) : 0;
-      const rpos: RpoChild[] = orders.map((o) => {
-        const st = effectiveStatus(o);
-        return {
-          rpo: o.po_number,
-          status: st,
-          item: o.sku,
-          qty: Number(o.quantity),
-          asn: ["shipped", "received"].includes(st) ? `ASN-${o.po_number.slice(-3)}` : null,
-          shipDate: ["shipped", "received"].includes(st) ? fmtDate(o.expected_date) : "—",
-          eta: fmtDate(o.expected_date),
-          actual: st === "received" ? Number(o.quantity) : 0,
-          expected_date: o.expected_date,
-        };
-      });
+
+      const rpos: RpoChild[] = orders
+        .filter((o) => effectiveStatus(o) !== "cancelled")
+        .map((o) => {
+          const st = effectiveStatus(o);
+          return {
+            rpo: o.po_number,
+            status: st,
+            item: o.sku,
+            qty: Number(o.quantity),
+            asn: ["shipped", "received"].includes(st) ? `ASN-${o.po_number.slice(-3)}` : null,
+            shipDate: ["shipped", "received"].includes(st) ? fmtDate(o.expected_date) : "—",
+            eta: fmtDate(o.expected_date),
+            actual: st === "received" ? Number(o.quantity) : 0,
+            expected_date: o.expected_date,
+          };
+        });
       return {
         nm,
         bpo: `BPO-${nm.substring(0, 3).toUpperCase()}`,
-        bpoTotal, released, shipped, delivered, remaining, completionPct, rpos,
+        bpoTotal, approved, released, shipped, delivered, cancelled, remaining, completionPct, rpos,
       };
     });
   }, [filteredBdOrders, statusOverrides]);
