@@ -359,14 +359,20 @@ export default function OrdersPage() {
       const avgUnitPrice = totalQty > 0 ? totalValue / totalQty : 0;
       const revenueAtRisk = remaining * avgUnitPrice;
 
+      // Mark whether this NM has ANY line at the active pipeline stage
+      const matchesPipeline = !pipelineFilter
+        ? true
+        : orders.some((o) => effectiveStatus(o) === pipelineFilter);
+
       return {
         nm,
         bpo: `BPO-${nm.substring(0, 3).toUpperCase()}`,
         bpoTotal, approved, released, shipped, delivered, cancelled, remaining, completionPct,
         earliestEta, revenueAtRisk, rpos,
-      };
-    });
-  }, [filteredBdOrders, statusOverrides]);
+        matchesPipeline,
+      } as BpoBurnDown & { matchesPipeline: boolean };
+    }).filter((b) => b.matchesPipeline);
+  }, [filteredBdOrders, statusOverrides, pipelineFilter]);
 
   /* ── Sort BPO results ── */
   const sortedBurnDowns: BpoBurnDown[] = useMemo(() => {
