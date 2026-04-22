@@ -113,6 +113,12 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
               {data.remaining.toLocaleString()}
             </p>
           </div>
+          {data.cancelled !== undefined && data.cancelled > 0 && (
+            <div className="text-right" title="Số lượng đã hủy — đã loại khỏi tất cả các bucket trong funnel">
+              <p className="text-caption text-text-3 uppercase">Hủy</p>
+              <p className="font-semibold text-danger">−{data.cancelled.toLocaleString()}</p>
+            </div>
+          )}
           {data.earliestEta !== undefined && (
             <div className="text-right">
               <p className="text-caption text-text-3 uppercase">ETA gần</p>
