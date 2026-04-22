@@ -449,7 +449,7 @@ export default function OrdersPage() {
 
   // Reset page when filters/sort change
   const trkResetKey = `${trackFilter}|${trkSearch}|${Array.from(trkNms).sort().join(",")}|${Array.from(trkSkus).sort().join(",")}|${trkDateRange?.from?.toISOString() ?? ""}|${trkDateRange?.to?.toISOString() ?? ""}|${trkSort}`;
-  useMemo(() => { setTrkPage(1); }, [trkResetKey]);
+  useEffect(() => { setTrkPage(1); }, [trkResetKey]);
 
   const trkTotalPages = Math.max(1, Math.ceil(filteredShipments.length / TRK_PAGE_SIZE));
   const trkPageSafe = Math.min(trkPage, trkTotalPages);
