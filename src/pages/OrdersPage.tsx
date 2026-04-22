@@ -562,16 +562,6 @@ export default function OrdersPage() {
             </div>
           ) : (
           <div className="rounded-card border border-surface-3 bg-surface-2">
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-text-2" />
-                <p className="text-table-sm font-semibold text-text-1">BPO Burn-down theo NM</p>
-                <LogicTooltip
-                  title="BPO Burn-down logic"
-                  content={`BPO Total = Tổng cam kết tháng/quý từ NM\nReleased = RPO đã confirmed/shipped/received\nShipped = ASN đã issue (shipped + received)\nDelivered = Đã nhận về kho (received)\nRemaining = BPO Total − Delivered\nCompletion% = Delivered / BPO Total × 100`}
-                />
-              </div>
-              <p className="text-caption text-text-3">{burnDowns.length} NM · Click để xem chi tiết</p>
-            </div>
             <div className="divide-y divide-surface-3/50">
               {burnDowns.map((b) => {
                 const releasedPct = b.bpoTotal > 0 ? (b.released / b.bpoTotal) * 100 : 0;
