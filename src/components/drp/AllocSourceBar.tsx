@@ -58,7 +58,7 @@ export function AllocSourceBar({ sources, compact = false }: Props) {
           ))}
           {givingTransfer > 0 && (
             <span
-              className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium border border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-400"
+              className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium border border-warning/30 bg-warning-bg text-warning"
               title="Chuyển đi (lateral / internal transfer ra)"
             >
               <ArrowLeftRight className="h-2.5 w-2.5" />
