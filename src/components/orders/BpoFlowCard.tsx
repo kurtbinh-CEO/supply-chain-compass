@@ -2,11 +2,12 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Building2, FileText, ClipboardCheck, PackageCheck, Truck, Warehouse, ChevronRight,
-  FileSpreadsheet, FileText as FileCsv,
+  FileSpreadsheet, FileText as FileCsv, AlertTriangle, Info, X,
 } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 import { exportToCsv, exportToXlsx, type ExportColumn } from "@/lib/export-utils";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export interface BpoFlowRpo {
   rpo: string;
