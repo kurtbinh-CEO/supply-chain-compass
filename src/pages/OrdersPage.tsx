@@ -410,7 +410,19 @@ export default function OrdersPage() {
       });
   }, [allOrders, statusOverrides]);
 
-  const filteredShipments = useMemo(() => {
+  /* ── Tracking-tab: stages that actually have matching shipments ──
+     Shipments only exist for confirmed/shipped/received. Draft/Submitted/Cancelled
+     stages should be disabled on the rail when this tab is active. */
+  const trackingStageCounts = useMemo(() => {
+    const c: Record<string, number> = {};
+    stageOrder.forEach((s) => (c[s] = 0));
+    shipments.forEach((s: any) => {
+      if (c[s.status] !== undefined) c[s.status]++;
+    });
+    return c;
+  }, [shipments]);
+
+
     const q = trkSearch.trim().toLowerCase();
     const arr = shipments.filter((s: any) => {
       // Cross-tab pipeline filter (PO status from header rail)
