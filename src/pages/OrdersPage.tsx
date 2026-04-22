@@ -59,6 +59,8 @@ interface BpoBurnDown {
   cancelled: number;      // sum of cancelled qty (excluded from funnel)
   remaining: number;      // bpoTotal - delivered
   completionPct: number;
+  earliestEta: number | null;   // earliest expected_date (epoch ms) among unfulfilled lines, null if none
+  revenueAtRisk: number;        // remaining qty × avg unit price (VND)
   rpos: RpoChild[];
 }
 interface RpoChild {
@@ -223,13 +225,48 @@ export default function OrdersPage() {
             expected_date: o.expected_date,
           };
         });
+
+      // Earliest ETA among unfulfilled (not received, not cancelled) lines
+      const unfulfilledEtaTimes = orders
+        .filter((o) => !["received", "cancelled"].includes(effectiveStatus(o)) && o.expected_date)
+        .map((o) => new Date(o.expected_date as string).getTime())
+        .filter((t) => !Number.isNaN(t));
+      const earliestEta = unfulfilledEtaTimes.length > 0 ? Math.min(...unfulfilledEtaTimes) : null;
+
+      // Revenue at risk = remaining qty × avg unit price (weighted by qty across non-cancelled lines)
+      const nonCancelled = orders.filter((o) => effectiveStatus(o) !== "cancelled");
+      const totalQty = nonCancelled.reduce((s, o) => s + Number(o.quantity), 0);
+      const totalValue = nonCancelled.reduce((s, o) => s + Number(o.quantity) * Number(o.unit_price), 0);
+      const avgUnitPrice = totalQty > 0 ? totalValue / totalQty : 0;
+      const revenueAtRisk = remaining * avgUnitPrice;
+
       return {
         nm,
         bpo: `BPO-${nm.substring(0, 3).toUpperCase()}`,
-        bpoTotal, approved, released, shipped, delivered, cancelled, remaining, completionPct, rpos,
+        bpoTotal, approved, released, shipped, delivered, cancelled, remaining, completionPct,
+        earliestEta, revenueAtRisk, rpos,
       };
     });
   }, [filteredBdOrders, statusOverrides]);
+
+  /* ── Sort BPO results ── */
+  const sortedBurnDowns: BpoBurnDown[] = useMemo(() => {
+    const arr = [...burnDowns];
+    const FAR = Number.POSITIVE_INFINITY;
+    arr.sort((a, b) => {
+      switch (bdSort) {
+        case "eta_asc":         return (a.earliestEta ?? FAR) - (b.earliestEta ?? FAR);
+        case "eta_desc":        return (b.earliestEta ?? -FAR) - (a.earliestEta ?? -FAR);
+        case "completion_asc":  return a.completionPct - b.completionPct;
+        case "completion_desc": return b.completionPct - a.completionPct;
+        case "risk_desc":       return b.revenueAtRisk - a.revenueAtRisk;
+        case "risk_asc":        return a.revenueAtRisk - b.revenueAtRisk;
+        case "nm_asc":          return a.nm.localeCompare(b.nm);
+        default:                return 0;
+      }
+    });
+    return arr;
+  }, [burnDowns, bdSort]);
 
   /* ── Shipment list (RPO with ASN) ── */
   const shipments = useMemo(() => {
