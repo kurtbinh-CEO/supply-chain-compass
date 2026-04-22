@@ -65,6 +65,122 @@ export type Database = {
         }
         Relationships: []
       }
+      drp_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_role: string | null
+          batch_id: string
+          created_at: string
+          from_status: string | null
+          id: string
+          metadata: Json | null
+          note: string | null
+          to_status: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_role?: string | null
+          batch_id: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          metadata?: Json | null
+          note?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_role?: string | null
+          batch_id?: string
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          metadata?: Json | null
+          note?: string | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drp_audit_log_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "drp_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drp_runs: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          batch_code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          payload: Json
+          released_at: string | null
+          released_by: string | null
+          released_po_count: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          tenant: string
+          total_qty: number
+          total_rpo: number
+          total_to: number
+          total_value: number
+          unresolved_count: number
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          batch_code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          payload?: Json
+          released_at?: string | null
+          released_by?: string | null
+          released_po_count?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tenant?: string
+          total_qty?: number
+          total_rpo?: number
+          total_to?: number
+          total_value?: number
+          unresolved_count?: number
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          batch_code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          payload?: Json
+          released_at?: string | null
+          released_by?: string | null
+          released_po_count?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          tenant?: string
+          total_qty?: number
+          total_rpo?: number
+          total_to?: number
+          total_value?: number
+          unresolved_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fc_accuracy: {
         Row: {
           best_model: string | null
@@ -229,10 +345,13 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency: string
+          drp_batch_id: string | null
           expected_date: string | null
+          from_cn: string | null
           id: string
           notes: string | null
           order_date: string
+          po_kind: string
           po_number: string
           quantity: number
           received_date: string | null
@@ -240,6 +359,7 @@ export type Database = {
           status: Database["public"]["Enums"]["po_status"]
           supplier: string
           tenant: string
+          to_cn: string | null
           unit_price: number
           updated_at: string
         }
@@ -247,10 +367,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          drp_batch_id?: string | null
           expected_date?: string | null
+          from_cn?: string | null
           id?: string
           notes?: string | null
           order_date?: string
+          po_kind?: string
           po_number: string
           quantity?: number
           received_date?: string | null
@@ -258,6 +381,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["po_status"]
           supplier: string
           tenant?: string
+          to_cn?: string | null
           unit_price?: number
           updated_at?: string
         }
@@ -265,10 +389,13 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency?: string
+          drp_batch_id?: string | null
           expected_date?: string | null
+          from_cn?: string | null
           id?: string
           notes?: string | null
           order_date?: string
+          po_kind?: string
           po_number?: string
           quantity?: number
           received_date?: string | null
@@ -276,10 +403,19 @@ export type Database = {
           status?: Database["public"]["Enums"]["po_status"]
           supplier?: string
           tenant?: string
+          to_cn?: string | null
           unit_price?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_drp_batch_id_fkey"
+            columns: ["drp_batch_id"]
+            isOneToOne: false
+            referencedRelation: "drp_runs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sop_consensus: {
         Row: {
