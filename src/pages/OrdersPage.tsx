@@ -25,7 +25,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getShipmentDetail, etaTone, etaLabel, type ShipmentDetail } from "@/lib/shipment-data";
 import { BpoFlowCard } from "@/components/orders/BpoFlowCard";
-import { LayoutGrid, GitBranch } from "lucide-react";
+import { LayoutGrid, GitBranch, Search, Filter, CalendarIcon } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 
 /* ─────────── helpers ─────────── */
 const supplierToNm: Record<string, string> = {
@@ -98,6 +103,10 @@ export default function OrdersPage() {
   // Burn-down tab state
   const [drillBpo, setDrillBpo] = useState<string | null>(null);
   const [burndownView, setBurndownView] = useState<"compact" | "flow">("compact");
+  const [bdSearch, setBdSearch] = useState("");
+  const [bdNms, setBdNms] = useState<Set<string>>(new Set());
+  const [bdSkus, setBdSkus] = useState<Set<string>>(new Set());
+  const [bdDateRange, setBdDateRange] = useState<DateRange | undefined>(undefined);
 
   // Tracking tab state
   const [openShipment, setOpenShipment] = useState<ShipmentDetail | null>(null);
@@ -128,10 +137,46 @@ export default function OrdersPage() {
     });
   }, [allOrders, statusOverrides]);
 
+  /* ── Filter options for Burn-down ── */
+  const allNmList = useMemo(() => {
+    const set = new Set<string>();
+    allOrders.forEach((o) => set.add(supplierToNm[o.supplier] || o.supplier));
+    return Array.from(set).sort();
+  }, [allOrders]);
+  const allSkuList = useMemo(() => {
+    const set = new Set<string>();
+    allOrders.forEach((o) => set.add(o.sku));
+    return Array.from(set).sort();
+  }, [allOrders]);
+
+  /* ── Filtered orders for Burn-down ── */
+  const filteredBdOrders = useMemo(() => {
+    const q = bdSearch.trim().toLowerCase();
+    return allOrders.filter((o) => {
+      const nm = supplierToNm[o.supplier] || o.supplier;
+      if (bdNms.size > 0 && !bdNms.has(nm)) return false;
+      if (bdSkus.size > 0 && !bdSkus.has(o.sku)) return false;
+      if (bdDateRange?.from && o.expected_date) {
+        const d = new Date(o.expected_date);
+        if (d < bdDateRange.from) return false;
+        if (bdDateRange.to && d > bdDateRange.to) return false;
+      }
+      if (q) {
+        const hay = `${o.po_number} ${nm} ${o.sku}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [allOrders, bdSearch, bdNms, bdSkus, bdDateRange]);
+
+  const bdActiveFilterCount =
+    (bdSearch.trim() ? 1 : 0) + (bdNms.size > 0 ? 1 : 0) + (bdSkus.size > 0 ? 1 : 0) + (bdDateRange?.from ? 1 : 0);
+  const clearBdFilters = () => { setBdSearch(""); setBdNms(new Set()); setBdSkus(new Set()); setBdDateRange(undefined); };
+
   /* ── BPO burn-down aggregates ── */
   const burnDowns: BpoBurnDown[] = useMemo(() => {
     const bySupplier: Record<string, PurchaseOrderRow[]> = {};
-    allOrders.forEach((o) => {
+    filteredBdOrders.forEach((o) => {
       const nm = supplierToNm[o.supplier] || o.supplier;
       if (!bySupplier[nm]) bySupplier[nm] = [];
       bySupplier[nm].push(o);
@@ -169,7 +214,7 @@ export default function OrdersPage() {
         bpoTotal, released, shipped, delivered, remaining, completionPct, rpos,
       };
     });
-  }, [allOrders, statusOverrides]);
+  }, [filteredBdOrders, statusOverrides]);
 
   /* ── Shipment list (RPO with ASN) ── */
   const shipments = useMemo(() => {
@@ -554,7 +599,138 @@ export default function OrdersPage() {
             </div>
           </div>
 
-          {burndownView === "flow" ? (
+          {/* Filter bar */}
+          <div className="rounded-card border border-surface-3 bg-surface-2 p-3 flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3" />
+              <Input
+                value={bdSearch}
+                onChange={(e) => setBdSearch(e.target.value)}
+                placeholder="Tìm PO#, NM, SKU..."
+                className="h-8 pl-8 text-table-sm bg-surface-0"
+              />
+            </div>
+
+            {/* NM multi-select */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "h-8 inline-flex items-center gap-1.5 rounded-button border px-3 text-table-sm transition-colors",
+                  bdNms.size > 0
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-surface-3 bg-surface-0 text-text-2 hover:text-text-1"
+                )}>
+                  <Building2 className="h-3.5 w-3.5" />
+                  NM {bdNms.size > 0 && <span className="tabular-nums">({bdNms.size})</span>}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-56 p-0">
+                <div className="max-h-64 overflow-y-auto py-1">
+                  {allNmList.map((nm) => (
+                    <button
+                      key={nm}
+                      onClick={() => {
+                        const next = new Set(bdNms);
+                        next.has(nm) ? next.delete(nm) : next.add(nm);
+                        setBdNms(next);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-table-sm hover:bg-surface-1 text-left"
+                    >
+                      <Checkbox checked={bdNms.has(nm)} className="pointer-events-none" />
+                      <span className="text-text-1">{nm}</span>
+                    </button>
+                  ))}
+                  {allNmList.length === 0 && <p className="px-3 py-2 text-caption text-text-3">Không có NM</p>}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* SKU multi-select */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "h-8 inline-flex items-center gap-1.5 rounded-button border px-3 text-table-sm transition-colors",
+                  bdSkus.size > 0
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-surface-3 bg-surface-0 text-text-2 hover:text-text-1"
+                )}>
+                  <Package className="h-3.5 w-3.5" />
+                  SKU {bdSkus.size > 0 && <span className="tabular-nums">({bdSkus.size})</span>}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-64 p-0">
+                <div className="max-h-64 overflow-y-auto py-1">
+                  {allSkuList.map((sku) => (
+                    <button
+                      key={sku}
+                      onClick={() => {
+                        const next = new Set(bdSkus);
+                        next.has(sku) ? next.delete(sku) : next.add(sku);
+                        setBdSkus(next);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-table-sm hover:bg-surface-1 text-left"
+                    >
+                      <Checkbox checked={bdSkus.has(sku)} className="pointer-events-none" />
+                      <span className={cn("text-text-1", poNumClasses)}>{sku}</span>
+                    </button>
+                  ))}
+                  {allSkuList.length === 0 && <p className="px-3 py-2 text-caption text-text-3">Không có SKU</p>}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Date range (ETA) */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "h-8 inline-flex items-center gap-1.5 rounded-button border px-3 text-table-sm transition-colors",
+                  bdDateRange?.from
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-surface-3 bg-surface-0 text-text-2 hover:text-text-1"
+                )}>
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {bdDateRange?.from ? (
+                    bdDateRange.to
+                      ? `${format(bdDateRange.from, "dd/MM")} – ${format(bdDateRange.to, "dd/MM")}`
+                      : format(bdDateRange.from, "dd/MM/yyyy")
+                  ) : "ETA range"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0">
+                <Calendar
+                  mode="range"
+                  selected={bdDateRange}
+                  onSelect={setBdDateRange}
+                  numberOfMonths={2}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+
+            {bdActiveFilterCount > 0 && (
+              <button
+                onClick={clearBdFilters}
+                className="h-8 inline-flex items-center gap-1 rounded-button px-2 text-caption text-text-3 hover:text-danger"
+              >
+                <X className="h-3 w-3" /> Xóa filter ({bdActiveFilterCount})
+              </button>
+            )}
+
+            <span className="ml-auto text-caption text-text-3 tabular-nums">
+              {filteredBdOrders.length}/{allOrders.length} PO · {burnDowns.length} NM
+            </span>
+          </div>
+
+          {burnDowns.length === 0 ? (
+            <div className="rounded-card border border-surface-3 bg-surface-2 py-12 flex flex-col items-center gap-3">
+              <Filter className="h-8 w-8 text-text-3" />
+              <p className="text-table-sm text-text-2">Không có BPO nào khớp với filter hiện tại.</p>
+              {bdActiveFilterCount > 0 && (
+                <button onClick={clearBdFilters} className="text-table-sm text-primary hover:underline">Xóa toàn bộ filter</button>
+              )}
+            </div>
+          ) : burndownView === "flow" ? (
             <div className="space-y-3">
               {burnDowns.map((b) => (
                 <BpoFlowCard key={b.nm} data={b} />
