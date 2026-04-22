@@ -28,6 +28,12 @@ interface NavGroup {
 
 const navGroups: NavGroup[] = [
   {
+    labelKey: "nav.overview",
+    items: [
+      { titleKey: "nav.dashboard", icon: LayoutDashboard, url: "/" },
+    ],
+  },
+  {
     labelKey: "nav.workplace",
     items: [
       { titleKey: "nav.workspace", icon: ClipboardCheck, url: "/workspace" },
@@ -53,7 +59,7 @@ const navGroups: NavGroup[] = [
       { titleKey: "nav.nmSupply", icon: Package, url: "/supply" },
       { titleKey: "nav.demandWeekly", icon: CalendarDays, url: "/demand-weekly" },
       { titleKey: "nav.drpAllocation", icon: GitBranch, url: "/drp" },
-      { titleKey: "nav.orders", icon: ShoppingCart, url: "/orders" },
+      { titleKey: "nav.orders", icon: Truck, url: "/orders" },
     ],
   },
   {
