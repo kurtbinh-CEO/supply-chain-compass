@@ -4,174 +4,233 @@ import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronRight, Send, Upload, ShieldAlert, Loader2, PackageOpen } from "lucide-react";
+import {
+  ChevronRight, Send, Upload, Loader2, PackageOpen, CheckCircle2, Truck, MapPin, Phone, User,
+  Package, ClipboardCheck, Clock, AlertTriangle, FileText, ArrowRight, Building2, X,
+} from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 import { useNavigate } from "react-router-dom";
-import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
-import { LogicTooltip, LogicExpand } from "@/components/LogicTooltip";
+import { LogicTooltip } from "@/components/LogicTooltip";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { usePurchaseOrders, type PurchaseOrderRow } from "@/hooks/usePurchaseOrders";
+import { useRbac } from "@/components/RbacContext";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { getShipmentDetail, etaTone, etaLabel, type ShipmentDetail } from "@/lib/shipment-data";
 
-type POType = "RPO" | "TO";
-
-interface PoRow {
-  type: POType;
-  poNum: string;
-  blanket: string;
-  nm: string;
-  item: string;
-  qty: number;
-  status: string;
-  vehicle?: string;
-  fillPct?: number;
-  shipHoldReason?: string;
-}
-
-interface StatusGroup {
-  status: string;
-  count: number;
-  totalQty: number;
-  totalVnd: string;
-  action: string;
-  pos: PoRow[];
-}
-
-interface NmTracking {
-  nm: string;
-  bpo: string;
-  bpoTotal: number;
-  released: number;
-  delivered: number;
-  completionPct: number;
-  rpos: RpoTracking[];
-}
-
-interface RpoTracking {
-  rpo: string;
-  item: string;
-  qty: number;
-  asn: string;
-  shipDate: string;
-  eta: string;
-  actual: number;
-  status: string;
-}
-
-const statusConfig: Record<string, { label: string; action: string }> = {
-  draft: { label: "Draft — chờ gửi", action: "Gửi ATP tất cả" },
-  submitted: { label: "Submitted — chờ xác nhận", action: "Xác nhận tất cả" },
-  confirmed: { label: "Confirmed — đã xác nhận", action: "Post tất cả" },
-  shipped: { label: "Shipped — đang vận chuyển", action: "" },
-  received: { label: "Received — đã nhận", action: "" },
-  cancelled: { label: "Cancelled — đã hủy", action: "" },
-};
-
+/* ─────────── helpers ─────────── */
 const supplierToNm: Record<string, string> = {
-  "Mikado": "Mikado",
-  "Toko": "Toko",
-  "Đồng Tâm": "Đồng Tâm",
-  "Vigracera": "Vigracera",
+  "Mikado": "Mikado", "Toko": "Toko", "Đồng Tâm": "Đồng Tâm", "Vigracera": "Vigracera",
 };
 
-function dbRowToPoRow(r: PurchaseOrderRow): PoRow {
-  return {
-    type: r.po_number.startsWith("TO-") ? "TO" : "RPO",
-    poNum: r.po_number,
-    blanket: r.po_number.startsWith("TO-") ? "—" : `BPO-${r.supplier.substring(0, 3).toUpperCase()}`,
-    nm: supplierToNm[r.supplier] || r.supplier,
-    item: r.sku,
-    qty: Number(r.quantity),
-    status: r.status,
-  };
-}
-
-function formatVndTotal(v: number): string {
+function formatVnd(v: number): string {
   if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
   if (v >= 1e6) return `${(v / 1e6).toFixed(0)}M`;
   return v.toLocaleString();
 }
+function fmtDate(d: string | null): string {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+}
 
+/* ─────────── BPO burn-down model ─────────── */
+interface BpoBurnDown {
+  nm: string;
+  bpo: string;
+  bpoTotal: number;
+  released: number;     // RPO created (confirmed + shipped + received)
+  shipped: number;      // ASN issued (shipped + received)
+  delivered: number;    // received
+  remaining: number;
+  completionPct: number;
+  rpos: RpoChild[];
+}
+interface RpoChild {
+  rpo: string;
+  status: string;
+  item: string;
+  qty: number;
+  asn: string | null;
+  shipDate: string;
+  eta: string;
+  actual: number;
+  expected_date: string | null;
+}
+
+/* ─────────── tabs ─────────── */
 const tabs = [
-  { key: "po", label: "Quản lý PO" },
-  { key: "tracking", label: "Theo dõi & POD" },
+  { key: "approval", label: "PO Approval", icon: ClipboardCheck },
+  { key: "burndown", label: "BPO Burn-down", icon: Package },
+  { key: "tracking", label: "Shipment Tracking", icon: Truck },
 ];
+
+const stageOrder = ["draft", "submitted", "confirmed", "shipped", "received"];
+const stageLabels: Record<string, string> = {
+  draft: "Draft", submitted: "Submitted", confirmed: "Confirmed",
+  shipped: "Shipped", received: "Received", cancelled: "Cancelled",
+};
 
 export default function OrdersPage() {
   const { tenant } = useTenant();
   const navigate = useNavigate();
   const { groups: dbGroups, allOrders, loading: poLoading } = usePurchaseOrders();
+  const { canEdit, canApprove, user } = useRbac();
 
   const ordersBatch = useBatchLock(null);
   const { conflict: ordersConflict, clearConflict } = useVersionConflict();
-  const [activeTab, setActiveTab] = useState("po");
-  const [drillStatus, setDrillStatus] = useState<string | null>(null);
-  const [drillNm, setDrillNm] = useState<string | null>(null);
-  const [forceReleasePoNum, setForceReleasePoNum] = useState<string | null>(null);
-  const [forceReleaseReason, setForceReleaseReason] = useState("");
+  const [activeTab, setActiveTab] = useState("approval");
 
-  const groups: StatusGroup[] = useMemo(() => {
-    return dbGroups.map((g) => {
-      const cfg = statusConfig[g.status] || { label: g.status, action: "" };
-      return {
-        status: cfg.label,
-        count: g.count,
-        totalQty: g.totalQty,
-        totalVnd: g.totalVnd,
-        action: cfg.action,
-        pos: g.orders.map(dbRowToPoRow),
-      };
+  // Approval tab state
+  const [selectedPos, setSelectedPos] = useState<Set<string>>(new Set());
+  const [pendingApproval, setPendingApproval] = useState<null | { kind: "approve" | "reject" | "bulk"; pos: PurchaseOrderRow[] }>(null);
+  const [approvalNote, setApprovalNote] = useState("");
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
+
+  // Burn-down tab state
+  const [drillBpo, setDrillBpo] = useState<string | null>(null);
+
+  // Tracking tab state
+  const [openShipment, setOpenShipment] = useState<ShipmentDetail | null>(null);
+  const [trackFilter, setTrackFilter] = useState<"all" | "in_transit" | "overdue" | "received">("all");
+
+  /* ── Derive effective status (with overrides) ── */
+  const effectiveStatus = (po: PurchaseOrderRow): string => statusOverrides[po.po_number] || po.status;
+
+  /* ── Stage counts from pipeline ── */
+  const stageCounts = useMemo(() => {
+    const c: Record<string, { count: number; qty: number }> = {};
+    stageOrder.forEach((s) => (c[s] = { count: 0, qty: 0 }));
+    allOrders.forEach((o) => {
+      const s = effectiveStatus(o);
+      if (c[s]) {
+        c[s].count++;
+        c[s].qty += Number(o.quantity);
+      }
     });
-  }, [dbGroups]);
+    return c;
+  }, [allOrders, statusOverrides]);
 
-  const nmTracking: NmTracking[] = useMemo(() => {
+  /* ── Pending-approval queue (draft + submitted) ── */
+  const approvalQueue = useMemo(() => {
+    return allOrders.filter((o) => {
+      const s = effectiveStatus(o);
+      return s === "draft" || s === "submitted";
+    });
+  }, [allOrders, statusOverrides]);
+
+  /* ── BPO burn-down aggregates ── */
+  const burnDowns: BpoBurnDown[] = useMemo(() => {
     const bySupplier: Record<string, PurchaseOrderRow[]> = {};
     allOrders.forEach((o) => {
       const nm = supplierToNm[o.supplier] || o.supplier;
       if (!bySupplier[nm]) bySupplier[nm] = [];
       bySupplier[nm].push(o);
     });
-
     return Object.entries(bySupplier).map(([nm, orders]) => {
       const bpoTotal = orders.reduce((s, o) => s + Number(o.quantity), 0);
-      const delivered = orders.filter((o) => o.status === "received").reduce((s, o) => s + Number(o.quantity), 0);
-      const shipped = orders.filter((o) => o.status === "shipped").reduce((s, o) => s + Number(o.quantity), 0);
-      const released = delivered + shipped + orders.filter((o) => o.status === "confirmed").reduce((s, o) => s + Number(o.quantity), 0);
+      const released = orders
+        .filter((o) => ["confirmed", "shipped", "received"].includes(effectiveStatus(o)))
+        .reduce((s, o) => s + Number(o.quantity), 0);
+      const shipped = orders
+        .filter((o) => ["shipped", "received"].includes(effectiveStatus(o)))
+        .reduce((s, o) => s + Number(o.quantity), 0);
+      const delivered = orders
+        .filter((o) => effectiveStatus(o) === "received")
+        .reduce((s, o) => s + Number(o.quantity), 0);
+      const remaining = bpoTotal - delivered;
       const completionPct = bpoTotal > 0 ? Math.round((delivered / bpoTotal) * 100) : 0;
-
-      const rpos: RpoTracking[] = orders.map((o) => ({
-        rpo: o.po_number,
-        item: o.sku,
-        qty: Number(o.quantity),
-        asn: o.status === "shipped" || o.status === "received" ? `ASN-${o.po_number.slice(-3)}` : "—",
-        shipDate: o.status === "shipped" || o.status === "received"
-          ? (o.expected_date ? new Date(o.expected_date).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }) : "—")
-          : "—",
-        eta: o.expected_date ? new Date(o.expected_date).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" }) : "—",
-        actual: o.status === "received" ? Number(o.quantity) : 0,
-        status: o.status.toUpperCase(),
-      }));
-
-      return { nm, bpo: `BPO-${nm.substring(0, 3).toUpperCase()}`, bpoTotal, released, delivered, completionPct, rpos };
+      const rpos: RpoChild[] = orders.map((o) => {
+        const st = effectiveStatus(o);
+        return {
+          rpo: o.po_number,
+          status: st,
+          item: o.sku,
+          qty: Number(o.quantity),
+          asn: ["shipped", "received"].includes(st) ? `ASN-${o.po_number.slice(-3)}` : null,
+          shipDate: ["shipped", "received"].includes(st) ? fmtDate(o.expected_date) : "—",
+          eta: fmtDate(o.expected_date),
+          actual: st === "received" ? Number(o.quantity) : 0,
+          expected_date: o.expected_date,
+        };
+      });
+      return {
+        nm,
+        bpo: `BPO-${nm.substring(0, 3).toUpperCase()}`,
+        bpoTotal, released, shipped, delivered, remaining, completionPct, rpos,
+      };
     });
-  }, [allOrders]);
+  }, [allOrders, statusOverrides]);
 
-  const totalPos = groups.reduce((a, g) => a + g.count, 0);
-  const totalQty = groups.reduce((a, g) => a + g.totalQty, 0);
-  const totalVnd = useMemo(() => {
-    const total = allOrders.reduce((s, o) => s + Number(o.quantity) * Number(o.unit_price), 0);
-    return formatVndTotal(total);
-  }, [allOrders]);
+  /* ── Shipment list (RPO with ASN) ── */
+  const shipments = useMemo(() => {
+    return allOrders
+      .filter((o) => ["confirmed", "shipped", "received"].includes(effectiveStatus(o)))
+      .map((o) => {
+        const st = effectiveStatus(o);
+        const asn = ["shipped", "received"].includes(st) ? `ASN-${o.po_number.slice(-3)}` : `PEND-${o.po_number.slice(-3)}`;
+        const nm = supplierToNm[o.supplier] || o.supplier;
+        const detail = getShipmentDetail(asn, o.po_number, st, fmtDate(o.expected_date), fmtDate(o.expected_date), "CN-HCM");
+        return { ...detail, sku: o.sku, qty: Number(o.quantity), nm, status: st };
+      });
+  }, [allOrders, statusOverrides]);
 
-  const activeGroup = drillStatus ? groups.find((g) => g.status === drillStatus) : null;
-  const activeNmData = drillNm ? nmTracking.find((n) => n.nm === drillNm) : null;
+  const filteredShipments = useMemo(() => {
+    return shipments.filter((s) => {
+      if (trackFilter === "all") return true;
+      if (trackFilter === "received") return s.currentStage === "received";
+      if (trackFilter === "in_transit") return s.currentStage === "in_transit" || s.currentStage === "loaded";
+      if (trackFilter === "overdue") return s.etaCountdownH !== undefined && s.etaCountdownH < 0;
+      return true;
+    });
+  }, [shipments, trackFilter]);
 
-  const handleAction = (action: string) => {
-    toast.success(action, { description: "Đã thực hiện thành công." });
+  const totalQty = allOrders.reduce((s, o) => s + Number(o.quantity), 0);
+  const totalVnd = useMemo(
+    () => formatVnd(allOrders.reduce((s, o) => s + Number(o.quantity) * Number(o.unit_price), 0)),
+    [allOrders]
+  );
+  const isEmpty = !poLoading && allOrders.length === 0;
+
+  /* ── Approval actions ── */
+  const togglePo = (po: string) => {
+    const next = new Set(selectedPos);
+    if (next.has(po)) next.delete(po); else next.add(po);
+    setSelectedPos(next);
+  };
+  const selectAllQueue = () => {
+    if (selectedPos.size === approvalQueue.length) setSelectedPos(new Set());
+    else setSelectedPos(new Set(approvalQueue.map((p) => p.po_number)));
   };
 
-  const isEmpty = !poLoading && allOrders.length === 0;
+  const confirmApproval = () => {
+    if (!pendingApproval) return;
+    if (pendingApproval.kind === "reject" && !approvalNote.trim()) {
+      toast.error("Lý do từ chối là bắt buộc");
+      return;
+    }
+    const next = { ...statusOverrides };
+    pendingApproval.pos.forEach((p) => {
+      const cur = effectiveStatus(p);
+      if (pendingApproval.kind === "reject") next[p.po_number] = "cancelled";
+      else if (cur === "draft") next[p.po_number] = "submitted";
+      else if (cur === "submitted") next[p.po_number] = "confirmed";
+    });
+    setStatusOverrides(next);
+    const verb = pendingApproval.kind === "reject" ? "Từ chối" : "Duyệt";
+    toast.success(`${verb} ${pendingApproval.pos.length} PO`, {
+      description: approvalNote ? `Ghi chú: ${approvalNote}` : `Bởi ${user.name}`,
+    });
+    setPendingApproval(null);
+    setApprovalNote("");
+    setSelectedPos(new Set());
+  };
 
   return (
     <AppLayout>
@@ -199,23 +258,74 @@ export default function OrdersPage() {
       )}
 
       <div className="flex items-center gap-2 mb-1">
-        <ScreenHeader title="Orders & Tracking" subtitle="Đơn hàng và theo dõi giao nhận" />
-        <LogicLink tab="daily" node={4} tooltip="Logic PO Release: BPO → RPO → ASN" />
+        <ScreenHeader title="Orders & Tracking" subtitle="Duyệt PO · Burn-down BPO · Theo dõi shipment chi tiết" />
+        <LogicLink tab="daily" node={4} tooltip="Logic PO Release: BPO → RPO → ASN → Received" />
       </div>
 
-      <div className="flex items-center gap-1 mb-6 rounded-full border border-surface-3 bg-surface-0 p-0.5 w-fit" data-tour="orders-tabs">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => { setActiveTab(tab.key); setDrillStatus(null); setDrillNm(null); }}
-            className={cn(
-              "rounded-full px-4 py-1.5 text-table-sm font-medium transition-colors whitespace-nowrap",
-              activeTab === tab.key ? "bg-gradient-primary text-primary-foreground" : "text-text-2 hover:text-text-1"
+      {/* ─── Pipeline rail ─── */}
+      {!isEmpty && (
+        <div className="mb-5 rounded-card border border-surface-3 bg-gradient-to-br from-surface-2 to-surface-1/50 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-caption uppercase text-text-3 tracking-wider">Pipeline tổng quan · {tenant}</p>
+              <p className="text-table text-text-1 mt-0.5">
+                <span className="font-semibold">{allOrders.length}</span> PO ·{" "}
+                <span className="tabular-nums">{totalQty.toLocaleString()}</span> m² ·{" "}
+                <span className="tabular-nums">{totalVnd}</span> ₫
+              </p>
+            </div>
+            {approvalQueue.length > 0 && (
+              <button
+                onClick={() => setActiveTab("approval")}
+                className="rounded-button bg-warning text-warning-foreground px-3 py-1.5 text-table-sm font-medium flex items-center gap-1.5 hover:opacity-90"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {approvalQueue.length} PO chờ duyệt
+              </button>
             )}
-          >
-            {tab.label}
-          </button>
-        ))}
+          </div>
+          <div className="flex items-center gap-1">
+            {stageOrder.map((s, i) => {
+              const c = stageCounts[s];
+              const isActive = c.count > 0;
+              return (
+                <div key={s} className="flex-1 flex items-center gap-1">
+                  <div className={cn(
+                    "flex-1 rounded-button px-3 py-2 transition-all",
+                    isActive ? "bg-surface-0 border border-surface-3" : "bg-surface-1/50 border border-transparent",
+                  )}>
+                    <p className={cn("text-caption uppercase tracking-wide", isActive ? "text-text-2" : "text-text-3")}>{stageLabels[s]}</p>
+                    <p className={cn("text-section-header tabular-nums mt-0.5", isActive ? "text-text-1" : "text-text-3")}>{c.count}</p>
+                    <p className="text-caption tabular-nums text-text-3">{c.qty.toLocaleString()} m²</p>
+                  </div>
+                  {i < stageOrder.length - 1 && (
+                    <ArrowRight className={cn("h-3.5 w-3.5 shrink-0", isActive ? "text-text-3" : "text-surface-3")} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Tabs ─── */}
+      <div className="flex items-center gap-1 mb-5 rounded-full border border-surface-3 bg-surface-0 p-0.5 w-fit">
+        {tabs.map((t) => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.key}
+              onClick={() => { setActiveTab(t.key); setDrillBpo(null); setSelectedPos(new Set()); }}
+              className={cn(
+                "rounded-full px-4 py-1.5 text-table-sm font-medium transition-colors flex items-center gap-1.5",
+                activeTab === t.key ? "bg-gradient-primary text-primary-foreground" : "text-text-2 hover:text-text-1"
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
       {poLoading && (
@@ -226,13 +336,11 @@ export default function OrdersPage() {
 
       {isEmpty && (
         <div className="rounded-card border border-surface-3 bg-surface-2 py-16 flex flex-col items-center gap-4 animate-fade-in">
-          <div className="rounded-full bg-surface-1 p-4">
-            <PackageOpen className="h-10 w-10 text-text-3" />
-          </div>
+          <div className="rounded-full bg-surface-1 p-4"><PackageOpen className="h-10 w-10 text-text-3" /></div>
           <div className="text-center space-y-1">
             <p className="text-body font-semibold text-text-1">Chưa có đơn hàng nào</p>
             <p className="text-table text-text-3 max-w-md">
-              Tạo PO mới từ DRP hoặc Hub để bắt đầu theo dõi đơn hàng. Dữ liệu sẽ hiển thị theo trạng thái và NM.
+              Tạo PO mới từ DRP hoặc Hub để bắt đầu theo dõi đơn hàng.
             </p>
           </div>
           <button
@@ -244,196 +352,100 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {activeTab === "po" && !isEmpty && (
-        <div className="animate-fade-in">
-          {!activeGroup ? (
-            <div className="rounded-card border border-surface-3 bg-surface-2" data-tour="orders-status-table">
+      {/* ═══════════════════ TAB 1: APPROVAL ═══════════════════ */}
+      {activeTab === "approval" && !isEmpty && (
+        <div className="animate-fade-in space-y-4">
+          {/* Queue header */}
+          {approvalQueue.length > 0 ? (
+            <div className="rounded-card border border-warning/30 bg-warning-bg/40">
+              <div className="px-4 py-3 border-b border-warning/20 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={selectedPos.size === approvalQueue.length && approvalQueue.length > 0}
+                    onCheckedChange={selectAllQueue}
+                    disabled={!canApprove}
+                  />
+                  <ClipboardCheck className="h-4 w-4 text-warning" />
+                  <p className="text-table-sm font-semibold text-text-1">
+                    Cần duyệt ngay · {approvalQueue.length} PO
+                  </p>
+                  {selectedPos.size > 0 && (
+                    <span className="text-caption text-text-2">({selectedPos.size} đã chọn)</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {selectedPos.size > 0 && canApprove && (
+                    <>
+                      <button
+                        onClick={() => setPendingApproval({
+                          kind: "bulk",
+                          pos: approvalQueue.filter((p) => selectedPos.has(p.po_number)),
+                        })}
+                        className="rounded-button bg-success text-success-foreground px-3 py-1.5 text-table-sm font-medium flex items-center gap-1"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Duyệt {selectedPos.size} PO
+                      </button>
+                      <button
+                        onClick={() => setPendingApproval({
+                          kind: "reject",
+                          pos: approvalQueue.filter((p) => selectedPos.has(p.po_number)),
+                        })}
+                        className="rounded-button bg-danger-bg text-danger px-3 py-1.5 text-table-sm font-medium"
+                      >
+                        Từ chối
+                      </button>
+                    </>
+                  )}
+                  {!canApprove && (
+                    <span className="text-caption text-text-3">Chỉ SC Manager có quyền duyệt</span>
+                  )}
+                </div>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-surface-3 bg-surface-1/50">
-                      {["Status", "Số PO", "Tổng m²", "Tổng ₫", "Action", ""].map((h, i) => (
-                        <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
+                    <tr className="border-b border-warning/20 bg-warning-bg/30">
+                      <th className="w-10 px-3 py-2"></th>
+                      {["PO#", "Type", "NM", "Item", "Qty m²", "Trạng thái", "Action"].map((h) => (
+                        <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {groups.map((g) => (
-                      <tr key={g.status} className="border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer" onClick={() => setDrillStatus(g.status)}>
-                        <td className="px-4 py-3 text-table font-medium text-text-1">
-                          <ClickableNumber
-                            value={g.status}
-                            label={g.status.split("—")[0].trim()}
-                            color="font-medium text-text-1"
-                            breakdown={g.pos.map(p => ({
-                              label: p.poNum,
-                              value: `${p.qty.toLocaleString()}m² ${p.item}`,
-                            }))}
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-table tabular-nums text-text-1">
-                          <ClickableNumber
-                            value={`${g.count} PO, ${g.totalQty.toLocaleString()}m²`}
-                            label={g.status.split("—")[0].trim()}
-                            color="text-text-1"
-                            breakdown={g.pos.map(p => ({
-                              label: p.poNum,
-                              value: `${p.qty.toLocaleString()}m²`,
-                              detail: p.item,
-                            }))}
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-table tabular-nums text-text-2">{g.totalVnd}</td>
-                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                          {g.action && (
-                            <button onClick={() => handleAction(g.action)} className="rounded-button bg-gradient-primary text-primary-foreground px-3 py-1 text-caption font-medium">{g.action}</button>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-text-3"><ChevronRight className="h-4 w-4" /></td>
-                      </tr>
-                    ))}
-                    <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
-                      <td className="px-4 py-3 text-table text-text-1">TOTAL</td>
-                      <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalPos}</td>
-                      <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalQty.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-table tabular-nums text-text-1">{totalVnd}</td>
-                      <td colSpan={2}></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <button onClick={() => setDrillStatus(null)} className="text-table-sm text-primary hover:underline flex items-center gap-1">← Tổng</button>
-              <p className="text-caption text-text-3">Tổng › <span className="text-text-1 font-medium">{activeGroup.status}</span> ({activeGroup.count} PO)</p>
-              <div className="rounded-card border border-surface-3 bg-surface-2">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-surface-3 bg-surface-1/50">
-                        {["Type", "PO#", "Blanket#", "NM", "Item", "Qty (m²)", "Status",
-                          ...(activeGroup.status.includes("Shipped") ? ["Vehicle", "Fill%"] : []),
-                          "Action"
-                        ].map((h, i) => (
-                          <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeGroup.pos.map((po) => {
-                        const typeBadge = getPoTypeBadge(po.type);
-                        const bpoBadge = getPoTypeBadge("BPO");
-                        return (
-                          <tr key={po.poNum} className="border-b border-surface-3/50 hover:bg-surface-1/30">
-                            <td className="px-4 py-3">
-                              <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", typeBadge.bg, typeBadge.text)}>
-                                {po.type}
-                              </span>
-                            </td>
-                            <td className={cn("px-4 py-3", poNumClasses, typeBadge.text)}>{po.poNum}</td>
-                            <td className="px-4 py-3">
-                              {po.blanket !== "—" ? (
-                                <button onClick={() => navigate("/hub")}
-                                  className={cn("rounded-sm px-1.5 py-0.5 hover:opacity-80", poNumClasses, bpoBadge.bg, bpoBadge.text)}>
-                                  {po.blanket}
-                                </button>
-                              ) : <span className="text-text-3">—</span>}
-                            </td>
-                            <td className="px-4 py-3 text-table text-text-2">{po.nm}</td>
-                            <td className="px-4 py-3 text-table text-text-2">{po.item}</td>
-                            <td className="px-4 py-3 text-table tabular-nums text-text-1">{po.qty.toLocaleString()}</td>
-                            <td className="px-4 py-3 text-table text-text-2 capitalize">{po.status}</td>
-                            {activeGroup.status.includes("Shipped") && (
-                              <>
-                                <td className="px-4 py-3 text-table text-text-2">{po.vehicle || "—"}</td>
-                                <td className="px-4 py-3 text-table tabular-nums text-text-2">{po.fillPct ? `${po.fillPct}%` : "—"}</td>
-                              </>
-                            )}
-                            <td className="px-4 py-3">
-                              <div className="flex gap-1.5 items-center">
-                                {po.status === "draft" && (
-                                  <button onClick={() => handleAction(`Gửi ATP ${po.poNum}`)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium flex items-center gap-1">
-                                    <Send className="h-3 w-3" /> Gửi ATP
-                                  </button>
-                                )}
-                                {po.status === "submitted" && <button onClick={() => handleAction(`Xác nhận ${po.poNum}`)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">Xác nhận</button>}
-                                {po.status === "confirmed" && <button onClick={() => handleAction(`Post ${po.poNum}`)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">Post Bravo</button>}
-                                {po.status === "shipped" && (
-                                  <>
-                                    <button onClick={() => handleAction(`SHIP ${po.poNum}`)} className="rounded-button bg-success/10 text-success px-2.5 py-1 text-caption font-medium">SHIP</button>
-                                    <button onClick={() => handleAction(`HOLD ${po.poNum}`)} className="rounded-button bg-warning-bg text-warning px-2.5 py-1 text-caption font-medium">HOLD</button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === "tracking" && !isEmpty && (
-        <div className="animate-fade-in">
-          {!activeNmData ? (
-            <div className="rounded-card border border-surface-3 bg-surface-2">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-surface-3 bg-surface-1/50">
-                      {["NM", "BPO#", "BPO total", "Released", "Delivered", "BPO completion%",
-                        { h: "On-time%", tooltip: true }, ""
-                      ].map((col, i) => {
-                        const h = typeof col === "string" ? col : col.h;
-                        const hasTooltip = typeof col !== "string" && col.tooltip;
-                        return (
-                          <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
-                            <span className="inline-flex items-center gap-1">
-                              {h}
-                              {hasTooltip && <LogicTooltip title="On-time% SLA" content={`On-time = delivered ≤ ETA + grace period.\nGrace period: 2 ngày (config).\nETA 17/05 + grace 2d = deadline 19/05.\nDelivered 18/05 → ✅ On-time.\nDelivered 22/05 → 🔴 Late 3 ngày.\nOn-time% = (# PO on-time) / (# PO total) × 100\nConfig: /config → PO → on_time_grace_days = 2.`} />}
-                            </span>
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {nmTracking.map((n) => {
-                      const bpoBadge = getPoTypeBadge("BPO");
+                    {approvalQueue.map((po) => {
+                      const st = effectiveStatus(po);
+                      const type = po.po_number.startsWith("TO-") ? "TO" : "RPO";
+                      const tb = getPoTypeBadge(type as any);
+                      const nextLabel = st === "draft" ? "Submit" : "Confirm";
                       return (
-                        <tr key={n.nm} className="border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer" onClick={() => setDrillNm(n.nm)}>
-                          <td className="px-4 py-3 text-table font-medium text-text-1">{n.nm}</td>
-                          <td className="px-4 py-3">
-                            <span className={cn("rounded-sm px-1.5 py-0.5", poNumClasses, bpoBadge.bg, bpoBadge.text)}>{n.bpo}</span>
+                        <tr key={po.po_number} className="border-b border-warning/10 hover:bg-warning-bg/20">
+                          <td className="px-3 py-2.5">
+                            <Checkbox
+                              checked={selectedPos.has(po.po_number)}
+                              onCheckedChange={() => togglePo(po.po_number)}
+                              disabled={!canApprove}
+                            />
                           </td>
-                          <td className="px-4 py-3 text-table tabular-nums text-text-2">{n.bpoTotal.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-table tabular-nums text-text-2">{n.released.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-table tabular-nums text-text-2">{n.delivered.toLocaleString()}</td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-16 h-1.5 bg-surface-1 rounded-full overflow-hidden">
-                                <div className="h-full bg-gradient-primary rounded-full" style={{ width: `${n.completionPct}%` }} />
-                              </div>
-                              <ClickableNumber
-                                value={`${n.completionPct}%`}
-                                label={`Honoring ${n.nm}`}
-                                color="text-table tabular-nums font-medium text-text-1"
-                                formula={`Delivered ${n.delivered.toLocaleString()} ÷ BPO Total ${n.bpoTotal.toLocaleString()} = ${n.completionPct}%`}
-                                breakdown={n.rpos.map(r => ({
-                                  label: r.rpo,
-                                  value: `plan ${r.qty.toLocaleString()}, actual ${r.actual.toLocaleString()}`,
-                                  detail: r.actual < r.qty ? `gap ${(r.qty - r.actual).toLocaleString()}` : "✅",
-                                }))}
-                              />
-                            </div>
+                          <td className={cn("px-3 py-2.5", poNumClasses, tb.text)}>{po.po_number}</td>
+                          <td className="px-3 py-2.5">
+                            <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", tb.bg, tb.text)}>{type}</span>
                           </td>
-                          <td className="px-4 py-3 text-text-3"><ChevronRight className="h-4 w-4" /></td>
+                          <td className="px-3 py-2.5 text-table text-text-2">{supplierToNm[po.supplier] || po.supplier}</td>
+                          <td className="px-3 py-2.5 text-table text-text-2">{po.sku}</td>
+                          <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{Number(po.quantity).toLocaleString()}</td>
+                          <td className="px-3 py-2.5">
+                            <span className="rounded-full px-2 py-0.5 text-caption font-medium bg-warning-bg text-warning">{stageLabels[st]}</span>
+                          </td>
+                          <td className="px-3 py-2.5">
+                            {canApprove && (
+                              <button
+                                onClick={() => setPendingApproval({ kind: "approve", pos: [po] })}
+                                className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium flex items-center gap-1"
+                              >
+                                <Send className="h-3 w-3" /> {nextLabel}
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       );
                     })}
@@ -442,89 +454,472 @@ export default function OrdersPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
-              <button onClick={() => setDrillNm(null)} className="text-table-sm text-primary hover:underline flex items-center gap-1">← Per NM</button>
-              <p className="text-caption text-text-3">Per NM › <span className="text-text-1 font-medium">{activeNmData.nm}</span>
-                <span className={cn("ml-2 rounded-sm px-1.5 py-0.5", poNumClasses, getPoTypeBadge("BPO").bg, getPoTypeBadge("BPO").text)}>{activeNmData.bpo}</span>
-              </p>
-
-              <div className="rounded-card border border-surface-3 bg-surface-2">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-surface-3 bg-surface-1/50">
-                        {["RPO#", "Item", "Qty", "ASN#", "Ship date", "ETA", "Actual", "Status"].map((h, i) => (
-                          <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {activeNmData.rpos.map((r, i) => {
-                        const rpoBadge = getPoTypeBadge("RPO");
-                        const asnBadge = getPoTypeBadge("ASN");
-                        const statusColor = r.status === "RECEIVED" ? "bg-success-bg text-success" :
-                          r.status === "SHIPPED" ? "bg-info-bg text-info" : "bg-warning-bg text-warning";
-                        return (
-                          <tr key={i} className={cn("border-b border-surface-3/50", i % 2 === 0 ? "bg-surface-2" : "bg-surface-0")}>
-                            <td className={cn("px-4 py-3", poNumClasses, rpoBadge.text)}>{r.rpo}</td>
-                            <td className="px-4 py-3 text-table text-text-1">{r.item}</td>
-                            <td className="px-4 py-3 text-table tabular-nums text-text-1">{r.qty.toLocaleString()}</td>
-                            <td className="px-4 py-3">
-                              {r.asn !== "—" ? (
-                                <span className={cn("rounded-sm px-1.5 py-0.5", poNumClasses, asnBadge.bg, asnBadge.text)}>{r.asn}</span>
-                              ) : <span className="text-text-3">—</span>}
-                            </td>
-                            <td className={cn("px-4 py-3 text-text-2", poNumClasses)}>{r.shipDate}</td>
-                            <td className={cn("px-4 py-3 text-text-2", poNumClasses)}>{r.eta}</td>
-                            <td className="px-4 py-3 text-table tabular-nums font-medium text-text-1">{r.actual > 0 ? r.actual.toLocaleString() : "—"}</td>
-                            <td className="px-4 py-3">
-                              <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium", statusColor)}>● {r.status}</span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <button className="mt-3 rounded-button bg-gradient-primary text-primary-foreground px-4 py-2 text-table-sm font-medium flex items-center gap-2">
-                <Upload className="h-4 w-4" /> Upload POD
-              </button>
+            <div className="rounded-card border border-success/30 bg-success-bg/30 p-4 flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-success" />
+              <p className="text-table-sm text-text-1">Tất cả PO đã được duyệt. Không có PO chờ trong queue.</p>
             </div>
           )}
+
+          {/* All POs reference table */}
+          <div className="rounded-card border border-surface-3 bg-surface-2">
+            <div className="px-4 py-3 border-b border-surface-3">
+              <p className="text-table-sm font-semibold text-text-1">Toàn bộ PO ({allOrders.length})</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-surface-3 bg-surface-1/50">
+                    {["PO#", "Type", "NM", "Item", "Qty m²", "Order date", "ETA", "Trạng thái"].map((h) => (
+                      <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {allOrders.map((po) => {
+                    const st = effectiveStatus(po);
+                    const type = po.po_number.startsWith("TO-") ? "TO" : "RPO";
+                    const tb = getPoTypeBadge(type as any);
+                    const stColor =
+                      st === "received" ? "bg-success-bg text-success" :
+                      st === "shipped" ? "bg-info-bg text-info" :
+                      st === "confirmed" ? "bg-primary/10 text-primary" :
+                      st === "cancelled" ? "bg-danger-bg text-danger" :
+                      "bg-warning-bg text-warning";
+                    return (
+                      <tr key={po.po_number} className="border-b border-surface-3/50 hover:bg-surface-1/30">
+                        <td className={cn("px-3 py-2.5", poNumClasses, tb.text)}>{po.po_number}</td>
+                        <td className="px-3 py-2.5">
+                          <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", tb.bg, tb.text)}>{type}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-table text-text-2">{supplierToNm[po.supplier] || po.supplier}</td>
+                        <td className="px-3 py-2.5 text-table text-text-2">{po.sku}</td>
+                        <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{Number(po.quantity).toLocaleString()}</td>
+                        <td className="px-3 py-2.5 text-table text-text-2">{fmtDate(po.order_date)}</td>
+                        <td className="px-3 py-2.5 text-table text-text-2">{fmtDate(po.expected_date)}</td>
+                        <td className="px-3 py-2.5">
+                          <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", stColor)}>{stageLabels[st]}</span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
-      {forceReleasePoNum && (
-        <>
-          <div className="fixed inset-0 bg-text-1/30 z-50" onClick={() => setForceReleasePoNum(null)} />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-surface-2 border border-surface-3 rounded-card shadow-xl w-[480px] p-6 space-y-4">
-              <h3 className="font-display text-section-header text-text-1">Force-release bypass ATP</h3>
-              <div className="rounded-card border border-warning/30 bg-warning-bg/30 p-4 space-y-2 text-table-sm text-text-2">
-                <p className="font-medium text-warning">⚠ Force-release bypass ATP check. Cần duyệt 3 cấp:</p>
-                <div className="space-y-1.5 pl-2">
-                  <p>Cấp 1: SC Manager (Thúy) → <span className="text-warning">⏳ Chờ duyệt</span></p>
-                  <p>Cấp 2: Director Operations → <span className="text-text-3">Chưa tới</span></p>
-                  <p>Cấp 3: CEO (Kurt) → <span className="text-text-3">Chưa tới</span></p>
-                </div>
-                <p className="text-text-3 mt-2">Risk: NM có thể không đủ hàng → PO_OVERDUE.</p>
+      {/* ═══════════════════ TAB 2: BURN-DOWN ═══════════════════ */}
+      {activeTab === "burndown" && !isEmpty && (
+        <div className="animate-fade-in space-y-3">
+          <div className="rounded-card border border-surface-3 bg-surface-2">
+            <div className="px-4 py-3 border-b border-surface-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-text-2" />
+                <p className="text-table-sm font-semibold text-text-1">BPO Burn-down theo NM</p>
+                <LogicTooltip
+                  title="BPO Burn-down logic"
+                  content={`BPO Total = Tổng cam kết tháng/quý từ NM\nReleased = RPO đã confirmed/shipped/received\nShipped = ASN đã issue (shipped + received)\nDelivered = Đã nhận về kho (received)\nRemaining = BPO Total − Delivered\nCompletion% = Delivered / BPO Total × 100`}
+                />
               </div>
-              <div>
-                <label className="text-caption text-text-3 uppercase">Lý do bắt buộc</label>
-                <textarea value={forceReleaseReason} onChange={e => setForceReleaseReason(e.target.value)}
-                  className="w-full h-20 mt-1 rounded-button border border-surface-3 bg-surface-0 px-3 py-2 text-table text-text-1 resize-none" placeholder="Nhập lý do force-release..." />
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => { setForceReleasePoNum(null); setForceReleaseReason(""); }} className="flex-1 h-10 rounded-button border border-surface-3 bg-surface-2 text-text-2 text-table font-medium hover:bg-surface-1">Hủy</button>
-                <button onClick={() => { toast.success(`Force-release ${forceReleasePoNum} gửi duyệt 3 cấp`); setForceReleasePoNum(null); setForceReleaseReason(""); }}
-                  className="flex-1 h-10 rounded-button bg-danger text-primary-foreground text-table font-medium hover:opacity-90">Gửi Force-release</button>
-              </div>
+              <p className="text-caption text-text-3">{burnDowns.length} NM · Click để xem chi tiết</p>
+            </div>
+            <div className="divide-y divide-surface-3/50">
+              {burnDowns.map((b) => {
+                const releasedPct = b.bpoTotal > 0 ? (b.released / b.bpoTotal) * 100 : 0;
+                const shippedPct = b.bpoTotal > 0 ? (b.shipped / b.bpoTotal) * 100 : 0;
+                const deliveredPct = b.bpoTotal > 0 ? (b.delivered / b.bpoTotal) * 100 : 0;
+                return (
+                  <button
+                    key={b.nm}
+                    onClick={() => setDrillBpo(drillBpo === b.nm ? null : b.nm)}
+                    className="w-full text-left px-4 py-3 hover:bg-surface-1/30 transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-4 mb-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Building2 className="h-4 w-4 text-text-3 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-table font-semibold text-text-1">{b.nm}</p>
+                          <p className={cn("text-caption", poNumClasses, "text-text-3")}>{b.bpo} · {b.rpos.length} RPO</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-6 text-table-sm tabular-nums shrink-0">
+                        <div className="text-right">
+                          <p className="text-caption text-text-3 uppercase">BPO total</p>
+                          <p className="font-semibold text-text-1">{b.bpoTotal.toLocaleString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-caption text-text-3 uppercase">Còn lại</p>
+                          <p className={cn("font-semibold", b.remaining > 0 ? "text-warning" : "text-success")}>
+                            {b.remaining.toLocaleString()}
+                          </p>
+                        </div>
+                        <div className="text-right w-16">
+                          <p className="text-caption text-text-3 uppercase">Done</p>
+                          <p className="font-semibold text-text-1">{b.completionPct}%</p>
+                        </div>
+                        <ChevronRight className={cn("h-4 w-4 text-text-3 transition-transform", drillBpo === b.nm && "rotate-90")} />
+                      </div>
+                    </div>
+                    {/* Stacked progress: delivered (green) | shipped-only (blue) | released-only (primary) | remaining (gray) */}
+                    <div className="relative h-2.5 bg-surface-1 rounded-full overflow-hidden flex">
+                      <div className="bg-success h-full" style={{ width: `${deliveredPct}%` }} title={`Delivered ${b.delivered.toLocaleString()}`} />
+                      <div className="bg-info h-full" style={{ width: `${shippedPct - deliveredPct}%` }} title={`Shipped ${(b.shipped - b.delivered).toLocaleString()}`} />
+                      <div className="bg-primary/60 h-full" style={{ width: `${releasedPct - shippedPct}%` }} title={`Released ${(b.released - b.shipped).toLocaleString()}`} />
+                    </div>
+                    <div className="flex items-center gap-4 mt-1.5 text-caption text-text-3">
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success" /> Delivered {b.delivered.toLocaleString()}</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-info" /> In-transit {(b.shipped - b.delivered).toLocaleString()}</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-primary/60" /> Released {(b.released - b.shipped).toLocaleString()}</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-surface-3" /> Còn lại {b.remaining.toLocaleString()}</span>
+                    </div>
+
+                    {/* Inline expand: RPO/ASN children */}
+                    {drillBpo === b.nm && (
+                      <div className="mt-4 rounded-button border border-surface-3 bg-surface-1/40 overflow-hidden animate-fade-in">
+                        <div className="px-3 py-2 border-b border-surface-3 flex items-center justify-between">
+                          <p className="text-caption text-text-2 uppercase tracking-wide">RPO / ASN children</p>
+                          <p className="text-caption text-text-3">Waterfall: BPO {b.bpoTotal.toLocaleString()} − Delivered {b.delivered.toLocaleString()} = Còn {b.remaining.toLocaleString()}</p>
+                        </div>
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-surface-3/50 bg-surface-2/50">
+                              {["RPO#", "Item", "Qty", "ASN#", "Ship date", "ETA", "Actual", "Status"].map((h) => (
+                                <th key={h} className="px-3 py-1.5 text-left text-table-header uppercase text-text-3">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {b.rpos.map((r) => {
+                              const rpoBadge = getPoTypeBadge("RPO");
+                              const asnBadge = getPoTypeBadge("ASN");
+                              const stColor =
+                                r.status === "received" ? "bg-success-bg text-success" :
+                                r.status === "shipped" ? "bg-info-bg text-info" :
+                                r.status === "confirmed" ? "bg-primary/10 text-primary" :
+                                "bg-warning-bg text-warning";
+                              return (
+                                <tr key={r.rpo} className="border-b border-surface-3/30 hover:bg-surface-2/50">
+                                  <td className={cn("px-3 py-1.5", poNumClasses, rpoBadge.text)}>{r.rpo}</td>
+                                  <td className="px-3 py-1.5 text-table text-text-1">{r.item}</td>
+                                  <td className="px-3 py-1.5 text-table tabular-nums text-text-1">{r.qty.toLocaleString()}</td>
+                                  <td className="px-3 py-1.5">
+                                    {r.asn ? (
+                                      <span className={cn("rounded-sm px-1.5 py-0.5", poNumClasses, asnBadge.bg, asnBadge.text)}>{r.asn}</span>
+                                    ) : <span className="text-text-3">—</span>}
+                                  </td>
+                                  <td className={cn("px-3 py-1.5 text-text-2", poNumClasses)}>{r.shipDate}</td>
+                                  <td className={cn("px-3 py-1.5 text-text-2", poNumClasses)}>{r.eta}</td>
+                                  <td className="px-3 py-1.5 text-table tabular-nums font-medium text-text-1">{r.actual > 0 ? r.actual.toLocaleString() : "—"}</td>
+                                  <td className="px-3 py-1.5">
+                                    <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", stColor)}>{stageLabels[r.status]}</span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
-        </>
+        </div>
       )}
+
+      {/* ═══════════════════ TAB 3: SHIPMENT TRACKING ═══════════════════ */}
+      {activeTab === "tracking" && !isEmpty && (
+        <div className="animate-fade-in space-y-3">
+          {/* Filter chips */}
+          <div className="flex items-center gap-1.5">
+            {([
+              { k: "all", l: `Tất cả (${shipments.length})` },
+              { k: "in_transit", l: `Đang vận chuyển (${shipments.filter(s => s.currentStage === "in_transit" || s.currentStage === "loaded").length})` },
+              { k: "overdue", l: `Quá ETA (${shipments.filter(s => s.etaCountdownH !== undefined && s.etaCountdownH < 0).length})` },
+              { k: "received", l: `Đã nhận (${shipments.filter(s => s.currentStage === "received").length})` },
+            ] as const).map((f) => (
+              <button
+                key={f.k}
+                onClick={() => setTrackFilter(f.k)}
+                className={cn(
+                  "rounded-full px-3 py-1 text-caption font-medium transition-colors",
+                  trackFilter === f.k
+                    ? "bg-gradient-primary text-primary-foreground"
+                    : "bg-surface-1 text-text-2 hover:text-text-1"
+                )}
+              >
+                {f.l}
+              </button>
+            ))}
+          </div>
+
+          <div className="rounded-card border border-surface-3 bg-surface-2">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-surface-3 bg-surface-1/50">
+                    {["ASN#", "RPO#", "NM → CN", "Tài xế / SDT", "Xe / Carrier", "SKU · Qty", "ETA", "Tiến trình", ""].map((h) => (
+                      <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredShipments.length === 0 && (
+                    <tr><td colSpan={9} className="px-4 py-8 text-center text-text-3 text-table-sm">Không có shipment phù hợp.</td></tr>
+                  )}
+                  {filteredShipments.map((s: any) => {
+                    const asnBadge = getPoTypeBadge("ASN");
+                    const rpoBadge = getPoTypeBadge("RPO");
+                    const tone = etaTone(s.etaCountdownH);
+                    const toneClass =
+                      tone === "danger" ? "bg-danger-bg text-danger" :
+                      tone === "warning" ? "bg-warning-bg text-warning" :
+                      tone === "success" ? "bg-success-bg text-success" :
+                      "bg-surface-1 text-text-3";
+                    const currentIdx = ["picked", "loaded", "in_transit", "at_gate", "received"].indexOf(s.currentStage);
+                    return (
+                      <tr key={s.asn} className="border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer" onClick={() => setOpenShipment(s)}>
+                        <td className="px-3 py-2.5">
+                          <span className={cn("rounded-sm px-1.5 py-0.5", poNumClasses, asnBadge.bg, asnBadge.text)}>{s.asn}</span>
+                        </td>
+                        <td className={cn("px-3 py-2.5", poNumClasses, rpoBadge.text)}>{s.rpo}</td>
+                        <td className="px-3 py-2.5 text-table text-text-2">
+                          <span className="text-text-1">{s.nm}</span>
+                          <ArrowRight className="inline h-3 w-3 mx-1 text-text-3" />
+                          {s.destination}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <p className="text-table text-text-1">{s.driver}</p>
+                          <p className={cn("text-caption text-text-3", poNumClasses)}>{s.driverPhone}</p>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <p className={cn("text-table text-text-1", poNumClasses)}>{s.vehicle}</p>
+                          <p className="text-caption text-text-3">{s.carrier}</p>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <p className="text-table text-text-1">{s.sku}</p>
+                          <p className="text-caption tabular-nums text-text-3">{s.qty.toLocaleString()} m²</p>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", toneClass)}>
+                            {etaLabel(s.etaCountdownH)}
+                          </span>
+                          <p className={cn("text-caption text-text-3 mt-0.5", poNumClasses)}>ETA {s.eta}</p>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          {/* Mini timeline */}
+                          <div className="flex items-center gap-0.5">
+                            {["picked", "loaded", "in_transit", "at_gate", "received"].map((stg, i) => (
+                              <div
+                                key={stg}
+                                className={cn(
+                                  "h-1.5 w-6 rounded-full",
+                                  i <= currentIdx ? (s.currentStage === "received" ? "bg-success" : "bg-info") : "bg-surface-1"
+                                )}
+                              />
+                            ))}
+                          </div>
+                          <p className="text-caption text-text-3 mt-0.5 capitalize">{s.currentStage.replace("_", " ")}</p>
+                        </td>
+                        <td className="px-3 py-2.5"><ChevronRight className="h-4 w-4 text-text-3" /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Shipment detail drawer ─── */}
+      <Sheet open={!!openShipment} onOpenChange={(o) => !o && setOpenShipment(null)}>
+        <SheetContent className="w-full sm:max-w-[520px] overflow-y-auto p-0">
+          {openShipment && (
+            <div className="flex flex-col h-full">
+              <SheetHeader className="px-5 py-4 border-b border-surface-3 bg-surface-1/50">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <SheetTitle className="font-display text-section-header">Shipment {openShipment.asn}</SheetTitle>
+                    <p className={cn("text-caption text-text-3 mt-1", poNumClasses)}>RPO {openShipment.rpo}</p>
+                  </div>
+                  <span className={cn(
+                    "rounded-full px-2.5 py-1 text-caption font-medium shrink-0",
+                    openShipment.currentStage === "received" ? "bg-success-bg text-success" :
+                    openShipment.currentStage === "in_transit" ? "bg-info-bg text-info" :
+                    "bg-warning-bg text-warning"
+                  )}>
+                    {openShipment.currentStage.replace("_", " ").toUpperCase()}
+                  </span>
+                </div>
+              </SheetHeader>
+
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+                {/* ETA banner */}
+                <div className={cn(
+                  "rounded-card border p-3 flex items-center gap-3",
+                  etaTone(openShipment.etaCountdownH) === "danger" ? "border-danger/30 bg-danger-bg/40" :
+                  etaTone(openShipment.etaCountdownH) === "warning" ? "border-warning/30 bg-warning-bg/40" :
+                  "border-success/30 bg-success-bg/30"
+                )}>
+                  <Clock className="h-5 w-5 text-text-2" />
+                  <div className="flex-1">
+                    <p className="text-caption text-text-3 uppercase">ETA</p>
+                    <p className="text-table-sm font-semibold text-text-1">{openShipment.eta} · {etaLabel(openShipment.etaCountdownH)}</p>
+                  </div>
+                </div>
+
+                {/* Route */}
+                <div className="rounded-card border border-surface-3 bg-surface-1/30 p-3">
+                  <p className="text-caption text-text-3 uppercase mb-2">Tuyến đường</p>
+                  <div className="flex items-center gap-2 text-table text-text-1">
+                    <MapPin className="h-4 w-4 text-text-3" />
+                    <span>{openShipment.origin}</span>
+                    <ArrowRight className="h-4 w-4 text-text-3 mx-1" />
+                    <span>{openShipment.destination}</span>
+                  </div>
+                </div>
+
+                {/* Driver / Vehicle */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-card border border-surface-3 bg-surface-1/30 p-3 space-y-1.5">
+                    <p className="text-caption text-text-3 uppercase">Tài xế</p>
+                    <div className="flex items-center gap-2 text-table text-text-1"><User className="h-3.5 w-3.5 text-text-3" /> {openShipment.driver}</div>
+                    <a href={`tel:${openShipment.driverPhone}`} className={cn("flex items-center gap-2 text-table-sm text-primary hover:underline", poNumClasses)}>
+                      <Phone className="h-3.5 w-3.5" /> {openShipment.driverPhone}
+                    </a>
+                  </div>
+                  <div className="rounded-card border border-surface-3 bg-surface-1/30 p-3 space-y-1.5">
+                    <p className="text-caption text-text-3 uppercase">Xe</p>
+                    <p className={cn("text-table text-text-1", poNumClasses)}>{openShipment.vehicle}</p>
+                    <p className="text-caption text-text-3">{openShipment.vehicleType} · Fill {openShipment.fillPct}%</p>
+                  </div>
+                </div>
+
+                <div className="rounded-card border border-surface-3 bg-surface-1/30 p-3 space-y-1.5">
+                  <p className="text-caption text-text-3 uppercase">Nhà vận tải</p>
+                  <div className="flex items-center gap-2 text-table text-text-1"><Truck className="h-3.5 w-3.5 text-text-3" /> {openShipment.carrier}</div>
+                  <a href={`tel:${openShipment.carrierPhone}`} className={cn("flex items-center gap-2 text-table-sm text-primary hover:underline", poNumClasses)}>
+                    <Phone className="h-3.5 w-3.5" /> {openShipment.carrierPhone}
+                  </a>
+                </div>
+
+                {/* Timeline */}
+                <div>
+                  <p className="text-caption text-text-3 uppercase mb-3">Tiến trình giao nhận</p>
+                  <div className="space-y-3">
+                    {openShipment.events.map((ev, i) => {
+                      const isLast = i === openShipment.events.length - 1;
+                      return (
+                        <div key={ev.stage} className="flex gap-3">
+                          <div className="flex flex-col items-center">
+                            <div className={cn(
+                              "h-6 w-6 rounded-full border-2 flex items-center justify-center shrink-0",
+                              ev.done ? "bg-success border-success" : "bg-surface-1 border-surface-3"
+                            )}>
+                              {ev.done && <CheckCircle2 className="h-3.5 w-3.5 text-success-foreground" />}
+                            </div>
+                            {!isLast && <div className={cn("w-0.5 flex-1 my-1", ev.done ? "bg-success" : "bg-surface-3")} style={{ minHeight: 18 }} />}
+                          </div>
+                          <div className="flex-1 pb-2">
+                            <div className="flex items-center justify-between">
+                              <p className={cn("text-table-sm font-medium", ev.done ? "text-text-1" : "text-text-3")}>{ev.label}</p>
+                              <p className={cn("text-caption tabular-nums", ev.done ? "text-text-2" : "text-text-3")}>{ev.ts}</p>
+                            </div>
+                            {ev.note && <p className="text-caption text-text-3 mt-0.5">{ev.note}</p>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {openShipment.podUrl && (
+                  <div className="rounded-card border border-success/30 bg-success-bg/30 p-3 flex items-center gap-3">
+                    <FileText className="h-4 w-4 text-success" />
+                    <div className="flex-1">
+                      <p className="text-table-sm text-text-1 font-medium">POD đã upload</p>
+                      <p className={cn("text-caption text-text-3", poNumClasses)}>{openShipment.podUrl}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-surface-3 px-5 py-3 flex gap-2 bg-surface-1/30">
+                {!openShipment.podUrl && canEdit && (
+                  <button
+                    onClick={() => toast.success(`Upload POD cho ${openShipment.asn}`)}
+                    className="flex-1 rounded-button bg-gradient-primary text-primary-foreground px-3 py-2 text-table-sm font-medium flex items-center justify-center gap-1.5"
+                  >
+                    <Upload className="h-3.5 w-3.5" /> Upload POD
+                  </button>
+                )}
+                <button
+                  onClick={() => setOpenShipment(null)}
+                  className="rounded-button border border-surface-3 bg-surface-2 px-4 py-2 text-table-sm text-text-2 hover:bg-surface-1"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* ─── Approval confirmation ─── */}
+      <AlertDialog open={!!pendingApproval} onOpenChange={(o) => !o && setPendingApproval(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingApproval?.kind === "reject" ? "Từ chối PO" :
+               pendingApproval?.kind === "bulk" ? `Duyệt ${pendingApproval.pos.length} PO` :
+               "Duyệt PO"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-table-sm text-text-2">
+                <p>
+                  {pendingApproval?.kind === "reject"
+                    ? "Hành động này sẽ chuyển các PO sang trạng thái Cancelled. Lý do là bắt buộc."
+                    : "Xác nhận chuyển PO sang trạng thái tiếp theo trong pipeline."}
+                </p>
+                {pendingApproval && (
+                  <div className="rounded-button bg-surface-1 p-2 max-h-32 overflow-y-auto">
+                    {pendingApproval.pos.slice(0, 5).map((p) => (
+                      <p key={p.po_number} className={cn("text-caption", poNumClasses, "text-text-1")}>{p.po_number} · {p.sku} · {Number(p.quantity).toLocaleString()} m²</p>
+                    ))}
+                    {pendingApproval.pos.length > 5 && (
+                      <p className="text-caption text-text-3 mt-1">… và {pendingApproval.pos.length - 5} PO khác</p>
+                    )}
+                  </div>
+                )}
+                <div>
+                  <label className="text-caption text-text-3 uppercase">
+                    Ghi chú {pendingApproval?.kind === "reject" && <span className="text-danger">*</span>}
+                  </label>
+                  <Textarea
+                    value={approvalNote}
+                    onChange={(e) => setApprovalNote(e.target.value)}
+                    placeholder={pendingApproval?.kind === "reject" ? "Lý do từ chối..." : "Ghi chú (tuỳ chọn)..."}
+                    className="mt-1 min-h-[72px]"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setPendingApproval(null); setApprovalNote(""); }}>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmApproval}
+              className={pendingApproval?.kind === "reject" ? "bg-danger text-danger-foreground hover:bg-danger/90" : ""}
+            >
+              {pendingApproval?.kind === "reject" ? "Xác nhận từ chối" : "Xác nhận duyệt"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <ScreenFooter actionCount={10} />
     </AppLayout>
   );
