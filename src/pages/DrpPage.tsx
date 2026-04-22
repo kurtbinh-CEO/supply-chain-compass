@@ -19,6 +19,8 @@ import { useVersionConflict, VersionConflictDialog } from "@/components/VersionC
 import { AllocSourceBar, ExpandedSkuBreakdown, ExpandedCnBreakdown, AllocSourceLegend } from "@/components/drp/AllocSourceBar";
 import { exportCsv, exportPdf, type ExportRow } from "@/components/drp/exportLayer1";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
+import { useRbac } from "@/components/RbacContext";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
