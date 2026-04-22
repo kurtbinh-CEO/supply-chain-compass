@@ -548,7 +548,7 @@ export default function DrpPage() {
                         <td className="px-4 py-3 text-table">
                           {r.exceptions > 0 ? <span className="text-danger font-medium">{r.exceptions} items</span> : <span className="text-text-3">0</span>}
                         </td>
-                        <td className="px-4 py-3"><AllocSourceBar sources={cnSources} compact /></td>
+                        <td className="px-4 py-3"><AllocSourceBar sources={cnSources} compact demand={r.demand} allocated={r.demand - r.gap} /></td>
                         <td className="px-4 py-3">
                           {r.exceptions > 0 ? (
                             <button onClick={(e) => { e.stopPropagation(); setDrillCn(r.cn); }} className="text-primary text-table-sm font-medium hover:underline">Xử lý ▸</button>
