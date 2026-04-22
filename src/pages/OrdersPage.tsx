@@ -268,6 +268,8 @@ export default function OrdersPage() {
   const filteredBdOrders = useMemo(() => {
     const q = bdSearch.trim().toLowerCase();
     return allOrders.filter((o) => {
+      // Pipeline rail filter (cross-tab) — keep BPOs that have at least one line at this stage
+      // (handled at NM/BPO aggregation by tagging — here we keep the line for analytics)
       const nm = supplierToNm[o.supplier] || o.supplier;
       if (bdNms.size > 0 && !bdNms.has(nm)) return false;
       if (bdSkus.size > 0 && !bdSkus.has(o.sku)) return false;
@@ -357,14 +359,20 @@ export default function OrdersPage() {
       const avgUnitPrice = totalQty > 0 ? totalValue / totalQty : 0;
       const revenueAtRisk = remaining * avgUnitPrice;
 
+      // Mark whether this NM has ANY line at the active pipeline stage
+      const matchesPipeline = !pipelineFilter
+        ? true
+        : orders.some((o) => effectiveStatus(o) === pipelineFilter);
+
       return {
         nm,
         bpo: `BPO-${nm.substring(0, 3).toUpperCase()}`,
         bpoTotal, approved, released, shipped, delivered, cancelled, remaining, completionPct,
         earliestEta, revenueAtRisk, rpos,
-      };
-    });
-  }, [filteredBdOrders, statusOverrides]);
+        matchesPipeline,
+      } as BpoBurnDown & { matchesPipeline: boolean };
+    }).filter((b) => b.matchesPipeline);
+  }, [filteredBdOrders, statusOverrides, pipelineFilter]);
 
   /* ── Sort BPO results ── */
   const sortedBurnDowns: BpoBurnDown[] = useMemo(() => {
@@ -401,6 +409,8 @@ export default function OrdersPage() {
   const filteredShipments = useMemo(() => {
     const q = trkSearch.trim().toLowerCase();
     const arr = shipments.filter((s: any) => {
+      // Cross-tab pipeline filter (PO status from header rail)
+      if (pipelineFilter && s.status !== pipelineFilter) return false;
       // Quick-status chip
       if (trackFilter === "received" && s.currentStage !== "received") return false;
       if (trackFilter === "in_transit" && !(s.currentStage === "in_transit" || s.currentStage === "loaded")) return false;
@@ -441,14 +451,14 @@ export default function OrdersPage() {
       }
     });
     return arr;
-  }, [shipments, trackFilter, trkSearch, trkNms, trkSkus, trkDateRange, trkSort]);
+  }, [shipments, trackFilter, trkSearch, trkNms, trkSkus, trkDateRange, trkSort, pipelineFilter]);
 
   const trkActiveFilterCount =
     (trkSearch.trim() ? 1 : 0) + (trkNms.size > 0 ? 1 : 0) + (trkSkus.size > 0 ? 1 : 0) + (trkDateRange?.from ? 1 : 0);
   const clearTrkFilters = () => { setTrkSearch(""); setTrkNms(new Set()); setTrkSkus(new Set()); setTrkDateRange(undefined); };
 
   // Reset page when filters/sort change
-  const trkResetKey = `${trackFilter}|${trkSearch}|${Array.from(trkNms).sort().join(",")}|${Array.from(trkSkus).sort().join(",")}|${trkDateRange?.from?.toISOString() ?? ""}|${trkDateRange?.to?.toISOString() ?? ""}|${trkSort}`;
+  const trkResetKey = `${pipelineFilter ?? ""}|${trackFilter}|${trkSearch}|${Array.from(trkNms).sort().join(",")}|${Array.from(trkSkus).sort().join(",")}|${trkDateRange?.from?.toISOString() ?? ""}|${trkDateRange?.to?.toISOString() ?? ""}|${trkSort}`;
   useEffect(() => { setTrkPage(1); }, [trkResetKey]);
 
   const trkTotalPages = Math.max(1, Math.ceil(filteredShipments.length / TRK_PAGE_SIZE));
@@ -879,6 +889,22 @@ export default function OrdersPage() {
       {/* ═══════════════════ TAB 2: BURN-DOWN ═══════════════════ */}
       {activeTab === "burndown" && !isEmpty && (
         <div className="animate-fade-in space-y-3">
+          {pipelineFilter && (
+            <div className={cn(
+              "rounded-card border px-3 py-2 flex items-center gap-2 text-table-sm",
+              stageThemes[pipelineFilter]?.chip
+            )}>
+              <FilterIcon className="h-3.5 w-3.5 shrink-0" />
+              <span>Đang lọc theo pipeline: <span className="font-semibold">{stageLabels[pipelineFilter]}</span></span>
+              <span className="text-text-3 ml-1">— chỉ hiện NM có line ở stage này</span>
+              <button
+                onClick={() => setPipelineFilter(null)}
+                className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption hover:bg-surface-3/40"
+              >
+                <X className="h-3 w-3" /> Bỏ lọc
+              </button>
+            </div>
+          )}
           {/* View toggle */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -1280,6 +1306,24 @@ export default function OrdersPage() {
       {/* ═══════════════════ TAB 3: SHIPMENT TRACKING ═══════════════════ */}
       {activeTab === "tracking" && !isEmpty && (
         <div className="animate-fade-in space-y-3">
+          {pipelineFilter && (
+            <div className={cn(
+              "rounded-card border px-3 py-2 flex items-center gap-2 text-table-sm",
+              stageThemes[pipelineFilter]?.chip
+            )}>
+              <FilterIcon className="h-3.5 w-3.5 shrink-0" />
+              <span>Đang lọc theo pipeline: <span className="font-semibold">{stageLabels[pipelineFilter]}</span></span>
+              {!["confirmed", "shipped", "received"].includes(pipelineFilter) && (
+                <span className="text-warning ml-1">— shipment chỉ tồn tại từ stage Confirmed</span>
+              )}
+              <button
+                onClick={() => setPipelineFilter(null)}
+                className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption hover:bg-surface-3/40"
+              >
+                <X className="h-3 w-3" /> Bỏ lọc
+              </button>
+            </div>
+          )}
           {/* Header + count */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
