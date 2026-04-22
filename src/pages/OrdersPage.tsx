@@ -329,9 +329,15 @@ export default function OrdersPage() {
           };
         });
 
-      // Earliest ETA among unfulfilled (not received, not cancelled) lines
+      // Earliest ETA among unfulfilled lines:
+      // a line counts as fulfilled only when actual GRN qty >= ordered (not just status=received).
       const unfulfilledEtaTimes = orders
-        .filter((o) => !["received", "cancelled"].includes(effectiveStatus(o)) && o.expected_date)
+        .filter((o) => {
+          const st = effectiveStatus(o);
+          if (st === "cancelled") return false;
+          if (receivedQtyFor(o) >= Number(o.quantity)) return false;
+          return !!o.expected_date;
+        })
         .map((o) => new Date(o.expected_date as string).getTime())
         .filter((t) => !Number.isNaN(t));
       const earliestEta = unfulfilledEtaTimes.length > 0 ? Math.min(...unfulfilledEtaTimes) : null;
