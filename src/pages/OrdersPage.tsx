@@ -103,6 +103,10 @@ export default function OrdersPage() {
   // Burn-down tab state
   const [drillBpo, setDrillBpo] = useState<string | null>(null);
   const [burndownView, setBurndownView] = useState<"compact" | "flow">("compact");
+  const [bdSearch, setBdSearch] = useState("");
+  const [bdNms, setBdNms] = useState<Set<string>>(new Set());
+  const [bdSkus, setBdSkus] = useState<Set<string>>(new Set());
+  const [bdDateRange, setBdDateRange] = useState<DateRange | undefined>(undefined);
 
   // Tracking tab state
   const [openShipment, setOpenShipment] = useState<ShipmentDetail | null>(null);
