@@ -220,19 +220,26 @@ export default function DrpPage() {
   const skuAggDrp = useMemo(() => {
     const map: Record<string, { item: string; variant: string; totalDemand: number; totalAllocated: number; totalGap: number; fillPct: number;
       worstCn: string; worstHstk: number; cnGapCount: number; lcnb: string | null;
-      cnRows: { cn: string; demand: number; allocated: number; fillPct: number; gap: number; status: string }[];
+      sources: AllocSources;
+      cnRows: { cn: string; demand: number; allocated: number; fillPct: number; gap: number; status: string; sources: AllocSources }[];
     }> = {};
     data.forEach(cn => {
       cn.allSkus.forEach(sk => {
         const key = `${sk.item}-${sk.variant}`;
         if (!map[key]) map[key] = { item: sk.item, variant: sk.variant, totalDemand: 0, totalAllocated: 0, totalGap: 0, fillPct: 0,
-          worstCn: "", worstHstk: 99, cnGapCount: 0, lcnb: null, cnRows: [] };
+          worstCn: "", worstHstk: 99, cnGapCount: 0, lcnb: null,
+          sources: { onHand: 0, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 }, cnRows: [] };
         map[key].totalDemand += sk.demand;
         map[key].totalAllocated += sk.allocated;
         const gap = sk.demand - sk.allocated;
         map[key].totalGap += gap;
         if (gap > 0) map[key].cnGapCount++;
-        map[key].cnRows.push({ cn: cn.cn, demand: sk.demand, allocated: sk.allocated, fillPct: sk.fillPct, gap, status: sk.status });
+        map[key].sources.onHand += sk.sources.onHand;
+        map[key].sources.pipeline += sk.sources.pipeline;
+        map[key].sources.hubPo += sk.sources.hubPo;
+        map[key].sources.lcnbIn += sk.sources.lcnbIn;
+        map[key].sources.internalTransfer += sk.sources.internalTransfer;
+        map[key].cnRows.push({ cn: cn.cn, demand: sk.demand, allocated: sk.allocated, fillPct: sk.fillPct, gap, status: sk.status, sources: sk.sources });
       });
     });
     Object.values(map).forEach(sk => {
@@ -252,6 +259,16 @@ export default function DrpPage() {
     });
     return Object.values(map).sort((a, b) => a.fillPct - b.fillPct);
   }, [data]);
+
+  // Inline expand state for Layer 1 (CN row → SKU breakdown, SKU row → CN breakdown)
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const toggleRow = (key: string) => {
+    setExpandedRows(prev => {
+      const n = new Set(prev);
+      n.has(key) ? n.delete(key) : n.add(key);
+      return n;
+    });
+  };
 
   const toggleException = (key: string) => {
     setExpandedExceptions((prev) => {
