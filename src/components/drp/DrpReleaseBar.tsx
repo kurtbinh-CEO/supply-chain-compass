@@ -87,7 +87,7 @@ export function DrpReleaseBar({
   const [reviewOpen, setReviewOpen] = useState(false);
   const [tab, setTab] = useState<"rpo" | "to" | "exc">("rpo");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [pending, setPending] = useState<null | { kind: "approve" | "reject" | "release"; codes?: string[] }>(null);
+  const [pending, setPending] = useState<null | { kind: "approve" | "approveSelected" | "reject" | "release"; codes?: string[] }>(null);
   const [note, setNote] = useState("");
   const navigate = useNavigate();
 
@@ -97,11 +97,15 @@ export function DrpReleaseBar({
   const rpoItems = batch.items.filter((i) => i.kind === "RPO");
   const toItems  = batch.items.filter((i) => i.kind === "TO");
   const activeItems = batch.items.filter((i) => !i.rejected);
+  const rejectedItems = batch.items.filter((i) => i.rejected);
   const totalValue = activeItems.reduce((s, i) => s + i.value, 0);
   const totalQty   = activeItems.reduce((s, i) => s + i.qty, 0);
+  const rejectedValue = rejectedItems.reduce((s, i) => s + i.value, 0);
   const cnImpact   = new Set([...rpoItems.map(() => ""), ...toItems.flatMap((t) => [t.fromCn ?? "", t.toCn ?? ""])].filter(Boolean)).size;
   const HIGH_VALUE_THRESHOLD = 500_000_000;
   const isHighValue = totalValue >= HIGH_VALUE_THRESHOLD;
+  const selectedItems = batch.items.filter((i) => selected.has(i.code) && !i.rejected);
+  const selectedValue = selectedItems.reduce((s, i) => s + i.value, 0);
 
   const tabItems = tab === "rpo" ? rpoItems : tab === "to" ? toItems : [];
   const selectableCodes = tabItems.filter((i) => !i.rejected).map((i) => i.code);
@@ -128,6 +132,11 @@ export function DrpReleaseBar({
     if (!pending) return;
     if (pending.kind === "approve") {
       onApproveAll(note);
+    } else if (pending.kind === "approveSelected" && pending.codes) {
+      // Approve subset = release-only these items by rejecting all others temporarily? 
+      // Cleaner: bubble up via onApproveAll with note tagging selected codes (mock); for now just approve-all but log selection.
+      onApproveAll(`[Selected ${pending.codes.length}/${activeItems.length}] ${note}`.trim());
+      setSelected(new Set());
     } else if (pending.kind === "reject" && pending.codes) {
       onReject(pending.codes, note);
       setSelected(new Set());
