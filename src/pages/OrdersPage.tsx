@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   ChevronRight, Send, Upload, Loader2, PackageOpen, CheckCircle2, Truck, MapPin, Phone, User,
-  Package, ClipboardCheck, Clock, AlertTriangle, FileText, ArrowRight, Building2, X,
+  Package, PackageCheck, ClipboardCheck, Clock, AlertTriangle, FileText, ArrowRight, Building2, X,
+  Download, Filter as FilterIcon,
 } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 import { useNavigate } from "react-router-dom";
@@ -89,6 +90,64 @@ const stageLabels: Record<string, string> = {
   shipped: "Shipped", received: "Received", cancelled: "Cancelled",
 };
 
+/* Stage visual theming — vivid status colors per pipeline stage */
+type StageTheme = {
+  icon: typeof FileText;
+  iconBg: string;       // background of icon circle
+  iconColor: string;    // foreground of icon circle
+  ring: string;         // ring around active card
+  numberColor: string;  // big number color when active
+  bar: string;          // progress bar fill color
+  chip: string;         // selected-state chip background+border classes
+};
+const stageThemes: Record<string, StageTheme> = {
+  draft: {
+    icon: FileText,
+    iconBg: "bg-slate-100 dark:bg-slate-800",
+    iconColor: "text-slate-500 dark:text-slate-300",
+    ring: "ring-slate-300 dark:ring-slate-600",
+    numberColor: "text-slate-700 dark:text-slate-100",
+    bar: "bg-slate-400",
+    chip: "border-slate-300 bg-slate-100/80 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100",
+  },
+  submitted: {
+    icon: ClipboardCheck,
+    iconBg: "bg-amber-100 dark:bg-amber-900/40",
+    iconColor: "text-amber-600 dark:text-amber-300",
+    ring: "ring-amber-400",
+    numberColor: "text-amber-700 dark:text-amber-200",
+    bar: "bg-amber-400",
+    chip: "border-amber-400 bg-amber-50 text-amber-800 dark:border-amber-500 dark:bg-amber-950/50 dark:text-amber-200",
+  },
+  confirmed: {
+    icon: PackageCheck,
+    iconBg: "bg-blue-100 dark:bg-blue-950/50",
+    iconColor: "text-blue-600 dark:text-blue-300",
+    ring: "ring-blue-400",
+    numberColor: "text-blue-700 dark:text-blue-200",
+    bar: "bg-blue-500",
+    chip: "border-blue-400 bg-blue-50 text-blue-800 dark:border-blue-500 dark:bg-blue-950/50 dark:text-blue-200",
+  },
+  shipped: {
+    icon: Truck,
+    iconBg: "bg-violet-100 dark:bg-violet-950/50",
+    iconColor: "text-violet-600 dark:text-violet-300",
+    ring: "ring-violet-400",
+    numberColor: "text-violet-700 dark:text-violet-200",
+    bar: "bg-violet-500",
+    chip: "border-violet-400 bg-violet-50 text-violet-800 dark:border-violet-500 dark:bg-violet-950/50 dark:text-violet-200",
+  },
+  received: {
+    icon: CheckCircle2,
+    iconBg: "bg-emerald-100 dark:bg-emerald-950/50",
+    iconColor: "text-emerald-600 dark:text-emerald-300",
+    ring: "ring-emerald-400",
+    numberColor: "text-emerald-700 dark:text-emerald-200",
+    bar: "bg-emerald-500",
+    chip: "border-emerald-400 bg-emerald-50 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-950/50 dark:text-emerald-200",
+  },
+};
+
 export default function OrdersPage() {
   const { tenant } = useTenant();
   const navigate = useNavigate();
@@ -117,6 +176,9 @@ export default function OrdersPage() {
   // Tracking tab state
   const [openShipment, setOpenShipment] = useState<ShipmentDetail | null>(null);
   const [trackFilter, setTrackFilter] = useState<"all" | "in_transit" | "overdue" | "received">("all");
+
+  // Pipeline rail filter (drives Approval-tab reference table)
+  const [pipelineFilter, setPipelineFilter] = useState<string | null>(null);
 
   /* ── Derive effective status (with overrides) ── */
   const effectiveStatus = (po: PurchaseOrderRow): string => statusOverrides[po.po_number] || po.status;
@@ -366,42 +428,112 @@ export default function OrdersPage() {
 
       {/* ─── Pipeline rail ─── */}
       {!isEmpty && (
-        <div className="mb-5 rounded-card border border-surface-3 bg-gradient-to-br from-surface-2 to-surface-1/50 p-4">
-          <div className="flex items-center justify-between mb-3">
+        <div className="mb-5 rounded-card border border-surface-3 bg-gradient-to-br from-surface-0 via-surface-1/40 to-surface-2/60 p-4 shadow-sm">
+          {/* Top row: title + actions */}
+          <div className="flex items-start justify-between mb-4 gap-3 flex-wrap">
             <div>
-              <p className="text-caption uppercase text-text-3 tracking-wider">Pipeline tổng quan · {tenant}</p>
-              <p className="text-table text-text-1 mt-0.5">
-                <span className="font-semibold">{allOrders.length}</span> PO ·{" "}
-                <span className="tabular-nums">{totalQty.toLocaleString()}</span> m² ·{" "}
-                <span className="tabular-nums">{totalVnd}</span> ₫
+              <p className="text-caption uppercase text-text-3 tracking-[0.14em] font-medium">Pipeline tổng quan · {tenant}</p>
+              <p className="text-table text-text-1 mt-1">
+                <span className="text-section-header font-bold tabular-nums text-text-1">{allOrders.length}</span>
+                <span className="text-text-3 ml-1 mr-3">PO</span>
+                <span className="tabular-nums font-semibold text-text-2">{totalQty.toLocaleString()}</span>
+                <span className="text-text-3 ml-1 mr-3">m²</span>
+                <span className="tabular-nums font-semibold text-text-2">{totalVnd}</span>
+                <span className="text-text-3 ml-1">₫</span>
               </p>
+              {pipelineFilter && (
+                <button
+                  onClick={() => setPipelineFilter(null)}
+                  className={cn(
+                    "mt-2 inline-flex items-center gap-1.5 rounded-full border pl-2 pr-1 py-0.5 text-caption font-medium transition-colors",
+                    stageThemes[pipelineFilter]?.chip
+                  )}
+                >
+                  <FilterIcon className="h-3 w-3" />
+                  Đang lọc theo: <span className="font-semibold">{stageLabels[pipelineFilter]}</span>
+                  <span className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full hover:bg-black/10 dark:hover:bg-white/10">
+                    <X className="h-3 w-3" />
+                  </span>
+                </button>
+              )}
             </div>
-            {approvalQueue.length > 0 && (
-              <button
-                onClick={() => setActiveTab("approval")}
-                className="rounded-button bg-warning text-warning-foreground px-3 py-1.5 text-table-sm font-medium flex items-center gap-1.5 hover:opacity-90"
-              >
-                <AlertTriangle className="h-3.5 w-3.5" />
-                {approvalQueue.length} PO chờ duyệt
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {approvalQueue.length > 0 && (
+                <button
+                  onClick={() => setActiveTab("approval")}
+                  className="rounded-button bg-warning text-warning-foreground px-3 py-1.5 text-table-sm font-medium flex items-center gap-1.5 hover:opacity-90 shadow-sm"
+                >
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  {approvalQueue.length} PO chờ duyệt
+                </button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-1">
+
+          {/* Stage cards rail */}
+          <div className="flex items-stretch gap-2">
             {stageOrder.map((s, i) => {
               const c = stageCounts[s];
               const isActive = c.count > 0;
+              const isSelected = pipelineFilter === s;
+              const theme = stageThemes[s];
+              const Icon = theme.icon;
+              const pctOfTotal = allOrders.length > 0 ? (c.count / allOrders.length) * 100 : 0;
               return (
-                <div key={s} className="flex-1 flex items-center gap-1">
-                  <div className={cn(
-                    "flex-1 rounded-button px-3 py-2 transition-all",
-                    isActive ? "bg-surface-0 border border-surface-3" : "bg-surface-1/50 border border-transparent",
-                  )}>
-                    <p className={cn("text-caption uppercase tracking-wide", isActive ? "text-text-2" : "text-text-3")}>{stageLabels[s]}</p>
-                    <p className={cn("text-section-header tabular-nums mt-0.5", isActive ? "text-text-1" : "text-text-3")}>{c.count}</p>
-                    <p className="text-caption tabular-nums text-text-3">{c.qty.toLocaleString()} m²</p>
-                  </div>
+                <div key={s} className="flex-1 flex items-stretch gap-2">
+                  <button
+                    onClick={() => isActive && setPipelineFilter(isSelected ? null : s)}
+                    disabled={!isActive}
+                    className={cn(
+                      "group relative flex-1 text-left rounded-card border p-3 transition-all",
+                      isActive ? "bg-surface-0 hover:shadow-md cursor-pointer" : "bg-surface-1/40 cursor-not-allowed opacity-60",
+                      isSelected
+                        ? cn("border-transparent ring-2 ring-offset-2 ring-offset-surface-0 shadow-md", theme.ring)
+                        : "border-surface-3"
+                    )}
+                  >
+                    {/* Header: icon + label */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={cn(
+                        "h-7 w-7 rounded-full flex items-center justify-center shrink-0",
+                        isActive ? theme.iconBg : "bg-surface-1",
+                      )}>
+                        <Icon className={cn("h-3.5 w-3.5", isActive ? theme.iconColor : "text-text-3")} />
+                      </div>
+                      <p className={cn(
+                        "text-caption uppercase tracking-wider font-semibold",
+                        isActive ? "text-text-2" : "text-text-3"
+                      )}>
+                        {stageLabels[s]}
+                      </p>
+                    </div>
+
+                    {/* Big number */}
+                    <p className={cn(
+                      "text-section-header font-bold tabular-nums leading-none",
+                      isActive ? theme.numberColor : "text-text-3"
+                    )}>
+                      {c.count}
+                    </p>
+
+                    {/* Qty */}
+                    <p className="text-caption tabular-nums text-text-3 mt-1">
+                      {c.qty.toLocaleString()} m²
+                    </p>
+
+                    {/* Mini progress bar (% of total POs) */}
+                    <div className="mt-2 h-1 rounded-full bg-surface-2 overflow-hidden">
+                      <div
+                        className={cn("h-full rounded-full transition-all", isActive ? theme.bar : "bg-surface-3")}
+                        style={{ width: `${pctOfTotal}%` }}
+                      />
+                    </div>
+                    <p className="text-caption tabular-nums text-text-3 mt-1">{pctOfTotal.toFixed(0)}% tổng</p>
+                  </button>
                   {i < stageOrder.length - 1 && (
-                    <ArrowRight className={cn("h-3.5 w-3.5 shrink-0", isActive ? "text-text-3" : "text-surface-3")} />
+                    <div className="flex items-center">
+                      <ArrowRight className={cn("h-3.5 w-3.5 shrink-0", isActive ? "text-text-2" : "text-surface-3")} />
+                    </div>
                   )}
                 </div>
               );
@@ -563,9 +695,33 @@ export default function OrdersPage() {
           )}
 
           {/* All POs reference table */}
+          {(() => {
+            const filteredPos = pipelineFilter
+              ? allOrders.filter((po) => effectiveStatus(po) === pipelineFilter)
+              : allOrders;
+            return (
           <div className="rounded-card border border-surface-3 bg-surface-2">
-            <div className="px-4 py-3 border-b border-surface-3">
-              <p className="text-table-sm font-semibold text-text-1">Toàn bộ PO ({allOrders.length})</p>
+            <div className="px-4 py-3 border-b border-surface-3 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <p className="text-table-sm font-semibold text-text-1">
+                  {pipelineFilter ? `PO ở trạng thái ${stageLabels[pipelineFilter]}` : "Toàn bộ PO"}
+                </p>
+                <span className="text-caption text-text-3 tabular-nums">
+                  ({filteredPos.length}{pipelineFilter ? `/${allOrders.length}` : ""})
+                </span>
+                {pipelineFilter && (
+                  <button
+                    onClick={() => setPipelineFilter(null)}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-medium transition-colors",
+                      stageThemes[pipelineFilter]?.chip
+                    )}
+                  >
+                    {stageLabels[pipelineFilter]}
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -577,7 +733,7 @@ export default function OrdersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {allOrders.map((po) => {
+                  {filteredPos.map((po) => {
                     const st = effectiveStatus(po);
                     const type = po.po_number.startsWith("TO-") ? "TO" : "RPO";
                     const tb = getPoTypeBadge(type as any);
@@ -608,6 +764,8 @@ export default function OrdersPage() {
               </table>
             </div>
           </div>
+            );
+          })()}
         </div>
       )}
 
