@@ -96,7 +96,7 @@ export function exportPdf(
     head: [buildHeaders()],
     body: rows.map(r => rowToArray(r).map(v => typeof v === "number" ? v.toLocaleString("vi-VN") : v)),
     styles: { fontSize: 7.5, cellPadding: 3, overflow: "linebreak" },
-    headStyles: { fillBackgroundColor: [37, 99, 235], fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
+    headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
     alternateRowStyles: { fillColor: [245, 247, 250] },
     columnStyles: {
       0: { cellWidth: 40 },
