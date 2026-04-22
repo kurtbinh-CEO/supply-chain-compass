@@ -451,14 +451,14 @@ export default function OrdersPage() {
       }
     });
     return arr;
-  }, [shipments, trackFilter, trkSearch, trkNms, trkSkus, trkDateRange, trkSort]);
+  }, [shipments, trackFilter, trkSearch, trkNms, trkSkus, trkDateRange, trkSort, pipelineFilter]);
 
   const trkActiveFilterCount =
     (trkSearch.trim() ? 1 : 0) + (trkNms.size > 0 ? 1 : 0) + (trkSkus.size > 0 ? 1 : 0) + (trkDateRange?.from ? 1 : 0);
   const clearTrkFilters = () => { setTrkSearch(""); setTrkNms(new Set()); setTrkSkus(new Set()); setTrkDateRange(undefined); };
 
   // Reset page when filters/sort change
-  const trkResetKey = `${trackFilter}|${trkSearch}|${Array.from(trkNms).sort().join(",")}|${Array.from(trkSkus).sort().join(",")}|${trkDateRange?.from?.toISOString() ?? ""}|${trkDateRange?.to?.toISOString() ?? ""}|${trkSort}`;
+  const trkResetKey = `${pipelineFilter ?? ""}|${trackFilter}|${trkSearch}|${Array.from(trkNms).sort().join(",")}|${Array.from(trkSkus).sort().join(",")}|${trkDateRange?.from?.toISOString() ?? ""}|${trkDateRange?.to?.toISOString() ?? ""}|${trkSort}`;
   useEffect(() => { setTrkPage(1); }, [trkResetKey]);
 
   const trkTotalPages = Math.max(1, Math.ceil(filteredShipments.length / TRK_PAGE_SIZE));
