@@ -183,6 +183,7 @@ export default function OrdersPage() {
   const [trkDateRange, setTrkDateRange] = useState<DateRange | undefined>(undefined);
   const [trkSort, setTrkSort] = useState<"eta_asc" | "eta_desc" | "stage_desc" | "stage_asc" | "qty_desc" | "nm_asc">("eta_asc");
   const [trkPage, setTrkPage] = useState(1);
+  const [trkSelected, setTrkSelected] = useState<Set<string>>(new Set());
   const TRK_PAGE_SIZE = 25;
 
   // Pipeline rail filter (drives Approval-tab reference table)
@@ -467,6 +468,134 @@ export default function OrdersPage() {
     () => filteredShipments.slice((trkPageSafe - 1) * TRK_PAGE_SIZE, trkPageSafe * TRK_PAGE_SIZE),
     [filteredShipments, trkPageSafe]
   );
+
+  // ── Bulk-select helpers (tracking) ──
+  // Auto-prune selection when filters change so it never references hidden rows
+  useEffect(() => {
+    setTrkSelected((prev) => {
+      if (prev.size === 0) return prev;
+      const visible = new Set(filteredShipments.map((s: any) => s.asn));
+      const next = new Set<string>();
+      prev.forEach((id) => visible.has(id) && next.add(id));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [filteredShipments]);
+
+  const pageAsns = useMemo(() => pagedShipments.map((s: any) => s.asn), [pagedShipments]);
+  const pageAllSelected = pageAsns.length > 0 && pageAsns.every((a) => trkSelected.has(a));
+  const pageSomeSelected = pageAsns.some((a) => trkSelected.has(a));
+
+  const togglePageSelection = () => {
+    setTrkSelected((prev) => {
+      const next = new Set(prev);
+      if (pageAllSelected) pageAsns.forEach((a) => next.delete(a));
+      else pageAsns.forEach((a) => next.add(a));
+      return next;
+    });
+  };
+  const toggleRowSelection = (asn: string) => {
+    setTrkSelected((prev) => {
+      const next = new Set(prev);
+      next.has(asn) ? next.delete(asn) : next.add(asn);
+      return next;
+    });
+  };
+  const selectAllFiltered = () => setTrkSelected(new Set(filteredShipments.map((s: any) => s.asn)));
+  const clearSelection = () => setTrkSelected(new Set());
+
+  const selectedShipments = useMemo(
+    () => filteredShipments.filter((s: any) => trkSelected.has(s.asn)),
+    [filteredShipments, trkSelected]
+  );
+
+  // Bulk action: mark received
+  const [bulkReceiveOpen, setBulkReceiveOpen] = useState(false);
+  const performBulkReceive = () => {
+    const eligible = selectedShipments.filter((s: any) => s.currentStage !== "received");
+    if (eligible.length === 0) {
+      toast.info("Tất cả shipment đã chọn đều đã ở trạng thái Received");
+      setBulkReceiveOpen(false);
+      return;
+    }
+    setStatusOverrides((prev) => {
+      const next = { ...prev };
+      eligible.forEach((s: any) => { next[s.rpo] = "received"; });
+      return next;
+    });
+    toast.success(`Đã đánh dấu Received cho ${eligible.length} shipment`, {
+      description: selectedShipments.length > eligible.length
+        ? `${selectedShipments.length - eligible.length} shipment đã ở trạng thái Received nên bỏ qua`
+        : undefined,
+    });
+    setBulkReceiveOpen(false);
+    clearSelection();
+  };
+
+  // Bulk action: export CSV
+  const exportSelectedCsv = () => {
+    if (selectedShipments.length === 0) return;
+    const headers = ["ASN", "RPO", "NM", "Destination", "SKU", "Qty (m²)", "Driver", "Driver Phone", "Vehicle", "Vehicle Type", "Carrier", "Carrier Phone", "Origin", "Ship Date", "ETA", "Stage", "Fill %"];
+    const escape = (v: unknown) => {
+      const s = v === null || v === undefined ? "" : String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows = selectedShipments.map((s: any) => [
+      s.asn, s.rpo, s.nm, s.destination, s.sku, s.qty,
+      s.driver, s.driverPhone, s.vehicle, s.vehicleType,
+      s.carrier, s.carrierPhone, s.origin, s.shipDate, s.eta,
+      s.currentStage, s.fillPct,
+    ].map(escape).join(","));
+    const csv = "\uFEFF" + [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const ts = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `shipments_${ts}_${selectedShipments.length}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Đã export ${selectedShipments.length} shipment ra CSV`);
+  };
+
+  // Bulk action: download PODs (mock — bundles a manifest of POD URLs since real files don't exist)
+  const downloadSelectedPods = () => {
+    if (selectedShipments.length === 0) return;
+    const withPod = selectedShipments.filter((s: any) => !!s.podUrl);
+    if (withPod.length === 0) {
+      toast.warning("Không có POD nào trong các shipment đã chọn", {
+        description: "POD chỉ tồn tại cho shipment đã ở trạng thái Received",
+      });
+      return;
+    }
+    const lines = [
+      `# POD Bundle Manifest`,
+      `# Generated: ${new Date().toLocaleString("vi-VN")}`,
+      `# Tenant: ${tenant}`,
+      `# Shipments selected: ${selectedShipments.length}`,
+      `# PODs available: ${withPod.length}`,
+      ``,
+      `ASN\tRPO\tNM\tSKU\tQty\tStage\tPOD File`,
+      ...withPod.map((s: any) =>
+        `${s.asn}\t${s.rpo}\t${s.nm}\t${s.sku}\t${s.qty}\t${s.currentStage}\t${s.podUrl}`
+      ),
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const ts = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `pod_manifest_${ts}_${withPod.length}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    const skipped = selectedShipments.length - withPod.length;
+    toast.success(`Đã chuẩn bị ${withPod.length} POD`, {
+      description: skipped > 0 ? `${skipped} shipment chưa có POD nên bỏ qua` : undefined,
+    });
+  };
 
   // Lists for tracking filter popovers (derived from current shipments)
   const trkNmList = useMemo(() => Array.from(new Set(shipments.map((s: any) => s.nm))).sort(), [shipments]);
@@ -1555,11 +1684,69 @@ export default function OrdersPage() {
             </div>
           ) : (
             <>
+              {/* Bulk action toolbar — only when selection exists */}
+              {trkSelected.size > 0 && (
+                <div className="rounded-card border border-primary/40 bg-primary/5 px-3 py-2 flex flex-wrap items-center gap-2 animate-fade-in sticky top-0 z-10 shadow-sm">
+                  <div className="flex items-center gap-2 mr-1">
+                    <span className="inline-flex items-center justify-center h-6 min-w-[24px] px-1.5 rounded-full bg-primary text-primary-foreground text-caption font-semibold tabular-nums">
+                      {trkSelected.size}
+                    </span>
+                    <span className="text-table-sm text-text-1 font-medium">
+                      shipment đã chọn
+                    </span>
+                    {trkSelected.size < filteredShipments.length && (
+                      <button
+                        onClick={selectAllFiltered}
+                        className="text-caption text-primary hover:underline ml-1"
+                      >
+                        Chọn tất cả {filteredShipments.length}
+                      </button>
+                    )}
+                  </div>
+                  <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+                    <button
+                      onClick={exportSelectedCsv}
+                      className="h-8 inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 px-3 text-table-sm text-text-1 hover:bg-surface-1"
+                    >
+                      <Download className="h-3.5 w-3.5" /> Export CSV
+                    </button>
+                    <button
+                      onClick={downloadSelectedPods}
+                      className="h-8 inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 px-3 text-table-sm text-text-1 hover:bg-surface-1"
+                    >
+                      <FileText className="h-3.5 w-3.5" /> Tải POD
+                    </button>
+                    {canEdit && (
+                      <button
+                        onClick={() => setBulkReceiveOpen(true)}
+                        className="h-8 inline-flex items-center gap-1.5 rounded-button bg-success text-success-foreground px-3 text-table-sm font-medium hover:opacity-90"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Đánh dấu đã nhận
+                      </button>
+                    )}
+                    <button
+                      onClick={clearSelection}
+                      className="h-8 inline-flex items-center gap-1 rounded-button px-2 text-caption text-text-3 hover:text-danger"
+                      aria-label="Bỏ chọn"
+                    >
+                      <X className="h-3.5 w-3.5" /> Bỏ chọn
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-card border border-surface-3 bg-surface-2">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-surface-3 bg-surface-1/50">
+                        <th className="px-3 py-2 w-9">
+                          <Checkbox
+                            checked={pageAllSelected ? true : pageSomeSelected ? "indeterminate" : false}
+                            onCheckedChange={togglePageSelection}
+                            aria-label="Chọn tất cả trong trang"
+                          />
+                        </th>
                         {["ASN#", "RPO#", "NM → CN", "Tài xế / SDT", "Xe / Carrier", "SKU · Qty", "ETA", "Tiến trình", ""].map((h) => (
                           <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
                         ))}
@@ -1576,8 +1763,23 @@ export default function OrdersPage() {
                           tone === "success" ? "bg-success-bg text-success" :
                           "bg-surface-1 text-text-3";
                         const currentIdx = ["picked", "loaded", "in_transit", "at_gate", "received"].indexOf(s.currentStage);
+                        const isSelected = trkSelected.has(s.asn);
                         return (
-                          <tr key={s.asn} className="border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer" onClick={() => setOpenShipment(s)}>
+                          <tr
+                            key={s.asn}
+                            className={cn(
+                              "border-b border-surface-3/50 cursor-pointer transition-colors",
+                              isSelected ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-surface-1/30"
+                            )}
+                            onClick={() => setOpenShipment(s)}
+                          >
+                            <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleRowSelection(s.asn)}
+                                aria-label={`Chọn ${s.asn}`}
+                              />
+                            </td>
                             <td className="px-3 py-2.5">
                               <span className={cn("rounded-sm px-1.5 py-0.5", poNumClasses, asnBadge.bg, asnBadge.text)}>{s.asn}</span>
                             </td>
@@ -1905,6 +2107,48 @@ export default function OrdersPage() {
               className={pendingApproval?.kind === "reject" ? "bg-danger text-danger-foreground hover:bg-danger/90" : ""}
             >
               {pendingApproval?.kind === "reject" ? "Xác nhận từ chối" : "Xác nhận duyệt"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ─── Bulk mark-received confirmation ─── */}
+      <AlertDialog open={bulkReceiveOpen} onOpenChange={setBulkReceiveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Đánh dấu Received cho {selectedShipments.length} shipment</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-table-sm text-text-2">
+                <p>
+                  Hành động này sẽ chuyển trạng thái RPO tương ứng sang <span className="font-medium text-success">Received</span>{" "}
+                  và đóng vòng đời shipment. Không thể hoàn tác từ giao diện này.
+                </p>
+                <div className="rounded-button bg-surface-1 p-2 max-h-40 overflow-y-auto">
+                  {selectedShipments.slice(0, 6).map((s: any) => (
+                    <p key={s.asn} className={cn("text-caption", poNumClasses, "text-text-1")}>
+                      {s.asn} → {s.rpo} · {s.sku} · {Number(s.qty).toLocaleString()} m²
+                      {s.currentStage === "received" && <span className="ml-2 text-success">[đã received]</span>}
+                    </p>
+                  ))}
+                  {selectedShipments.length > 6 && (
+                    <p className="text-caption text-text-3 mt-1">… và {selectedShipments.length - 6} shipment khác</p>
+                  )}
+                </div>
+                {selectedShipments.some((s: any) => s.currentStage === "received") && (
+                  <p className="text-caption text-warning">
+                    ⚠ Một số shipment đã ở trạng thái Received sẽ được bỏ qua tự động.
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={performBulkReceive}
+              className="bg-success text-success-foreground hover:opacity-90"
+            >
+              Xác nhận đánh dấu
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
