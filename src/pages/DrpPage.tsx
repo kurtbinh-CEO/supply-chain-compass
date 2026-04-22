@@ -433,6 +433,9 @@ export default function DrpPage() {
             <LogicLink tab="monthly" node={2} tooltip="Logic cân đối Demand − Supply" />
           </div>
           <div className="rounded-card border border-surface-3 bg-surface-2">
+          <div className="px-4 py-2 border-b border-surface-3">
+            <AllocSourceLegend />
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
