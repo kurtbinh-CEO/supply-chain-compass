@@ -1221,3 +1221,35 @@ export default function OrdersPage() {
     </AppLayout>
   );
 }
+
+/* ─────────── FilterChip ─────────── */
+function FilterChip({
+  icon: Icon,
+  label,
+  value,
+  onRemove,
+  mono = false,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  onRemove: () => void;
+  mono?: boolean;
+}) {
+  return (
+    <span className="group inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 pl-2 pr-1 py-0.5 text-caption text-primary transition-colors hover:bg-primary/15">
+      <Icon className="h-3 w-3 shrink-0" />
+      <span className="text-text-3 uppercase tracking-wide">{label}:</span>
+      <span className={cn("font-medium text-text-1 max-w-[160px] truncate", mono && poNumClasses)} title={value}>
+        {value}
+      </span>
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        aria-label={`Xóa filter ${label}: ${value}`}
+        className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full text-text-3 hover:bg-danger/15 hover:text-danger transition-colors"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
