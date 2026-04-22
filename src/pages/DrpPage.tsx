@@ -271,6 +271,32 @@ export default function DrpPage() {
     });
   };
 
+  // Source filter for Layer 1 — show only rows containing selected supply sources
+  type SourceFilterKey = "hubPo" | "lcnbIn" | "internalTransfer" | "onHand" | "pipeline";
+  const [sourceFilter, setSourceFilter] = useState<Set<SourceFilterKey>>(new Set());
+  const toggleSourceFilter = (k: SourceFilterKey) => {
+    setSourceFilter(prev => {
+      const n = new Set(prev);
+      n.has(k) ? n.delete(k) : n.add(k);
+      return n;
+    });
+  };
+  const matchesSourceFilter = (src: AllocSources) => {
+    if (sourceFilter.size === 0) return true;
+    return Array.from(sourceFilter).some(k => {
+      // internalTransfer counts if non-zero (giving or receiving)
+      if (k === "internalTransfer") return src.internalTransfer !== 0;
+      return src[k] > 0;
+    });
+  };
+  const SOURCE_FILTER_OPTIONS: { key: SourceFilterKey; label: string; cls: string }[] = [
+    { key: "hubPo", label: "Hub PO", cls: "border-primary/30 bg-primary/10 text-primary" },
+    { key: "lcnbIn", label: "LCNB", cls: "border-warning/30 bg-warning-bg text-warning" },
+    { key: "internalTransfer", label: "Internal TO", cls: "border-accent bg-accent text-accent-foreground" },
+    { key: "pipeline", label: "Pipeline", cls: "border-info/30 bg-info/10 text-info" },
+    { key: "onHand", label: "On-hand", cls: "border-success/30 bg-success-bg text-success" },
+  ];
+
   const toggleException = (key: string) => {
     setExpandedExceptions((prev) => {
       const next = new Set(prev);
