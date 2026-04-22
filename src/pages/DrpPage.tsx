@@ -195,6 +195,8 @@ export default function DrpPage() {
   const [batchStatus, setBatchStatus] = useState<DrpBatchStatus>("idle");
   const [drpBatchData, setDrpBatchData] = useState<DrpBatch | null>(null);
   const [rejectedCodes, setRejectedCodes] = useState<Set<string>>(new Set());
+  const isPlanLocked = batchStatus === "approved" || batchStatus === "released";
+  const isOverwriteWarning = batchStatus === "draft" || batchStatus === "reviewed";
 
   const drpBatch = useBatchLock({
     batchType: "DRP",
