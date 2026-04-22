@@ -567,7 +567,7 @@ export default function DrpPage() {
                   );
                 })}
 
-                {pivotMode === "sku" && skuAggDrp.map((sk) => {
+                {pivotMode === "sku" && skuAggDrp.filter(sk => matchesSourceFilter(sk.sources)).map((sk) => {
                   const rowKey = `sku-${sk.item}-${sk.variant}`;
                   const isOpen = expandedRows.has(rowKey);
                   return (
