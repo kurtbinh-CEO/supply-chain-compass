@@ -2112,6 +2112,48 @@ export default function OrdersPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* ─── Bulk mark-received confirmation ─── */}
+      <AlertDialog open={bulkReceiveOpen} onOpenChange={setBulkReceiveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Đánh dấu Received cho {selectedShipments.length} shipment</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-table-sm text-text-2">
+                <p>
+                  Hành động này sẽ chuyển trạng thái RPO tương ứng sang <span className="font-medium text-success">Received</span>{" "}
+                  và đóng vòng đời shipment. Không thể hoàn tác từ giao diện này.
+                </p>
+                <div className="rounded-button bg-surface-1 p-2 max-h-40 overflow-y-auto">
+                  {selectedShipments.slice(0, 6).map((s: any) => (
+                    <p key={s.asn} className={cn("text-caption", poNumClasses, "text-text-1")}>
+                      {s.asn} → {s.rpo} · {s.sku} · {Number(s.qty).toLocaleString()} m²
+                      {s.currentStage === "received" && <span className="ml-2 text-success">[đã received]</span>}
+                    </p>
+                  ))}
+                  {selectedShipments.length > 6 && (
+                    <p className="text-caption text-text-3 mt-1">… và {selectedShipments.length - 6} shipment khác</p>
+                  )}
+                </div>
+                {selectedShipments.some((s: any) => s.currentStage === "received") && (
+                  <p className="text-caption text-warning">
+                    ⚠ Một số shipment đã ở trạng thái Received sẽ được bỏ qua tự động.
+                  </p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={performBulkReceive}
+              className="bg-success text-success-foreground hover:opacity-90"
+            >
+              Xác nhận đánh dấu
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <ScreenFooter actionCount={10} />
     </AppLayout>
   );
