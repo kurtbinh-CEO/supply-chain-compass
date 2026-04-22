@@ -245,6 +245,9 @@ export default function OrdersPage() {
     return c;
   }, [allOrders, statusOverrides]);
 
+
+
+
   /* ── Pending-approval queue (draft + submitted) ── */
   const approvalQueue = useMemo(() => {
     return allOrders.filter((o) => {
@@ -406,6 +409,18 @@ export default function OrdersPage() {
         return { ...detail, sku: o.sku, qty: Number(o.quantity), nm, status: st };
       });
   }, [allOrders, statusOverrides]);
+
+  /* ── Tracking-tab: stages that actually have matching shipments ──
+     Shipments only exist for confirmed/shipped/received. Draft/Submitted/Cancelled
+     stages should be disabled on the rail when this tab is active. */
+  const trackingStageCounts = useMemo(() => {
+    const c: Record<string, number> = {};
+    stageOrder.forEach((s) => (c[s] = 0));
+    shipments.forEach((s: any) => {
+      if (c[s.status] !== undefined) c[s.status]++;
+    });
+    return c;
+  }, [shipments]);
 
   const filteredShipments = useMemo(() => {
     const q = trkSearch.trim().toLowerCase();
@@ -720,16 +735,25 @@ export default function OrdersPage() {
           <div className="flex items-stretch gap-2">
             {stageOrder.map((s, i) => {
               const c = stageCounts[s];
-              const isActive = c.count > 0;
+              const hasShipments = trackingStageCounts[s] > 0;
+              // On Tracking tab, only confirmed/shipped/received can possibly have shipments.
+              // Disable any stage that has zero matching shipments (Draft/Submitted always; others if empty).
+              const disabledByTab = activeTab === "tracking" && !hasShipments;
+              const isActive = c.count > 0 && !disabledByTab;
               const isSelected = pipelineFilter === s;
               const theme = stageThemes[s];
               const Icon = theme.icon;
               const pctOfTotal = allOrders.length > 0 ? (c.count / allOrders.length) * 100 : 0;
+              const disabledTitle = disabledByTab
+                ? `Stage "${stageLabels[s]}" không có shipment nào — shipment chỉ phát sinh từ Confirmed trở đi`
+                : !isActive ? `Không có PO ở stage "${stageLabels[s]}"` : "";
               return (
                 <div key={s} className="flex-1 flex items-stretch gap-2">
                   <button
                     onClick={() => isActive && setPipelineFilter(isSelected ? null : s)}
                     disabled={!isActive}
+                    title={disabledTitle || undefined}
+                    aria-disabled={!isActive}
                     className={cn(
                       "group relative flex-1 text-left rounded-card border p-3 transition-all",
                       isActive ? "bg-surface-0 hover:shadow-md cursor-pointer" : "bg-surface-1/40 cursor-not-allowed opacity-60",
@@ -775,6 +799,14 @@ export default function OrdersPage() {
                       />
                     </div>
                     <p className="text-caption tabular-nums text-text-3 mt-1">{pctOfTotal.toFixed(0)}% tổng</p>
+                    {activeTab === "tracking" && (
+                      <p className={cn(
+                        "text-caption tabular-nums mt-0.5",
+                        hasShipments ? "text-text-2" : "text-warning"
+                      )}>
+                        {trackingStageCounts[s]} shipment
+                      </p>
+                    )}
                   </button>
                   {i < stageOrder.length - 1 && (
                     <div className="flex items-center">
@@ -1435,24 +1467,55 @@ export default function OrdersPage() {
       {/* ═══════════════════ TAB 3: SHIPMENT TRACKING ═══════════════════ */}
       {activeTab === "tracking" && !isEmpty && (
         <div className="animate-fade-in space-y-3">
-          {pipelineFilter && (
-            <div className={cn(
-              "rounded-card border px-3 py-2 flex items-center gap-2 text-table-sm",
-              stageThemes[pipelineFilter]?.chip
-            )}>
-              <FilterIcon className="h-3.5 w-3.5 shrink-0" />
-              <span>Đang lọc theo pipeline: <span className="font-semibold">{stageLabels[pipelineFilter]}</span></span>
-              {!["confirmed", "shipped", "received"].includes(pipelineFilter) && (
-                <span className="text-warning ml-1">— shipment chỉ tồn tại từ stage Confirmed</span>
-              )}
-              <button
-                onClick={() => setPipelineFilter(null)}
-                className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption hover:bg-surface-3/40"
+          {pipelineFilter && (() => {
+            const isShipmentStage = ["confirmed", "shipped", "received"].includes(pipelineFilter);
+            const matchedCount = trackingStageCounts[pipelineFilter] ?? 0;
+            // Validation: filter resolves to zero shipments → show warning banner
+            const isInvalid = !isShipmentStage || matchedCount === 0;
+            return (
+              <div
+                role={isInvalid ? "alert" : undefined}
+                className={cn(
+                  "rounded-card border px-3 py-2 flex items-center gap-2 text-table-sm",
+                  isInvalid
+                    ? "border-warning/40 bg-warning/10 text-warning-foreground"
+                    : stageThemes[pipelineFilter]?.chip
+                )}
               >
-                <X className="h-3 w-3" /> Bỏ lọc
-              </button>
-            </div>
-          )}
+                {isInvalid ? (
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning" />
+                ) : (
+                  <FilterIcon className="h-3.5 w-3.5 shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <span>
+                    Đang lọc theo pipeline: <span className="font-semibold">{stageLabels[pipelineFilter]}</span>
+                    {isShipmentStage && (
+                      <span className="text-text-3 ml-1">({matchedCount} shipment)</span>
+                    )}
+                  </span>
+                  {isInvalid && (
+                    <p className="text-caption text-warning mt-0.5">
+                      {!isShipmentStage
+                        ? `Stage "${stageLabels[pipelineFilter]}" không có shipment nào — shipment chỉ phát sinh từ Confirmed trở đi. Hãy chọn Confirmed / Shipped / Received hoặc bỏ lọc để xem dữ liệu.`
+                        : `Stage "${stageLabels[pipelineFilter]}" hiện không có shipment khớp với bộ lọc.`}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setPipelineFilter(null)}
+                  className={cn(
+                    "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption shrink-0",
+                    isInvalid
+                      ? "border border-warning/40 hover:bg-warning/20"
+                      : "hover:bg-surface-3/40"
+                  )}
+                >
+                  <X className="h-3 w-3" /> Bỏ lọc
+                </button>
+              </div>
+            );
+          })()}
           {/* Header + count */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
