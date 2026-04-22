@@ -30,8 +30,17 @@ interface SkuException {
   options: { label: string; source: string; qty: number; cost: string; time: string; savingVsB: string; recommended?: boolean }[];
 }
 
+interface AllocSources {
+  onHand: number;          // Tồn kho có sẵn tại CN
+  pipeline: number;        // RPO/PO đang về (Hub đã đặt trước)
+  hubPo: number;           // PO mới từ Hub (NM ngoài) – sourcing fresh
+  lcnbIn: number;          // Lateral nhận từ CN khác (LCNB)
+  internalTransfer: number;// Luân chuyển nội bộ (TO giữa kho cùng CN hoặc tái phân bổ DC)
+}
+
 interface SkuFull {
   item: string; variant: string; demand: number; allocated: number; fillPct: number; status: string;
+  sources: AllocSources;
 }
 
 interface CnRow {
