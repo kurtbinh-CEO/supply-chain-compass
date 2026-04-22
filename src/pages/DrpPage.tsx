@@ -191,6 +191,11 @@ export default function DrpPage() {
   const [drpStep, setDrpStep] = useState(0);
   const [resolvedExceptions, setResolvedExceptions] = useState<Record<string, string>>({});
 
+  /* ── DRP Batch lifecycle (Approve & Release flow) ── */
+  const [batchStatus, setBatchStatus] = useState<DrpBatchStatus>("idle");
+  const [drpBatchData, setDrpBatchData] = useState<DrpBatch | null>(null);
+  const [rejectedCodes, setRejectedCodes] = useState<Set<string>>(new Set());
+
   const drpBatch = useBatchLock({
     batchType: "DRP",
     status: "info",
