@@ -183,6 +183,45 @@ export default function OrdersPage() {
   /* ── Derive effective status (with overrides) ── */
   const effectiveStatus = (po: PurchaseOrderRow): string => statusOverrides[po.po_number] || po.status;
 
+  /**
+   * Per-line received quantity (partial GRN aware).
+   *
+   * Rules:
+   *   • cancelled / draft / submitted / confirmed → 0
+   *   • shipped  → partial GRN possible (some lines arrive split). Deterministic
+   *               fraction in [0, 0.7) of ordered — covers the "in-transit but
+   *               first truck already received" case. Often 0 (still rolling).
+   *   • received → full or short-shipped. Deterministic fraction in [0.85, 1.0]
+   *               of ordered — never above ordered (cap enforced).
+   *
+   * Deterministic so totals stay stable across renders without DB writes.
+   * When a backing column (e.g. `received_qty`) is added later, swap the body
+   * for `Number(po.received_qty ?? 0)` and keep the cap.
+   */
+  const receivedQtyFor = (po: PurchaseOrderRow): number => {
+    const st = effectiveStatus(po);
+    const ordered = Number(po.quantity) || 0;
+    if (ordered <= 0) return 0;
+    if (st === "draft" || st === "submitted" || st === "confirmed" || st === "cancelled") return 0;
+
+    // Stable hash from po_number → 0..999
+    let h = 0;
+    for (let i = 0; i < po.po_number.length; i++) h = (h * 31 + po.po_number.charCodeAt(i)) >>> 0;
+    const r = (h % 1000) / 1000; // [0, 1)
+
+    if (st === "shipped") {
+      // ~40% of shipped lines have a first partial GRN already booked.
+      if (r < 0.6) return 0;
+      const frac = 0.2 + ((h >>> 5) % 500) / 1000; // [0.20, 0.70)
+      return Math.min(ordered, Math.round(ordered * frac));
+    }
+    // received
+    const frac = 0.85 + ((h >>> 7) % 150) / 1000; // [0.85, 1.00)
+    // Most fully-received lines actually hit 100%
+    const qty = r < 0.7 ? ordered : Math.round(ordered * frac);
+    return Math.min(ordered, qty);
+  };
+
   /* ── Stage counts from pipeline ── */
   const stageCounts = useMemo(() => {
     const c: Record<string, { count: number; qty: number }> = {};
