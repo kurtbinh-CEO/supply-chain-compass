@@ -1607,6 +1607,160 @@ export default function DrpPage() {
         );
       })()}
       <ScreenFooter actionCount={14} />
+
+      {/* TO Detail slide-in panel */}
+      <Sheet open={!!selectedMove} onOpenChange={(o) => !o && setSelectedMove(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-[480px] overflow-y-auto bg-surface-1">
+          {selectedMove && (() => {
+            const m = selectedMove;
+            // Derive deterministic synthetic line items + dates from the move
+            const today = new Date();
+            const created = new Date(today); created.setDate(today.getDate() - 1);
+            const etaDays = m.eta === "Same-day" ? 0 : m.eta === "1 ngày" ? 1 : -2;
+            const etaDate = new Date(today); etaDate.setDate(today.getDate() + etaDays);
+            const fmtDate = (d: Date) => d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
+            const fmtDT = (d: Date) => d.toLocaleString("vi-VN", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+            // Split qty into 2-3 batches
+            const batches = m.qty > 300
+              ? [Math.round(m.qty * 0.5), Math.round(m.qty * 0.3), m.qty - Math.round(m.qty * 0.5) - Math.round(m.qty * 0.3)]
+              : m.qty > 100 ? [Math.round(m.qty * 0.6), m.qty - Math.round(m.qty * 0.6)] : [m.qty];
+            const lineItems = batches.map((q, i) => ({
+              line: i + 1,
+              sku: `${m.item} ${m.variant}`,
+              batch: `B${String(today.getFullYear()).slice(2)}${String(today.getMonth() + 1).padStart(2, "0")}-${String(i + 1).padStart(3, "0")}`,
+              qty: q,
+              uom: "carton",
+            }));
+            // Status timeline based on ETA
+            const statusSteps = [
+              { key: "created", label: "Tạo TO", at: fmtDT(created), done: true },
+              { key: "approved", label: "Duyệt", at: m.eta === "Quá hạn" ? "—" : fmtDT(new Date(created.getTime() + 3 * 3600 * 1000)), done: m.eta !== "Quá hạn" },
+              { key: "shipped", label: "Đã xuất kho", at: m.eta === "Same-day" ? fmtDT(today) : "—", done: m.eta === "Same-day" },
+              { key: "received", label: "Nhận", at: "—", done: false },
+            ];
+            const currentStatus = m.eta === "Same-day" ? "Đang vận chuyển" : m.eta === "Quá hạn" ? "Chờ duyệt (trễ)" : "Đã duyệt";
+            const statusTone = m.eta === "Same-day" ? "bg-success-bg text-success" : m.eta === "Quá hạn" ? "bg-danger-bg text-danger" : "bg-warning/10 text-warning";
+
+            return (
+              <>
+                <SheetHeader className="space-y-2 pb-4 border-b border-surface-3">
+                  <div className="flex items-center gap-2">
+                    <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium border",
+                      m.kind === "internal" ? "border-accent bg-accent text-accent-foreground" : "border-warning/30 bg-warning/10 text-warning"
+                    )}>
+                      {m.kind === "internal" ? "Internal TO" : "LCNB Lateral"}
+                    </span>
+                    <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", statusTone)}>{currentStatus}</span>
+                  </div>
+                  <SheetTitle className="font-display text-h3 font-bold text-text-1 font-mono break-all">{m.toCode}</SheetTitle>
+                  <SheetDescription className="text-caption text-text-3">
+                    {m.counterpart}
+                  </SheetDescription>
+                </SheetHeader>
+
+                {/* Summary */}
+                <div className="grid grid-cols-3 gap-3 py-4 border-b border-surface-3">
+                  <div>
+                    <div className="text-table-header uppercase text-text-3 tracking-wide">Hướng</div>
+                    <div className={cn("font-display text-body font-semibold", m.direction === "in" ? "text-success" : "text-warning")}>
+                      {m.direction === "in" ? "↘ Nhận" : "↗ Chuyển đi"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-table-header uppercase text-text-3 tracking-wide">Tổng qty</div>
+                    <div className="font-display text-body font-semibold text-text-1 tabular-nums">{m.qty.toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div className="text-table-header uppercase text-text-3 tracking-wide">ETA</div>
+                    <div className={cn("font-display text-body font-semibold",
+                      m.eta === "Same-day" && "text-success",
+                      m.eta === "1 ngày" && "text-warning",
+                      m.eta === "Quá hạn" && "text-danger",
+                    )}>{m.eta}</div>
+                  </div>
+                </div>
+
+                {/* Dates */}
+                <div className="py-4 border-b border-surface-3 space-y-2">
+                  <div className="text-table-header uppercase text-text-3 tracking-wide mb-1">Ngày</div>
+                  <div className="flex justify-between text-table">
+                    <span className="text-text-3">Tạo lúc</span>
+                    <span className="text-text-1 tabular-nums">{fmtDate(created)}</span>
+                  </div>
+                  <div className="flex justify-between text-table">
+                    <span className="text-text-3">ETA giao</span>
+                    <span className={cn("tabular-nums font-medium",
+                      m.eta === "Quá hạn" ? "text-danger" : "text-text-1"
+                    )}>{fmtDate(etaDate)}{m.eta === "Quá hạn" && " (trễ 2 ngày)"}</span>
+                  </div>
+                </div>
+
+                {/* Line items */}
+                <div className="py-4 border-b border-surface-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-table-header uppercase text-text-3 tracking-wide">Line items</div>
+                    <span className="text-caption text-text-3">{lineItems.length} dòng</span>
+                  </div>
+                  <div className="rounded-card border border-surface-3 overflow-hidden">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-surface-2 border-b border-surface-3">
+                          <th className="px-3 py-2 text-left text-table-header uppercase text-text-3">#</th>
+                          <th className="px-3 py-2 text-left text-table-header uppercase text-text-3">SKU</th>
+                          <th className="px-3 py-2 text-left text-table-header uppercase text-text-3">Batch</th>
+                          <th className="px-3 py-2 text-right text-table-header uppercase text-text-3">Qty</th>
+                          <th className="px-3 py-2 text-left text-table-header uppercase text-text-3">UoM</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lineItems.map(li => (
+                          <tr key={li.line} className="border-b border-surface-3/50 last:border-0">
+                            <td className="px-3 py-2 text-table text-text-3 tabular-nums">{li.line}</td>
+                            <td className="px-3 py-2 text-table font-medium text-text-1">{li.sku}</td>
+                            <td className="px-3 py-2 text-caption font-mono text-text-2">{li.batch}</td>
+                            <td className="px-3 py-2 text-table tabular-nums text-text-1 text-right">{li.qty.toLocaleString()}</td>
+                            <td className="px-3 py-2 text-caption text-text-3">{li.uom}</td>
+                          </tr>
+                        ))}
+                        <tr className="bg-surface-2/60">
+                          <td colSpan={3} className="px-3 py-2 text-caption font-medium text-text-2 text-right">Tổng</td>
+                          <td className="px-3 py-2 text-table tabular-nums font-semibold text-text-1 text-right">{m.qty.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-caption text-text-3">carton</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Status timeline */}
+                <div className="py-4 border-b border-surface-3">
+                  <div className="text-table-header uppercase text-text-3 tracking-wide mb-3">Trạng thái</div>
+                  <ol className="space-y-3">
+                    {statusSteps.map((s, i) => (
+                      <li key={s.key} className="flex items-start gap-3">
+                        <div className={cn("mt-0.5 h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0",
+                          s.done ? "bg-success text-success-foreground" : "bg-surface-3 text-text-3"
+                        )}>{s.done ? "✓" : i + 1}</div>
+                        <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                          <span className={cn("text-table", s.done ? "text-text-1 font-medium" : "text-text-3")}>{s.label}</span>
+                          <span className="text-caption text-text-3 tabular-nums">{s.at}</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                {/* Reason */}
+                <div className="py-4">
+                  <div className="text-table-header uppercase text-text-3 tracking-wide mb-2">Lý do TO</div>
+                  <p className="text-table text-text-2 leading-relaxed">{m.reason}</p>
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
+
     </AppLayout>
   );
 }
