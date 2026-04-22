@@ -575,6 +575,18 @@ export default function DrpPage() {
         </div>
       )}
 
+      {/* DRP Approve & Release Bar (sticky, batch lifecycle) */}
+      <DrpReleaseBar
+        status={batchStatus}
+        batch={visibleBatch}
+        canApprove={canApprove}
+        onApproveAll={handleApproveAll}
+        onReject={handleRejectItems}
+        onRelease={handleReleaseBatch}
+        onMarkReviewed={handleMarkReviewed}
+        onCancelBatch={handleCancelBatch}
+      />
+
       {/* Version Conflict */}
       {drpConflict && (
         <VersionConflictDialog
