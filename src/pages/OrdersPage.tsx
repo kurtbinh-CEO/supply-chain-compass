@@ -268,6 +268,8 @@ export default function OrdersPage() {
   const filteredBdOrders = useMemo(() => {
     const q = bdSearch.trim().toLowerCase();
     return allOrders.filter((o) => {
+      // Pipeline rail filter (cross-tab) — keep BPOs that have at least one line at this stage
+      // (handled at NM/BPO aggregation by tagging — here we keep the line for analytics)
       const nm = supplierToNm[o.supplier] || o.supplier;
       if (bdNms.size > 0 && !bdNms.has(nm)) return false;
       if (bdSkus.size > 0 && !bdSkus.has(o.sku)) return false;
