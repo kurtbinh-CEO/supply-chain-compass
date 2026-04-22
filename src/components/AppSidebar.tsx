@@ -2,8 +2,8 @@ import { NavLink } from "@/components/NavLink";
 import {
   ClipboardCheck, Activity, BarChart3, Handshake, Boxes,
   Package, CalendarDays, GitBranch,
-  ShoppingCart, Users, Database, FileBarChart, Settings,
-  ChevronLeft, Play, BookOpen, Building, GraduationCap,
+  Truck, Users, Database, FileBarChart, Settings,
+  ChevronLeft, Play, BookOpen, Building, GraduationCap, LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/components/SidebarContext";
@@ -27,6 +27,12 @@ interface NavGroup {
 }
 
 const navGroups: NavGroup[] = [
+  {
+    labelKey: "nav.overview",
+    items: [
+      { titleKey: "nav.dashboard", icon: LayoutDashboard, url: "/" },
+    ],
+  },
   {
     labelKey: "nav.workplace",
     items: [
@@ -53,7 +59,7 @@ const navGroups: NavGroup[] = [
       { titleKey: "nav.nmSupply", icon: Package, url: "/supply" },
       { titleKey: "nav.demandWeekly", icon: CalendarDays, url: "/demand-weekly" },
       { titleKey: "nav.drpAllocation", icon: GitBranch, url: "/drp" },
-      { titleKey: "nav.orders", icon: ShoppingCart, url: "/orders" },
+      { titleKey: "nav.orders", icon: Truck, url: "/orders" },
     ],
   },
   {
