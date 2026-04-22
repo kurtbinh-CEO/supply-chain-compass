@@ -304,15 +304,30 @@ export default function OrdersPage() {
       const released = sumWhere(["confirmed", "shipped", "received"]);
       // Shipped = ASN issued
       const shipped = sumWhere(["shipped", "received"]);
-      // Delivered = received (use received qty when available, else ordered qty)
-      const delivered = orders
-        .filter((o) => effectiveStatus(o) === "received")
-        .reduce((s, o) => s + Number(o.quantity), 0);
+      // Delivered = Σ actual GRN qty per line (partial-aware, capped at ordered)
+      const delivered = orders.reduce((s, o) => s + receivedQtyFor(o), 0);
 
       const remaining = Math.max(0, bpoTotal - delivered);
       const completionPct = bpoTotal > 0 ? Math.round((delivered / bpoTotal) * 100) : 0;
 
       const rpos: RpoChild[] = orders
+        .filter((o) => effectiveStatus(o) !== "cancelled")
+        .map((o) => {
+          const st = effectiveStatus(o);
+          const ordered = Number(o.quantity);
+          const actual = receivedQtyFor(o);
+          return {
+            rpo: o.po_number,
+            status: st,
+            item: o.sku,
+            qty: ordered,
+            asn: ["shipped", "received"].includes(st) ? `ASN-${o.po_number.slice(-3)}` : null,
+            shipDate: ["shipped", "received"].includes(st) ? fmtDate(o.expected_date) : "—",
+            eta: fmtDate(o.expected_date),
+            actual,
+            expected_date: o.expected_date,
+          };
+        });
         .filter((o) => effectiveStatus(o) !== "cancelled")
         .map((o) => {
           const st = effectiveStatus(o);
