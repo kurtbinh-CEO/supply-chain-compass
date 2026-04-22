@@ -2,8 +2,11 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   Building2, FileText, ClipboardCheck, PackageCheck, Truck, Warehouse, ChevronRight,
+  FileSpreadsheet, FileText as FileCsv,
 } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
+import { exportToCsv, exportToXlsx, type ExportColumn } from "@/lib/export-utils";
+import { toast } from "sonner";
 
 export interface BpoFlowRpo {
   rpo: string;
@@ -222,18 +225,67 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
       </div>
 
       {/* Drill-down children */}
-      {expandedStage && (
+      {expandedStage && (() => {
+        const rows = childrenForStage(expandedStage);
+        const stageLabel = stageDefs.find((s) => s.key === expandedStage)?.label ?? expandedStage;
+        const cols: ExportColumn<BpoFlowRpo>[] = [
+          { header: "RPO#",      accessor: (r) => r.rpo },
+          { header: "Item",      accessor: (r) => r.item },
+          { header: "Qty",       accessor: (r) => r.qty },
+          { header: "ASN#",      accessor: (r) => r.asn ?? "" },
+          { header: "Ship date", accessor: (r) => r.shipDate },
+          { header: "ETA",       accessor: (r) => r.eta },
+          { header: "Actual",    accessor: (r) => (r.actual > 0 ? r.actual : "") },
+          { header: "Status",    accessor: (r) => stageLabels[r.status] ?? r.status },
+        ];
+        const ts = new Date().toISOString().slice(0, 10);
+        const baseName = `${data.bpo}_${data.nm}_${stageLabel}_${ts}`;
+        const handleCsv = () => {
+          if (rows.length === 0) { toast.error("Không có dữ liệu để xuất"); return; }
+          exportToCsv(rows, cols, baseName);
+          toast.success(`Đã xuất ${rows.length} dòng → CSV`);
+        };
+        const handleXlsx = () => {
+          if (rows.length === 0) { toast.error("Không có dữ liệu để xuất"); return; }
+          exportToXlsx(rows, cols, baseName, `${data.nm}-${stageLabel}`);
+          toast.success(`Đã xuất ${rows.length} dòng → Excel`);
+        };
+        return (
         <div className="border-t border-surface-3 bg-surface-1/40 animate-fade-in">
-          <div className="px-4 py-2 border-b border-surface-3/50 flex items-center justify-between">
+          <div className="px-4 py-2 border-b border-surface-3/50 flex items-center justify-between gap-3">
             <p className="text-caption text-text-2 uppercase tracking-wide">
-              Stage <span className="text-text-1 font-semibold">{stageDefs.find((s) => s.key === expandedStage)?.label}</span> · {childrenForStage(expandedStage).length} record
+              Stage <span className="text-text-1 font-semibold">{stageLabel}</span> · {rows.length} record
             </p>
-            <button
-              onClick={() => setExpandedStage(null)}
-              className="text-caption text-text-3 hover:text-text-1"
-            >
-              Đóng
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleCsv}
+                disabled={rows.length === 0}
+                className={cn(
+                  "rounded-button border border-surface-3 bg-surface-0 px-2 py-1 text-caption font-medium flex items-center gap-1 transition-colors",
+                  rows.length === 0 ? "opacity-40 cursor-not-allowed" : "text-text-2 hover:text-text-1 hover:bg-surface-1"
+                )}
+                title="Xuất CSV"
+              >
+                <FileCsv className="h-3 w-3" /> CSV
+              </button>
+              <button
+                onClick={handleXlsx}
+                disabled={rows.length === 0}
+                className={cn(
+                  "rounded-button border border-surface-3 bg-surface-0 px-2 py-1 text-caption font-medium flex items-center gap-1 transition-colors",
+                  rows.length === 0 ? "opacity-40 cursor-not-allowed" : "text-success hover:bg-success-bg"
+                )}
+                title="Xuất Excel"
+              >
+                <FileSpreadsheet className="h-3 w-3" /> Excel
+              </button>
+              <button
+                onClick={() => setExpandedStage(null)}
+                className="text-caption text-text-3 hover:text-text-1 ml-1"
+              >
+                Đóng
+              </button>
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -245,7 +297,7 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
                 </tr>
               </thead>
               <tbody>
-                {childrenForStage(expandedStage).map((r) => {
+                {rows.map((r) => {
                   const rpoBadge = getPoTypeBadge("RPO");
                   const asnBadge = getPoTypeBadge("ASN");
                   const stColor =
@@ -276,14 +328,15 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
                     </tr>
                   );
                 })}
-                {childrenForStage(expandedStage).length === 0 && (
+                {rows.length === 0 && (
                   <tr><td colSpan={8} className="px-3 py-4 text-center text-text-3 text-caption">Chưa có record nào ở stage này.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
