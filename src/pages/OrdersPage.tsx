@@ -177,6 +177,13 @@ export default function OrdersPage() {
   // Tracking tab state
   const [openShipment, setOpenShipment] = useState<ShipmentDetail | null>(null);
   const [trackFilter, setTrackFilter] = useState<"all" | "in_transit" | "overdue" | "received">("all");
+  const [trkSearch, setTrkSearch] = useState("");
+  const [trkNms, setTrkNms] = useState<Set<string>>(new Set());
+  const [trkSkus, setTrkSkus] = useState<Set<string>>(new Set());
+  const [trkDateRange, setTrkDateRange] = useState<DateRange | undefined>(undefined);
+  const [trkSort, setTrkSort] = useState<"eta_asc" | "eta_desc" | "stage_desc" | "stage_asc" | "qty_desc" | "nm_asc">("eta_asc");
+  const [trkPage, setTrkPage] = useState(1);
+  const TRK_PAGE_SIZE = 25;
 
   // Pipeline rail filter (drives Approval-tab reference table)
   const [pipelineFilter, setPipelineFilter] = useState<string | null>(null);
