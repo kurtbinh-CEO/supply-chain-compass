@@ -14,7 +14,7 @@ const SOURCE_META = [
   { key: "pipeline" as const, label: "Pipeline", short: "PL", color: "bg-info/80", textColor: "text-info", Icon: Truck, desc: "RPO/PO đang về (Hub đã đặt trước)" },
   { key: "hubPo" as const, label: "Hub PO", short: "Hub", color: "bg-primary/80", textColor: "text-primary", Icon: Factory, desc: "PO mới sourcing từ Hub (NM ngoài)" },
   { key: "lcnbIn" as const, label: "LCNB", short: "LCNB", color: "bg-warning/80", textColor: "text-warning", Icon: ArrowLeftRight, desc: "Lateral nhận từ CN khác (LCNB)" },
-  { key: "internalTransfer" as const, label: "Internal TO", short: "TO", color: "bg-purple-500/80", textColor: "text-purple-600 dark:text-purple-400", Icon: Repeat, desc: "Luân chuyển nội bộ giữa kho cùng CN" },
+  { key: "internalTransfer" as const, label: "Internal TO", short: "TO", color: "bg-accent", textColor: "text-accent-foreground", Icon: Repeat, desc: "Luân chuyển nội bộ giữa kho cùng CN" },
 ];
 
 interface Props {
