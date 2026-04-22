@@ -89,6 +89,64 @@ const stageLabels: Record<string, string> = {
   shipped: "Shipped", received: "Received", cancelled: "Cancelled",
 };
 
+/* Stage visual theming — vivid status colors per pipeline stage */
+type StageTheme = {
+  icon: typeof FileText;
+  iconBg: string;       // background of icon circle
+  iconColor: string;    // foreground of icon circle
+  ring: string;         // ring around active card
+  numberColor: string;  // big number color when active
+  bar: string;          // progress bar fill color
+  chip: string;         // selected-state chip background+border classes
+};
+const stageThemes: Record<string, StageTheme> = {
+  draft: {
+    icon: FileText,
+    iconBg: "bg-slate-100 dark:bg-slate-800",
+    iconColor: "text-slate-500 dark:text-slate-300",
+    ring: "ring-slate-300 dark:ring-slate-600",
+    numberColor: "text-slate-700 dark:text-slate-100",
+    bar: "bg-slate-400",
+    chip: "border-slate-300 bg-slate-100/80 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100",
+  },
+  submitted: {
+    icon: ClipboardCheck,
+    iconBg: "bg-amber-100 dark:bg-amber-900/40",
+    iconColor: "text-amber-600 dark:text-amber-300",
+    ring: "ring-amber-400",
+    numberColor: "text-amber-700 dark:text-amber-200",
+    bar: "bg-amber-400",
+    chip: "border-amber-400 bg-amber-50 text-amber-800 dark:border-amber-500 dark:bg-amber-950/50 dark:text-amber-200",
+  },
+  confirmed: {
+    icon: PackageCheck,
+    iconBg: "bg-blue-100 dark:bg-blue-950/50",
+    iconColor: "text-blue-600 dark:text-blue-300",
+    ring: "ring-blue-400",
+    numberColor: "text-blue-700 dark:text-blue-200",
+    bar: "bg-blue-500",
+    chip: "border-blue-400 bg-blue-50 text-blue-800 dark:border-blue-500 dark:bg-blue-950/50 dark:text-blue-200",
+  },
+  shipped: {
+    icon: Truck,
+    iconBg: "bg-violet-100 dark:bg-violet-950/50",
+    iconColor: "text-violet-600 dark:text-violet-300",
+    ring: "ring-violet-400",
+    numberColor: "text-violet-700 dark:text-violet-200",
+    bar: "bg-violet-500",
+    chip: "border-violet-400 bg-violet-50 text-violet-800 dark:border-violet-500 dark:bg-violet-950/50 dark:text-violet-200",
+  },
+  received: {
+    icon: CheckCircle2,
+    iconBg: "bg-emerald-100 dark:bg-emerald-950/50",
+    iconColor: "text-emerald-600 dark:text-emerald-300",
+    ring: "ring-emerald-400",
+    numberColor: "text-emerald-700 dark:text-emerald-200",
+    bar: "bg-emerald-500",
+    chip: "border-emerald-400 bg-emerald-50 text-emerald-800 dark:border-emerald-500 dark:bg-emerald-950/50 dark:text-emerald-200",
+  },
+};
+
 export default function OrdersPage() {
   const { tenant } = useTenant();
   const navigate = useNavigate();
