@@ -23,6 +23,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { Textarea } from "@/components/ui/textarea";
 import { useRbac } from "@/components/RbacContext";
 import { CheckCircle2, Truck, Link2, ShieldAlert } from "lucide-react";
+import { DrpReleaseBar, type DrpBatch, type DrpBatchStatus } from "@/components/drp/DrpReleaseBar";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -189,6 +190,11 @@ export default function DrpPage() {
   const [drpRunning, setDrpRunning] = useState(false);
   const [drpStep, setDrpStep] = useState(0);
   const [resolvedExceptions, setResolvedExceptions] = useState<Record<string, string>>({});
+
+  /* ── DRP Batch lifecycle (Approve & Release flow) ── */
+  const [batchStatus, setBatchStatus] = useState<DrpBatchStatus>("idle");
+  const [drpBatchData, setDrpBatchData] = useState<DrpBatch | null>(null);
+  const [rejectedCodes, setRejectedCodes] = useState<Set<string>>(new Set());
 
   const drpBatch = useBatchLock({
     batchType: "DRP",
@@ -409,6 +415,74 @@ export default function DrpPage() {
 
   const drpStepLabels = ["Netting", "Allocation", "PO generation"];
 
+  /* ── Build a synthetic DRP batch from current data ── */
+  const buildDrpBatch = (): DrpBatch => {
+    const ts = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const id = `DRP-${ts.getFullYear()}-${pad(ts.getMonth() + 1)}-${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}`;
+    const items: DrpBatch["items"] = [];
+    let seq = 1;
+    data.forEach((cn) => {
+      cn.allSkus.forEach((sk) => {
+        const src = sk.sources;
+        // RPO: hub PO contributions become RPOs
+        if (src.hubPo > 0) {
+          items.push({
+            code: `RPO-MKD-${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${String(seq++).padStart(3, "0")}`,
+            kind: "RPO",
+            nm: "Mikado",
+            sku: `${sk.item} ${sk.variant}`,
+            qty: src.hubPo,
+            value: src.hubPo * 145_000,
+            eta: `${pad(ts.getDate() + 7)}/${pad(ts.getMonth() + 1)}`,
+          });
+        }
+        // TO: internal transfer (positive = inbound) creates a TO
+        if (src.internalTransfer > 0) {
+          items.push({
+            code: `TO-DN-${cn.cn.replace("CN-", "")}-${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${String(seq++).padStart(3, "0")}`,
+            kind: "TO",
+            fromCn: "CN-DN",
+            toCn: cn.cn,
+            sku: `${sk.item} ${sk.variant}`,
+            qty: src.internalTransfer,
+            value: src.internalTransfer * 12_000, // transfer cost only
+            eta: `${pad(ts.getDate() + 1)}/${pad(ts.getMonth() + 1)}`,
+          });
+        }
+        // LCNB inbound also as TO (cross-CN lateral)
+        if (src.lcnbIn > 0) {
+          items.push({
+            code: `TO-LCNB-${cn.cn.replace("CN-", "")}-${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${String(seq++).padStart(3, "0")}`,
+            kind: "TO",
+            fromCn: "CN-DN",
+            toCn: cn.cn,
+            sku: `${sk.item} ${sk.variant}`,
+            qty: src.lcnbIn,
+            value: src.lcnbIn * 8_000,
+            eta: `${pad(ts.getDate() + 1)}/${pad(ts.getMonth() + 1)}`,
+          });
+        }
+      });
+    });
+    // Unresolved exceptions = those not in resolvedExceptions
+    const unresolved: DrpBatch["unresolved"] = [];
+    data.forEach((cn) => {
+      cn.exceptionList.forEach((e) => {
+        const key = `${cn.cn}-${e.item}-${e.variant}`;
+        if (!resolvedExceptions[key]) {
+          unresolved.push({ cn: cn.cn, item: e.item, variant: e.variant, gap: e.gap, type: e.type });
+        }
+      });
+    });
+    return {
+      id,
+      createdAt: `${pad(ts.getHours())}:${pad(ts.getMinutes())}`,
+      items,
+      unresolved,
+    };
+  };
+
   const handleRunDrp = () => {
     setShowDrpConfirm(false);
     setDrpRunning(true);
@@ -418,9 +492,55 @@ export default function DrpPage() {
     setTimeout(() => {
       setDrpRunning(false);
       setDrpStep(0);
-      toast.success("DRP hoàn tất", { description: `${totalExc} exceptions. ${totalRpos} RPOs.` });
+      const batch = buildDrpBatch();
+      setDrpBatchData(batch);
+      setBatchStatus("draft");
+      setRejectedCodes(new Set());
+      toast.success("DRP hoàn tất — chờ Review & Approve", {
+        description: `Batch ${batch.id}: ${batch.items.filter(i => i.kind === "RPO").length} RPO + ${batch.items.filter(i => i.kind === "TO").length} TO`,
+      });
     }, 2400);
   };
+
+  /* ── Release bar handlers ── */
+  const visibleBatch = useMemo<DrpBatch | null>(() => {
+    if (!drpBatchData) return null;
+    return {
+      ...drpBatchData,
+      items: drpBatchData.items.map((i) => ({ ...i, rejected: rejectedCodes.has(i.code) })),
+    };
+  }, [drpBatchData, rejectedCodes]);
+
+  const handleApproveAll = (note: string) => {
+    setBatchStatus("approved");
+    toast.success("Batch đã được approve", {
+      description: `${drpBatchData?.id} · sẵn sàng Release sang Orders${note ? ` · ${note}` : ""}`,
+    });
+  };
+  const handleReleaseBatch = () => {
+    if (!drpBatchData) return;
+    const active = drpBatchData.items.filter((i) => !rejectedCodes.has(i.code));
+    setBatchStatus("released");
+    toast.success("Đã Release sang /orders", {
+      description: `${active.length} mục đã đẩy sang Orders queue. Batch đã khoá.`,
+    });
+  };
+  const handleRejectItems = (codes: string[], note: string) => {
+    setRejectedCodes((prev) => {
+      const next = new Set(prev);
+      codes.forEach((c) => next.add(c));
+      return next;
+    });
+    toast.info(`Đã loại ${codes.length} mục khỏi batch`, { description: note });
+  };
+  const handleMarkReviewed = () => setBatchStatus("reviewed");
+  const handleCancelBatch = () => {
+    setBatchStatus("idle");
+    setDrpBatchData(null);
+    setRejectedCodes(new Set());
+    toast.info("Đã hủy batch DRP");
+  };
+
 
   const handleChooseOption = (exKey: string, opt: typeof baseData[0]["exceptionList"][0]["options"][0]) => {
     if (opt.recommended) {
@@ -454,6 +574,18 @@ export default function DrpPage() {
           />
         </div>
       )}
+
+      {/* DRP Approve & Release Bar (sticky, batch lifecycle) */}
+      <DrpReleaseBar
+        status={batchStatus}
+        batch={visibleBatch}
+        canApprove={canApprove}
+        onApproveAll={handleApproveAll}
+        onReject={handleRejectItems}
+        onRelease={handleReleaseBatch}
+        onMarkReviewed={handleMarkReviewed}
+        onCancelBatch={handleCancelBatch}
+      />
 
       {/* Version Conflict */}
       {drpConflict && (
