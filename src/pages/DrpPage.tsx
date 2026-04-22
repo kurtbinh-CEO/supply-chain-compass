@@ -559,7 +559,7 @@ export default function DrpPage() {
                         <tr className="bg-surface-1/20">
                           <td></td>
                           <td colSpan={8} className="px-4 py-3">
-                            <ExpandedSkuBreakdown title={`SKU breakdown — ${r.cn}`} skus={r.allSkus} />
+                            <ExpandedSkuBreakdown title={`SKU breakdown — ${r.cn}`} skus={r.allSkus.filter(sk => matchesSourceFilter(sk.sources))} />
                           </td>
                         </tr>
                       )}
