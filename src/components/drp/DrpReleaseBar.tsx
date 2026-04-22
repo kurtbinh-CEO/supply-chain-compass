@@ -525,6 +525,7 @@ export function DrpReleaseBar({
           <AlertDialogHeader>
             <AlertDialogTitle>
               {pending?.kind === "approve" && "Approve toàn bộ batch?"}
+              {pending?.kind === "approveSelected" && `Approve ${pending.codes?.length} mục đã chọn?`}
               {pending?.kind === "release" && "Release batch sang Orders?"}
               {pending?.kind === "reject" && `Loại ${pending.codes?.length} mục khỏi batch?`}
             </AlertDialogTitle>
@@ -541,10 +542,17 @@ export function DrpReleaseBar({
                     )}
                   </>
                 )}
-                {pending?.kind === "release" && (
+                {pending?.kind === "approveSelected" && (
                   <>
-                    <p>Đẩy <span className="font-semibold text-text-1">{activeItems.length} mục</span> sang <span className="text-primary font-medium">/orders</span>. Batch sẽ bị <span className="text-text-1 font-semibold">khoá</span>, không sửa được nữa.</p>
+                    <p>Duyệt <span className="font-semibold text-text-1">{pending.codes?.length} mục</span> ({fmtVnd(selectedValue)}). Các mục còn lại trong batch sẽ vẫn ở trạng thái chờ.</p>
+                    <p className="rounded-card bg-info/10 border border-info/30 px-3 py-2 text-caption text-info flex items-start gap-2">
+                      <ShieldAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span>Note bắt buộc — partial approval cần lý do audit.</span>
+                    </p>
                   </>
+                )}
+                {pending?.kind === "release" && (
+                  <p>Đẩy <span className="font-semibold text-text-1">{activeItems.length} mục</span> sang <span className="text-primary font-medium">/orders</span>. Batch sẽ bị <span className="text-text-1 font-semibold">khoá</span>, không sửa được nữa.</p>
                 )}
                 {pending?.kind === "reject" && (
                   <p>Các mục bị loại sẽ <span className="text-danger font-medium">không được release</span> nhưng vẫn lưu trong batch để truy vết.</p>
@@ -555,7 +563,12 @@ export function DrpReleaseBar({
 
           <div className="space-y-1.5">
             <label className="text-caption text-text-3 uppercase tracking-wide font-semibold">
-              Note {pending?.kind === "reject" ? "(bắt buộc)" : isHighValue && pending?.kind === "approve" ? "(bắt buộc)" : "(tùy chọn)"}
+              Note {
+                pending?.kind === "reject" ? "(bắt buộc)" :
+                pending?.kind === "approveSelected" ? "(bắt buộc)" :
+                isHighValue && pending?.kind === "approve" ? "(bắt buộc)" :
+                "(tùy chọn)"
+              }
             </label>
             <Textarea
               value={note}
@@ -571,6 +584,7 @@ export function DrpReleaseBar({
               onClick={confirmAction}
               disabled={
                 (pending?.kind === "reject" && !note.trim()) ||
+                (pending?.kind === "approveSelected" && !note.trim()) ||
                 (pending?.kind === "approve" && isHighValue && !note.trim())
               }
               className={cn(
@@ -579,7 +593,8 @@ export function DrpReleaseBar({
                 "bg-success text-success-foreground hover:bg-success/90"
               )}
             >
-              {pending?.kind === "approve" && "Approve"}
+              {pending?.kind === "approve" && "Approve all"}
+              {pending?.kind === "approveSelected" && "Approve selected"}
               {pending?.kind === "release" && "Release ngay"}
               {pending?.kind === "reject" && "Loại khỏi batch"}
             </AlertDialogAction>
