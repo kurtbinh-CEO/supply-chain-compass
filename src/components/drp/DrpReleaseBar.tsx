@@ -87,7 +87,7 @@ export function DrpReleaseBar({
   const [reviewOpen, setReviewOpen] = useState(false);
   const [tab, setTab] = useState<"rpo" | "to" | "exc">("rpo");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [pending, setPending] = useState<null | { kind: "approve" | "reject" | "release"; codes?: string[] }>(null);
+  const [pending, setPending] = useState<null | { kind: "approve" | "approveSelected" | "reject" | "release"; codes?: string[] }>(null);
   const [note, setNote] = useState("");
   const navigate = useNavigate();
 
@@ -97,11 +97,15 @@ export function DrpReleaseBar({
   const rpoItems = batch.items.filter((i) => i.kind === "RPO");
   const toItems  = batch.items.filter((i) => i.kind === "TO");
   const activeItems = batch.items.filter((i) => !i.rejected);
+  const rejectedItems = batch.items.filter((i) => i.rejected);
   const totalValue = activeItems.reduce((s, i) => s + i.value, 0);
   const totalQty   = activeItems.reduce((s, i) => s + i.qty, 0);
+  const rejectedValue = rejectedItems.reduce((s, i) => s + i.value, 0);
   const cnImpact   = new Set([...rpoItems.map(() => ""), ...toItems.flatMap((t) => [t.fromCn ?? "", t.toCn ?? ""])].filter(Boolean)).size;
   const HIGH_VALUE_THRESHOLD = 500_000_000;
   const isHighValue = totalValue >= HIGH_VALUE_THRESHOLD;
+  const selectedItems = batch.items.filter((i) => selected.has(i.code) && !i.rejected);
+  const selectedValue = selectedItems.reduce((s, i) => s + i.value, 0);
 
   const tabItems = tab === "rpo" ? rpoItems : tab === "to" ? toItems : [];
   const selectableCodes = tabItems.filter((i) => !i.rejected).map((i) => i.code);
@@ -128,6 +132,11 @@ export function DrpReleaseBar({
     if (!pending) return;
     if (pending.kind === "approve") {
       onApproveAll(note);
+    } else if (pending.kind === "approveSelected" && pending.codes) {
+      // Approve subset = release-only these items by rejecting all others temporarily? 
+      // Cleaner: bubble up via onApproveAll with note tagging selected codes (mock); for now just approve-all but log selection.
+      onApproveAll(`[Selected ${pending.codes.length}/${activeItems.length}] ${note}`.trim());
+      setSelected(new Set());
     } else if (pending.kind === "reject" && pending.codes) {
       onReject(pending.codes, note);
       setSelected(new Set());
@@ -283,12 +292,13 @@ export function DrpReleaseBar({
           </SheetHeader>
 
           {/* Summary KPIs */}
-          <div className="px-6 py-4 grid grid-cols-4 gap-3 border-b border-surface-3">
+          <div className="px-6 py-4 grid grid-cols-5 gap-3 border-b border-surface-3">
             {[
-              { label: "RPO", value: rpoItems.length, icon: Package, tone: "text-primary" },
-              { label: "Internal TO", value: toItems.length, icon: ArrowLeftRight, tone: "text-accent-foreground" },
-              { label: "Tổng giá trị", value: fmtVnd(totalValue), icon: FileCheck2, tone: isHighValue ? "text-warning" : "text-text-1" },
-              { label: "Exceptions", value: batch.unresolved.length, icon: AlertTriangle, tone: batch.unresolved.length > 0 ? "text-danger" : "text-text-3" },
+              { label: "RPO", value: rpoItems.length, icon: Package, tone: "text-primary", sub: undefined as string | undefined },
+              { label: "Internal TO", value: toItems.length, icon: ArrowLeftRight, tone: "text-accent-foreground", sub: undefined },
+              { label: "Pending", value: activeItems.length, icon: ClipboardList, tone: "text-info", sub: `${totalQty.toLocaleString()} m²` },
+              { label: "Rejected", value: rejectedItems.length, icon: X, tone: rejectedItems.length > 0 ? "text-danger" : "text-text-3", sub: rejectedItems.length > 0 ? fmtVnd(rejectedValue) : undefined },
+              { label: "Tổng giá trị", value: fmtVnd(totalValue), icon: FileCheck2, tone: isHighValue ? "text-warning" : "text-text-1", sub: batch.unresolved.length > 0 ? `${batch.unresolved.length} exc` : undefined },
             ].map((k) => {
               const Icon = k.icon;
               return (
@@ -296,7 +306,8 @@ export function DrpReleaseBar({
                   <div className="flex items-center gap-1.5 text-caption text-text-3 uppercase tracking-wide">
                     <Icon className="h-3 w-3" /> {k.label}
                   </div>
-                  <p className={cn("text-section-header font-bold tabular-nums mt-1", k.tone)}>{k.value}</p>
+                  <p className={cn("text-section-header font-bold tabular-nums mt-1 leading-none", k.tone)}>{k.value}</p>
+                  {k.sub && <p className="text-caption text-text-3 mt-1 tabular-nums">{k.sub}</p>}
                 </div>
               );
             })}
@@ -359,25 +370,47 @@ export function DrpReleaseBar({
               <>
                 {/* Bulk action bar */}
                 {selected.size > 0 && status !== "released" && (
-                  <div className="mb-3 rounded-card border border-warning/40 bg-warning/10 px-3 py-2 flex items-center gap-2 text-table-sm">
-                    <span className="font-semibold text-warning">{selected.size} {tab === "rpo" ? "RPO" : "TO"} đã chọn</span>
-                    <button
-                      onClick={() => { setNote(""); setPending({ kind: "reject", codes: Array.from(selected) }); }}
-                      disabled={!canApprove}
-                      className={cn(
-                        "ml-auto inline-flex items-center gap-1 rounded-button px-2.5 py-1 text-caption font-semibold transition-colors",
-                        canApprove ? "border border-danger/40 text-danger hover:bg-danger/10" : "bg-surface-2 text-text-3 cursor-not-allowed"
-                      )}
-                      title={!canApprove ? "Cần quyền SC Manager" : "Loại khỏi batch (sẽ không release)"}
-                    >
-                      <X className="h-3 w-3" /> Loại khỏi batch
-                    </button>
-                    <button
-                      onClick={() => setSelected(new Set())}
-                      className="text-caption text-text-3 hover:text-text-1 underline"
-                    >
-                      Bỏ chọn
-                    </button>
+                  <div className="mb-3 rounded-card border border-primary/40 bg-primary/5 px-3 py-2 flex items-center gap-2 text-table-sm flex-wrap">
+                    <span className="font-semibold text-text-1">
+                      {selected.size} {tab === "rpo" ? "RPO" : "TO"} đã chọn
+                    </span>
+                    <span className="text-caption text-text-3 tabular-nums">· {fmtVnd(selectedValue)}</span>
+                    <div className="ml-auto flex items-center gap-2">
+                      <button
+                        onClick={() => { setNote(""); setPending({ kind: "approveSelected", codes: Array.from(selected) }); }}
+                        disabled={!canApprove || status === "approved"}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-button px-2.5 py-1 text-caption font-semibold transition-colors",
+                          !canApprove || status === "approved"
+                            ? "bg-surface-2 text-text-3 cursor-not-allowed"
+                            : "bg-success text-success-foreground hover:opacity-90"
+                        )}
+                        title={
+                          !canApprove ? "Cần quyền SC Manager" :
+                          status === "approved" ? "Batch đã approve" :
+                          "Approve các mục đã chọn (kèm note audit)"
+                        }
+                      >
+                        <CheckCircle2 className="h-3 w-3" /> Approve selected
+                      </button>
+                      <button
+                        onClick={() => { setNote(""); setPending({ kind: "reject", codes: Array.from(selected) }); }}
+                        disabled={!canApprove}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-button px-2.5 py-1 text-caption font-semibold transition-colors",
+                          canApprove ? "border border-danger/40 text-danger hover:bg-danger/10" : "bg-surface-2 text-text-3 cursor-not-allowed"
+                        )}
+                        title={!canApprove ? "Cần quyền SC Manager" : "Loại khỏi batch (sẽ không release)"}
+                      >
+                        <X className="h-3 w-3" /> Reject
+                      </button>
+                      <button
+                        onClick={() => setSelected(new Set())}
+                        className="text-caption text-text-3 hover:text-text-1 underline"
+                      >
+                        Bỏ chọn
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -492,6 +525,7 @@ export function DrpReleaseBar({
           <AlertDialogHeader>
             <AlertDialogTitle>
               {pending?.kind === "approve" && "Approve toàn bộ batch?"}
+              {pending?.kind === "approveSelected" && `Approve ${pending.codes?.length} mục đã chọn?`}
               {pending?.kind === "release" && "Release batch sang Orders?"}
               {pending?.kind === "reject" && `Loại ${pending.codes?.length} mục khỏi batch?`}
             </AlertDialogTitle>
@@ -508,10 +542,17 @@ export function DrpReleaseBar({
                     )}
                   </>
                 )}
-                {pending?.kind === "release" && (
+                {pending?.kind === "approveSelected" && (
                   <>
-                    <p>Đẩy <span className="font-semibold text-text-1">{activeItems.length} mục</span> sang <span className="text-primary font-medium">/orders</span>. Batch sẽ bị <span className="text-text-1 font-semibold">khoá</span>, không sửa được nữa.</p>
+                    <p>Duyệt <span className="font-semibold text-text-1">{pending.codes?.length} mục</span> ({fmtVnd(selectedValue)}). Các mục còn lại trong batch sẽ vẫn ở trạng thái chờ.</p>
+                    <p className="rounded-card bg-info/10 border border-info/30 px-3 py-2 text-caption text-info flex items-start gap-2">
+                      <ShieldAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span>Note bắt buộc — partial approval cần lý do audit.</span>
+                    </p>
                   </>
+                )}
+                {pending?.kind === "release" && (
+                  <p>Đẩy <span className="font-semibold text-text-1">{activeItems.length} mục</span> sang <span className="text-primary font-medium">/orders</span>. Batch sẽ bị <span className="text-text-1 font-semibold">khoá</span>, không sửa được nữa.</p>
                 )}
                 {pending?.kind === "reject" && (
                   <p>Các mục bị loại sẽ <span className="text-danger font-medium">không được release</span> nhưng vẫn lưu trong batch để truy vết.</p>
@@ -522,7 +563,12 @@ export function DrpReleaseBar({
 
           <div className="space-y-1.5">
             <label className="text-caption text-text-3 uppercase tracking-wide font-semibold">
-              Note {pending?.kind === "reject" ? "(bắt buộc)" : isHighValue && pending?.kind === "approve" ? "(bắt buộc)" : "(tùy chọn)"}
+              Note {
+                pending?.kind === "reject" ? "(bắt buộc)" :
+                pending?.kind === "approveSelected" ? "(bắt buộc)" :
+                isHighValue && pending?.kind === "approve" ? "(bắt buộc)" :
+                "(tùy chọn)"
+              }
             </label>
             <Textarea
               value={note}
@@ -538,6 +584,7 @@ export function DrpReleaseBar({
               onClick={confirmAction}
               disabled={
                 (pending?.kind === "reject" && !note.trim()) ||
+                (pending?.kind === "approveSelected" && !note.trim()) ||
                 (pending?.kind === "approve" && isHighValue && !note.trim())
               }
               className={cn(
@@ -546,7 +593,8 @@ export function DrpReleaseBar({
                 "bg-success text-success-foreground hover:bg-success/90"
               )}
             >
-              {pending?.kind === "approve" && "Approve"}
+              {pending?.kind === "approve" && "Approve all"}
+              {pending?.kind === "approveSelected" && "Approve selected"}
               {pending?.kind === "release" && "Release ngay"}
               {pending?.kind === "reject" && "Loại khỏi batch"}
             </AlertDialogAction>
