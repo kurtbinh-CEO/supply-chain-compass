@@ -486,6 +486,13 @@ export default function DrpPage() {
   };
 
   const handleRunDrp = () => {
+    if (isPlanLocked) {
+      toast.error("Plan đã khoá", {
+        description: "Hủy hoặc release batch hiện tại trước khi chạy lại DRP.",
+      });
+      setShowDrpConfirm(false);
+      return;
+    }
     setShowDrpConfirm(false);
     setDrpRunning(true);
     setDrpStep(0);
