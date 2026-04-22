@@ -25,7 +25,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getShipmentDetail, etaTone, etaLabel, type ShipmentDetail } from "@/lib/shipment-data";
 import { BpoFlowCard } from "@/components/orders/BpoFlowCard";
-import { LayoutGrid, GitBranch } from "lucide-react";
+import { LayoutGrid, GitBranch, Search, Filter, CalendarIcon } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 
 /* ─────────── helpers ─────────── */
 const supplierToNm: Record<string, string> = {
