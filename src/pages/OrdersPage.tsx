@@ -737,6 +737,73 @@ export default function OrdersPage() {
             </span>
           </div>
 
+          {/* Active filter chips */}
+          {bdActiveFilterCount > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 -mt-1 px-1 animate-fade-in">
+              <span className="text-caption text-text-3 uppercase tracking-wide mr-0.5">Đang lọc:</span>
+
+              {bdSearch.trim() && (
+                <FilterChip
+                  icon={Search}
+                  label="Tìm"
+                  value={`"${bdSearch.trim()}"`}
+                  onRemove={() => setBdSearch("")}
+                />
+              )}
+
+              {Array.from(bdNms).map((nm) => (
+                <FilterChip
+                  key={`nm-${nm}`}
+                  icon={Building2}
+                  label="NM"
+                  value={nm}
+                  onRemove={() => {
+                    const next = new Set(bdNms);
+                    next.delete(nm);
+                    setBdNms(next);
+                  }}
+                />
+              ))}
+
+              {Array.from(bdSkus).map((sku) => (
+                <FilterChip
+                  key={`sku-${sku}`}
+                  icon={Package}
+                  label="SKU"
+                  value={sku}
+                  mono
+                  onRemove={() => {
+                    const next = new Set(bdSkus);
+                    next.delete(sku);
+                    setBdSkus(next);
+                  }}
+                />
+              ))}
+
+              {bdDateRange?.from && (
+                <FilterChip
+                  icon={CalendarIcon}
+                  label="ETA"
+                  value={
+                    bdDateRange.to
+                      ? `${format(bdDateRange.from, "dd/MM")} – ${format(bdDateRange.to, "dd/MM")}`
+                      : format(bdDateRange.from, "dd/MM/yyyy")
+                  }
+                  onRemove={() => setBdDateRange(undefined)}
+                />
+              )}
+
+              {bdActiveFilterCount > 1 && (
+                <button
+                  onClick={clearBdFilters}
+                  className="inline-flex items-center gap-1 rounded-full border border-danger/30 bg-danger-bg/40 px-2 py-0.5 text-caption text-danger hover:bg-danger-bg transition-colors"
+                >
+                  <X className="h-3 w-3" /> Xóa tất cả
+                </button>
+              )}
+            </div>
+          )}
+
           {burnDowns.length === 0 ? (
             <div className="rounded-card border border-surface-3 bg-surface-2 py-12 flex flex-col items-center gap-3">
               <Filter className="h-8 w-8 text-text-3" />
