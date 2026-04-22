@@ -111,6 +111,7 @@ export default function OrdersPage() {
   const [bdNms, setBdNms] = useState<Set<string>>(new Set());
   const [bdSkus, setBdSkus] = useState<Set<string>>(new Set());
   const [bdDateRange, setBdDateRange] = useState<DateRange | undefined>(undefined);
+  const [bdSort, setBdSort] = useState<"eta_asc" | "eta_desc" | "completion_asc" | "completion_desc" | "risk_desc" | "risk_asc" | "nm_asc">("risk_desc");
 
   // Tracking tab state
   const [openShipment, setOpenShipment] = useState<ShipmentDetail | null>(null);
