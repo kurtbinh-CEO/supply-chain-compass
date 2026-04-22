@@ -183,6 +183,7 @@ export default function OrdersPage() {
   const [trkDateRange, setTrkDateRange] = useState<DateRange | undefined>(undefined);
   const [trkSort, setTrkSort] = useState<"eta_asc" | "eta_desc" | "stage_desc" | "stage_asc" | "qty_desc" | "nm_asc">("eta_asc");
   const [trkPage, setTrkPage] = useState(1);
+  const [trkSelected, setTrkSelected] = useState<Set<string>>(new Set());
   const TRK_PAGE_SIZE = 25;
 
   // Pipeline rail filter (drives Approval-tab reference table)
