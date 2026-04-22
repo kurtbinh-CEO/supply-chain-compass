@@ -1110,6 +1110,12 @@ export default function OrdersPage() {
                             {b.remaining.toLocaleString()}
                           </p>
                         </div>
+                        {b.cancelled > 0 && (
+                          <div className="text-right" title="Hủy: đã loại khỏi tất cả các bucket funnel">
+                            <p className="text-caption text-text-3 uppercase">Hủy</p>
+                            <p className="font-semibold text-danger">−{b.cancelled.toLocaleString()}</p>
+                          </div>
+                        )}
                         <div className="text-right">
                           <p className="text-caption text-text-3 uppercase">ETA gần</p>
                           <p className={cn(
