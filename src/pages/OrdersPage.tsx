@@ -799,6 +799,14 @@ export default function OrdersPage() {
                       />
                     </div>
                     <p className="text-caption tabular-nums text-text-3 mt-1">{pctOfTotal.toFixed(0)}% tổng</p>
+                    {activeTab === "tracking" && (
+                      <p className={cn(
+                        "text-caption tabular-nums mt-0.5",
+                        hasShipments ? "text-text-2" : "text-warning"
+                      )}>
+                        {trackingStageCounts[s]} shipment
+                      </p>
+                    )}
                   </button>
                   {i < stageOrder.length - 1 && (
                     <div className="flex items-center">
