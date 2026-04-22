@@ -1423,26 +1423,16 @@ export default function OrdersPage() {
                   </div>
                 </div>
 
-                {openShipment.podUrl && (
-                  <div className="rounded-card border border-success/30 bg-success-bg/30 p-3 flex items-center gap-3">
-                    <FileText className="h-4 w-4 text-success" />
-                    <div className="flex-1">
-                      <p className="text-table-sm text-text-1 font-medium">POD đã upload</p>
-                      <p className={cn("text-caption text-text-3", poNumClasses)}>{openShipment.podUrl}</p>
-                    </div>
-                  </div>
-                )}
+                {/* POD upload — full process panel */}
+                <PodUploadPanel
+                  asn={openShipment.asn}
+                  rpo={openShipment.rpo}
+                  canEdit={canEdit}
+                  existingPodUrl={openShipment.podUrl}
+                />
               </div>
 
-              <div className="border-t border-surface-3 px-5 py-3 flex gap-2 bg-surface-1/30">
-                {!openShipment.podUrl && canEdit && (
-                  <button
-                    onClick={() => toast.success(`Upload POD cho ${openShipment.asn}`)}
-                    className="flex-1 rounded-button bg-gradient-primary text-primary-foreground px-3 py-2 text-table-sm font-medium flex items-center justify-center gap-1.5"
-                  >
-                    <Upload className="h-3.5 w-3.5" /> Upload POD
-                  </button>
-                )}
+              <div className="border-t border-surface-3 px-5 py-3 flex justify-end bg-surface-1/30">
                 <button
                   onClick={() => setOpenShipment(null)}
                   className="rounded-button border border-surface-3 bg-surface-2 px-4 py-2 text-table-sm text-text-2 hover:bg-surface-1"
