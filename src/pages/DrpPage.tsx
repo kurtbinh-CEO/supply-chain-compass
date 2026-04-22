@@ -261,13 +261,32 @@ export default function DrpPage() {
     return Object.values(map).sort((a, b) => a.fillPct - b.fillPct);
   }, [data]);
 
-  // Inline expand state for Layer 1 (CN row → SKU breakdown, SKU row → CN breakdown)
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  // Inline expand state for Layer 1 — persisted per pivot mode in sessionStorage
+  const STORAGE_KEY = "drp:expandedRows";
+  const [expandedByMode, setExpandedByMode] = useState<Record<"cn" | "sku", Set<string>>>(() => {
+    if (typeof window === "undefined") return { cn: new Set(), sku: new Set() };
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { cn?: string[]; sku?: string[] };
+        return { cn: new Set(parsed.cn ?? []), sku: new Set(parsed.sku ?? []) };
+      }
+    } catch { /* ignore */ }
+    return { cn: new Set(), sku: new Set() };
+  });
+  const expandedRows = expandedByMode[pivotMode];
   const toggleRow = (key: string) => {
-    setExpandedRows(prev => {
-      const n = new Set(prev);
-      n.has(key) ? n.delete(key) : n.add(key);
-      return n;
+    setExpandedByMode(prev => {
+      const current = new Set(prev[pivotMode]);
+      current.has(key) ? current.delete(key) : current.add(key);
+      const next = { ...prev, [pivotMode]: current };
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+          cn: Array.from(next.cn),
+          sku: Array.from(next.sku),
+        }));
+      } catch { /* ignore */ }
+      return next;
     });
   };
 
