@@ -1187,8 +1187,8 @@ export default function DrpPage() {
                             <td className="px-4 py-2.5 text-caption font-mono text-text-3">{m.toCode}</td>
                             <td className="px-4 py-2.5">
                               <button
-                                onClick={() => toast.success(`Mở chi tiết ${m.toCode}`, { description: `${m.counterpart} • ${m.qty.toLocaleString()} • ${m.eta}` })}
-                                className="rounded-button border border-surface-3 px-2.5 py-1 text-caption font-medium text-text-2 hover:text-text-1"
+                                onClick={() => setSelectedMove(m)}
+                                className="rounded-button border border-surface-3 px-2.5 py-1 text-caption font-medium text-text-2 hover:text-text-1 hover:border-primary/40"
                               >
                                 Chi tiết
                               </button>
