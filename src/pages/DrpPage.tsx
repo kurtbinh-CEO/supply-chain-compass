@@ -505,7 +505,17 @@ export default function DrpPage() {
                 </tr>
               </thead>
               <tbody>
-                {pivotMode === "cn" && data.map((r) => {
+                {pivotMode === "cn" && data.filter(r => {
+                  if (sourceFilter.size === 0) return true;
+                  const cs = r.allSkus.reduce((acc, sk) => ({
+                    onHand: acc.onHand + sk.sources.onHand,
+                    pipeline: acc.pipeline + sk.sources.pipeline,
+                    hubPo: acc.hubPo + sk.sources.hubPo,
+                    lcnbIn: acc.lcnbIn + sk.sources.lcnbIn,
+                    internalTransfer: acc.internalTransfer + sk.sources.internalTransfer,
+                  }), { onHand: 0, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 });
+                  return matchesSourceFilter(cs);
+                }).map((r) => {
                   const rowKey = `cn-${r.cn}`;
                   const isOpen = expandedRows.has(rowKey);
                   const cnSources = r.allSkus.reduce((acc, sk) => ({
