@@ -25,7 +25,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getShipmentDetail, etaTone, etaLabel, type ShipmentDetail } from "@/lib/shipment-data";
 import { BpoFlowCard } from "@/components/orders/BpoFlowCard";
-import { LayoutGrid, GitBranch, Search, Filter, CalendarIcon } from "lucide-react";
+import { LayoutGrid, GitBranch, Search, Filter, CalendarIcon, ArrowUpDown } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -59,6 +60,8 @@ interface BpoBurnDown {
   cancelled: number;      // sum of cancelled qty (excluded from funnel)
   remaining: number;      // bpoTotal - delivered
   completionPct: number;
+  earliestEta: number | null;   // earliest expected_date (epoch ms) among unfulfilled lines, null if none
+  revenueAtRisk: number;        // remaining qty × avg unit price (VND)
   rpos: RpoChild[];
 }
 interface RpoChild {
@@ -109,6 +112,7 @@ export default function OrdersPage() {
   const [bdNms, setBdNms] = useState<Set<string>>(new Set());
   const [bdSkus, setBdSkus] = useState<Set<string>>(new Set());
   const [bdDateRange, setBdDateRange] = useState<DateRange | undefined>(undefined);
+  const [bdSort, setBdSort] = useState<"eta_asc" | "eta_desc" | "completion_asc" | "completion_desc" | "risk_desc" | "risk_asc" | "nm_asc">("risk_desc");
 
   // Tracking tab state
   const [openShipment, setOpenShipment] = useState<ShipmentDetail | null>(null);
@@ -223,13 +227,48 @@ export default function OrdersPage() {
             expected_date: o.expected_date,
           };
         });
+
+      // Earliest ETA among unfulfilled (not received, not cancelled) lines
+      const unfulfilledEtaTimes = orders
+        .filter((o) => !["received", "cancelled"].includes(effectiveStatus(o)) && o.expected_date)
+        .map((o) => new Date(o.expected_date as string).getTime())
+        .filter((t) => !Number.isNaN(t));
+      const earliestEta = unfulfilledEtaTimes.length > 0 ? Math.min(...unfulfilledEtaTimes) : null;
+
+      // Revenue at risk = remaining qty × avg unit price (weighted by qty across non-cancelled lines)
+      const nonCancelled = orders.filter((o) => effectiveStatus(o) !== "cancelled");
+      const totalQty = nonCancelled.reduce((s, o) => s + Number(o.quantity), 0);
+      const totalValue = nonCancelled.reduce((s, o) => s + Number(o.quantity) * Number(o.unit_price), 0);
+      const avgUnitPrice = totalQty > 0 ? totalValue / totalQty : 0;
+      const revenueAtRisk = remaining * avgUnitPrice;
+
       return {
         nm,
         bpo: `BPO-${nm.substring(0, 3).toUpperCase()}`,
-        bpoTotal, approved, released, shipped, delivered, cancelled, remaining, completionPct, rpos,
+        bpoTotal, approved, released, shipped, delivered, cancelled, remaining, completionPct,
+        earliestEta, revenueAtRisk, rpos,
       };
     });
   }, [filteredBdOrders, statusOverrides]);
+
+  /* ── Sort BPO results ── */
+  const sortedBurnDowns: BpoBurnDown[] = useMemo(() => {
+    const arr = [...burnDowns];
+    const FAR = Number.POSITIVE_INFINITY;
+    arr.sort((a, b) => {
+      switch (bdSort) {
+        case "eta_asc":         return (a.earliestEta ?? FAR) - (b.earliestEta ?? FAR);
+        case "eta_desc":        return (b.earliestEta ?? -FAR) - (a.earliestEta ?? -FAR);
+        case "completion_asc":  return a.completionPct - b.completionPct;
+        case "completion_desc": return b.completionPct - a.completionPct;
+        case "risk_desc":       return b.revenueAtRisk - a.revenueAtRisk;
+        case "risk_asc":        return a.revenueAtRisk - b.revenueAtRisk;
+        case "nm_asc":          return a.nm.localeCompare(b.nm);
+        default:                return 0;
+      }
+    });
+    return arr;
+  }, [burnDowns, bdSort]);
 
   /* ── Shipment list (RPO with ASN) ── */
   const shipments = useMemo(() => {
@@ -732,9 +771,27 @@ export default function OrdersPage() {
               </button>
             )}
 
-            <span className="ml-auto text-caption text-text-3 tabular-nums">
-              {filteredBdOrders.length}/{allOrders.length} PO · {burnDowns.length} NM
-            </span>
+            {/* Sort dropdown */}
+            <div className="ml-auto flex items-center gap-2">
+              <Select value={bdSort} onValueChange={(v) => setBdSort(v as typeof bdSort)}>
+                <SelectTrigger className="h-8 w-[200px] text-table-sm bg-surface-0">
+                  <ArrowUpDown className="h-3.5 w-3.5 text-text-3 mr-1" />
+                  <SelectValue placeholder="Sắp xếp" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="risk_desc">💰 Revenue at risk (cao → thấp)</SelectItem>
+                  <SelectItem value="risk_asc">💰 Revenue at risk (thấp → cao)</SelectItem>
+                  <SelectItem value="eta_asc">📅 ETA gần nhất (sớm → muộn)</SelectItem>
+                  <SelectItem value="eta_desc">📅 ETA gần nhất (muộn → sớm)</SelectItem>
+                  <SelectItem value="completion_asc">📊 Completion % (thấp → cao)</SelectItem>
+                  <SelectItem value="completion_desc">📊 Completion % (cao → thấp)</SelectItem>
+                  <SelectItem value="nm_asc">🔤 Tên NM (A → Z)</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-caption text-text-3 tabular-nums whitespace-nowrap">
+                {filteredBdOrders.length}/{allOrders.length} PO · {burnDowns.length} NM
+              </span>
+            </div>
           </div>
 
           {/* Active filter chips */}
@@ -814,14 +871,14 @@ export default function OrdersPage() {
             </div>
           ) : burndownView === "flow" ? (
             <div className="space-y-3">
-              {burnDowns.map((b) => (
+              {sortedBurnDowns.map((b) => (
                 <BpoFlowCard key={b.nm} data={b} />
               ))}
             </div>
           ) : (
           <div className="rounded-card border border-surface-3 bg-surface-2">
             <div className="divide-y divide-surface-3/50">
-              {burnDowns.map((b) => {
+              {sortedBurnDowns.map((b) => {
                 const releasedPct = b.bpoTotal > 0 ? (b.released / b.bpoTotal) * 100 : 0;
                 const shippedPct = b.bpoTotal > 0 ? (b.shipped / b.bpoTotal) * 100 : 0;
                 const deliveredPct = b.bpoTotal > 0 ? (b.delivered / b.bpoTotal) * 100 : 0;
@@ -839,7 +896,7 @@ export default function OrdersPage() {
                           <p className={cn("text-caption", poNumClasses, "text-text-3")}>{b.bpo} · {b.rpos.length} RPO</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-6 text-table-sm tabular-nums shrink-0">
+                      <div className="flex items-center gap-5 text-table-sm tabular-nums shrink-0">
                         <div className="text-right">
                           <p className="text-caption text-text-3 uppercase">BPO total</p>
                           <p className="font-semibold text-text-1">{b.bpoTotal.toLocaleString()}</p>
@@ -850,7 +907,25 @@ export default function OrdersPage() {
                             {b.remaining.toLocaleString()}
                           </p>
                         </div>
-                        <div className="text-right w-16">
+                        <div className="text-right">
+                          <p className="text-caption text-text-3 uppercase">ETA gần</p>
+                          <p className={cn(
+                            "font-semibold",
+                            b.earliestEta === null ? "text-text-3"
+                              : b.earliestEta < Date.now() ? "text-danger"
+                              : b.earliestEta - Date.now() < 3 * 86400000 ? "text-warning"
+                              : "text-text-1"
+                          )}>
+                            {b.earliestEta === null ? "—" : new Date(b.earliestEta).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-caption text-text-3 uppercase">Risk ₫</p>
+                          <p className={cn("font-semibold", b.revenueAtRisk > 0 ? "text-danger" : "text-text-3")}>
+                            {b.revenueAtRisk > 0 ? formatVnd(b.revenueAtRisk) : "—"}
+                          </p>
+                        </div>
+                        <div className="text-right w-14">
                           <p className="text-caption text-text-3 uppercase">Done</p>
                           <p className="font-semibold text-text-1">{b.completionPct}%</p>
                         </div>

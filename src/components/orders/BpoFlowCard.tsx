@@ -30,7 +30,15 @@ export interface BpoFlowData {
   cancelled?: number;
   remaining: number;
   completionPct: number;
+  earliestEta?: number | null;
+  revenueAtRisk?: number;
   rpos: BpoFlowRpo[];
+}
+
+function fmtVndShort(v: number): string {
+  if (v >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(0)}M`;
+  return v.toLocaleString();
 }
 
 const stageLabels: Record<string, string> = {
@@ -105,6 +113,26 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
               {data.remaining.toLocaleString()}
             </p>
           </div>
+          {data.earliestEta !== undefined && (
+            <div className="text-right">
+              <p className="text-caption text-text-3 uppercase">ETA gần</p>
+              <p className={cn(
+                "font-semibold",
+                data.earliestEta === null ? "text-text-3"
+                  : data.earliestEta < Date.now() ? "text-danger"
+                  : data.earliestEta - Date.now() < 3 * 86400000 ? "text-warning"
+                  : "text-text-1"
+              )}>
+                {data.earliestEta === null ? "—" : new Date(data.earliestEta).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })}
+              </p>
+            </div>
+          )}
+          {data.revenueAtRisk !== undefined && data.revenueAtRisk > 0 && (
+            <div className="text-right">
+              <p className="text-caption text-text-3 uppercase">Risk ₫</p>
+              <p className="font-semibold text-danger">{fmtVndShort(data.revenueAtRisk)}</p>
+            </div>
+          )}
           <div className="text-right w-14">
             <p className="text-caption text-text-3 uppercase">Done</p>
             <p className="font-semibold text-text-1">{data.completionPct}%</p>
