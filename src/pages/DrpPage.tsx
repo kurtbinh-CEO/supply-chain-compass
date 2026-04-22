@@ -23,6 +23,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { Textarea } from "@/components/ui/textarea";
 import { useRbac } from "@/components/RbacContext";
 import { CheckCircle2, Truck, Link2, ShieldAlert } from "lucide-react";
+import { DrpReleaseBar, type DrpBatch, type DrpBatchStatus } from "@/components/drp/DrpReleaseBar";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
