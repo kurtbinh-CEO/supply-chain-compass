@@ -370,25 +370,47 @@ export function DrpReleaseBar({
               <>
                 {/* Bulk action bar */}
                 {selected.size > 0 && status !== "released" && (
-                  <div className="mb-3 rounded-card border border-warning/40 bg-warning/10 px-3 py-2 flex items-center gap-2 text-table-sm">
-                    <span className="font-semibold text-warning">{selected.size} {tab === "rpo" ? "RPO" : "TO"} đã chọn</span>
-                    <button
-                      onClick={() => { setNote(""); setPending({ kind: "reject", codes: Array.from(selected) }); }}
-                      disabled={!canApprove}
-                      className={cn(
-                        "ml-auto inline-flex items-center gap-1 rounded-button px-2.5 py-1 text-caption font-semibold transition-colors",
-                        canApprove ? "border border-danger/40 text-danger hover:bg-danger/10" : "bg-surface-2 text-text-3 cursor-not-allowed"
-                      )}
-                      title={!canApprove ? "Cần quyền SC Manager" : "Loại khỏi batch (sẽ không release)"}
-                    >
-                      <X className="h-3 w-3" /> Loại khỏi batch
-                    </button>
-                    <button
-                      onClick={() => setSelected(new Set())}
-                      className="text-caption text-text-3 hover:text-text-1 underline"
-                    >
-                      Bỏ chọn
-                    </button>
+                  <div className="mb-3 rounded-card border border-primary/40 bg-primary/5 px-3 py-2 flex items-center gap-2 text-table-sm flex-wrap">
+                    <span className="font-semibold text-text-1">
+                      {selected.size} {tab === "rpo" ? "RPO" : "TO"} đã chọn
+                    </span>
+                    <span className="text-caption text-text-3 tabular-nums">· {fmtVnd(selectedValue)}</span>
+                    <div className="ml-auto flex items-center gap-2">
+                      <button
+                        onClick={() => { setNote(""); setPending({ kind: "approveSelected", codes: Array.from(selected) }); }}
+                        disabled={!canApprove || status === "approved"}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-button px-2.5 py-1 text-caption font-semibold transition-colors",
+                          !canApprove || status === "approved"
+                            ? "bg-surface-2 text-text-3 cursor-not-allowed"
+                            : "bg-success text-success-foreground hover:opacity-90"
+                        )}
+                        title={
+                          !canApprove ? "Cần quyền SC Manager" :
+                          status === "approved" ? "Batch đã approve" :
+                          "Approve các mục đã chọn (kèm note audit)"
+                        }
+                      >
+                        <CheckCircle2 className="h-3 w-3" /> Approve selected
+                      </button>
+                      <button
+                        onClick={() => { setNote(""); setPending({ kind: "reject", codes: Array.from(selected) }); }}
+                        disabled={!canApprove}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-button px-2.5 py-1 text-caption font-semibold transition-colors",
+                          canApprove ? "border border-danger/40 text-danger hover:bg-danger/10" : "bg-surface-2 text-text-3 cursor-not-allowed"
+                        )}
+                        title={!canApprove ? "Cần quyền SC Manager" : "Loại khỏi batch (sẽ không release)"}
+                      >
+                        <X className="h-3 w-3" /> Reject
+                      </button>
+                      <button
+                        onClick={() => setSelected(new Set())}
+                        className="text-caption text-text-3 hover:text-text-1 underline"
+                      >
+                        Bỏ chọn
+                      </button>
+                    </div>
                   </div>
                 )}
 
