@@ -1716,15 +1716,20 @@ export default function DrpPage() {
               qty: q,
               uom: "carton",
             }));
-            // Status timeline based on ETA
+            // Apply status overrides from approve/ship actions
+            const override = toStatusOverrides[m.toCode];
+            const baseApproved = m.eta !== "Quá hạn" || override === "approved" || override === "shipped";
+            const baseShipped = m.eta === "Same-day" || override === "shipped";
+            // Status timeline based on ETA + overrides
             const statusSteps = [
               { key: "created", label: "Tạo TO", at: fmtDT(created), done: true },
-              { key: "approved", label: "Duyệt", at: m.eta === "Quá hạn" ? "—" : fmtDT(new Date(created.getTime() + 3 * 3600 * 1000)), done: m.eta !== "Quá hạn" },
-              { key: "shipped", label: "Đã xuất kho", at: m.eta === "Same-day" ? fmtDT(today) : "—", done: m.eta === "Same-day" },
+              { key: "approved", label: "Duyệt", at: baseApproved ? fmtDT(new Date(created.getTime() + 3 * 3600 * 1000)) : "—", done: baseApproved },
+              { key: "shipped", label: "Đã xuất kho", at: baseShipped ? fmtDT(today) : "—", done: baseShipped },
               { key: "received", label: "Nhận", at: "—", done: false },
             ];
-            const currentStatus = m.eta === "Same-day" ? "Đang vận chuyển" : m.eta === "Quá hạn" ? "Chờ duyệt (trễ)" : "Đã duyệt";
-            const statusTone = m.eta === "Same-day" ? "bg-success-bg text-success" : m.eta === "Quá hạn" ? "bg-danger-bg text-danger" : "bg-warning/10 text-warning";
+            const currentStatus = baseShipped ? "Đang vận chuyển" : baseApproved ? "Đã duyệt" : "Chờ duyệt (trễ)";
+            const statusTone = baseShipped ? "bg-success-bg text-success" : baseApproved ? "bg-warning/10 text-warning" : "bg-danger-bg text-danger";
+            const currentReason = toReasons[m.toCode] ?? m.reason;
 
             return (
               <>
