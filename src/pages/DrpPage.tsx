@@ -4,7 +4,7 @@ import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronRight, ChevronDown, AlertTriangle, ArrowRight, Play, Settings, ChevronLeft } from "lucide-react";
+import { ChevronRight, ChevronDown, AlertTriangle, ArrowRight, Play, Settings, ChevronLeft, FileDown, FileText } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
 import { useNavigate } from "react-router-dom";
 import { ClickableNumber } from "@/components/ClickableNumber";
@@ -17,6 +17,7 @@ import { useSafetyStock } from "@/components/SafetyStockContext";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { AllocSourceBar, ExpandedSkuBreakdown, ExpandedCnBreakdown, AllocSourceLegend } from "@/components/drp/AllocSourceBar";
+import { exportCsv, exportPdf, type ExportRow } from "@/components/drp/exportLayer1";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -316,6 +317,69 @@ export default function DrpPage() {
     { key: "onHand", label: "On-hand", cls: "border-success/30 bg-success-bg text-success" },
   ];
 
+  // Build flat export rows from current Layer 1 view (parent + child rows for sổ-out groups)
+  const buildExportRows = (): ExportRow[] => {
+    const rows: ExportRow[] = [];
+    if (pivotMode === "cn") {
+      const filteredCns = data.filter(r => {
+        if (sourceFilter.size === 0) return true;
+        const cs = r.allSkus.reduce((acc, sk) => ({
+          onHand: acc.onHand + sk.sources.onHand,
+          pipeline: acc.pipeline + sk.sources.pipeline,
+          hubPo: acc.hubPo + sk.sources.hubPo,
+          lcnbIn: acc.lcnbIn + sk.sources.lcnbIn,
+          internalTransfer: acc.internalTransfer + sk.sources.internalTransfer,
+        }), { onHand: 0, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 });
+        return matchesSourceFilter(cs);
+      });
+      filteredCns.forEach(r => {
+        const cs = r.allSkus.reduce((acc, sk) => ({
+          onHand: acc.onHand + sk.sources.onHand,
+          pipeline: acc.pipeline + sk.sources.pipeline,
+          hubPo: acc.hubPo + sk.sources.hubPo,
+          lcnbIn: acc.lcnbIn + sk.sources.lcnbIn,
+          internalTransfer: acc.internalTransfer + sk.sources.internalTransfer,
+        }), { onHand: 0, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 });
+        rows.push({
+          group: "CN", parentKey: r.cn, isParent: true,
+          demand: r.demand, allocated: r.demand - r.gap,
+          fillPct: r.fillRate, gap: r.gap, exceptions: r.exceptions,
+          sources: cs,
+        });
+        // Always include child SKUs for the chosen CNs (matching what the user can sổ ra)
+        r.allSkus.filter(sk => matchesSourceFilter(sk.sources)).forEach(sk => {
+          rows.push({
+            group: "CN", parentKey: r.cn, isParent: false,
+            childKey: `${sk.item} ${sk.variant}`,
+            demand: sk.demand, allocated: sk.allocated,
+            fillPct: sk.fillPct, gap: sk.demand - sk.allocated,
+            status: sk.status, sources: sk.sources,
+          });
+        });
+      });
+    } else {
+      const filteredSkus = skuAggDrp.filter(sk => matchesSourceFilter(sk.sources));
+      filteredSkus.forEach(sk => {
+        rows.push({
+          group: "SKU", parentKey: `${sk.item} ${sk.variant}`, isParent: true,
+          demand: sk.totalDemand, allocated: sk.totalAllocated,
+          fillPct: sk.fillPct, gap: sk.totalGap,
+          exceptions: sk.cnGapCount, sources: sk.sources,
+        });
+        sk.cnRows.filter(cr => matchesSourceFilter(cr.sources)).forEach(cr => {
+          rows.push({
+            group: "SKU", parentKey: `${sk.item} ${sk.variant}`, isParent: false,
+            childKey: cr.cn,
+            demand: cr.demand, allocated: cr.allocated,
+            fillPct: cr.fillPct, gap: cr.gap,
+            status: cr.status, sources: cr.sources,
+          });
+        });
+      });
+    }
+    return rows;
+  };
+
   const toggleException = (key: string) => {
     setExpandedExceptions((prev) => {
       const next = new Set(prev);
@@ -478,6 +542,43 @@ export default function DrpPage() {
             <LogicLink tab="monthly" node={2} tooltip="Logic cân đối Demand − Supply" />
           </div>
           <div className="rounded-card border border-surface-3 bg-surface-2">
+          {/* Toolbar: export buttons */}
+          <div className="px-4 py-2 border-b border-surface-3 flex items-center justify-between gap-3 flex-wrap bg-surface-1/30">
+            <div className="text-caption text-text-3">
+              <span className="font-medium text-text-2">Bảng Layer 1 — </span>
+              {pivotMode === "cn" ? "CN-first" : "SKU-first"} · {expandedRows.size} dòng đang sổ
+              {sourceFilter.size > 0 && <span className="ml-1 text-warning">· lọc {sourceFilter.size} nguồn</span>}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => {
+                  const rows = buildExportRows();
+                  const ts = new Date().toISOString().slice(0, 10);
+                  exportCsv(rows, `drp-layer1-${pivotMode}-${tenant.replace(/\s+/g, "_")}-${ts}.csv`);
+                  toast.success(`Đã xuất CSV (${rows.length} dòng)`);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-caption font-medium text-text-2 hover:text-text-1 hover:border-primary/40"
+                title="Xuất CSV (mở bằng Excel/Google Sheets)"
+              >
+                <FileDown className="h-3.5 w-3.5" /> CSV
+              </button>
+              <button
+                onClick={() => {
+                  const rows = buildExportRows();
+                  const ts = new Date().toISOString().slice(0, 10);
+                  const filters = SOURCE_FILTER_OPTIONS.filter(o => sourceFilter.has(o.key)).map(o => o.label);
+                  exportPdf(rows, `drp-layer1-${pivotMode}-${tenant.replace(/\s+/g, "_")}-${ts}.pdf`, {
+                    tenant, pivotMode, activeFilters: filters,
+                  });
+                  toast.success(`Đã xuất PDF (${rows.length} dòng)`);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1.5 text-caption font-medium hover:opacity-90"
+                title="Xuất PDF báo cáo"
+              >
+                <FileText className="h-3.5 w-3.5" /> PDF
+              </button>
+            </div>
+          </div>
           <div className="px-4 py-2 border-b border-surface-3 flex items-center justify-between gap-3 flex-wrap">
             <AllocSourceLegend />
             <div className="flex items-center gap-1.5 flex-wrap">
