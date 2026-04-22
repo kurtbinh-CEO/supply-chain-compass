@@ -889,6 +889,22 @@ export default function OrdersPage() {
       {/* ═══════════════════ TAB 2: BURN-DOWN ═══════════════════ */}
       {activeTab === "burndown" && !isEmpty && (
         <div className="animate-fade-in space-y-3">
+          {pipelineFilter && (
+            <div className={cn(
+              "rounded-card border px-3 py-2 flex items-center gap-2 text-table-sm",
+              stageThemes[pipelineFilter]?.chip
+            )}>
+              <FilterIcon className="h-3.5 w-3.5 shrink-0" />
+              <span>Đang lọc theo pipeline: <span className="font-semibold">{stageLabels[pipelineFilter]}</span></span>
+              <span className="text-text-3 ml-1">— chỉ hiện NM có line ở stage này</span>
+              <button
+                onClick={() => setPipelineFilter(null)}
+                className="ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption hover:bg-surface-3/40"
+              >
+                <X className="h-3 w-3" /> Bỏ lọc
+              </button>
+            </div>
+          )}
           {/* View toggle */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
