@@ -2,8 +2,8 @@ import { NavLink } from "@/components/NavLink";
 import {
   ClipboardCheck, Activity, BarChart3, Handshake, Boxes,
   Package, CalendarDays, GitBranch,
-  ShoppingCart, Users, Database, FileBarChart, Settings,
-  ChevronLeft, Play, BookOpen, Building, GraduationCap,
+  Truck, Users, Database, FileBarChart, Settings,
+  ChevronLeft, Play, BookOpen, Building, GraduationCap, LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/components/SidebarContext";
