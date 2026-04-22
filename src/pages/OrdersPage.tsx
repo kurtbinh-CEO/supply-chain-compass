@@ -599,7 +599,138 @@ export default function OrdersPage() {
             </div>
           </div>
 
-          {burndownView === "flow" ? (
+          {/* Filter bar */}
+          <div className="rounded-card border border-surface-3 bg-surface-2 p-3 flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3" />
+              <Input
+                value={bdSearch}
+                onChange={(e) => setBdSearch(e.target.value)}
+                placeholder="Tìm PO#, NM, SKU..."
+                className="h-8 pl-8 text-table-sm bg-surface-0"
+              />
+            </div>
+
+            {/* NM multi-select */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "h-8 inline-flex items-center gap-1.5 rounded-button border px-3 text-table-sm transition-colors",
+                  bdNms.size > 0
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-surface-3 bg-surface-0 text-text-2 hover:text-text-1"
+                )}>
+                  <Building2 className="h-3.5 w-3.5" />
+                  NM {bdNms.size > 0 && <span className="tabular-nums">({bdNms.size})</span>}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-56 p-0">
+                <div className="max-h-64 overflow-y-auto py-1">
+                  {allNmList.map((nm) => (
+                    <button
+                      key={nm}
+                      onClick={() => {
+                        const next = new Set(bdNms);
+                        next.has(nm) ? next.delete(nm) : next.add(nm);
+                        setBdNms(next);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-table-sm hover:bg-surface-1 text-left"
+                    >
+                      <Checkbox checked={bdNms.has(nm)} className="pointer-events-none" />
+                      <span className="text-text-1">{nm}</span>
+                    </button>
+                  ))}
+                  {allNmList.length === 0 && <p className="px-3 py-2 text-caption text-text-3">Không có NM</p>}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* SKU multi-select */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "h-8 inline-flex items-center gap-1.5 rounded-button border px-3 text-table-sm transition-colors",
+                  bdSkus.size > 0
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-surface-3 bg-surface-0 text-text-2 hover:text-text-1"
+                )}>
+                  <Package className="h-3.5 w-3.5" />
+                  SKU {bdSkus.size > 0 && <span className="tabular-nums">({bdSkus.size})</span>}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-64 p-0">
+                <div className="max-h-64 overflow-y-auto py-1">
+                  {allSkuList.map((sku) => (
+                    <button
+                      key={sku}
+                      onClick={() => {
+                        const next = new Set(bdSkus);
+                        next.has(sku) ? next.delete(sku) : next.add(sku);
+                        setBdSkus(next);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 text-table-sm hover:bg-surface-1 text-left"
+                    >
+                      <Checkbox checked={bdSkus.has(sku)} className="pointer-events-none" />
+                      <span className={cn("text-text-1", poNumClasses)}>{sku}</span>
+                    </button>
+                  ))}
+                  {allSkuList.length === 0 && <p className="px-3 py-2 text-caption text-text-3">Không có SKU</p>}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Date range (ETA) */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "h-8 inline-flex items-center gap-1.5 rounded-button border px-3 text-table-sm transition-colors",
+                  bdDateRange?.from
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-surface-3 bg-surface-0 text-text-2 hover:text-text-1"
+                )}>
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  {bdDateRange?.from ? (
+                    bdDateRange.to
+                      ? `${format(bdDateRange.from, "dd/MM")} – ${format(bdDateRange.to, "dd/MM")}`
+                      : format(bdDateRange.from, "dd/MM/yyyy")
+                  ) : "ETA range"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0">
+                <Calendar
+                  mode="range"
+                  selected={bdDateRange}
+                  onSelect={setBdDateRange}
+                  numberOfMonths={2}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+
+            {bdActiveFilterCount > 0 && (
+              <button
+                onClick={clearBdFilters}
+                className="h-8 inline-flex items-center gap-1 rounded-button px-2 text-caption text-text-3 hover:text-danger"
+              >
+                <X className="h-3 w-3" /> Xóa filter ({bdActiveFilterCount})
+              </button>
+            )}
+
+            <span className="ml-auto text-caption text-text-3 tabular-nums">
+              {filteredBdOrders.length}/{allOrders.length} PO · {burnDowns.length} NM
+            </span>
+          </div>
+
+          {burnDowns.length === 0 ? (
+            <div className="rounded-card border border-surface-3 bg-surface-2 py-12 flex flex-col items-center gap-3">
+              <Filter className="h-8 w-8 text-text-3" />
+              <p className="text-table-sm text-text-2">Không có BPO nào khớp với filter hiện tại.</p>
+              {bdActiveFilterCount > 0 && (
+                <button onClick={clearBdFilters} className="text-table-sm text-primary hover:underline">Xóa toàn bộ filter</button>
+              )}
+            </div>
+          ) : burndownView === "flow" ? (
             <div className="space-y-3">
               {burnDowns.map((b) => (
                 <BpoFlowCard key={b.nm} data={b} />
