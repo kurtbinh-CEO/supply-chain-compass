@@ -1743,18 +1743,66 @@ export default function DrpPage() {
 
       {/* ═══ DRP Confirm Modal ═══ */}
       {showDrpConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDrpConfirm(false)}>
-          <div className="bg-surface-0 rounded-card border border-surface-3 p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-display text-section-header text-text-1 mb-2">Chạy DRP</h3>
-            <p className="text-table text-text-2 mb-5">Chạy DRP với data hiện tại? Quá trình gồm 3 bước: Netting → Allocation → PO generation.</p>
-            <div className="flex gap-3">
-              <button onClick={handleRunDrp} className="flex-1 rounded-button bg-gradient-primary text-primary-foreground py-2 text-table font-medium">
-                Xác nhận
-              </button>
-              <button onClick={() => setShowDrpConfirm(false)} className="flex-1 rounded-button border border-surface-3 py-2 text-table font-medium text-text-2">
-                Hủy
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowDrpConfirm(false)}>
+          <div className="bg-surface-0 rounded-card border border-surface-3 p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            {isPlanLocked ? (
+              <>
+                <div className="flex items-center gap-2 mb-2">
+                  <LockIcon className="h-5 w-5 text-danger" />
+                  <h3 className="font-display text-section-header text-text-1">Plan đã khoá</h3>
+                </div>
+                <div className="rounded-card bg-danger-bg/40 border border-danger/30 p-3 mb-4 text-table-sm text-text-2">
+                  <p className="font-semibold text-danger mb-1">
+                    Batch <span className="font-mono">{drpBatchData?.id}</span> đang ở trạng thái <strong>{batchStatus === "released" ? "Released" : "Approved"}</strong>.
+                  </p>
+                  <p>
+                    {batchStatus === "released"
+                      ? "Batch đã đẩy sang Orders, không thể chạy lại để tránh ghi đè kế hoạch đã phát hành. Hãy tạo kỳ DRP mới."
+                      : "Sau khi approve, không được phép chạy lại DRP để giữ tính toàn vẹn audit. Hủy batch hiện tại nếu muốn re-plan."}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowDrpConfirm(false)}
+                  className="w-full rounded-button bg-surface-2 hover:bg-surface-3 py-2 text-table font-medium text-text-1 transition-colors"
+                >
+                  Đã hiểu
+                </button>
+              </>
+            ) : (
+              <>
+                <h3 className="font-display text-section-header text-text-1 mb-2">
+                  {isOverwriteWarning ? "Chạy lại DRP — sẽ ghi đè batch hiện tại" : "Chạy DRP"}
+                </h3>
+                {isOverwriteWarning && (
+                  <div className="rounded-card bg-warning/10 border border-warning/40 px-3 py-2 mb-3 text-table-sm text-text-2 flex items-start gap-2">
+                    <AlertOctagon className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-warning">Batch <span className="font-mono">{drpBatchData?.id}</span> ({batchStatus}) sẽ bị thay thế.</p>
+                      <p className="text-caption mt-0.5">RPO/TO chưa approve sẽ mất. Audit log vẫn lưu lại.</p>
+                    </div>
+                  </div>
+                )}
+                <p className="text-table text-text-2 mb-5">
+                  Chạy DRP với data hiện tại? Quá trình gồm 3 bước: Netting → Allocation → PO generation.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleRunDrp}
+                    className={cn(
+                      "flex-1 rounded-button py-2 text-table font-medium",
+                      isOverwriteWarning
+                        ? "bg-warning text-warning-foreground hover:opacity-90"
+                        : "bg-gradient-primary text-primary-foreground"
+                    )}
+                  >
+                    {isOverwriteWarning ? "Vẫn ghi đè & chạy" : "Xác nhận"}
+                  </button>
+                  <button onClick={() => setShowDrpConfirm(false)} className="flex-1 rounded-button border border-surface-3 py-2 text-table font-medium text-text-2">
+                    Hủy
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
