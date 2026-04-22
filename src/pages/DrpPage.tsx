@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRbac } from "@/components/RbacContext";
 import { CheckCircle2, Truck, Link2, ShieldAlert, Lock as LockIcon, AlertOctagon } from "lucide-react";
 import { DrpReleaseBar, type DrpBatch, type DrpBatchStatus } from "@/components/drp/DrpReleaseBar";
+import { supabase } from "@/integrations/supabase/client";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -195,6 +196,8 @@ export default function DrpPage() {
   const [batchStatus, setBatchStatus] = useState<DrpBatchStatus>("idle");
   const [drpBatchData, setDrpBatchData] = useState<DrpBatch | null>(null);
   const [rejectedCodes, setRejectedCodes] = useState<Set<string>>(new Set());
+  const [batchDbId, setBatchDbId] = useState<string | null>(null);
+  const [batchBusy, setBatchBusy] = useState(false);
   const isPlanLocked = batchStatus === "approved" || batchStatus === "released";
   const isOverwriteWarning = batchStatus === "draft" || batchStatus === "reviewed";
 
@@ -485,7 +488,26 @@ export default function DrpPage() {
     };
   };
 
-  const handleRunDrp = () => {
+  /* Helper: invoke drp-batch edge function */
+  const invokeDrpBatch = async <T = unknown,>(payload: Record<string, unknown>): Promise<T | null> => {
+    setBatchBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("drp-batch", { body: payload });
+      if (error) {
+        toast.error("Lỗi DRP batch", { description: error.message });
+        return null;
+      }
+      if (data && typeof data === "object" && "error" in data) {
+        toast.error("Lỗi DRP batch", { description: String((data as { error: unknown }).error) });
+        return null;
+      }
+      return data as T;
+    } finally {
+      setBatchBusy(false);
+    }
+  };
+
+  const handleRunDrp = async () => {
     if (isPlanLocked) {
       toast.error("Plan đã khoá", {
         description: "Hủy hoặc release batch hiện tại trước khi chạy lại DRP.",
@@ -498,16 +520,33 @@ export default function DrpPage() {
     setDrpStep(0);
     setTimeout(() => setDrpStep(1), 800);
     setTimeout(() => setDrpStep(2), 1600);
-    setTimeout(() => {
+    setTimeout(async () => {
       setDrpRunning(false);
       setDrpStep(0);
       const batch = buildDrpBatch();
       setDrpBatchData(batch);
       setBatchStatus("draft");
       setRejectedCodes(new Set());
-      toast.success("DRP hoàn tất — chờ Review & Approve", {
-        description: `Batch ${batch.id}: ${batch.items.filter(i => i.kind === "RPO").length} RPO + ${batch.items.filter(i => i.kind === "TO").length} TO`,
+
+      // Persist batch to DB
+      const result = await invokeDrpBatch<{ batch: { id: string } }>({
+        action: "create",
+        batch: {
+          batchCode: batch.id,
+          items: batch.items,
+          unresolved: batch.unresolved,
+        },
       });
+      if (result?.batch?.id) {
+        setBatchDbId(result.batch.id);
+        toast.success("DRP hoàn tất — chờ Review & Approve", {
+          description: `Batch ${batch.id}: ${batch.items.filter(i => i.kind === "RPO").length} RPO + ${batch.items.filter(i => i.kind === "TO").length} TO · audit logged`,
+        });
+      } else {
+        toast.warning("Batch tạo cục bộ — không lưu được DB", {
+          description: "Kiểm tra quyền SC Manager hoặc thử lại.",
+        });
+      }
     }, 2400);
   };
 
@@ -520,35 +559,87 @@ export default function DrpPage() {
     };
   }, [drpBatchData, rejectedCodes]);
 
-  const handleApproveAll = (note: string) => {
-    setBatchStatus("approved");
-    toast.success("Batch đã được approve", {
-      description: `${drpBatchData?.id} · sẵn sàng Release sang Orders${note ? ` · ${note}` : ""}`,
+  const handleApproveAll = async (note: string) => {
+    if (!batchDbId) {
+      toast.error("Không tìm thấy batch trong DB");
+      return;
+    }
+    // approve_subset if note tagged with "[Selected ", else full approve
+    const isSubset = note.startsWith("[Selected ");
+    const action = isSubset ? "approve_subset" : "approve";
+    const codes = isSubset
+      ? (drpBatchData?.items.filter(i => !rejectedCodes.has(i.code)).map(i => i.code) ?? [])
+      : undefined;
+    const result = await invokeDrpBatch<{ ok: boolean }>({
+      action,
+      batchId: batchDbId,
+      ...(codes ? { codes } : {}),
+      note,
     });
+    if (result?.ok) {
+      setBatchStatus("approved");
+      toast.success("Batch đã được approve", {
+        description: `${drpBatchData?.id} · sẵn sàng Release · audit logged${note ? ` · ${note}` : ""}`,
+      });
+    }
   };
-  const handleReleaseBatch = () => {
-    if (!drpBatchData) return;
-    const active = drpBatchData.items.filter((i) => !rejectedCodes.has(i.code));
-    setBatchStatus("released");
-    toast.success("Đã Release sang /orders", {
-      description: `${active.length} mục đã đẩy sang Orders queue. Batch đã khoá.`,
+  const handleReleaseBatch = async () => {
+    if (!drpBatchData || !batchDbId) return;
+    const result = await invokeDrpBatch<{ ok: boolean; releasedCount: number }>({
+      action: "release",
+      batchId: batchDbId,
     });
+    if (result?.ok) {
+      setBatchStatus("released");
+      toast.success("Đã Release sang /orders", {
+        description: `${result.releasedCount} POs đã ghi vào purchase_orders. Batch khoá · audit logged.`,
+      });
+    }
   };
-  const handleRejectItems = (codes: string[], note: string) => {
-    setRejectedCodes((prev) => {
-      const next = new Set(prev);
-      codes.forEach((c) => next.add(c));
-      return next;
+  const handleRejectItems = async (codes: string[], note: string) => {
+    if (!batchDbId) {
+      toast.error("Không tìm thấy batch trong DB");
+      return;
+    }
+    const result = await invokeDrpBatch<{ ok: boolean }>({
+      action: "reject_items",
+      batchId: batchDbId,
+      codes,
+      note,
     });
-    toast.info(`Đã loại ${codes.length} mục khỏi batch`, { description: note });
+    if (result?.ok) {
+      setRejectedCodes((prev) => {
+        const next = new Set(prev);
+        codes.forEach((c) => next.add(c));
+        return next;
+      });
+      toast.info(`Đã loại ${codes.length} mục khỏi batch`, { description: `${note} · audit logged` });
+    }
   };
-  const handleMarkReviewed = () => setBatchStatus("reviewed");
-  const handleCancelBatch = () => {
+  const handleMarkReviewed = async () => {
+    if (!batchDbId) {
+      setBatchStatus("reviewed");
+      return;
+    }
+    const result = await invokeDrpBatch<{ ok: boolean }>({
+      action: "review",
+      batchId: batchDbId,
+    });
+    if (result?.ok) {
+      setBatchStatus("reviewed");
+    }
+  };
+  const handleCancelBatch = async () => {
+    if (batchDbId) {
+      await invokeDrpBatch({ action: "cancel", batchId: batchDbId });
+    }
     setBatchStatus("idle");
     setDrpBatchData(null);
     setRejectedCodes(new Set());
+    setBatchDbId(null);
     toast.info("Đã hủy batch DRP");
   };
+
 
 
   const handleChooseOption = (exKey: string, opt: typeof baseData[0]["exceptionList"][0]["options"][0]) => {
