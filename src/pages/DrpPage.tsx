@@ -479,6 +479,44 @@ export default function DrpPage() {
             <LogicLink tab="monthly" node={2} tooltip="Logic cân đối Demand − Supply" />
           </div>
           <div className="rounded-card border border-surface-3 bg-surface-2">
+          {(() => null)()}
+          {/* Toolbar: export buttons */}
+          <div className="px-4 py-2 border-b border-surface-3 flex items-center justify-between gap-3 flex-wrap bg-surface-1/30">
+            <div className="text-caption text-text-3">
+              <span className="font-medium text-text-2">Bảng Layer 1 — </span>
+              {pivotMode === "cn" ? "CN-first" : "SKU-first"} · {expandedRows.size} dòng đang sổ
+              {sourceFilter.size > 0 && <span className="ml-1 text-warning">· lọc {sourceFilter.size} nguồn</span>}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => {
+                  const rows = buildExportRows();
+                  const ts = new Date().toISOString().slice(0, 10);
+                  exportCsv(rows, `drp-layer1-${pivotMode}-${tenant.replace(/\s+/g, "_")}-${ts}.csv`);
+                  toast.success(`Đã xuất CSV (${rows.length} dòng)`);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-caption font-medium text-text-2 hover:text-text-1 hover:border-primary/40"
+                title="Xuất CSV (mở bằng Excel/Google Sheets)"
+              >
+                <FileDown className="h-3.5 w-3.5" /> CSV
+              </button>
+              <button
+                onClick={() => {
+                  const rows = buildExportRows();
+                  const ts = new Date().toISOString().slice(0, 10);
+                  const filters = SOURCE_FILTER_OPTIONS.filter(o => sourceFilter.has(o.key)).map(o => o.label);
+                  exportPdf(rows, `drp-layer1-${pivotMode}-${tenant.replace(/\s+/g, "_")}-${ts}.pdf`, {
+                    tenant, pivotMode, activeFilters: filters,
+                  });
+                  toast.success(`Đã xuất PDF (${rows.length} dòng)`);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1.5 text-caption font-medium hover:opacity-90"
+                title="Xuất PDF báo cáo"
+              >
+                <FileText className="h-3.5 w-3.5" /> PDF
+              </button>
+            </div>
+          </div>
           <div className="px-4 py-2 border-b border-surface-3 flex items-center justify-between gap-3 flex-wrap">
             <AllocSourceLegend />
             <div className="flex items-center gap-1.5 flex-wrap">
