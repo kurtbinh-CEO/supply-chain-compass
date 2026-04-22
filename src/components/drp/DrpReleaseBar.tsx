@@ -292,12 +292,13 @@ export function DrpReleaseBar({
           </SheetHeader>
 
           {/* Summary KPIs */}
-          <div className="px-6 py-4 grid grid-cols-4 gap-3 border-b border-surface-3">
+          <div className="px-6 py-4 grid grid-cols-5 gap-3 border-b border-surface-3">
             {[
-              { label: "RPO", value: rpoItems.length, icon: Package, tone: "text-primary" },
-              { label: "Internal TO", value: toItems.length, icon: ArrowLeftRight, tone: "text-accent-foreground" },
-              { label: "Tổng giá trị", value: fmtVnd(totalValue), icon: FileCheck2, tone: isHighValue ? "text-warning" : "text-text-1" },
-              { label: "Exceptions", value: batch.unresolved.length, icon: AlertTriangle, tone: batch.unresolved.length > 0 ? "text-danger" : "text-text-3" },
+              { label: "RPO", value: rpoItems.length, icon: Package, tone: "text-primary", sub: undefined as string | undefined },
+              { label: "Internal TO", value: toItems.length, icon: ArrowLeftRight, tone: "text-accent-foreground", sub: undefined },
+              { label: "Pending", value: activeItems.length, icon: ClipboardList, tone: "text-info", sub: `${totalQty.toLocaleString()} m²` },
+              { label: "Rejected", value: rejectedItems.length, icon: X, tone: rejectedItems.length > 0 ? "text-danger" : "text-text-3", sub: rejectedItems.length > 0 ? fmtVnd(rejectedValue) : undefined },
+              { label: "Tổng giá trị", value: fmtVnd(totalValue), icon: FileCheck2, tone: isHighValue ? "text-warning" : "text-text-1", sub: batch.unresolved.length > 0 ? `${batch.unresolved.length} exc` : undefined },
             ].map((k) => {
               const Icon = k.icon;
               return (
@@ -305,7 +306,8 @@ export function DrpReleaseBar({
                   <div className="flex items-center gap-1.5 text-caption text-text-3 uppercase tracking-wide">
                     <Icon className="h-3 w-3" /> {k.label}
                   </div>
-                  <p className={cn("text-section-header font-bold tabular-nums mt-1", k.tone)}>{k.value}</p>
+                  <p className={cn("text-section-header font-bold tabular-nums mt-1 leading-none", k.tone)}>{k.value}</p>
+                  {k.sub && <p className="text-caption text-text-3 mt-1 tabular-nums">{k.sub}</p>}
                 </div>
               );
             })}
