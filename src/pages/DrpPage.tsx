@@ -1018,6 +1018,25 @@ export default function DrpPage() {
             const totalOut = visibleMoves.filter(m => m.direction === "out").reduce((s, m) => s + m.qty, 0);
             const net = totalIn - totalOut;
 
+            // Risk reduction estimates (per-unit assumptions, tenant-agnostic demo values)
+            const UNIT_REVENUE = 120_000; // ₫/unit — avg gross revenue per unit if shortage avoided
+            const UNIT_MARGIN_RATE = 0.22; // 22% gross margin → margin at risk
+            const UNIT_COST_SAVED = 15_000; // ₫/unit — logistics+expedite saved vs new factory PO
+            // Inbound moves cover gap → revenue at risk avoided
+            const revenueAtRiskAvoided = totalIn * UNIT_REVENUE;
+            const marginAtRiskAvoided = Math.round(revenueAtRiskAvoided * UNIT_MARGIN_RATE);
+            // Outbound lateral (LCNB) avoids new PO at receiving CN → cost saved
+            const costAvoided = visibleMoves
+              .filter(m => m.direction === "out" && m.kind === "lateral")
+              .reduce((s, m) => s + m.qty, 0) * UNIT_COST_SAVED;
+            const totalImpact = marginAtRiskAvoided + costAvoided;
+            const fmtVnd = (n: number) => {
+              if (n >= 1_000_000_000) return `₫${(n / 1_000_000_000).toFixed(2)}B`;
+              if (n >= 1_000_000) return `₫${(n / 1_000_000).toFixed(1)}M`;
+              if (n >= 1_000) return `₫${(n / 1_000).toFixed(0)}K`;
+              return `₫${n.toLocaleString()}`;
+            };
+
             const toggleEta = (k: Eta) => {
               setEtaFilter(prev => {
                 const next = new Set(prev);
@@ -1028,12 +1047,12 @@ export default function DrpPage() {
 
             return (
               <div className="rounded-card border border-surface-3 bg-surface-2">
-                <div className="px-5 py-3 border-b border-surface-3 flex items-center justify-between flex-wrap gap-2">
+                <div className="px-5 py-3 border-b border-surface-3 flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-2">
                     <h3 className="font-display text-body font-semibold text-text-1">Internal Transfer & LCNB</h3>
                     <span className="text-caption text-text-3">— {activeCn.cn}</span>
                   </div>
-                  <div className="flex items-center gap-3 text-caption">
+                  <div className="flex items-center gap-3 text-caption flex-wrap">
                     <span className="inline-flex items-center gap-1 text-success">
                       <ArrowRight className="h-3 w-3" /> Nhận: <span className="font-semibold tabular-nums">{totalIn.toLocaleString()}</span>
                     </span>
@@ -1041,6 +1060,38 @@ export default function DrpPage() {
                       <ArrowRight className="h-3 w-3 rotate-180" /> Chuyển đi: <span className="font-semibold tabular-nums">{totalOut.toLocaleString()}</span>
                     </span>
                     <span className="text-text-3">Net: <span className={cn("font-semibold tabular-nums", net >= 0 ? "text-success" : "text-warning")}>{net > 0 ? "+" : ""}{net.toLocaleString()}</span></span>
+                  </div>
+                </div>
+                {/* Risk-reduction summary strip */}
+                <div className="px-5 py-2.5 border-b border-surface-3 bg-gradient-to-r from-success-bg/40 via-surface-1/30 to-accent/20 flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div
+                      className="flex flex-col"
+                      title={`Revenue at risk = Inbound qty (${totalIn.toLocaleString()}) × ₫${UNIT_REVENUE.toLocaleString()}/unit`}
+                    >
+                      <span className="text-table-header uppercase text-text-3 tracking-wide">Revenue at risk avoided</span>
+                      <span className="font-display text-body font-semibold text-success tabular-nums">{fmtVnd(revenueAtRiskAvoided)}</span>
+                    </div>
+                    <div className="h-8 w-px bg-surface-3" />
+                    <div
+                      className="flex flex-col"
+                      title={`Margin = Revenue × ${(UNIT_MARGIN_RATE * 100).toFixed(0)}% gross margin`}
+                    >
+                      <span className="text-table-header uppercase text-text-3 tracking-wide">Margin protected</span>
+                      <span className="font-display text-body font-semibold text-text-1 tabular-nums">{fmtVnd(marginAtRiskAvoided)}</span>
+                    </div>
+                    <div className="h-8 w-px bg-surface-3" />
+                    <div
+                      className="flex flex-col"
+                      title={`Cost saved = Outbound LCNB qty × ₫${UNIT_COST_SAVED.toLocaleString()}/unit (vs new factory PO logistics + expedite)`}
+                    >
+                      <span className="text-table-header uppercase text-text-3 tracking-wide">Cost avoided (LCNB)</span>
+                      <span className="font-display text-body font-semibold text-accent-foreground tabular-nums">{fmtVnd(costAvoided)}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-table-header uppercase text-text-3 tracking-wide">Tổng tác động</span>
+                    <span className="font-display text-h3 font-bold text-primary tabular-nums">{fmtVnd(totalImpact)}</span>
                   </div>
                 </div>
                 {/* ETA filter chips */}
