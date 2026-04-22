@@ -149,6 +149,7 @@ export default function DrpPage() {
   const [drillCn, setDrillCn] = useState<string | null>(null);
   const [drillSku, setDrillSku] = useState<string | null>(null);
   const [showAllSkus, setShowAllSkus] = useState(false);
+  const [etaFilter, setEtaFilter] = useState<Set<"Same-day" | "1 ngày" | "Quá hạn">>(new Set());
   const [pivotMode, setPivotMode] = usePivotMode("drp");
   const [expandedExceptions, setExpandedExceptions] = useState<Set<string>>(new Set());
   const [expandOptions, setExpandOptions] = useState<string | null>(null);
@@ -955,6 +956,7 @@ export default function DrpPage() {
 
           {/* Section: Internal Transfer & Lateral movements */}
           {(() => {
+            type Eta = "Same-day" | "1 ngày" | "Quá hạn";
             type Move = {
               direction: "in" | "out";
               kind: "internal" | "lateral";
@@ -963,7 +965,7 @@ export default function DrpPage() {
               qty: number;
               counterpart: string;
               reason: string;
-              eta: string;
+              eta: Eta;
               toCode: string;
             };
             const moves: Move[] = [];
@@ -980,12 +982,13 @@ export default function DrpPage() {
               } else if (sk.sources.internalTransfer < 0) {
                 const receiver = data.find(c => c.cn !== activeCn.cn
                   && c.allSkus.some(o => o.item === sk.item && o.variant === sk.variant && o.sources.lcnbIn > 0));
+                const qty = Math.abs(sk.sources.internalTransfer);
                 moves.push({
                   direction: "out", kind: "lateral", item: sk.item, variant: sk.variant,
-                  qty: Math.abs(sk.sources.internalTransfer),
+                  qty,
                   counterpart: `${activeCn.cn} → ${receiver?.cn ?? "CN khác"}`,
                   reason: receiver ? `LCNB cover shortage tại ${receiver.cn} (gap > 0). Tiết kiệm cost vs PO mới.` : "Excess on-hand, chuyển sang CN khác để tránh tồn dư",
-                  eta: "1 ngày",
+                  eta: qty > 200 ? "Quá hạn" : "1 ngày",
                   toCode: `TO-${activeCn.cn}-${receiver?.cn ?? "X"}-${sk.item}-001`,
                 });
               }
@@ -997,14 +1000,31 @@ export default function DrpPage() {
                   qty: sk.sources.lcnbIn,
                   counterpart: `${giver?.cn ?? "CN khác"} → ${activeCn.cn}`,
                   reason: `Cover shortage SKU ${sk.item} ${sk.variant} từ excess ${giver?.cn ?? "CN khác"}`,
-                  eta: "1 ngày",
+                  eta: sk.sources.lcnbIn > 200 ? "Quá hạn" : "1 ngày",
                   toCode: `TO-${giver?.cn ?? "X"}-${activeCn.cn}-${sk.item}-001`,
                 });
               }
             });
-            const totalIn = moves.filter(m => m.direction === "in").reduce((s, m) => s + m.qty, 0);
-            const totalOut = moves.filter(m => m.direction === "out").reduce((s, m) => s + m.qty, 0);
+
+            const etaOptions: { key: Eta; label: string; tone: string }[] = [
+              { key: "Same-day", label: "Same-day", tone: "border-success/40 bg-success-bg text-success" },
+              { key: "1 ngày", label: "1 ngày", tone: "border-warning/40 bg-warning/10 text-warning" },
+              { key: "Quá hạn", label: "Quá hạn", tone: "border-danger/40 bg-danger-bg text-danger" },
+            ];
+            const etaCount: Record<Eta, number> = { "Same-day": 0, "1 ngày": 0, "Quá hạn": 0 };
+            moves.forEach(m => { etaCount[m.eta]++; });
+            const visibleMoves = etaFilter.size === 0 ? moves : moves.filter(m => etaFilter.has(m.eta));
+            const totalIn = visibleMoves.filter(m => m.direction === "in").reduce((s, m) => s + m.qty, 0);
+            const totalOut = visibleMoves.filter(m => m.direction === "out").reduce((s, m) => s + m.qty, 0);
             const net = totalIn - totalOut;
+
+            const toggleEta = (k: Eta) => {
+              setEtaFilter(prev => {
+                const next = new Set(prev);
+                if (next.has(k)) next.delete(k); else next.add(k);
+                return next;
+              });
+            };
 
             return (
               <div className="rounded-card border border-surface-3 bg-surface-2">
@@ -1023,9 +1043,46 @@ export default function DrpPage() {
                     <span className="text-text-3">Net: <span className={cn("font-semibold tabular-nums", net >= 0 ? "text-success" : "text-warning")}>{net > 0 ? "+" : ""}{net.toLocaleString()}</span></span>
                   </div>
                 </div>
-                {moves.length === 0 ? (
+                {/* ETA filter chips */}
+                <div className="px-5 py-2 border-b border-surface-3 flex items-center gap-2 flex-wrap bg-surface-1/30">
+                  <span className="text-caption text-text-3 mr-1">Lọc ETA:</span>
+                  {etaOptions.map(opt => {
+                    const active = etaFilter.has(opt.key);
+                    const count = etaCount[opt.key];
+                    return (
+                      <button
+                        key={opt.key}
+                        onClick={() => toggleEta(opt.key)}
+                        disabled={count === 0}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-caption font-medium transition",
+                          active ? opt.tone + " ring-2 ring-offset-1 ring-offset-surface-2 ring-current" : "border-surface-3 bg-surface-0 text-text-2 hover:text-text-1",
+                          count === 0 && "opacity-40 cursor-not-allowed",
+                        )}
+                        title={count === 0 ? "Không có transfer ở mức ETA này" : `${count} transfer`}
+                      >
+                        {opt.label}
+                        <span className="tabular-nums opacity-80">({count})</span>
+                      </button>
+                    );
+                  })}
+                  {etaFilter.size > 0 && (
+                    <button
+                      onClick={() => setEtaFilter(new Set())}
+                      className="ml-1 text-caption text-text-3 hover:text-text-1 underline-offset-2 hover:underline"
+                    >
+                      Xóa lọc
+                    </button>
+                  )}
+                  <span className="ml-auto text-caption text-text-3">
+                    Hiển thị <span className="font-semibold text-text-2 tabular-nums">{visibleMoves.length}</span>/{moves.length}
+                  </span>
+                </div>
+                {visibleMoves.length === 0 ? (
                   <div className="px-5 py-6 text-caption text-text-3 italic text-center">
-                    Không có Transfer Order liên quan đến CN này trong DRP run hiện tại.
+                    {moves.length === 0
+                      ? "Không có Transfer Order liên quan đến CN này trong DRP run hiện tại."
+                      : "Không có transfer nào khớp bộ lọc ETA. Bỏ chọn để xem lại."}
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -1038,7 +1095,7 @@ export default function DrpPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {moves.map((m, i) => (
+                        {visibleMoves.map((m, i) => (
                           <tr key={i} className="border-b border-surface-3/50 hover:bg-surface-1/30">
                             <td className="px-4 py-2.5">
                               <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium",
@@ -1061,7 +1118,15 @@ export default function DrpPage() {
                             </td>
                             <td className="px-4 py-2.5 text-table text-text-2 whitespace-nowrap">{m.counterpart}</td>
                             <td className="px-4 py-2.5 text-caption text-text-2 max-w-[280px]">{m.reason}</td>
-                            <td className="px-4 py-2.5 text-table text-text-3">{m.eta}</td>
+                            <td className="px-4 py-2.5">
+                              <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium border",
+                                m.eta === "Same-day" && "border-success/40 bg-success-bg text-success",
+                                m.eta === "1 ngày" && "border-warning/40 bg-warning/10 text-warning",
+                                m.eta === "Quá hạn" && "border-danger/40 bg-danger-bg text-danger",
+                              )}>
+                                {m.eta}
+                              </span>
+                            </td>
                             <td className="px-4 py-2.5 text-caption font-mono text-text-3">{m.toCode}</td>
                             <td className="px-4 py-2.5">
                               <button
