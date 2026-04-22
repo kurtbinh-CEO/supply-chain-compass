@@ -833,6 +833,134 @@ export default function DrpPage() {
             </div>
           </div>
 
+          {/* Section: Internal Transfer & Lateral movements */}
+          {(() => {
+            type Move = {
+              direction: "in" | "out";
+              kind: "internal" | "lateral";
+              item: string;
+              variant: string;
+              qty: number;
+              counterpart: string;
+              reason: string;
+              eta: string;
+              toCode: string;
+            };
+            const moves: Move[] = [];
+            activeCn.allSkus.forEach((sk) => {
+              if (sk.sources.internalTransfer > 0) {
+                moves.push({
+                  direction: "in", kind: "internal", item: sk.item, variant: sk.variant,
+                  qty: sk.sources.internalTransfer,
+                  counterpart: `${activeCn.cn}/WH-vệ tinh → ${activeCn.cn}/DC`,
+                  reason: "Cân bằng tồn giữa kho cùng CN để đáp ứng demand cụm",
+                  eta: "Same-day",
+                  toCode: `TO-${activeCn.cn}-INT-${sk.item}-001`,
+                });
+              } else if (sk.sources.internalTransfer < 0) {
+                const receiver = data.find(c => c.cn !== activeCn.cn
+                  && c.allSkus.some(o => o.item === sk.item && o.variant === sk.variant && o.sources.lcnbIn > 0));
+                moves.push({
+                  direction: "out", kind: "lateral", item: sk.item, variant: sk.variant,
+                  qty: Math.abs(sk.sources.internalTransfer),
+                  counterpart: `${activeCn.cn} → ${receiver?.cn ?? "CN khác"}`,
+                  reason: receiver ? `LCNB cover shortage tại ${receiver.cn} (gap > 0). Tiết kiệm cost vs PO mới.` : "Excess on-hand, chuyển sang CN khác để tránh tồn dư",
+                  eta: "1 ngày",
+                  toCode: `TO-${activeCn.cn}-${receiver?.cn ?? "X"}-${sk.item}-001`,
+                });
+              }
+              if (sk.sources.lcnbIn > 0) {
+                const giver = data.find(c => c.cn !== activeCn.cn
+                  && c.allSkus.some(o => o.item === sk.item && o.variant === sk.variant && o.sources.internalTransfer < 0));
+                moves.push({
+                  direction: "in", kind: "lateral", item: sk.item, variant: sk.variant,
+                  qty: sk.sources.lcnbIn,
+                  counterpart: `${giver?.cn ?? "CN khác"} → ${activeCn.cn}`,
+                  reason: `Cover shortage SKU ${sk.item} ${sk.variant} từ excess ${giver?.cn ?? "CN khác"}`,
+                  eta: "1 ngày",
+                  toCode: `TO-${giver?.cn ?? "X"}-${activeCn.cn}-${sk.item}-001`,
+                });
+              }
+            });
+            const totalIn = moves.filter(m => m.direction === "in").reduce((s, m) => s + m.qty, 0);
+            const totalOut = moves.filter(m => m.direction === "out").reduce((s, m) => s + m.qty, 0);
+            const net = totalIn - totalOut;
+
+            return (
+              <div className="rounded-card border border-surface-3 bg-surface-2">
+                <div className="px-5 py-3 border-b border-surface-3 flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-display text-body font-semibold text-text-1">Internal Transfer & LCNB</h3>
+                    <span className="text-caption text-text-3">— {activeCn.cn}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-caption">
+                    <span className="inline-flex items-center gap-1 text-success">
+                      <ArrowRight className="h-3 w-3" /> Nhận: <span className="font-semibold tabular-nums">{totalIn.toLocaleString()}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-warning">
+                      <ArrowRight className="h-3 w-3 rotate-180" /> Chuyển đi: <span className="font-semibold tabular-nums">{totalOut.toLocaleString()}</span>
+                    </span>
+                    <span className="text-text-3">Net: <span className={cn("font-semibold tabular-nums", net >= 0 ? "text-success" : "text-warning")}>{net > 0 ? "+" : ""}{net.toLocaleString()}</span></span>
+                  </div>
+                </div>
+                {moves.length === 0 ? (
+                  <div className="px-5 py-6 text-caption text-text-3 italic text-center">
+                    Không có Transfer Order liên quan đến CN này trong DRP run hiện tại.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-surface-3 bg-surface-1/50">
+                          {["Hướng", "Loại", "Item", "Variant", "Qty", "Đối tác CN/WH", "Lý do TO", "ETA", "TO #", ""].map((h, i) => (
+                            <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {moves.map((m, i) => (
+                          <tr key={i} className="border-b border-surface-3/50 hover:bg-surface-1/30">
+                            <td className="px-4 py-2.5">
+                              <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium",
+                                m.direction === "in" ? "bg-success-bg text-success" : "bg-warning-bg text-warning"
+                              )}>
+                                {m.direction === "in" ? "↘ Nhận" : "↗ Chuyển đi"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5">
+                              <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium border",
+                                m.kind === "internal" ? "border-accent bg-accent text-accent-foreground" : "border-warning/30 bg-warning/10 text-warning"
+                              )}>
+                                {m.kind === "internal" ? "Internal TO" : "LCNB Lateral"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-table font-medium text-text-1">{m.item}</td>
+                            <td className="px-4 py-2.5 text-table text-text-2">{m.variant}</td>
+                            <td className={cn("px-4 py-2.5 text-table tabular-nums font-medium", m.direction === "in" ? "text-success" : "text-warning")}>
+                              {m.direction === "in" ? "+" : "−"}{m.qty.toLocaleString()}
+                            </td>
+                            <td className="px-4 py-2.5 text-table text-text-2 whitespace-nowrap">{m.counterpart}</td>
+                            <td className="px-4 py-2.5 text-caption text-text-2 max-w-[280px]">{m.reason}</td>
+                            <td className="px-4 py-2.5 text-table text-text-3">{m.eta}</td>
+                            <td className="px-4 py-2.5 text-caption font-mono text-text-3">{m.toCode}</td>
+                            <td className="px-4 py-2.5">
+                              <button
+                                onClick={() => toast.success(`Mở chi tiết ${m.toCode}`, { description: `${m.counterpart} • ${m.qty.toLocaleString()} • ${m.eta}` })}
+                                className="rounded-button border border-surface-3 px-2.5 py-1 text-caption font-medium text-text-2 hover:text-text-1"
+                              >
+                                Chi tiết
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* All SKU (collapsed) */}
           {activeCn.allSkus.length > 0 && (
             <div className="rounded-card border border-surface-3 bg-surface-2">
