@@ -195,7 +195,18 @@ export default function DrpPage() {
       allocLayers: e.allocLayers.map((l) => ({ ...l, qty: Math.round(l.qty * s), delta: l.delta ? Math.round(l.delta * s) : undefined })),
       options: e.options.map((o) => ({ ...o, qty: Math.round(o.qty * s) })),
     })),
-    allSkus: r.allSkus.map((sk) => ({ ...sk, demand: Math.round(sk.demand * s), allocated: Math.round(sk.allocated * s) })),
+    allSkus: r.allSkus.map((sk) => ({
+      ...sk,
+      demand: Math.round(sk.demand * s),
+      allocated: Math.round(sk.allocated * s),
+      sources: {
+        onHand: Math.round(sk.sources.onHand * s),
+        pipeline: Math.round(sk.sources.pipeline * s),
+        hubPo: Math.round(sk.sources.hubPo * s),
+        lcnbIn: Math.round(sk.sources.lcnbIn * s),
+        internalTransfer: Math.round(sk.sources.internalTransfer * s),
+      },
+    })),
   }));
 
   const totalDemand = data.reduce((a, r) => a + r.demand, 0);
