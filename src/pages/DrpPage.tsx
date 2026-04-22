@@ -1845,15 +1845,170 @@ export default function DrpPage() {
                 </div>
 
                 {/* Reason */}
-                <div className="py-4">
+                <div className="py-4 border-b border-surface-3">
                   <div className="text-table-header uppercase text-text-3 tracking-wide mb-2">Lý do TO</div>
                   <p className="text-table text-text-2 leading-relaxed">{m.reason}</p>
+                  {linkedPo && (
+                    <div className="mt-3 flex items-center gap-2 rounded-card border border-success/30 bg-success-bg/50 px-3 py-2">
+                      <Link2 className="h-3.5 w-3.5 text-success flex-shrink-0" />
+                      <span className="text-caption text-text-2">PO liên kết:</span>
+                      <span className="text-caption font-mono font-semibold text-success">{linkedPo}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Action footer */}
+                <div className="sticky bottom-0 -mx-6 px-6 py-4 bg-surface-1/95 backdrop-blur border-t border-surface-3 space-y-2">
+                  {!canEdit && !canApprove && (
+                    <div className="flex items-center gap-2 text-caption text-text-3">
+                      <ShieldAlert className="h-3.5 w-3.5" />
+                      <span>Bạn không có quyền thao tác trên TO này.</span>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      disabled={!canApprove || isApproved}
+                      onClick={() => { setActionNote(""); setPendingAction({ kind: "approve", toCode: m.toCode }); }}
+                      className={cn(
+                        "flex items-center justify-center gap-1.5 rounded-button px-3 py-2 text-table-sm font-semibold transition-colors",
+                        !canApprove || isApproved
+                          ? "bg-surface-2 text-text-3 cursor-not-allowed"
+                          : "bg-gradient-primary text-primary-foreground hover:shadow-md"
+                      )}
+                      title={!canApprove ? "Cần quyền SC Manager" : isApproved ? "Đã duyệt" : "Duyệt TO"}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Duyệt TO
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canEdit || !isApproved || isShipped}
+                      onClick={() => { setActionNote(""); setPendingAction({ kind: "ship", toCode: m.toCode }); }}
+                      className={cn(
+                        "flex items-center justify-center gap-1.5 rounded-button px-3 py-2 text-table-sm font-semibold border transition-colors",
+                        !canEdit || !isApproved || isShipped
+                          ? "border-surface-3 bg-surface-2 text-text-3 cursor-not-allowed"
+                          : "border-success bg-success-bg text-success hover:bg-success/15"
+                      )}
+                      title={!isApproved ? "Cần duyệt trước" : isShipped ? "Đã xuất kho" : "Xuất kho"}
+                    >
+                      <Truck className="h-3.5 w-3.5" />
+                      Xuất kho
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canEdit || !!linkedPo}
+                      onClick={() => { setActionNote(""); setPendingAction({ kind: "linkPo", toCode: m.toCode }); }}
+                      className={cn(
+                        "flex items-center justify-center gap-1.5 rounded-button px-3 py-2 text-table-sm font-semibold border transition-colors",
+                        !canEdit || !!linkedPo
+                          ? "border-surface-3 bg-surface-2 text-text-3 cursor-not-allowed"
+                          : "border-primary text-primary hover:bg-primary/10"
+                      )}
+                      title={linkedPo ? "Đã có PO liên kết" : "Tạo PO liên kết"}
+                    >
+                      <Link2 className="h-3.5 w-3.5" />
+                      Tạo PO
+                    </button>
+                  </div>
                 </div>
               </>
             );
           })()}
         </SheetContent>
       </Sheet>
+
+      {/* Confirmation dialog for TO actions */}
+      <AlertDialog open={!!pendingAction} onOpenChange={(o) => { if (!o) { setPendingAction(null); setActionNote(""); } }}>
+        <AlertDialogContent>
+          {pendingAction && (() => {
+            const cfg = pendingAction.kind === "approve"
+              ? {
+                  title: "Xác nhận duyệt TO",
+                  desc: "TO sẽ chuyển sang trạng thái 'Đã duyệt' và sẵn sàng xuất kho. Hành động này được ghi vào nhật ký.",
+                  confirmLabel: "Duyệt TO",
+                  noteRequired: false,
+                  notePlaceholder: "Ghi chú duyệt (tuỳ chọn) — vd: ưu tiên giao trong ngày…",
+                  tone: "primary" as const,
+                }
+              : pendingAction.kind === "ship"
+              ? {
+                  title: "Xác nhận xuất kho",
+                  desc: "Hệ thống sẽ tạo phiếu xuất và khoá điều chỉnh số lượng. Vui lòng đảm bảo hàng đã sẵn sàng tại kho nguồn.",
+                  confirmLabel: "Xuất kho",
+                  noteRequired: false,
+                  notePlaceholder: "Ghi chú xuất kho (tuỳ chọn) — vd: số xe, tài xế…",
+                  tone: "success" as const,
+                }
+              : {
+                  title: "Tạo PO liên kết",
+                  desc: "Một Factory PO mới sẽ được tạo và liên kết với TO này để bù đắp tồn kho. Bắt buộc nhập lý do để theo dõi.",
+                  confirmLabel: "Tạo PO",
+                  noteRequired: true,
+                  notePlaceholder: "Lý do tạo PO liên kết (bắt buộc) — vd: bù tồn HUB sau LCNB…",
+                  tone: "primary" as const,
+                };
+            const noteEmpty = cfg.noteRequired && !actionNote.trim();
+            return (
+              <>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>{cfg.title}</AlertDialogTitle>
+                  <AlertDialogDescription>{cfg.desc}</AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-2 py-2">
+                  <div className="flex items-center justify-between text-caption">
+                    <span className="text-text-3">Mã TO</span>
+                    <span className="font-mono font-semibold text-text-1">{pendingAction.toCode}</span>
+                  </div>
+                  <div>
+                    <label className="text-table-header uppercase text-text-3 tracking-wide block mb-1">
+                      Ghi chú {cfg.noteRequired ? <span className="text-danger normal-case">*</span> : <span className="text-text-3 normal-case">(tuỳ chọn)</span>}
+                    </label>
+                    <Textarea
+                      value={actionNote}
+                      onChange={(e) => setActionNote(e.target.value)}
+                      placeholder={cfg.notePlaceholder}
+                      rows={3}
+                      className="resize-none"
+                    />
+                  </div>
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Huỷ</AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={noteEmpty}
+                    onClick={(e) => {
+                      if (noteEmpty) { e.preventDefault(); return; }
+                      const code = pendingAction.toCode;
+                      const noteSuffix = actionNote.trim() ? ` · ${actionNote.trim()}` : "";
+                      if (pendingAction.kind === "approve") {
+                        setToStatusOverrides(prev => ({ ...prev, [code]: prev[code] === "shipped" ? "shipped" : "approved" }));
+                        toast.success(`Đã duyệt TO ${code}${noteSuffix}`);
+                      } else if (pendingAction.kind === "ship") {
+                        setToStatusOverrides(prev => ({ ...prev, [code]: "shipped" }));
+                        toast.success(`Đã xuất kho TO ${code}${noteSuffix}`);
+                      } else {
+                        const poNum = `PO-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+                        setLinkedPoCreated(prev => ({ ...prev, [code]: poNum }));
+                        toast.success(`Đã tạo ${poNum} liên kết TO ${code}${noteSuffix}`);
+                      }
+                      setPendingAction(null);
+                      setActionNote("");
+                    }}
+                    className={cn(
+                      cfg.tone === "success" && "bg-success text-success-foreground hover:bg-success/90"
+                    )}
+                  >
+                    {cfg.confirmLabel}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </>
+            );
+          })()}
+        </AlertDialogContent>
+      </AlertDialog>
+
 
     </AppLayout>
   );
