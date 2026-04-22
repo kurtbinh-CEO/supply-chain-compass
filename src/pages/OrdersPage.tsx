@@ -409,6 +409,8 @@ export default function OrdersPage() {
   const filteredShipments = useMemo(() => {
     const q = trkSearch.trim().toLowerCase();
     const arr = shipments.filter((s: any) => {
+      // Cross-tab pipeline filter (PO status from header rail)
+      if (pipelineFilter && s.status !== pipelineFilter) return false;
       // Quick-status chip
       if (trackFilter === "received" && s.currentStage !== "received") return false;
       if (trackFilter === "in_transit" && !(s.currentStage === "in_transit" || s.currentStage === "loaded")) return false;
