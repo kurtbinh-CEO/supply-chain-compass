@@ -271,6 +271,32 @@ export default function DrpPage() {
     });
   };
 
+  // Source filter for Layer 1 — show only rows containing selected supply sources
+  type SourceFilterKey = "hubPo" | "lcnbIn" | "internalTransfer" | "onHand" | "pipeline";
+  const [sourceFilter, setSourceFilter] = useState<Set<SourceFilterKey>>(new Set());
+  const toggleSourceFilter = (k: SourceFilterKey) => {
+    setSourceFilter(prev => {
+      const n = new Set(prev);
+      n.has(k) ? n.delete(k) : n.add(k);
+      return n;
+    });
+  };
+  const matchesSourceFilter = (src: AllocSources) => {
+    if (sourceFilter.size === 0) return true;
+    return Array.from(sourceFilter).some(k => {
+      // internalTransfer counts if non-zero (giving or receiving)
+      if (k === "internalTransfer") return src.internalTransfer !== 0;
+      return src[k] > 0;
+    });
+  };
+  const SOURCE_FILTER_OPTIONS: { key: SourceFilterKey; label: string; cls: string }[] = [
+    { key: "hubPo", label: "Hub PO", cls: "border-primary/30 bg-primary/10 text-primary" },
+    { key: "lcnbIn", label: "LCNB", cls: "border-warning/30 bg-warning-bg text-warning" },
+    { key: "internalTransfer", label: "Internal TO", cls: "border-accent bg-accent text-accent-foreground" },
+    { key: "pipeline", label: "Pipeline", cls: "border-info/30 bg-info/10 text-info" },
+    { key: "onHand", label: "On-hand", cls: "border-success/30 bg-success-bg text-success" },
+  ];
+
   const toggleException = (key: string) => {
     setExpandedExceptions((prev) => {
       const next = new Set(prev);
@@ -433,8 +459,35 @@ export default function DrpPage() {
             <LogicLink tab="monthly" node={2} tooltip="Logic cân đối Demand − Supply" />
           </div>
           <div className="rounded-card border border-surface-3 bg-surface-2">
-          <div className="px-4 py-2 border-b border-surface-3">
+          <div className="px-4 py-2 border-b border-surface-3 flex items-center justify-between gap-3 flex-wrap">
             <AllocSourceLegend />
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-caption text-text-3 font-medium mr-1">Lọc nguồn:</span>
+              {SOURCE_FILTER_OPTIONS.map(opt => {
+                const active = sourceFilter.has(opt.key);
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => toggleSourceFilter(opt.key)}
+                    className={cn(
+                      "rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors",
+                      active ? opt.cls : "border-surface-3 bg-surface-1 text-text-3 hover:text-text-2"
+                    )}
+                    title={active ? `Bỏ lọc ${opt.label}` : `Chỉ xem rows có ${opt.label}`}
+                  >
+                    {active ? "✓ " : ""}{opt.label}
+                  </button>
+                );
+              })}
+              {sourceFilter.size > 0 && (
+                <button
+                  onClick={() => setSourceFilter(new Set())}
+                  className="text-[11px] text-text-3 hover:text-text-1 underline ml-1"
+                >
+                  Xóa lọc
+                </button>
+              )}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -452,7 +505,17 @@ export default function DrpPage() {
                 </tr>
               </thead>
               <tbody>
-                {pivotMode === "cn" && data.map((r) => {
+                {pivotMode === "cn" && data.filter(r => {
+                  if (sourceFilter.size === 0) return true;
+                  const cs = r.allSkus.reduce((acc, sk) => ({
+                    onHand: acc.onHand + sk.sources.onHand,
+                    pipeline: acc.pipeline + sk.sources.pipeline,
+                    hubPo: acc.hubPo + sk.sources.hubPo,
+                    lcnbIn: acc.lcnbIn + sk.sources.lcnbIn,
+                    internalTransfer: acc.internalTransfer + sk.sources.internalTransfer,
+                  }), { onHand: 0, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 });
+                  return matchesSourceFilter(cs);
+                }).map((r) => {
                   const rowKey = `cn-${r.cn}`;
                   const isOpen = expandedRows.has(rowKey);
                   const cnSources = r.allSkus.reduce((acc, sk) => ({
@@ -496,7 +559,7 @@ export default function DrpPage() {
                         <tr className="bg-surface-1/20">
                           <td></td>
                           <td colSpan={8} className="px-4 py-3">
-                            <ExpandedSkuBreakdown title={`SKU breakdown — ${r.cn}`} skus={r.allSkus} />
+                            <ExpandedSkuBreakdown title={`SKU breakdown — ${r.cn}`} skus={r.allSkus.filter(sk => matchesSourceFilter(sk.sources))} />
                           </td>
                         </tr>
                       )}
@@ -504,7 +567,7 @@ export default function DrpPage() {
                   );
                 })}
 
-                {pivotMode === "sku" && skuAggDrp.map((sk) => {
+                {pivotMode === "sku" && skuAggDrp.filter(sk => matchesSourceFilter(sk.sources)).map((sk) => {
                   const rowKey = `sku-${sk.item}-${sk.variant}`;
                   const isOpen = expandedRows.has(rowKey);
                   return (
@@ -540,7 +603,7 @@ export default function DrpPage() {
                         <tr className="bg-surface-1/20">
                           <td></td>
                           <td colSpan={8} className="px-4 py-3">
-                            <ExpandedCnBreakdown title={`CN breakdown — ${sk.item} ${sk.variant}`} cnRows={sk.cnRows} />
+                            <ExpandedCnBreakdown title={`CN breakdown — ${sk.item} ${sk.variant}`} cnRows={sk.cnRows.filter(cr => matchesSourceFilter(cr.sources))} />
                           </td>
                         </tr>
                       )}
@@ -548,7 +611,7 @@ export default function DrpPage() {
                   );
                 })}
 
-                {pivotMode === "cn" && (
+                {pivotMode === "cn" && sourceFilter.size === 0 && (
                   <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
                     <td></td>
                     <td className="px-4 py-3 text-table text-text-1">TOTAL</td>
