@@ -118,6 +118,9 @@ export default function OrdersPage() {
   const [openShipment, setOpenShipment] = useState<ShipmentDetail | null>(null);
   const [trackFilter, setTrackFilter] = useState<"all" | "in_transit" | "overdue" | "received">("all");
 
+  // Pipeline rail filter (drives Approval-tab reference table)
+  const [pipelineFilter, setPipelineFilter] = useState<string | null>(null);
+
   /* ── Derive effective status (with overrides) ── */
   const effectiveStatus = (po: PurchaseOrderRow): string => statusOverrides[po.po_number] || po.status;
 
