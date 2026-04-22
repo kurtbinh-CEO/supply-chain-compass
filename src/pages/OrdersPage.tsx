@@ -399,14 +399,68 @@ export default function OrdersPage() {
   }, [allOrders, statusOverrides]);
 
   const filteredShipments = useMemo(() => {
-    return shipments.filter((s) => {
-      if (trackFilter === "all") return true;
-      if (trackFilter === "received") return s.currentStage === "received";
-      if (trackFilter === "in_transit") return s.currentStage === "in_transit" || s.currentStage === "loaded";
-      if (trackFilter === "overdue") return s.etaCountdownH !== undefined && s.etaCountdownH < 0;
+    const q = trkSearch.trim().toLowerCase();
+    const arr = shipments.filter((s: any) => {
+      // Quick-status chip
+      if (trackFilter === "received" && s.currentStage !== "received") return false;
+      if (trackFilter === "in_transit" && !(s.currentStage === "in_transit" || s.currentStage === "loaded")) return false;
+      if (trackFilter === "overdue" && !(s.etaCountdownH !== undefined && s.etaCountdownH < 0)) return false;
+      // NM
+      if (trkNms.size > 0 && !trkNms.has(s.nm)) return false;
+      // SKU
+      if (trkSkus.size > 0 && !trkSkus.has(s.sku)) return false;
+      // ETA date range — parse "dd/mm" back to Date by using etaCountdownH heuristic
+      if (trkDateRange?.from) {
+        // s.eta is "dd/MM" — combine with current year
+        const m = /^(\d{2})\/(\d{2})/.exec(s.eta || "");
+        if (m) {
+          const yr = new Date().getFullYear();
+          const d = new Date(yr, parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+          if (d < trkDateRange.from) return false;
+          if (trkDateRange.to && d > trkDateRange.to) return false;
+        }
+      }
+      // Search
+      if (q) {
+        const hay = `${s.asn} ${s.rpo} ${s.nm} ${s.sku} ${s.driver ?? ""} ${s.vehicle ?? ""} ${s.carrier ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
       return true;
     });
-  }, [shipments, trackFilter]);
+    // Sort
+    const stageRank: Record<string, number> = { picked: 0, loaded: 1, in_transit: 2, at_gate: 3, received: 4 };
+    arr.sort((a: any, b: any) => {
+      switch (trkSort) {
+        case "eta_asc":   return (a.etaCountdownH ?? 1e9) - (b.etaCountdownH ?? 1e9);
+        case "eta_desc":  return (b.etaCountdownH ?? -1e9) - (a.etaCountdownH ?? -1e9);
+        case "stage_desc":return (stageRank[b.currentStage] ?? 0) - (stageRank[a.currentStage] ?? 0);
+        case "stage_asc": return (stageRank[a.currentStage] ?? 0) - (stageRank[b.currentStage] ?? 0);
+        case "qty_desc":  return (b.qty ?? 0) - (a.qty ?? 0);
+        case "nm_asc":    return String(a.nm).localeCompare(String(b.nm));
+        default:          return 0;
+      }
+    });
+    return arr;
+  }, [shipments, trackFilter, trkSearch, trkNms, trkSkus, trkDateRange, trkSort]);
+
+  const trkActiveFilterCount =
+    (trkSearch.trim() ? 1 : 0) + (trkNms.size > 0 ? 1 : 0) + (trkSkus.size > 0 ? 1 : 0) + (trkDateRange?.from ? 1 : 0);
+  const clearTrkFilters = () => { setTrkSearch(""); setTrkNms(new Set()); setTrkSkus(new Set()); setTrkDateRange(undefined); };
+
+  // Reset page when filters/sort change
+  const trkResetKey = `${trackFilter}|${trkSearch}|${Array.from(trkNms).sort().join(",")}|${Array.from(trkSkus).sort().join(",")}|${trkDateRange?.from?.toISOString() ?? ""}|${trkDateRange?.to?.toISOString() ?? ""}|${trkSort}`;
+  useMemo(() => { setTrkPage(1); }, [trkResetKey]);
+
+  const trkTotalPages = Math.max(1, Math.ceil(filteredShipments.length / TRK_PAGE_SIZE));
+  const trkPageSafe = Math.min(trkPage, trkTotalPages);
+  const pagedShipments = useMemo(
+    () => filteredShipments.slice((trkPageSafe - 1) * TRK_PAGE_SIZE, trkPageSafe * TRK_PAGE_SIZE),
+    [filteredShipments, trkPageSafe]
+  );
+
+  // Lists for tracking filter popovers (derived from current shipments)
+  const trkNmList = useMemo(() => Array.from(new Set(shipments.map((s: any) => s.nm))).sort(), [shipments]);
+  const trkSkuList = useMemo(() => Array.from(new Set(shipments.map((s: any) => s.sku))).sort(), [shipments]);
 
   const totalQty = allOrders.reduce((s, o) => s + Number(o.quantity), 0);
   const totalVnd = useMemo(
