@@ -158,6 +158,11 @@ export default function DrpPage() {
     item: string; variant: string; qty: number; counterpart: string;
     reason: string; eta: "Same-day" | "1 ngày" | "Quá hạn"; toCode: string;
   }>(null);
+  const [toReasons, setToReasons] = useState<Record<string, string>>({});
+  const [toStatusOverrides, setToStatusOverrides] = useState<Record<string, "approved" | "shipped">>({});
+  const [editingReason, setEditingReason] = useState(false);
+  const [reasonDraft, setReasonDraft] = useState("");
+  const { canEdit, canApprove, user } = useRbac();
   const [pivotMode, setPivotMode] = usePivotMode("drp");
   const [expandedExceptions, setExpandedExceptions] = useState<Set<string>>(new Set());
   const [expandOptions, setExpandOptions] = useState<string | null>(null);
