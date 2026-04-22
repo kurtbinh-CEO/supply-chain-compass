@@ -1684,11 +1684,69 @@ export default function OrdersPage() {
             </div>
           ) : (
             <>
+              {/* Bulk action toolbar — only when selection exists */}
+              {trkSelected.size > 0 && (
+                <div className="rounded-card border border-primary/40 bg-primary/5 px-3 py-2 flex flex-wrap items-center gap-2 animate-fade-in sticky top-0 z-10 shadow-sm">
+                  <div className="flex items-center gap-2 mr-1">
+                    <span className="inline-flex items-center justify-center h-6 min-w-[24px] px-1.5 rounded-full bg-primary text-primary-foreground text-caption font-semibold tabular-nums">
+                      {trkSelected.size}
+                    </span>
+                    <span className="text-table-sm text-text-1 font-medium">
+                      shipment đã chọn
+                    </span>
+                    {trkSelected.size < filteredShipments.length && (
+                      <button
+                        onClick={selectAllFiltered}
+                        className="text-caption text-primary hover:underline ml-1"
+                      >
+                        Chọn tất cả {filteredShipments.length}
+                      </button>
+                    )}
+                  </div>
+                  <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+                    <button
+                      onClick={exportSelectedCsv}
+                      className="h-8 inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 px-3 text-table-sm text-text-1 hover:bg-surface-1"
+                    >
+                      <Download className="h-3.5 w-3.5" /> Export CSV
+                    </button>
+                    <button
+                      onClick={downloadSelectedPods}
+                      className="h-8 inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 px-3 text-table-sm text-text-1 hover:bg-surface-1"
+                    >
+                      <FileText className="h-3.5 w-3.5" /> Tải POD
+                    </button>
+                    {canEdit && (
+                      <button
+                        onClick={() => setBulkReceiveOpen(true)}
+                        className="h-8 inline-flex items-center gap-1.5 rounded-button bg-success text-success-foreground px-3 text-table-sm font-medium hover:opacity-90"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Đánh dấu đã nhận
+                      </button>
+                    )}
+                    <button
+                      onClick={clearSelection}
+                      className="h-8 inline-flex items-center gap-1 rounded-button px-2 text-caption text-text-3 hover:text-danger"
+                      aria-label="Bỏ chọn"
+                    >
+                      <X className="h-3.5 w-3.5" /> Bỏ chọn
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-card border border-surface-3 bg-surface-2">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-surface-3 bg-surface-1/50">
+                        <th className="px-3 py-2 w-9">
+                          <Checkbox
+                            checked={pageAllSelected ? true : pageSomeSelected ? "indeterminate" : false}
+                            onCheckedChange={togglePageSelection}
+                            aria-label="Chọn tất cả trong trang"
+                          />
+                        </th>
                         {["ASN#", "RPO#", "NM → CN", "Tài xế / SDT", "Xe / Carrier", "SKU · Qty", "ETA", "Tiến trình", ""].map((h) => (
                           <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
                         ))}
@@ -1705,8 +1763,23 @@ export default function OrdersPage() {
                           tone === "success" ? "bg-success-bg text-success" :
                           "bg-surface-1 text-text-3";
                         const currentIdx = ["picked", "loaded", "in_transit", "at_gate", "received"].indexOf(s.currentStage);
+                        const isSelected = trkSelected.has(s.asn);
                         return (
-                          <tr key={s.asn} className="border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer" onClick={() => setOpenShipment(s)}>
+                          <tr
+                            key={s.asn}
+                            className={cn(
+                              "border-b border-surface-3/50 cursor-pointer transition-colors",
+                              isSelected ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-surface-1/30"
+                            )}
+                            onClick={() => setOpenShipment(s)}
+                          >
+                            <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleRowSelection(s.asn)}
+                                aria-label={`Chọn ${s.asn}`}
+                              />
+                            </td>
                             <td className="px-3 py-2.5">
                               <span className={cn("rounded-sm px-1.5 py-0.5", poNumClasses, asnBadge.bg, asnBadge.text)}>{s.asn}</span>
                             </td>
