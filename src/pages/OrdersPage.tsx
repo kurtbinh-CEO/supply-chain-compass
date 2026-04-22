@@ -24,6 +24,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getShipmentDetail, etaTone, etaLabel, type ShipmentDetail } from "@/lib/shipment-data";
+import { BpoFlowCard } from "@/components/orders/BpoFlowCard";
+import { LayoutGrid, GitBranch } from "lucide-react";
 
 /* ─────────── helpers ─────────── */
 const supplierToNm: Record<string, string> = {
@@ -95,6 +97,7 @@ export default function OrdersPage() {
 
   // Burn-down tab state
   const [drillBpo, setDrillBpo] = useState<string | null>(null);
+  const [burndownView, setBurndownView] = useState<"compact" | "flow">("compact");
 
   // Tracking tab state
   const [openShipment, setOpenShipment] = useState<ShipmentDetail | null>(null);
@@ -512,18 +515,53 @@ export default function OrdersPage() {
       {/* ═══════════════════ TAB 2: BURN-DOWN ═══════════════════ */}
       {activeTab === "burndown" && !isEmpty && (
         <div className="animate-fade-in space-y-3">
-          <div className="rounded-card border border-surface-3 bg-surface-2">
-            <div className="px-4 py-3 border-b border-surface-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-text-2" />
-                <p className="text-table-sm font-semibold text-text-1">BPO Burn-down theo NM</p>
-                <LogicTooltip
-                  title="BPO Burn-down logic"
-                  content={`BPO Total = Tổng cam kết tháng/quý từ NM\nReleased = RPO đã confirmed/shipped/received\nShipped = ASN đã issue (shipped + received)\nDelivered = Đã nhận về kho (received)\nRemaining = BPO Total − Delivered\nCompletion% = Delivered / BPO Total × 100`}
-                />
-              </div>
-              <p className="text-caption text-text-3">{burnDowns.length} NM · Click để xem chi tiết</p>
+          {/* View toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Package className="h-4 w-4 text-text-2" />
+              <p className="text-table-sm font-semibold text-text-1">BPO Burn-down theo NM</p>
+              <LogicTooltip
+                title="BPO Burn-down logic"
+                content={`BPO Total = Tổng cam kết tháng/quý từ NM\nReleased = RPO đã confirmed/shipped/received\nShipped = ASN đã issue (shipped + received)\nDelivered = Đã nhận về kho (received)\nRemaining = BPO Total − Delivered\nCompletion% = Delivered / BPO Total × 100`}
+              />
+              <span className="text-caption text-text-3 ml-2">{burnDowns.length} NM</span>
             </div>
+            <div className="inline-flex items-center rounded-full border border-surface-3 bg-surface-0 p-0.5">
+              <button
+                onClick={() => setBurndownView("compact")}
+                className={cn(
+                  "rounded-full px-3 py-1 text-caption font-medium flex items-center gap-1.5 transition-colors",
+                  burndownView === "compact"
+                    ? "bg-gradient-primary text-primary-foreground"
+                    : "text-text-2 hover:text-text-1"
+                )}
+                title="View compact: list + stacked bar"
+              >
+                <LayoutGrid className="h-3 w-3" /> Compact
+              </button>
+              <button
+                onClick={() => setBurndownView("flow")}
+                className={cn(
+                  "rounded-full px-3 py-1 text-caption font-medium flex items-center gap-1.5 transition-colors",
+                  burndownView === "flow"
+                    ? "bg-gradient-primary text-primary-foreground"
+                    : "text-text-2 hover:text-text-1"
+                )}
+                title="View E2E flow: 5-stage funnel per BPO"
+              >
+                <GitBranch className="h-3 w-3" /> E2E Flow
+              </button>
+            </div>
+          </div>
+
+          {burndownView === "flow" ? (
+            <div className="space-y-3">
+              {burnDowns.map((b) => (
+                <BpoFlowCard key={b.nm} data={b} />
+              ))}
+            </div>
+          ) : (
+          <div className="rounded-card border border-surface-3 bg-surface-2">
             <div className="divide-y divide-surface-3/50">
               {burnDowns.map((b) => {
                 const releasedPct = b.bpoTotal > 0 ? (b.released / b.bpoTotal) * 100 : 0;
@@ -626,6 +664,7 @@ export default function OrdersPage() {
               })}
             </div>
           </div>
+          )}
         </div>
       )}
 
