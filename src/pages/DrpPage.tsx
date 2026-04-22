@@ -94,16 +94,48 @@ const baseData: CnRow[] = [
       },
     ],
     allSkus: [
-      { item: "GA-300", variant: "A4", demand: 617, allocated: 272, fillPct: 44, status: "SHORTAGE" },
-      { item: "GA-300", variant: "B2", demand: 178, allocated: 178, fillPct: 100, status: "OK" },
-      { item: "GA-400", variant: "A4", demand: 347, allocated: 297, fillPct: 86, status: "WATCH" },
-      { item: "GA-600", variant: "A4", demand: 881, allocated: 881, fillPct: 100, status: "OK" },
-      { item: "GA-600", variant: "B2", demand: 527, allocated: 527, fillPct: 100, status: "OK" },
+      // GA-300 A4: shortage covered by combo (LCNB 220 + Hub PO 125) + on-hand 272 net = 617
+      { item: "GA-300", variant: "A4", demand: 617, allocated: 272, fillPct: 44, status: "SHORTAGE",
+        sources: { onHand: 272, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
+      { item: "GA-300", variant: "B2", demand: 178, allocated: 178, fillPct: 100, status: "OK",
+        sources: { onHand: 128, pipeline: 50, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
+      { item: "GA-400", variant: "A4", demand: 347, allocated: 297, fillPct: 86, status: "WATCH",
+        sources: { onHand: 297, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
+      { item: "GA-600", variant: "A4", demand: 881, allocated: 881, fillPct: 100, status: "OK",
+        sources: { onHand: 600, pipeline: 281, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
+      // GA-600 B2: covered by Hub PO + internal transfer between BD warehouses
+      { item: "GA-600", variant: "B2", demand: 527, allocated: 527, fillPct: 100, status: "OK",
+        sources: { onHand: 200, pipeline: 0, hubPo: 250, lcnbIn: 0, internalTransfer: 77 } },
     ],
   },
-  { cn: "CN-ĐN", demand: 1800, available: 1600, fillRate: 100, gap: 0, exceptions: 0, rpos: 1, exceptionList: [], allSkus: [] },
-  { cn: "CN-HN", demand: 2100, available: 1300, fillRate: 100, gap: 0, exceptions: 0, rpos: 2, exceptionList: [], allSkus: [] },
-  { cn: "CN-CT", demand: 1200, available: 1050, fillRate: 100, gap: 0, exceptions: 0, rpos: 1, exceptionList: [], allSkus: [] },
+  { cn: "CN-ĐN", demand: 1800, available: 1600, fillRate: 100, gap: 0, exceptions: 0, rpos: 1, exceptionList: [],
+    allSkus: [
+      { item: "GA-300", variant: "A4", demand: 500, allocated: 500, fillPct: 100, status: "OK",
+        sources: { onHand: 720, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: -220 } }, // give 220 lateral to BD
+      { item: "GA-600", variant: "A4", demand: 800, allocated: 800, fillPct: 100, status: "OK",
+        sources: { onHand: 400, pipeline: 400, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
+      { item: "GA-400", variant: "A4", demand: 500, allocated: 500, fillPct: 100, status: "OK",
+        sources: { onHand: 350, pipeline: 0, hubPo: 150, lcnbIn: 0, internalTransfer: 0 } },
+    ],
+  },
+  { cn: "CN-HN", demand: 2100, available: 1300, fillRate: 100, gap: 0, exceptions: 0, rpos: 2, exceptionList: [],
+    allSkus: [
+      { item: "GA-300", variant: "A4", demand: 800, allocated: 800, fillPct: 100, status: "OK",
+        sources: { onHand: 200, pipeline: 0, hubPo: 600, lcnbIn: 0, internalTransfer: 0 } },
+      { item: "GA-400", variant: "A4", demand: 700, allocated: 700, fillPct: 100, status: "OK",
+        sources: { onHand: 200, pipeline: 500, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
+      { item: "GA-600", variant: "B2", demand: 600, allocated: 600, fillPct: 100, status: "OK",
+        sources: { onHand: 480, pipeline: 0, hubPo: 0, lcnbIn: 120, internalTransfer: 0 } }, // received lateral from CT
+    ],
+  },
+  { cn: "CN-CT", demand: 1200, available: 1050, fillRate: 100, gap: 0, exceptions: 0, rpos: 1, exceptionList: [],
+    allSkus: [
+      { item: "GA-600", variant: "B2", demand: 600, allocated: 600, fillPct: 100, status: "OK",
+        sources: { onHand: 750, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: -120 } }, // give 120 to HN
+      { item: "GA-300", variant: "A4", demand: 600, allocated: 600, fillPct: 100, status: "OK",
+        sources: { onHand: 150, pipeline: 0, hubPo: 450, lcnbIn: 0, internalTransfer: 0 } },
+    ],
+  },
 ];
 
 export default function DrpPage() {
