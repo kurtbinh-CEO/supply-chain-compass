@@ -461,6 +461,47 @@ export default function DrpPage() {
     return Object.values(map).sort((a, b) => a.fillPct - b.fillPct);
   }, [data]);
 
+  /* FIX 1 (ADR-SCP-008) — Group variants under SKU base for netting display.
+     Variants become expandable sub-rows; main row shows base totals. */
+  const skuBaseAggDrp = useMemo(() => {
+    const map: Record<string, {
+      base: string;
+      totalDemand: number;
+      totalAllocated: number;
+      totalGap: number;
+      fillPct: number;
+      cnGapCount: number;
+      sources: AllocSources;
+      variants: typeof skuAggDrp;
+    }> = {};
+    skuAggDrp.forEach((v) => {
+      const key = v.item;
+      if (!map[key]) {
+        map[key] = {
+          base: key, totalDemand: 0, totalAllocated: 0, totalGap: 0, fillPct: 0,
+          cnGapCount: 0,
+          sources: { onHand: 0, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 },
+          variants: [],
+        };
+      }
+      map[key].totalDemand += v.totalDemand;
+      map[key].totalAllocated += v.totalAllocated;
+      map[key].totalGap += v.totalGap;
+      map[key].cnGapCount += v.cnGapCount;
+      map[key].sources.onHand += v.sources.onHand;
+      map[key].sources.pipeline += v.sources.pipeline;
+      map[key].sources.hubPo += v.sources.hubPo;
+      map[key].sources.lcnbIn += v.sources.lcnbIn;
+      map[key].sources.internalTransfer += v.sources.internalTransfer;
+      map[key].variants.push(v);
+    });
+    Object.values(map).forEach((b) => {
+      b.fillPct = b.totalDemand > 0 ? Math.round((b.totalAllocated / b.totalDemand) * 100) : 100;
+      b.variants.sort((a, b) => a.variant.localeCompare(b.variant));
+    });
+    return Object.values(map).sort((a, b) => a.fillPct - b.fillPct);
+  }, [skuAggDrp]);
+
   // Inline expand state for Layer 1 — persisted per pivot mode in sessionStorage
   const STORAGE_KEY = "drp:expandedRows";
   const [expandedByMode, setExpandedByMode] = useState<Record<"cn" | "sku", Set<string>>>(() => {
