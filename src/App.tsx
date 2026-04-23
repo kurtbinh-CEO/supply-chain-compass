@@ -137,13 +137,8 @@ function ProtectedRoutes() {
 
 /** Mounts the global 5-min idle nudge — needs to live inside WorkspaceProvider. */
 function IdleNudgeMount() {
-  const { notifications } = useWorkspace();
-  const getPendingCount = useCallback(() => {
-    // Pending = unread notifications + notifications with severity 'danger'/'warning' (exceptions).
-    const unread = notifications.filter(n => !n.read).length;
-    const exceptions = notifications.filter(n => n.typeColor === "danger" || n.typeColor === "warning").length;
-    return Math.max(unread, exceptions);
-  }, [notifications]);
+  const { pendingCount, exceptions } = useWorkspace();
+  const getPendingCount = useCallback(() => pendingCount + exceptions.length, [pendingCount, exceptions.length]);
   useIdleNudge({ getPendingCount });
   return null;
 }
