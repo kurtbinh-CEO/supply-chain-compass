@@ -632,8 +632,23 @@ export default function MonitoringPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
-                    {["CN", "MAPE tháng này", "Tháng trước", "Trend 3M", "Best model", "FVA"].map((h, i) => (
-                      <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
+                    {[
+                      { h: "CN", term: undefined as string | undefined },
+                      { h: "MAPE tháng này", term: "MAPE" },
+                      { h: "Tháng trước", term: undefined },
+                      { h: "Trend 3M", term: undefined },
+                      { h: "Best model", term: undefined },
+                      { h: "FVA", term: "FVA" },
+                    ].map((col, i) => (
+                      <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
+                        {col.term ? (
+                          <TermTooltip term={col.term}>
+                            <span>{col.h}</span>
+                          </TermTooltip>
+                        ) : (
+                          col.h
+                        )}
+                      </th>
                     ))}
                   </tr>
                 </thead>
