@@ -545,18 +545,58 @@ export default function DrpPage() {
   }, [skuAggDrp]);
 
   // Inline expand state for Layer 1 — persisted per pivot mode in sessionStorage
+  // P19 — auto-expand SHORTAGE rows by default; OK rows stay collapsed.
   const STORAGE_KEY = "drp:expandedRows";
   const [expandedByMode, setExpandedByMode] = useState<Record<"cn" | "sku", Set<string>>>(() => {
-    if (typeof window === "undefined") return { cn: new Set(), sku: new Set() };
+    // Auto-seed: SHORTAGE CN rows (gap > 0) start expanded; OK rows collapsed.
+    const cnSeed = new Set<string>(
+      data.filter((r) => r.gap > 0).map((r) => `cn-${r.cn}`),
+    );
+    // SKU pivot seed populated lazily once skuBaseAggDrp is computed.
+    const skuSeed = new Set<string>();
+    if (typeof window === "undefined") return { cn: cnSeed, sku: skuSeed };
     try {
       const raw = sessionStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as { cn?: string[]; sku?: string[] };
-        return { cn: new Set(parsed.cn ?? []), sku: new Set(parsed.sku ?? []) };
+        // Persisted user prefs override but we always keep auto-open shortages.
+        (parsed.cn ?? []).forEach((k) => cnSeed.add(k));
+        (parsed.sku ?? []).forEach((k) => skuSeed.add(k));
       }
     } catch { /* ignore */ }
-    return { cn: new Set(), sku: new Set() };
+    return { cn: cnSeed, sku: skuSeed };
   });
+
+  // P19 — once skuBaseAggDrp is available, auto-open SHORTAGE SKU base rows.
+  useMemo(() => {
+    setExpandedByMode((prev) => {
+      const next = new Set(prev.sku);
+      let changed = false;
+      skuBaseAggDrp.forEach((b) => {
+        const k = `skubase-${b.base}`;
+        if (b.totalGap > 0 && !next.has(k)) { next.add(k); changed = true; }
+      });
+      return changed ? { ...prev, sku: next } : prev;
+    });
+  }, [skuBaseAggDrp]);
+
+  // P19 — global ⌘E listener: toggle expand/collapse for current pivot mode.
+  useEffect(() => {
+    const onEvt = () => {
+      setExpandedByMode((prev) => {
+        const allKeys = pivotMode === "cn"
+          ? data.map((r) => `cn-${r.cn}`)
+          : skuBaseAggDrp.map((b) => `skubase-${b.base}`);
+        const current = prev[pivotMode];
+        const allOpen = allKeys.length > 0 && allKeys.every((k) => current.has(k));
+        const nextSet = allOpen ? new Set<string>() : new Set(allKeys);
+        return { ...prev, [pivotMode]: nextSet };
+      });
+    };
+    window.addEventListener("lov:expand-all-rows", onEvt);
+    return () => window.removeEventListener("lov:expand-all-rows", onEvt);
+  }, [pivotMode, data, skuBaseAggDrp]);
+
   const expandedRows = expandedByMode[pivotMode];
   const toggleRow = (key: string) => {
     setExpandedByMode(prev => {
