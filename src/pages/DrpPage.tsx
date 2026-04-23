@@ -1100,9 +1100,26 @@ export default function DrpPage() {
                     lcnbIn: acc.lcnbIn + sk.sources.lcnbIn,
                     internalTransfer: acc.internalTransfer + sk.sources.internalTransfer,
                   }), { onHand: 0, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 });
+                  const severity: "shortage" | "watch" | "ok" =
+                    r.gap > 0 ? "shortage" : r.fillRate < 95 ? "watch" : "ok";
                   return (
                     <Fragment key={r.cn}>
-                      <tr className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", r.gap > 0 && "bg-danger-bg/20", isOpen && "bg-surface-1/40")}>
+                      <tr
+                        data-severity={severity}
+                        data-keyboard-row={`drp-cn-${r.cn}`}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === " " || e.key === "Enter") {
+                            e.preventDefault();
+                            if (e.key === " ") toggleRow(rowKey);
+                            else if (r.exceptions > 0) setDrillCn(r.cn);
+                          }
+                        }}
+                        className={cn(
+                          "border-b border-surface-3/50 hover:bg-surface-1/30 outline-none",
+                          isOpen && "bg-surface-1/40",
+                        )}
+                      >
                         <td className="px-3 py-3 text-text-3 cursor-pointer" onClick={() => toggleRow(rowKey)}>
                           {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </td>
