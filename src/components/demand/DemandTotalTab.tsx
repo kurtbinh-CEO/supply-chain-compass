@@ -362,6 +362,7 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Cơ cấu</th>
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">vs LM</th>
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Cover</th>
+            <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3" title="FVA = accuracy(điều chỉnh) − accuracy(v0)">FVA</th>
           </tr>
         </thead>
         <tbody>
@@ -417,6 +418,32 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
                     )}>
                       {c.cover}d
                     </span>
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    {(() => {
+                      const f = cnFva(c.cn);
+                      if (!f) return <span className="text-text-3 text-caption">—</span>;
+                      const positive = f.fva > 0;
+                      const zero = f.fva === 0;
+                      return (
+                        <LogicTooltip
+                          title={`FVA — ${c.cn}`}
+                          content={`Accuracy v0 (baseline): ${f.accV0}%\nAccuracy ${fcVersion}: ${f.accV3}%\nFVA = ${f.accV3} − ${f.accV0} = ${f.fva > 0 ? "+" : ""}${f.fva} pp\n${positive ? "Điều chỉnh cải thiện độ chính xác." : zero ? "Điều chỉnh không thay đổi accuracy." : "Điều chỉnh làm tệ hơn — review lại."}`}
+                        >
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-semibold cursor-help tabular-nums",
+                              positive ? "bg-success/10 text-success border-success/30"
+                                : zero ? "bg-surface-3 text-text-2 border-surface-3"
+                                : "bg-danger/10 text-danger border-danger/30",
+                            )}
+                          >
+                            {positive ? <CheckCircle2 className="h-3 w-3" /> : zero ? null : <AlertTriangle className="h-3 w-3" />}
+                            {f.fva > 0 ? "+" : ""}{f.fva} pp
+                          </span>
+                        </LogicTooltip>
+                      );
+                    })()}
                   </td>
                 </tr>
 
