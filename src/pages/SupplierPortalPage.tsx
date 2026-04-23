@@ -1066,9 +1066,9 @@ const STEP_ORDER: UploadStep[] = [
 const STEP_LABELS: Record<UploadStep, string> = {
   idle:        "Tải mẫu",
   downloaded:  "Điền số liệu",
-  uploading:   "Upload",
-  validating:  "Validate",
-  preview:     "Preview",
+  uploading:   "Tải lên",
+  validating:  "Kiểm tra",
+  preview:     "Xem trước",
   confirming:  "Xác nhận",
   applied:     "Áp dụng",
 };
