@@ -634,9 +634,9 @@ export default function DrpPage() {
   const SOURCE_FILTER_OPTIONS: { key: SourceFilterKey; label: string; cls: string }[] = [
     { key: "hubPo", label: "Hub PO", cls: "border-primary/30 bg-primary/10 text-primary" },
     { key: "lcnbIn", label: "LCNB", cls: "border-warning/30 bg-warning-bg text-warning" },
-    { key: "internalTransfer", label: "Internal TO", cls: "border-accent bg-accent text-accent-foreground" },
-    { key: "pipeline", label: "Pipeline", cls: "border-info/30 bg-info/10 text-info" },
-    { key: "onHand", label: "On-hand", cls: "border-success/30 bg-success-bg text-success" },
+    { key: "internalTransfer", label: "Điều chuyển nội bộ", cls: "border-accent bg-accent text-accent-foreground" },
+    { key: "pipeline", label: "Đang về", cls: "border-info/30 bg-info/10 text-info" },
+    { key: "onHand", label: "Tồn hiện có", cls: "border-success/30 bg-success-bg text-success" },
   ];
 
   // Build flat export rows from current Layer 1 view (parent + child rows for sổ-out groups)
@@ -1568,7 +1568,7 @@ export default function DrpPage() {
                             ) : (
                               <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
                                 ex.type === "SHORTAGE" ? "bg-danger-bg text-danger" : "bg-warning-bg text-warning"
-                              )}>{ex.type}</span>
+                              )}>{ex.type === "SHORTAGE" ? "THIẾU HÀNG" : "THEO DÕI"}</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-caption text-text-2 max-w-[260px]">
@@ -1619,9 +1619,9 @@ export default function DrpPage() {
                             <td colSpan={8} className="p-0">
                               <div className="border-t border-surface-3 px-6 py-4 space-y-4 bg-surface-1/30">
 
-                                {/* SECTION A: Netting — Bridge */}
+                                {/* SECTION A: Cân đối — Bridge */}
                                 <div>
-                                  <h4 className="text-caption font-medium text-text-3 uppercase mb-2">Netting</h4>
+                                  <h4 className="text-caption font-medium text-text-3 uppercase mb-2">Cân đối nhu cầu</h4>
                                   <DemandToOrderBridge
                                     item={ex.item}
                                     variant={ex.variant}
@@ -1650,7 +1650,7 @@ export default function DrpPage() {
 
                                 {/* SECTION B: Allocation 6-layer trace — inline chips */}
                                 <div>
-                                  <h4 className="text-caption font-medium text-text-3 uppercase mb-2">Allocation 6 layers</h4>
+                                  <h4 className="text-caption font-medium text-text-3 uppercase mb-2">Phân bổ 6 lớp</h4>
                                   <div className="flex items-center gap-1 flex-wrap">
                                     {ex.allocLayers.map((layer, li) => (
                                       <div key={li} className="flex items-center gap-1">
@@ -1676,7 +1676,7 @@ export default function DrpPage() {
                                     ))}
                                     <span className="text-text-3 text-[11px]">→</span>
                                     <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 text-primary px-2.5 py-1 text-[11px] font-bold border border-primary/20">
-                                      Final: {ex.allocated.toLocaleString()} <span className="text-danger">Gap: {ex.gap.toLocaleString()}</span>
+                                      Cuối cùng: {ex.allocated.toLocaleString()} <span className="text-danger">Thiếu: {ex.gap.toLocaleString()}</span>
                                     </span>
                                   </div>
                                 </div>
@@ -1697,7 +1697,7 @@ export default function DrpPage() {
                                 <table className="w-full">
                                   <thead>
                                     <tr className="border-b border-surface-3/50">
-                                      {["Option", "Source", "Qty (m²)", "Cost", "Thời gian", "Savings", ""].map((h, j) => (
+                                      {["Phương án", "Nguồn", "SL (m²)", "Chi phí", "Thời gian", "Tiết kiệm", ""].map((h, j) => (
                                         <th key={j} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
                                       ))}
                                     </tr>
@@ -2093,7 +2093,7 @@ export default function DrpPage() {
                           <td className="px-4 py-2.5">
                             <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
                               sk.status === "OK" ? "bg-success-bg text-success" : sk.status === "SHORTAGE" ? "bg-danger-bg text-danger" : "bg-warning-bg text-warning"
-                            )}>{sk.status}</span>
+                            )}>{sk.status === "OK" ? "ĐẠT" : sk.status === "SHORTAGE" ? "THIẾU HÀNG" : "THEO DÕI"}</span>
                           </td>
                         </tr>
                       ))}
@@ -2454,7 +2454,7 @@ export default function DrpPage() {
 
               {/* Z slider */}
               <div className="mb-5">
-                <label className="text-caption text-text-3 uppercase block mb-1.5">Service Level (z-score)</label>
+                <label className="text-caption text-text-3 uppercase block mb-1.5">Mức phục vụ (z-score)</label>
                 <input type="range" min={1.28} max={2.33} step={0.01} value={simZ}
                   onChange={(e) => setSimZ(Number(e.target.value))} className="w-full accent-primary" />
                 <div className="flex justify-between text-caption text-text-3 mt-1">
