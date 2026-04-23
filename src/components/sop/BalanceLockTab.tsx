@@ -16,6 +16,7 @@ interface Props {
   locked: boolean;
   onLock: () => void;
   tenant: string;
+  unresolvedVariance?: number;
 }
 
 interface BalanceRow {

@@ -68,7 +68,7 @@ function buildEnterpriseConsensus(): ConsensusRow[] {
         const aop = Math.round(baseFc * 0.92);
         return {
           item: base.code,
-          variant: vt.tail,
+          variant: vt.variantTag,
           v0,
           v1,
           v2,

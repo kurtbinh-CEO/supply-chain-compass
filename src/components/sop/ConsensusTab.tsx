@@ -14,6 +14,8 @@ interface Props {
   locked: boolean;
   onUpdateV3: (cnIdx: number, skuIdx: number | null, value: number) => void;
   onUpdateNote: (cnIdx: number, skuIdx: number, note: string) => void;
+  varianceExplanations?: Record<string, string>;
+  onUpdateVariance?: (cnCode: string, text: string) => void;
 }
 
 function EditableCell({ value, onChange, disabled }: { value: number; onChange: (v: number) => void; disabled: boolean }) {
