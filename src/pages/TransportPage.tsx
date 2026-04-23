@@ -396,7 +396,7 @@ function OverrideDialog({
 /* ─────────────────────────────────────────────────────────── */
 /* Packing tab                                                */
 /* ─────────────────────────────────────────────────────────── */
-function PackingTab() {
+export function PackingTab() {
   const { user } = useRbac();
   const isScManager = user.role === "sc_manager" || user.role === "admin";
 
@@ -649,7 +649,7 @@ function RoutesTab() {
 /* ─────────────────────────────────────────────────────────── */
 /* Carrier management tab                                     */
 /* ─────────────────────────────────────────────────────────── */
-function CarriersTab() {
+export function CarriersTab() {
   const [selected, setSelected] = useState<Carrier | null>(null);
   const unavailable = CARRIERS.filter((c) => !c.available);
 

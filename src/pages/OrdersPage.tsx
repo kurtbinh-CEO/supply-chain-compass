@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import {
   ChevronRight, Send, Upload, Loader2, PackageOpen, CheckCircle2, Truck, MapPin, Phone, User,
   Package, PackageCheck, ClipboardCheck, Clock, AlertTriangle, FileText, ArrowRight, Building2, X,
-  Download, Filter as FilterIcon, ArrowLeftRight,
+  Download, Filter as FilterIcon, ArrowLeftRight, Users,
 } from "lucide-react";
 import { TransferOrdersTab } from "@/components/orders/TransferOrdersTab";
 import { HoldOrShipPanel } from "@/components/orders/HoldOrShipPanel";
@@ -16,7 +16,8 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { DemandToOrderBridge, buildFullBridgeSteps } from "@/components/DemandToOrderBridge";
 import { ChevronDown } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { PackingTab, CarriersTab } from "@/pages/TransportPage";
 import { LogicLink } from "@/components/LogicLink";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
@@ -85,18 +86,19 @@ interface RpoChild {
   expected_date: string | null;
 }
 
-/* ─────────── tabs ─────────── */
+/* ─────────── tabs (workflow order: Đóng hàng → Duyệt → Theo dõi → Chuyển ngang → Nhà xe) ─────────── */
 const tabs = [
-  { key: "approval", label: "PO Approval", icon: ClipboardCheck },
-  { key: "burndown", label: "BPO Burn-down", icon: Package },
-  { key: "tracking", label: "Shipment Tracking", icon: Truck },
-  { key: "to", label: "Chuyển ngang (TO)", icon: ArrowLeftRight },
+  { key: "packing",  label: "Đóng hàng",          icon: Package },          // F2-B5
+  { key: "approval", label: "Duyệt PO/TO",        icon: ClipboardCheck },   // F2-B6
+  { key: "tracking", label: "Theo dõi giao hàng", icon: Truck },            // F2-B7
+  { key: "transfer", label: "Chuyển ngang",       icon: ArrowLeftRight },   // LCNB
+  { key: "carrier",  label: "Nhà xe",             icon: Users },            // Carrier mgmt
 ];
 
 const stageOrder = ["draft", "submitted", "confirmed", "shipped", "received"];
 const stageLabels: Record<string, string> = {
-  draft: "Draft", submitted: "Submitted", confirmed: "Confirmed",
-  shipped: "Shipped", received: "Received", cancelled: "Cancelled",
+  draft: "Nháp", submitted: "Đã gửi", confirmed: "Đã xác nhận",
+  shipped: "Đã giao", received: "Đã nhận", cancelled: "Đã hủy",
 };
 
 /* Stage visual theming — vivid status colors per pipeline stage */
@@ -160,12 +162,46 @@ const stageThemes: Record<string, StageTheme> = {
 export default function OrdersPage() {
   const { tenant } = useTenant();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { groups: dbGroups, allOrders, loading: poLoading } = usePurchaseOrders();
   const { canEdit, canApprove, user } = useRbac();
 
   const ordersBatch = useBatchLock(null);
   const { conflict: ordersConflict, clearConflict } = useVersionConflict();
-  const [activeTab, setActiveTab] = useState("approval");
+
+  // Tab init: URL ?tab=… > localStorage > "packing"
+  const initialTab = (() => {
+    const fromUrl = searchParams.get("tab");
+    if (fromUrl && tabs.some((t) => t.key === fromUrl)) return fromUrl;
+    if (typeof window !== "undefined") {
+      const fromLs = localStorage.getItem("scp-orders-active-tab");
+      if (fromLs && tabs.some((t) => t.key === fromLs)) return fromLs;
+    }
+    return "packing";
+  })();
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
+
+  // Sync activeTab → URL + localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("scp-orders-active-tab", activeTab);
+    }
+    if (searchParams.get("tab") !== activeTab) {
+      const next = new URLSearchParams(searchParams);
+      next.set("tab", activeTab);
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // React if URL changes externally (e.g. /transport redirect)
+  useEffect(() => {
+    const fromUrl = searchParams.get("tab");
+    if (fromUrl && fromUrl !== activeTab && tabs.some((t) => t.key === fromUrl)) {
+      setActiveTab(fromUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Approval tab state
   const [selectedPos, setSelectedPos] = useState<Set<string>>(new Set());
@@ -906,6 +942,17 @@ export default function OrdersPage() {
         </div>
       )}
 
+      {/* ─── Breadcrumb ─── */}
+      <nav className="flex items-center gap-1.5 text-caption text-text-3 mb-3">
+        <span>Vận hành hàng ngày</span>
+        <ChevronRight className="h-3 w-3" />
+        <span>Đơn hàng</span>
+        <ChevronRight className="h-3 w-3" />
+        <span className="text-text-1 font-medium">
+          {tabs.find((t) => t.key === activeTab)?.label}
+        </span>
+      </nav>
+
       {/* ─── Tabs ─── */}
       <div className="flex items-center gap-1 mb-5 rounded-full border border-surface-3 bg-surface-0 p-0.5 w-fit">
         {tabs.map((t) => {
@@ -925,6 +972,40 @@ export default function OrdersPage() {
           );
         })}
       </div>
+
+      {/* ═══════════════════ TAB: ĐÓNG HÀNG (gộp từ /transport) ═══════════════════ */}
+      {activeTab === "packing" && (
+        <div className="animate-fade-in space-y-5">
+          <PackingTab />
+          <div>
+            <h3 className="font-display text-section-header text-text-1 mb-2">
+              Quyết định Giữ / Xuất container
+            </h3>
+            <HoldOrShipPanel />
+          </div>
+          <button
+            onClick={() => setActiveTab("approval")}
+            className="w-full rounded-card border border-primary/30 bg-primary/5 px-5 py-3 flex items-center justify-between hover:bg-primary/10 transition-colors group"
+          >
+            <div className="text-left">
+              <div className="text-caption text-text-3 uppercase tracking-wider">Bước tiếp</div>
+              <div className="text-table font-semibold text-text-1 mt-0.5">
+                Đóng hàng xong → Duyệt PO/TO
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 text-primary font-medium text-table-sm">
+              Mở Duyệt PO <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* ═══════════════════ TAB: NHÀ XE ═══════════════════ */}
+      {activeTab === "carrier" && (
+        <div className="animate-fade-in">
+          <CarriersTab />
+        </div>
+      )}
 
       {poLoading && (
         <div className="flex items-center gap-2 text-text-3 text-table-sm mb-4">
@@ -2257,7 +2338,7 @@ export default function OrdersPage() {
       )}
 
       {/* ═══════════════════ TAB 4: TRANSFER ORDERS (LCNB) ═══════════════════ */}
-      {activeTab === "to" && (
+      {activeTab === "transfer" && (
         <div className="animate-fade-in space-y-3">
           <div className="rounded-card border border-info/30 bg-info-bg px-3 py-2 text-table-sm text-text-2 flex items-center gap-2">
             <ArrowLeftRight className="h-4 w-4 text-primary shrink-0" />
