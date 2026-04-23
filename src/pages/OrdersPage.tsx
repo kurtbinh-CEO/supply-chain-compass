@@ -86,13 +86,13 @@ interface RpoChild {
   expected_date: string | null;
 }
 
-/* ─────────── tabs (workflow order: Đóng hàng → Duyệt → Theo dõi → Chuyển ngang → Nhà xe) ─────────── */
+/* ─────────── tabs (workflow order: Duyệt → Xác nhận vận chuyển → Theo dõi → Chuyển ngang → Nhà xe) ─────────── */
 const tabs = [
-  { key: "packing",  label: "Đóng hàng",          icon: Package },          // F2-B5
-  { key: "approval", label: "Duyệt PO/TO",        icon: ClipboardCheck },   // F2-B6
-  { key: "tracking", label: "Theo dõi giao hàng", icon: Truck },            // F2-B7
-  { key: "transfer", label: "Chuyển ngang",       icon: ArrowLeftRight },   // LCNB
-  { key: "carrier",  label: "Nhà xe",             icon: Users },            // Carrier mgmt
+  { key: "approval", label: "Duyệt PO/TO",           icon: ClipboardCheck },
+  { key: "packing",  label: "Xác nhận vận chuyển",    icon: Package },
+  { key: "tracking", label: "Theo dõi giao hàng",     icon: Truck },
+  { key: "transfer", label: "Chuyển ngang",           icon: ArrowLeftRight },
+  { key: "carrier",  label: "Nhà xe",                 icon: Users },
 ];
 
 const stageOrder = ["draft", "submitted", "confirmed", "shipped", "received"];
@@ -177,7 +177,7 @@ export default function OrdersPage() {
       const fromLs = localStorage.getItem("scp-orders-active-tab");
       if (fromLs && tabs.some((t) => t.key === fromLs)) return fromLs;
     }
-    return "packing";
+    return "approval";
   })();
   const [activeTab, setActiveTab] = useState<string>(initialTab);
 
@@ -973,7 +973,7 @@ export default function OrdersPage() {
         })}
       </div>
 
-      {/* ═══════════════════ TAB: ĐÓNG HÀNG (gộp từ /transport) ═══════════════════ */}
+      {/* ═══════════════════ TAB: XÁC NHẬN VẬN CHUYỂN ═══════════════════ */}
       {activeTab === "packing" && (
         <div className="animate-fade-in space-y-5">
           <PackingTab />
@@ -984,17 +984,17 @@ export default function OrdersPage() {
             <HoldOrShipPanel />
           </div>
           <button
-            onClick={() => setActiveTab("approval")}
+            onClick={() => setActiveTab("tracking")}
             className="w-full rounded-card border border-primary/30 bg-primary/5 px-5 py-3 flex items-center justify-between hover:bg-primary/10 transition-colors group"
           >
             <div className="text-left">
               <div className="text-caption text-text-3 uppercase tracking-wider">Bước tiếp</div>
               <div className="text-table font-semibold text-text-1 mt-0.5">
-                Đóng hàng xong → Duyệt PO/TO
+                Xác nhận vận chuyển xong → Theo dõi giao hàng
               </div>
             </div>
             <div className="flex items-center gap-1.5 text-primary font-medium text-table-sm">
-              Mở Duyệt PO <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              Mở Theo dõi <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </button>
         </div>
