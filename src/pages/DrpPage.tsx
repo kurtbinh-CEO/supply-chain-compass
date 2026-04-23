@@ -380,27 +380,9 @@ export default function DrpPage() {
     if (typeof window !== "undefined") localStorage.setItem(WHATS_NEW_KEY, "1");
   };
 
-  /* FIX 3 — Compare "vs đêm qua" collapsible panel */
+  /* FIX 3 — Compare "vs đêm qua" collapsible panel state (data computed below) */
   const [compareOpen, setCompareOpen] = useState(false);
-  const compareRows = useMemo(() => {
-    // Synthesize prev-night snapshot per CN×SKU base
-    const rows: Array<{ cn: string; base: string; prev: number; now: number; deltaPct: number }> = [];
-    data.slice(0, 4).forEach((cn) => {
-      cn.allSkus.slice(0, 2).forEach((sk) => {
-        const now = sk.demand;
-        // Deterministic pseudo-prev based on hash so display is stable
-        const seed = (cn.cn + sk.item + sk.variant).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-        const pctShift = ((seed % 60) - 25) / 100; // -25%..+35%
-        const prev = Math.max(0, Math.round(now / (1 + pctShift)));
-        const deltaPct = prev > 0 ? ((now - prev) / prev) * 100 : 0;
-        rows.push({ cn: cn.cn, base: `${sk.item} ${sk.variant}`, prev, now, deltaPct });
-      });
-    });
-    return rows;
-  }, [data]);
-  const hubChangedSinceDrp = true; // demo: NM confirmed +2,000m² after DRP
-  const hubAtRunM2 = Math.round(5681 * s);
-  const hubDeltaSinceRun = Math.round(2000 * s);
+  const hubChangedSinceDrp = true; // demo: NM confirmed +2,000m² after DRP run
 
   /* ── DRP Batch lifecycle (Approve & Release flow) ── */
   const [batchStatus, setBatchStatus] = useState<DrpBatchStatus>("idle");
