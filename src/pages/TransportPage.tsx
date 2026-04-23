@@ -335,6 +335,7 @@ export default function TransportPage() {
       </button>
 
       <ScreenFooter actionCount={summary.total} />
-    </div>
+      </div>
+    </AppLayout>
   );
 }
