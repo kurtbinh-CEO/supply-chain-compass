@@ -93,12 +93,12 @@ export function RoiFlywheelTab() {
       {/* Flywheel visual */}
       <div className="rounded-card border border-surface-3 bg-surface-2 p-5">
         <h3 className="font-display text-body font-semibold text-text-1 mb-4">
-          🔄 Flywheel — FC → SS → Vốn → Tái đầu tư
+          🔄 Bánh đà cải tiến — FC → SS → Vốn → Tái đầu tư
         </h3>
         <div className="relative mx-auto w-full max-w-[480px] aspect-square">
           {/* Center label */}
           <div className="absolute inset-1/4 rounded-full border-2 border-dashed border-primary/40 bg-surface-1 flex flex-col items-center justify-center">
-            <span className="font-display text-section-header text-primary">Flywheel</span>
+            <span className="font-display text-section-header text-primary">Bánh đà</span>
             <span className="text-caption text-text-3 mt-1">Tự gia tốc</span>
           </div>
 
