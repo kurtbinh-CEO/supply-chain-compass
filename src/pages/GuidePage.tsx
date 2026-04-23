@@ -663,6 +663,334 @@ function FlowTimeline({ nodes, accentColor, onNavigate }: { nodes: FlowNode[]; a
   );
 }
 
+/* ═══════════════════════════════════════════ */
+/*  DEMO UNIS 7 PHÚT — 7 STEPS                */
+/* ═══════════════════════════════════════════ */
+
+interface DemoStep {
+  num: number;
+  route: string;
+  routeLabel: string;
+  title: string;
+  duration: string;
+  icon: React.ReactNode;
+  color: string;
+  highlights: string[];
+  keyAction: string;
+  metric: { label: string; value: string }[];
+}
+
+const demoSteps: DemoStep[] = [
+  {
+    num: 1,
+    route: "/demand",
+    routeLabel: "Demand Review",
+    title: "Demand 15 SKU — nền tảng kế hoạch",
+    duration: "1'",
+    icon: <BarChart3 className="h-5 w-5" />,
+    color: "#004AC6",
+    highlights: [
+      "Tab 1: 15 SKU × 4 CN — tổng 47.000 m² nhu cầu tháng",
+      "Tab 2: 15 B2B deals (Vinhomes, Sun Group...) — weighted theo prob%",
+      "Click số bất kỳ → breakdown FC + B2B + PO",
+    ],
+    keyAction: "Xác nhận demand → mở /sop",
+    metric: [
+      { label: "SKU", value: "15" },
+      { label: "Tổng nhu cầu", value: "47.000 m²" },
+      { label: "B2B deals", value: "15" },
+    ],
+  },
+  {
+    num: 2,
+    route: "/sop",
+    routeLabel: "S&OP Consensus",
+    title: "S&OP — đồng thuận v0→v4 và lock",
+    duration: "1'",
+    icon: <ShieldCheck className="h-5 w-5" />,
+    color: "#7c3aed",
+    highlights: [
+      "v0 (Stat) → v1 (Sales) → v2 (CN) → v3 (Consensus) → v4 (Final)",
+      "Variance bar: chênh lệch giữa các version → FVA chọn best",
+      "FormulaBar 6 ô: D − S − P = Net + SS = FC Min → [🔒 Lock]",
+    ],
+    keyAction: "Lock S&OP → mở /supply",
+    metric: [
+      { label: "Versions", value: "v0 → v4" },
+      { label: "Best FVA", value: "+5,9%" },
+      { label: "Status", value: "🔒 Lock" },
+    ],
+  },
+  {
+    num: 3,
+    route: "/supply",
+    routeLabel: "NM Supply",
+    title: "Booking 4.500 m² — kiểm tra fresh",
+    duration: "1'",
+    icon: <Package className="h-5 w-5" />,
+    color: "#00714d",
+    highlights: [
+      "5 NM (Toko, Mikado, Đồng Tâm, Vigracera, Phú Mỹ) — fresh badge",
+      "Booking GA-300 4.500 m² → click ô → công thức UNIS_dùng = tồn × share%",
+      "Mikado: 2.500 × 60% = 1.500 − 120 đang về = 1.380 m² ATP",
+    ],
+    keyAction: "Booking xong → mở /hub",
+    metric: [
+      { label: "NM tổng", value: "5" },
+      { label: "Booking", value: "4.500 m²" },
+      { label: "Fresh", value: "<24h" },
+    ],
+  },
+  {
+    num: 4,
+    route: "/hub",
+    routeLabel: "Hub & Gap Scenario",
+    title: "Hub commitment — Toko gap 31,7%",
+    duration: "1'",
+    icon: <Factory className="h-5 w-5" />,
+    color: "#b45309",
+    highlights: [
+      "Hub formula: Cam kết NM = ranking × share% × honoring",
+      "Toko gap 31,7% (cam kết 1.580 vs cần 2.310) → /gap-scenario",
+      "Scenario A/B/C: Mua thêm | Tăng giá tier | Kết hợp — chọn C tiết kiệm 9,2 triệu ₫",
+    ],
+    keyAction: "Quyết định Scenario C → mở /drp",
+    metric: [
+      { label: "Toko gap", value: "31,7%" },
+      { label: "Best", value: "Scenario C" },
+      { label: "Savings", value: "9,2tr ₫" },
+    ],
+  },
+  {
+    num: 5,
+    route: "/drp",
+    routeLabel: "DRP & Allocation",
+    title: "DRP 6 lớp — LCNB first, netting base",
+    duration: "1'",
+    icon: <Layers className="h-5 w-5" />,
+    color: "#0ea5e9",
+    highlights: [
+      "6-layer allocation: LCNB → SS reserve → Pipeline → On-hand → New PO → Lateral",
+      "LCNB priority first (lock CN-bộ phận trước) → Net = Demand − tồn − pipeline + SS",
+      "GA-300 CN-BD: Net 840 m² → cần đặt mới qua Mikado primary",
+    ],
+    keyAction: "DRP done → mở /transport",
+    metric: [
+      { label: "Lớp", value: "6" },
+      { label: "Fill rate", value: "95%" },
+      { label: "Net new", value: "840 m²" },
+    ],
+  },
+  {
+    num: 6,
+    route: "/transport",
+    routeLabel: "Transport & Orders",
+    title: "Container fill 53% → HOLD, PO lifecycle",
+    duration: "1'",
+    icon: <Truck className="h-5 w-5" />,
+    color: "#dc2626",
+    highlights: [
+      "Container fill 53% < 80% threshold → HOLD gộp với chuyến sau",
+      "PO lifecycle: Draft → ATP → Approved → Posted → Shipped → Received",
+      "ATP check pass → [Duyệt tất cả] → [Post Bravo] → NM nhận đơn",
+    ],
+    keyAction: "PO posted → mở /monitoring",
+    metric: [
+      { label: "Container", value: "53%" },
+      { label: "Action", value: "HOLD" },
+      { label: "PO posted", value: "8" },
+    ],
+  },
+  {
+    num: 7,
+    route: "/monitoring",
+    routeLabel: "Monitoring",
+    title: "NM Risk + ROI 507 triệu ₫ + Flywheel",
+    duration: "1'",
+    icon: <Activity className="h-5 w-5" />,
+    color: "#00714d",
+    highlights: [
+      "NM Risk panel: Toko honoring 68% Grade C → cảnh báo, đề xuất giảm allocation",
+      "ROI Flywheel: tiết kiệm 507 triệu ₫/tháng (vốn lưu động + giảm stockout)",
+      "Bánh đà cải tiến: data fresh → DRP đúng → PO đúng → trust ↑ → tự động hoá ↑",
+    ],
+    keyAction: "Closed loop — chu kỳ mới quay về /demand",
+    metric: [
+      { label: "ROI", value: "507tr ₫/th" },
+      { label: "Trust", value: "82% 🟢" },
+      { label: "Flywheel", value: "▶ chạy" },
+    ],
+  },
+];
+
+function DemoSection({ onNavigate }: { onNavigate: (route: string) => void }) {
+  const [stepIdx, setStepIdx] = useState(0);
+  const step = demoSteps[stepIdx];
+  const total = demoSteps.length;
+  const progressPct = ((stepIdx + 1) / total) * 100;
+
+  return (
+    <div className="space-y-5 animate-fade-in">
+      {/* Hero */}
+      <div className="rounded-xl p-5 relative overflow-hidden bg-gradient-to-br from-primary/8 via-primary/4 to-transparent border-l-4 border-primary">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center justify-center h-14 w-14 rounded-xl bg-primary text-primary-foreground shadow-md">
+            <PlayCircle className="h-7 w-7" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h2 className="font-display text-section-header font-bold text-text-1">Demo UNIS 7 phút</h2>
+              <span className="rounded-full bg-primary/10 text-primary text-caption font-mono px-2 py-0.5 flex items-center gap-1">
+                <Sparkles className="h-3 w-3" /> 7 bước · 2-Flow
+              </span>
+            </div>
+            <p className="text-table text-text-2 mt-0.5">
+              Đi qua toàn bộ chu kỳ từ Demand → S&OP → Supply → Hub → DRP → Transport → Monitoring trong 7 phút.
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="font-mono text-section-header font-bold text-primary">{stepIdx + 1}/{total}</div>
+            <div className="text-[10px] text-text-3 uppercase tracking-wider">Bước</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-table-sm text-text-2 font-medium">Tiến độ Demo</span>
+          <span className="text-caption text-text-3 font-mono">{Math.round(progressPct)}%</span>
+        </div>
+        <div className="h-2 rounded-full bg-surface-3 overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-500 ease-out rounded-full"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+        {/* Step dots */}
+        <div className="flex items-center justify-between mt-3">
+          {demoSteps.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => setStepIdx(i)}
+              className={cn(
+                "flex flex-col items-center gap-1 transition-all group",
+                i <= stepIdx ? "opacity-100" : "opacity-50 hover:opacity-80"
+              )}
+            >
+              <div
+                className={cn(
+                  "h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-mono font-bold border-2 transition-all",
+                  i === stepIdx ? "scale-110 shadow-md text-white" : i < stepIdx ? "text-white" : "bg-surface-1 text-text-3 border-surface-3"
+                )}
+                style={i <= stepIdx ? { backgroundColor: s.color, borderColor: s.color } : {}}
+              >
+                {i < stepIdx ? "✓" : s.num}
+              </div>
+              <span className={cn("text-[10px] font-medium hidden md:block", i === stepIdx ? "text-text-1" : "text-text-3")}>
+                {s.routeLabel.split(" ")[0]}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Active step card */}
+      <div className="rounded-xl border-2 bg-surface-0 overflow-hidden shadow-md transition-all" style={{ borderColor: `${step.color}40` }}>
+        <div className="px-5 py-4 flex items-center gap-4 border-b border-surface-3" style={{ backgroundColor: `${step.color}08` }}>
+          <div className="flex items-center justify-center h-12 w-12 rounded-xl text-white shadow-sm shrink-0" style={{ backgroundColor: step.color }}>
+            {step.icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-display text-body font-bold text-text-1">Bước {step.num}: {step.title}</span>
+              <span className="rounded-sm bg-surface-3 text-text-3 text-[10px] font-mono px-1.5 py-0.5">{step.route}</span>
+            </div>
+            <div className="flex items-center gap-3 mt-1">
+              <span className="flex items-center gap-1 text-table-sm text-text-2">
+                <Clock className="h-3 w-3" /> {step.duration}
+              </span>
+              <span className="text-table-sm text-text-2">· {step.routeLabel}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Metrics grid */}
+        <div className="px-5 py-4 grid grid-cols-3 gap-3 border-b border-surface-3">
+          {step.metric.map((m, i) => (
+            <div key={i} className="rounded-lg bg-surface-1 px-3 py-2 text-center">
+              <div className="text-[10px] text-text-3 uppercase tracking-wider">{m.label}</div>
+              <div className="font-mono text-body font-bold mt-0.5" style={{ color: step.color }}>{m.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Highlights */}
+        <div className="px-5 py-4">
+          <div className="text-[10px] text-text-3 uppercase tracking-wider mb-2">Điểm nhấn</div>
+          <div className="space-y-2">
+            {step.highlights.map((h, i) => (
+              <div key={i} className="flex items-start gap-2.5 text-table-sm">
+                <span
+                  className="flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold shrink-0 mt-0.5"
+                  style={{ backgroundColor: `${step.color}15`, color: step.color }}
+                >
+                  {i + 1}
+                </span>
+                <span className="text-text-2">{h}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        <div className="px-5 py-3 bg-surface-1/50 border-t border-surface-3 flex items-center justify-between gap-3">
+          <button
+            onClick={() => setStepIdx(Math.max(0, stepIdx - 1))}
+            disabled={stepIdx === 0}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-button text-table-sm font-medium text-text-2 hover:bg-surface-3 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronRight className="h-3.5 w-3.5 rotate-180" /> Bước trước
+          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onNavigate(step.route)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-button border border-primary/30 text-primary text-table-sm font-medium hover:bg-primary/5 transition-colors"
+            >
+              <ExternalLink className="h-3.5 w-3.5" /> Mở {step.route}
+            </button>
+            {stepIdx < total - 1 ? (
+              <button
+                onClick={() => setStepIdx(stepIdx + 1)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-button bg-primary text-primary-foreground text-table-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+              >
+                Bước tiếp <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            ) : (
+              <button
+                onClick={() => setStepIdx(0)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-button bg-status-success text-white text-table-sm font-medium hover:opacity-90 transition-opacity shadow-sm"
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" /> Hoàn tất · Lặp lại
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Key action callout */}
+      <div className="rounded-lg border border-surface-3 bg-surface-1/50 px-4 py-3 flex items-center gap-3">
+        <GitBranch className="h-4 w-4 text-text-3 shrink-0" />
+        <span className="text-table-sm text-text-2">
+          <span className="text-text-3">Hành động chính:</span>{" "}
+          <span className="font-medium text-text-1">{step.keyAction}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /* ═══ MAIN PAGE ═══ */
 export default function GuidePage() {
   const navigate = useNavigate();
