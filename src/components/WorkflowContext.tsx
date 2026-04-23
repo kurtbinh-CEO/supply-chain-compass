@@ -12,16 +12,29 @@ export interface WorkflowStep {
 }
 
 const dailySteps: Omit<WorkflowStep, "status" | "completedAt">[] = [
-  { label: "NM Supply", routes: ["/supply"], description: "Cập nhật tồn kho nhà máy" },
-  { label: "Demand & Adjust", routes: ["/demand-weekly"], description: "Điều chỉnh nhu cầu tuần" },
-  { label: "DRP & Orders", routes: ["/drp", "/orders"], description: "Phân bổ và đặt hàng" },
+  { label: "Đồng bộ",       routes: ["/sync"],       description: "F2-B1: Bravo + NM upload" },
+  { label: "CN điều chỉnh", routes: ["/cn-portal"],  description: "F2-B2: ±30% trước cutoff" },
+  { label: "DRP Netting",   routes: ["/drp"],        description: "F2-B3: Net req per CN×SKU" },
+  { label: "Phân bổ",       routes: ["/allocation"], description: "F2-B4: 6-layer LCNB first" },
+  { label: "Đóng hàng",     routes: ["/transport"],  description: "F2-B5: Container+Hold/Ship" },
+  { label: "Duyệt PO/TO",   routes: ["/orders"],     description: "F2-B6/B7: ATP+Confirm→ERP" },
+  { label: "Phản hồi",      routes: ["/monitoring"], description: "F2-B8: MAPE→SS→Capital" },
 ];
 
 const monthlySteps: Omit<WorkflowStep, "status" | "completedAt">[] = [
-  { label: "Demand Review", routes: ["/demand"], description: "Rà soát dự báo nhu cầu" },
-  { label: "S&OP Consensus", routes: ["/sop"], description: "Đồng thuận kế hoạch" },
-  { label: "Hub & Commitment", routes: ["/hub"], description: "Cam kết nhà máy" },
-  { label: "Khoảng cách & Kịch bản", routes: ["/gap-scenario"], description: "Theo dõi gap và mô phỏng kịch bản" },
+  { label: "Nhập FC",         routes: ["/demand"],       description: "F1-B1: FC 2 cấp + B2B" },
+  { label: "S&OP Consensus",  routes: ["/sop"],          description: "F1-B2: Lock demand" },
+  { label: "Booking Netting", routes: ["/supply"],       description: "F1-B3: Hub+Pipeline−FC−SS" },
+  { label: "Cam kết NM",      routes: ["/hub"],          description: "F1-B4/B5: Hard/Firm/Soft" },
+  { label: "Hub ảo",          routes: ["/hub"],          description: "F1-B6: Available formula" },
+  { label: "Gap & Kịch bản",  routes: ["/gap-scenario"], description: "F1-B7: 4 scenarios" },
+];
+
+export const feedbackLoops = [
+  { from: "/monitoring", to: "/supply",       label: "MAPE → SS Hub recalc" },
+  { from: "/monitoring", to: "/drp",          label: "Trust → SS CN adjust" },
+  { from: "/orders",     to: "/hub",          label: "PO released → Hub ảo" },
+  { from: "/orders",     to: "/gap-scenario", label: "Released → Gap update" },
 ];
 
 interface WorkflowContextType {
