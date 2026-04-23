@@ -780,6 +780,7 @@ export default function MasterDataPage() {
 
         <TabsContent value="items"><ItemsTab /></TabsContent>
         <TabsContent value="suppliers"><SuppliersTab /></TabsContent>
+        <TabsContent value="pricelists"><PriceListsTab /></TabsContent>
         <TabsContent value="branches"><BranchesTab /></TabsContent>
         <TabsContent value="routes"><RoutesTab /></TabsContent>
         <TabsContent value="distances"><DistancesTab /></TabsContent>
