@@ -1171,7 +1171,7 @@ export default function OrdersPage() {
                                 <DemandToOrderBridge
                                   item={po.sku}
                                   variant=""
-                                  cn={po.to_cn || "CN"}
+                                  cn={"CN giao hàng"}
                                   steps={bridgeSteps}
                                   footer={{
                                     demandQty: demand,
