@@ -10,6 +10,7 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 import { useTenant } from "@/components/TenantContext";
 import {
   FACTORIES,
@@ -468,6 +469,9 @@ export default function SupplyPage() {
         </Button>
       </div>
 
+      <div className="mt-6">
+        <ChangeLogPanel entityType="nm_supply" maxItems={6} />
+      </div>
       <ScreenFooter actionCount={6} />
     </AppLayout>
   );
