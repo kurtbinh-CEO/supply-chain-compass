@@ -22,6 +22,7 @@ import MonitoringPage from "./pages/MonitoringPage";
 import DemandPage from "./pages/DemandPage";
 import SopPage from "./pages/SopPage";
 import HubPage from "./pages/HubPage";
+import GapScenarioPage from "./pages/GapScenarioPage";
 import SupplyPage from "./pages/SupplyPage";
 import DemandWeeklyPage from "./pages/DemandWeeklyPage";
 import DrpPage from "./pages/DrpPage";
@@ -73,6 +74,7 @@ function ProtectedRoutes() {
           <Route path="/demand" element={<DemandPage />} />
           <Route path="/sop" element={<SopPage />} />
           <Route path="/hub" element={<HubPage />} />
+          <Route path="/gap-scenario" element={<GapScenarioPage />} />
           <Route path="/supply" element={<SupplyPage />} />
           <Route path="/demand-weekly" element={<DemandWeeklyPage />} />
           <Route path="/drp" element={<DrpPage />} />

@@ -4,6 +4,7 @@ import {
   Package, CalendarDays, GitBranch,
   Truck, Users, Database, FileBarChart, Settings,
   ChevronLeft, Play, BookOpen, Building, GraduationCap, LayoutDashboard,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/components/SidebarContext";
@@ -51,6 +52,7 @@ const navGroups: NavGroup[] = [
       { titleKey: "nav.demandReview", icon: BarChart3, url: "/demand" },
       { titleKey: "nav.sopConsensus", icon: Handshake, url: "/sop" },
       { titleKey: "nav.hubCommitment", icon: Boxes, url: "/hub" },
+      { titleKey: "nav.gapScenario", icon: AlertTriangle, url: "/gap-scenario" },
     ],
   },
   {
