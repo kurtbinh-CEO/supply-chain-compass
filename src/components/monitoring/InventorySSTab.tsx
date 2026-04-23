@@ -508,7 +508,7 @@ export function InventorySSTab({ scale: s }: Props) {
             <div className="space-y-4">
               <div>
                 <label className="text-table-sm font-medium text-text-2 mb-2 block">
-                  z-score (Service Level): <span className="font-bold text-primary">{simZ.toFixed(2)}</span>
+                  z-score (Mức phục vụ): <span className="font-bold text-primary">{simZ.toFixed(2)}</span>
                   {" "}({Math.round((1 - 1 / Math.pow(10, simZ * 0.4343)) * 100) > 99 ? ">99" : simZ <= 1.28 ? "90" : simZ <= 1.65 ? "95" : simZ <= 2.05 ? "98" : "99"}%)
                 </label>
                 <Slider

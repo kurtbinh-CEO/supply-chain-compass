@@ -58,23 +58,23 @@ export function RoiFlywheelTab() {
       {/* 4 KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
-          title="Working Capital"
+          title="Vốn lưu động"
           value="1,2"
-          unit="tỷ₫"
-          trend={{ value: "20% vs target", positive: false }}
+          unit="tỷ ₫"
+          trend={{ value: "20% vượt mục tiêu", positive: false }}
         />
         <KpiCard
-          title="Savings tháng này"
+          title="Tiết kiệm tháng này"
           value="507"
-          unit="M₫"
-          trend={{ value: "+58M vs T3", positive: true }}
+          unit="triệu ₫"
+          trend={{ value: "+58 triệu vs T3", positive: true }}
         />
-        <KpiCard title="Inventory Turns" value="4,8" unit="x/năm" trend={{ value: "+0,6", positive: true }} />
+        <KpiCard title="Vòng quay tồn kho" value="4,8" unit="x/năm" trend={{ value: "+0,6", positive: true }} />
         <KpiCard
-          title="Service Level"
+          title="Mức phục vụ"
           value="95,5"
           unit="%"
-          trend={{ value: "→ stable", positive: true }}
+          trend={{ value: "→ ổn định", positive: true }}
         />
       </div>
 
@@ -93,12 +93,12 @@ export function RoiFlywheelTab() {
       {/* Flywheel visual */}
       <div className="rounded-card border border-surface-3 bg-surface-2 p-5">
         <h3 className="font-display text-body font-semibold text-text-1 mb-4">
-          🔄 Flywheel — FC → SS → Vốn → Tái đầu tư
+          🔄 Bánh đà cải tiến — FC → SS → Vốn → Tái đầu tư
         </h3>
         <div className="relative mx-auto w-full max-w-[480px] aspect-square">
           {/* Center label */}
           <div className="absolute inset-1/4 rounded-full border-2 border-dashed border-primary/40 bg-surface-1 flex flex-col items-center justify-center">
-            <span className="font-display text-section-header text-primary">Flywheel</span>
+            <span className="font-display text-section-header text-primary">Bánh đà</span>
             <span className="text-caption text-text-3 mt-1">Tự gia tốc</span>
           </div>
 

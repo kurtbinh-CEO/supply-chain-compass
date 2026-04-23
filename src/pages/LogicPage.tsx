@@ -304,7 +304,7 @@ ASN = Goods Receipt`}</CodeBlock>
         <CodeBlock>{`Loop 1: Plan → Deliver → Learn
   FC vs Actual → error → cải thiện model
 
-Loop 2: FC accuracy → σ_error → SS → Working Capital
+Loop 2: Độ chính xác FC → σ_error → SS → Vốn lưu động
   MAPE giảm 25%→15% → σ giảm → SS giảm → tiết kiệm vốn
 
 Loop 3: NM honoring → ATP discount

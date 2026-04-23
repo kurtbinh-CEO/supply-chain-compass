@@ -326,7 +326,7 @@ function BranchesTab() {
         <table className="w-full text-table">
           <thead>
             <tr className="bg-surface-1">
-              {["Mã CN", "Tên chi nhánh", "Vùng", "Lat", "Lng", "z-factor", "Service Level", "Quản lý"].map((h) => (
+              {["Mã CN", "Tên chi nhánh", "Vùng", "Lat", "Lng", "z-factor", "Mức phục vụ", "Quản lý"].map((h) => (
                 <th key={h} className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">{h}</th>
               ))}
             </tr>

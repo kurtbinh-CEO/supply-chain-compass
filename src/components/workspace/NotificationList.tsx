@@ -20,7 +20,7 @@ export function NotificationList() {
   const tabs: { key: FilterTab; label: string; count?: number }[] = [
     { key: "all", label: "Tất cả" },
     { key: "unread", label: "Chưa đọc", count: unreadCount },
-    { key: "critical", label: "Critical", count: criticalCount },
+    { key: "critical", label: "Nghiêm trọng", count: criticalCount },
   ];
 
   const handleClick = (id: string, url: string) => {

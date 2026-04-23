@@ -26,7 +26,7 @@ const trendData = [
   { month: "DEC", fc: 2.0, ss: 1.7, wc: 2.2 },
 ];
 
-const simParams = ["Target Service Level (α)", "Lead Time (days)", "Demand Volatility (σ)", "Review Period"];
+const simParams = ["Mức phục vụ mục tiêu (α)", "Thời gian đặt hàng (ngày)", "Biến động nhu cầu (σ)", "Chu kỳ kiểm tra"];
 
 // SS Alert (top of tab) — δ ≥ 10% → PENDING confirm
 const ssAlert = {
@@ -49,7 +49,7 @@ export function SafetyStockTab() {
   const isLargeDelta = Math.abs(ssAlert.deltaPct) >= 10;
 
   const handleApply = () => {
-    toast.success("Đã gửi đề xuất SS đến Workspace", { description: `Service Level: ${simValue}% → SS: ${afterSS.toLocaleString()}` });
+    toast.success("Đã gửi đề xuất SS đến Workspace", { description: `Mức phục vụ: ${simValue}% → SS: ${afterSS.toLocaleString()}` });
   };
 
   const handleConfirmSs = () => {
@@ -186,7 +186,7 @@ export function SafetyStockTab() {
           </div>
           <div className="space-y-2 py-2">
             <div className="flex justify-between text-table text-text-2 border-b border-surface-3/50 pb-2">
-              <span>Working Capital Impact</span>
+              <span>Tác động đến Vốn lưu động</span>
               <span className={cn("font-medium", wcDelta > 0 ? "text-danger" : "text-success")}>
                 {wcDelta > 0 ? "+" : ""}{(wcDelta / 1000).toFixed(0)}K VND
               </span>
@@ -229,7 +229,7 @@ export function SafetyStockTab() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-surface-3">
-              {["Date", "SKU", "Shift", "Trigger", "Approved By"].map((h) => (
+              {["Ngày", "SKU", "Thay đổi", "Nguyên nhân", "Người duyệt"].map((h) => (
                 <th key={h} className="text-left text-table-header uppercase text-text-3 px-5 py-3">{h}</th>
               ))}
             </tr>
@@ -270,7 +270,7 @@ export function SafetyStockTab() {
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Bar dataKey="fc" fill="#2563EB" name="Forecast" radius={[4, 4, 0, 0]} />
             <Bar dataKey="ss" fill="var(--color-surface-3)" name="Safety Stock" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="wc" fill="var(--color-success-text)" name="Working Capital" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="wc" fill="var(--color-success-text)" name="Vốn lưu động" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
         <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-surface-3">

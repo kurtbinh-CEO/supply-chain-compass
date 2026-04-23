@@ -61,10 +61,10 @@ const initialHistory: HistoryRow[] = [
 ];
 
 const STATUS_META: Record<SyncStatus, { label: string; color: string; bg: string; icon: string; chipBg: string; chipText: string }> = {
-  fresh:   { label: "FRESH",   color: "text-success", bg: "bg-success",  icon: "🟢", chipBg: "bg-success/10",  chipText: "text-success" },
-  ok:      { label: "OK",      color: "text-success", bg: "bg-success",  icon: "🟢", chipBg: "bg-success/10",  chipText: "text-success" },
-  stale:   { label: "STALE",   color: "text-warning", bg: "bg-warning",  icon: "🟡", chipBg: "bg-warning/10",  chipText: "text-warning" },
-  blocked: { label: "BLOCKED", color: "text-danger",  bg: "bg-danger",   icon: "🔴", chipBg: "bg-danger/10",   chipText: "text-danger" },
+  fresh:   { label: "MỚI CẬP NHẬT", color: "text-success", bg: "bg-success",  icon: "🟢", chipBg: "bg-success/10",  chipText: "text-success" },
+  ok:      { label: "ĐẠT",           color: "text-success", bg: "bg-success",  icon: "🟢", chipBg: "bg-success/10",  chipText: "text-success" },
+  stale:   { label: "DỮ LIỆU CŨ",   color: "text-warning", bg: "bg-warning",  icon: "🟡", chipBg: "bg-warning/10",  chipText: "text-warning" },
+  blocked: { label: "BỊ CHẶN",       color: "text-danger",  bg: "bg-danger",   icon: "🔴", chipBg: "bg-danger/10",   chipText: "text-danger" },
 };
 
 function formatHours(h: number): string {
@@ -231,7 +231,7 @@ export default function SyncPage() {
           <div className="flex items-center gap-2">
             <Button onClick={handleSyncNow} disabled={syncing} className="gap-2">
               <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
-              {syncing ? "Đang sync..." : "Sync Now (Bravo)"}
+              {syncing ? "Đang đồng bộ..." : "Đồng bộ ngay (Bravo)"}
             </Button>
             <Button variant="outline" onClick={() => setShowUpload(true)} className="gap-2">
               <Upload className="h-4 w-4" />

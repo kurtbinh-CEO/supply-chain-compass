@@ -94,7 +94,7 @@ export function HubOverviewTab({ scale, totals }: Props) {
 
   const changeLog: ChangeLog[] = [
     { time: "12/05 14:30", who: "DRP Bot",  change: "Released 1,200 m² GA-300 → CN-BD", source: "drp" },
-    { time: "12/05 11:15", who: "Toko",     change: "Counter GA-600: 6,500 → 4,080 (−37%)", source: "nm" },
+    { time: "12/05 11:15", who: "Toko",     change: "Đề xuất khác GA-600: 6.500 → 4.080 (−37%)", source: "nm" },
     { time: "12/05 09:42", who: "Mikado",   change: "Confirm GA-300: +2,000 m²", source: "nm" },
     { time: "11/05 16:20", who: "Lan (PM)", change: "Adjust SS Hub: 380 → 420 m²", source: "manual" },
     { time: "11/05 08:00", who: "System",   change: "S&OP v3 Lock T5: 7,650 m²", source: "sop" },

@@ -42,7 +42,7 @@ const initialApprovals: Approval[] = [
 ];
 
 const initialExceptions: ExceptionCard[] = [
-  { id: "EXC-001", type: "SHORTAGE", typeLabel: "Shortage", typeColor: "danger", sku: "GA-300 A4", location: "CN-BD", risk: "120Mđ", fixCost: "8.8Mđ", roi: "13.6×", url: "/drp" },
+  { id: "EXC-001", type: "SHORTAGE", typeLabel: "Thiếu hàng", typeColor: "danger", sku: "GA-300 A4", location: "CN-BD", risk: "120 triệu ₫", fixCost: "8,8 triệu ₫", roi: "13,6×", url: "/drp" },
   { id: "EXC-002", type: "PO_OVERDUE", typeLabel: "PO Overdue", typeColor: "warning", sku: "Toko 557m²", location: "", risk: "85Mđ", fixCost: "", roi: "", url: "/orders" },
   { id: "EXC-003", type: "FC_DRIFT", typeLabel: "FC Drift", typeColor: "info", sku: "MAPE 18,4%", location: "", risk: "", fixCost: "", roi: "", url: "/demand-weekly" },
 ];

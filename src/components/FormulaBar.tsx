@@ -213,7 +213,7 @@ export function FormulaBar({
               <table className="w-full text-table-sm">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
-                    {["CN", "On-hand", "Reserved", "Available", "HSTK", "Cập nhật"].map(h => (
+                    {["CN", "Tồn hiện có", "Đã giữ", "Sẵn dùng", "HSTK", "Cập nhật"].map(h => (
                       <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
                     ))}
                   </tr>

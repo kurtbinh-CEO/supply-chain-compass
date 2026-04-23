@@ -199,7 +199,7 @@ export function ScreenFooter({ actionCount }: ScreenFooterProps) {
             <div className="px-6 py-3 border-t border-surface-3 shrink-0">
               <button className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 py-1.5 text-table-sm text-text-2 hover:bg-surface-3 transition-colors">
                 <Download className="h-3.5 w-3.5" />
-                Export CSV
+                Xuất CSV
               </button>
             </div>
           </div>

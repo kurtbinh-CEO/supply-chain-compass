@@ -220,7 +220,7 @@ export function NmRiskTab() {
                     <YAxis tick={{ fontSize: 11, fill: "var(--color-text-3)" }} unit="m²" />
                     <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                     <Bar dataKey="committedM2" name="Committed" fill="#94a3b8" radius={[2, 2, 0, 0]} />
-                    <Bar dataKey="counterM2" name="Counter" fill="var(--color-warning-text)" radius={[2, 2, 0, 0]} />
+                    <Bar dataKey="counterM2" name="Đề xuất khác" fill="var(--color-warning-text)" radius={[2, 2, 0, 0]} />
                     <Bar dataKey="deliveredM2" name="Delivered" fill="var(--color-success-text)" radius={[2, 2, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>

@@ -27,10 +27,10 @@ const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7
 /* ═══ SHARED DATA — mock fallbacks, overridden by DB when available ═══ */
 
 const finKpis = [
-  { label: "Working Capital", value: "1,2B", target: "1,0B", delta: "+20%", bad: true },
-  { label: "Premium freight", value: "45M₫", target: "", delta: "", bad: false },
-  { label: "Stockout cost", value: "32M₫", target: "", delta: "", bad: false },
-  { label: "LCNB savings", value: "96M₫", target: "", delta: "", bad: false },
+  { label: "Vốn lưu động", value: "1,2 tỷ", target: "1,0 tỷ", delta: "+20%", bad: true },
+  { label: "Cước vận chuyển premium", value: "45 triệu ₫", target: "", delta: "", bad: false },
+  { label: "Chi phí thiếu hàng", value: "32 triệu ₫", target: "", delta: "", bad: false },
+  { label: "Tiết kiệm LCNB", value: "96 triệu ₫", target: "", delta: "", bad: false },
 ];
 
 /* ═══ TAB 2 (Tồn kho) DATA ═══ */
@@ -169,11 +169,11 @@ const wcMonthly = [
 ];
 
 const recurringExceptions = [
-  { exception: "SHORTAGE", sku: "GA-300 A4", cn: "CN-BD", freq: "8x/tháng", avgResolve: "3,5h", trend: "↗ tệ hơn" },
-  { exception: "PO_OVERDUE", sku: "Toko all", cn: "All", freq: "6x/tháng", avgResolve: "8,2h", trend: "→ stable" },
-  { exception: "FC_DRIFT", sku: "GA-400 A4", cn: "CN-HN", freq: "4x/tháng", avgResolve: "2,1h", trend: "→ stable" },
-  { exception: "EXCESS", sku: "GA-600 A4", cn: "CN-ĐN", freq: "3x/tháng", avgResolve: "1,5h", trend: "↘ giảm" },
-  { exception: "SS_BREACH", sku: "GA-300 B2", cn: "CN-BD", freq: "3x/tháng", avgResolve: "5h", trend: "→ stable" },
+  { exception: "THIẾU HÀNG", sku: "GA-300 A4", cn: "CN-BD", freq: "8x/tháng", avgResolve: "3,5h", trend: "↗ tệ hơn" },
+  { exception: "PO QUÁ HẠN", sku: "Toko all", cn: "All", freq: "6x/tháng", avgResolve: "8,2h", trend: "→ ổn định" },
+  { exception: "FC LỆCH", sku: "GA-400 A4", cn: "CN-HN", freq: "4x/tháng", avgResolve: "2,1h", trend: "→ ổn định" },
+  { exception: "DƯ THỪA", sku: "GA-600 A4", cn: "CN-ĐN", freq: "3x/tháng", avgResolve: "1,5h", trend: "↘ giảm" },
+  { exception: "VƯỢT NGƯỠNG SS", sku: "GA-300 B2", cn: "CN-BD", freq: "3x/tháng", avgResolve: "5h", trend: "→ ổn định" },
 ];
 
 const closedLoopData = [
@@ -237,7 +237,7 @@ function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggl
             )}
           </span>
           <button onClick={() => { toast.success("Exporting CSV..."); }} className="shrink-0 rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-caption text-text-2 hover:bg-surface-3 transition-colors">
-            Export CSV
+            Xuất CSV
           </button>
         </div>
 
@@ -346,7 +346,7 @@ const tabs = [
   { key: "inv", label: "Tồn kho & SS" },
   { key: "perf", label: "Hiệu suất" },
   { key: "nm-risk", label: "Rủi ro NM" },
-  { key: "roi", label: "ROI & Flywheel" },
+  { key: "roi", label: "ROI & Bánh đà" },
   { key: "activity", label: "Activity Log" },
 ];
 
@@ -432,13 +432,13 @@ export default function MonitoringPage() {
           {/* Section A: 7 KPI Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[
-              { label: "HSTK trung bình", termKey: "HSTK", value: "8,5d", target: "target 7d", delta: "↗ +1,3d vs tháng trước", spark: kpiSparklines.hstk, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "inv", logicTab: "ss" as const, logicNode: 0, logicTip: "Công thức Safety Stock" },
-              { label: "Fill rate", termKey: "FillRate", value: "95,5%", target: "target 95%", delta: "→ stable", spark: kpiSparklines.fillRate, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "inv", logicTab: "daily" as const, logicNode: 3, logicTip: "Logic phân bổ 6 lớp" },
-              { label: "FC Accuracy (MAPE)", termKey: "MAPE", value: "18,4%", target: "target <15%", delta: "↘ từ 15,2%", spark: kpiSparklines.fcAccuracy, color: "var(--color-danger-text)", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 2, logicTip: "MAPE là gì?" },
-              { label: "NM Honoring", termKey: "HonoringRate", value: "77%", target: "target 85%", delta: "↘ xấu hơn", spark: kpiSparklines.nmHonoring, color: "var(--color-danger-text)", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 4, logicTip: "FVA & NM Honoring" },
-              { label: "Working Capital", termKey: undefined as string | undefined, value: "1,2 tỷ₫", target: "target 1,0B", delta: "+20% over", spark: kpiSparklines.wc, color: "var(--color-warning-text)", bg: "bg-warning-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 2, logicTip: "SS ↔ Working Capital" },
-              { label: "LCNB Savings", termKey: "LCNB", value: "96M₫", target: "tháng này", delta: "↗ +14M vs T3", spark: kpiSparklines.lcnb, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 3, logicTip: "LCNB giảm SS network" },
-              { label: "Độ chính xác hệ thống", termKey: undefined, value: `${Math.round((SYSTEM_ACCURACY.fillRatePct + SYSTEM_ACCURACY.drpAccuracyPct + SYSTEM_ACCURACY.lcnbHitRatePct + SYSTEM_ACCURACY.containerFillAvgPct) / 4)}%`, target: "target 80%", delta: "↗ +3pp vs T4", spark: kpiSparklines.fillRate, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 0, logicTip: "Hệ thống chính xác = trung bình 4 chỉ số: Fill Rate, DRP accuracy, LCNB hit rate, Container fill" },
+              { label: "HSTK trung bình", termKey: "HSTK", value: "8,5d", target: "mục tiêu 7d", delta: "↗ +1,3d vs tháng trước", spark: kpiSparklines.hstk, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "inv", logicTab: "ss" as const, logicNode: 0, logicTip: "Công thức Safety Stock" },
+              { label: "Tỷ lệ lấp đầy", termKey: "FillRate", value: "95,5%", target: "mục tiêu 95%", delta: "→ ổn định", spark: kpiSparklines.fillRate, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "inv", logicTab: "daily" as const, logicNode: 3, logicTip: "Logic phân bổ 6 lớp" },
+              { label: "Độ chính xác FC (MAPE)", termKey: "MAPE", value: "18,4%", target: "mục tiêu <15%", delta: "↘ từ 15,2%", spark: kpiSparklines.fcAccuracy, color: "var(--color-danger-text)", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 2, logicTip: "MAPE là gì?" },
+              { label: "Tỷ lệ giữ cam kết NM", termKey: "HonoringRate", value: "77%", target: "mục tiêu 85%", delta: "↘ xấu hơn", spark: kpiSparklines.nmHonoring, color: "var(--color-danger-text)", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 4, logicTip: "FVA & NM Honoring" },
+              { label: "Vốn lưu động", termKey: undefined as string | undefined, value: "1,2 tỷ ₫", target: "mục tiêu 1,0 tỷ", delta: "+20% vượt mục tiêu", spark: kpiSparklines.wc, color: "var(--color-warning-text)", bg: "bg-warning-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 2, logicTip: "SS ↔ Vốn lưu động" },
+              { label: "Tiết kiệm LCNB", termKey: "LCNB", value: "96 triệu ₫", target: "tháng này", delta: "↗ +14M vs T3", spark: kpiSparklines.lcnb, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 3, logicTip: "LCNB giảm SS toàn mạng" },
+              { label: "Độ chính xác hệ thống", termKey: undefined, value: `${Math.round((SYSTEM_ACCURACY.fillRatePct + SYSTEM_ACCURACY.drpAccuracyPct + SYSTEM_ACCURACY.lcnbHitRatePct + SYSTEM_ACCURACY.containerFillAvgPct) / 4)}%`, target: "mục tiêu 80%", delta: "↗ +3pp vs T4", spark: kpiSparklines.fillRate, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 0, logicTip: "Hệ thống chính xác = trung bình 4 chỉ số: Tỷ lệ lấp đầy, độ chính xác DRP, tỉ lệ trúng LCNB, mức lấp đầy container" },
             ].map((kpi) => (
               <div
                 key={kpi.label}
@@ -464,39 +464,39 @@ export default function MonitoringPage() {
                         kpi.label === "HSTK trung bình" ? [
                           { label: "CN-BD", value: "5,2d 🔴" }, { label: "CN-ĐN", value: "14d" },
                           { label: "CN-HN", value: "9,5d" }, { label: "CN-CT", value: "11d" },
-                        ] : kpi.label === "Fill rate" ? [
+                        ] : kpi.label === "Tỷ lệ lấp đầy" ? [
                           { label: "CN-BD", value: "86%" }, { label: "CN-ĐN", value: "100%" },
                           { label: "CN-HN", value: "100%" }, { label: "CN-CT", value: "100%" },
-                        ] : kpi.label === "NM Honoring" ? [
+                        ] : kpi.label === "Tỷ lệ giữ cam kết NM" ? [
                           { label: "Mikado", value: "92% A" }, { label: "Toko", value: "68% C 🔴" },
                           { label: "Phú Mỹ", value: "45% D 🔴" }, { label: "Đồng Tâm", value: "90% A" },
                           { label: "Vigracera", value: "88% B" },
-                        ] : kpi.label === "FC Accuracy (MAPE)" ? [
+                        ] : kpi.label === "Độ chính xác FC (MAPE)" ? [
                           { label: "CN-BD", value: "88%" }, { label: "CN-ĐN", value: "78%" },
                           { label: "CN-HN", value: "69% 🔴" }, { label: "CN-CT", value: "85%" },
-                        ] : kpi.label === "Working Capital" ? [
-                          { label: "Stock value", value: "950M" }, { label: "Pipeline value", value: "250M" },
-                        ] : kpi.label === "LCNB Savings" ? [
-                          { label: "TO-DN-BD-001", value: "220m² saved 32M₫" },
-                          { label: "TO-HN-BD-001", value: "150m² saved 18M₫" },
+                        ] : kpi.label === "Vốn lưu động" ? [
+                          { label: "Giá trị tồn kho", value: "950 triệu" }, { label: "Giá trị đang về", value: "250 triệu" },
+                        ] : kpi.label === "Tiết kiệm LCNB" ? [
+                          { label: "TO-DN-BD-001", value: "220m² tiết kiệm 32 triệu ₫" },
+                          { label: "TO-HN-BD-001", value: "150m² tiết kiệm 18 triệu ₫" },
                         ] : undefined
                       }
                       formula={
-                        kpi.label === "HSTK trung bình" ? "Weighted by demand: CN-BD demand lớn nhất nhưng HSTK thấp nhất → kéo avg xuống 8,5d" :
-                        kpi.label === "Fill rate" ? "CN-BD 86% × CN-ĐN 100% × CN-HN 100% × CN-CT 100% → weighted 95,5%" :
-                        kpi.label === "NM Honoring" ? "Weighted by committed qty → 77%. Toko + Phú Mỹ kéo xuống." :
-                        kpi.label === "FC Accuracy (MAPE)" ? "100% − MAPE_weighted = 100% − 18.4% = 81.6% ≈ 82%" :
-                        kpi.label === "Working Capital" ? "Stock 950M + Pipeline 250M = 1.200M₫. Budget 1.000M (+20%).\nOver budget do: SS CN-BD +120M, premium freight Toko +45M." :
-                        kpi.label === "LCNB Savings" ? "8 lateral transfers tháng này. Avg saving 12M₫/transfer." :
+                        kpi.label === "HSTK trung bình" ? "Trọng số theo nhu cầu: CN-BD nhu cầu lớn nhất nhưng HSTK thấp nhất → kéo trung bình xuống 8,5d" :
+                        kpi.label === "Tỷ lệ lấp đầy" ? "CN-BD 86% × CN-ĐN 100% × CN-HN 100% × CN-CT 100% → trọng số 95,5%" :
+                        kpi.label === "Tỷ lệ giữ cam kết NM" ? "Trọng số theo SL cam kết → 77%. Toko + Phú Mỹ kéo xuống." :
+                        kpi.label === "Độ chính xác FC (MAPE)" ? "100% − MAPE_trọng số = 100% − 18,4% = 81,6% ≈ 82%" :
+                        kpi.label === "Vốn lưu động" ? "Tồn kho 950 triệu + Đang về 250 triệu = 1.200 triệu ₫. Ngân sách 1.000 triệu (+20%).\nVượt ngân sách do: SS CN-BD +120 triệu, cước premium Toko +45 triệu." :
+                        kpi.label === "Tiết kiệm LCNB" ? "8 lần điều chuyển nội bộ tháng này. Tiết kiệm trung bình 12 triệu ₫/lần." :
                         undefined
                       }
                       links={
                         kpi.label === "HSTK trung bình" ? [{ label: "→ tab Tồn kho", to: "/monitoring" }] :
-                        kpi.label === "Fill rate" ? [{ label: "→ /drp", to: "/drp" }] :
-                        kpi.label === "NM Honoring" ? [{ label: "→ tab Hiệu suất Section B", to: "/monitoring" }] :
-                        kpi.label === "Working Capital" ? [{ label: "→ tab Hiệu suất Section D", to: "/monitoring" }] :
-                        kpi.label === "FC Accuracy (MAPE)" ? [{ label: "→ tab Hiệu suất Section A", to: "/monitoring" }] :
-                        kpi.label === "LCNB Savings" ? [{ label: "→ /drp LCNB history", to: "/drp" }] :
+                        kpi.label === "Tỷ lệ lấp đầy" ? [{ label: "→ /drp", to: "/drp" }] :
+                        kpi.label === "Tỷ lệ giữ cam kết NM" ? [{ label: "→ tab Hiệu suất Section B", to: "/monitoring" }] :
+                        kpi.label === "Vốn lưu động" ? [{ label: "→ tab Hiệu suất Section D", to: "/monitoring" }] :
+                        kpi.label === "Độ chính xác FC (MAPE)" ? [{ label: "→ tab Hiệu suất Section A", to: "/monitoring" }] :
+                        kpi.label === "Tiết kiệm LCNB" ? [{ label: "→ /drp lịch sử LCNB", to: "/drp" }] :
                         undefined
                       }
                     />

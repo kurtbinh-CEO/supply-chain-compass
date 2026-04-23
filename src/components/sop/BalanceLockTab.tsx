@@ -184,7 +184,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
             <table className="w-full text-table-sm">
               <thead>
                 <tr className="border-b border-surface-3 bg-surface-1/50">
-                  {["Item", "Variant", "Demand", "Stock", "Pipeline", "Net req", "Worst CN", "# CN gap", "LCNB", ""].map(h => (
+                  {["SKU", "Mẫu", "Nhu cầu", "Tồn kho", "Đang về", "Nhu cầu ròng", "CN xấu nhất", "# CN thiếu", "LCNB", ""].map(h => (
                     <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -221,7 +221,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
                         <td className="px-3 py-2">
                           <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
                             cb.status === "CRITICAL" ? "bg-danger-bg text-danger" : cb.status === "EXCESS" ? "bg-info-bg text-info" : "bg-success-bg text-success"
-                          )}>{cb.status}</span>
+                          )}>{cb.status === "CRITICAL" ? "NGHIÊM TRỌNG" : cb.status === "EXCESS" ? "DƯ THỪA" : cb.status === "OK" ? "ĐẠT" : cb.status}</span>
                         </td>
                         <td colSpan={2} />
                       </tr>
@@ -229,7 +229,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
                   </React.Fragment>);
                 })}
                 <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
-                  <td className="px-3 py-2.5 text-text-1">TOTAL</td>
+                  <td className="px-3 py-2.5 text-text-1">TỔNG</td>
                   <td />
                   <td className="px-3 py-2.5 tabular-nums text-text-1">{totalDemand.toLocaleString()}</td>
                   <td className="px-3 py-2.5 tabular-nums text-text-1">{totalStock.toLocaleString()}</td>
@@ -244,13 +244,13 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
       ) : (
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
         <div className="px-5 py-3 border-b border-surface-3 flex items-center justify-between">
-          <h3 className="font-display text-section-header text-text-1">Per Location — Tháng 5</h3>
+          <h3 className="font-display text-section-header text-text-1">Theo CN — Tháng 5</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-table-sm">
             <thead>
               <tr className="border-b border-surface-3 bg-surface-1/50">
-                {["CN", "Demand", "Stock", "Pipeline", "Available", "Cover", "SS target", "SS gap", "Net req", "Status", ""].map(h => (
+                {["CN", "Nhu cầu", "Tồn kho", "Đang về", "Sẵn dùng", "Số ngày phủ", "SS mục tiêu", "SS lệch", "Nhu cầu ròng", "Trạng thái", ""].map(h => (
                   <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                 ))}
               </tr>

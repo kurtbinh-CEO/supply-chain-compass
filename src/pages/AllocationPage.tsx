@@ -108,7 +108,7 @@ function LcnbCard({
         className="w-full"
         variant={confirmed ? "secondary" : "default"}
       >
-        {confirmed ? "Đã xác nhận" : "Confirm LCNB"}
+        {confirmed ? "Đã xác nhận" : "Xác nhận LCNB"}
       </Button>
     </div>
   );

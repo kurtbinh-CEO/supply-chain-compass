@@ -127,7 +127,7 @@ export function HstkTab() {
           <h2 className="font-display text-section-header text-text-1">Inventory Detailed View</h2>
           <div className="flex gap-2">
             <Button variant="outline" size="sm">Filter</Button>
-            <Button variant="outline" size="sm">Export CSV</Button>
+            <Button variant="outline" size="sm">Xuất CSV</Button>
           </div>
         </div>
         <div className="overflow-x-auto">

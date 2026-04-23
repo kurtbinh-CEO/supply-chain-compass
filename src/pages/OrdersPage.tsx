@@ -1042,7 +1042,7 @@ export default function OrdersPage() {
                       const st = effectiveStatus(po);
                       const type = po.po_number.startsWith("TO-") ? "TO" : "RPO";
                       const tb = getPoTypeBadge(type as any);
-                      const nextLabel = st === "draft" ? "Submit" : "Confirm";
+                      const nextLabel = st === "draft" ? "Gửi đi" : "Xác nhận";
                       return (
                         <tr key={po.po_number} className="border-b border-warning/10 hover:bg-warning-bg/20">
                           <td className="px-3 py-2.5">
@@ -1968,7 +1968,7 @@ export default function OrdersPage() {
                       onClick={exportSelectedCsv}
                       className="h-8 inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 px-3 text-table-sm text-text-1 hover:bg-surface-1"
                     >
-                      <Download className="h-3.5 w-3.5" /> Export CSV
+                      <Download className="h-3.5 w-3.5" /> Xuất CSV
                     </button>
                     <button
                       onClick={downloadSelectedPods}

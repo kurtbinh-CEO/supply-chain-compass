@@ -146,7 +146,7 @@ export default function ProfilePage() {
             </div>
             <div>
               <h2 className="font-display text-lg font-semibold text-text-1">
-                {profile?.display_name || "User"}
+                {profile?.display_name || "Người dùng"}
               </h2>
               <p className="text-table-sm text-text-3 mt-0.5">{user?.email}</p>
               <p className="text-caption text-text-3 mt-1">Click vào ảnh để thay đổi (tối đa 2MB)</p>
