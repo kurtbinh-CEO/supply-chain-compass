@@ -978,7 +978,7 @@ export default function DrpPage() {
           {/* Netting formula explainer (rule #2 — base-level) */}
           <div className="rounded-card border border-info/30 bg-info-bg/30 px-4 py-3 text-table-sm space-y-1">
             <div className="font-mono text-text-1">
-              <TermTooltip term="net_req">Nhu cầu ròng</TermTooltip> = Nhu cầu gộp − Tồn kho (Σ đuôi) − Hàng đang về + <TermTooltip term="ss_cn">Tồn kho an toàn CN</TermTooltip>
+              <TermTooltip term="NhuCauRong">Nhu cầu ròng</TermTooltip> = Nhu cầu gộp − Tồn kho (Σ đuôi) − Hàng đang về + <TermTooltip term="SsCn">Tồn kho an toàn CN</TermTooltip>
             </div>
             <div className="text-caption text-text-3">
               Tính theo <span className="font-medium text-text-2">mã gốc</span> (VD: GA-300 = A4 + B2 + C1 + D5). Variant chỉ phân rã ở Layer 2 sau khi netting xong.
