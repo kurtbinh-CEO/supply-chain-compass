@@ -162,12 +162,46 @@ const stageThemes: Record<string, StageTheme> = {
 export default function OrdersPage() {
   const { tenant } = useTenant();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { groups: dbGroups, allOrders, loading: poLoading } = usePurchaseOrders();
   const { canEdit, canApprove, user } = useRbac();
 
   const ordersBatch = useBatchLock(null);
   const { conflict: ordersConflict, clearConflict } = useVersionConflict();
-  const [activeTab, setActiveTab] = useState("approval");
+
+  // Tab init: URL ?tab=… > localStorage > "packing"
+  const initialTab = (() => {
+    const fromUrl = searchParams.get("tab");
+    if (fromUrl && tabs.some((t) => t.key === fromUrl)) return fromUrl;
+    if (typeof window !== "undefined") {
+      const fromLs = localStorage.getItem("scp-orders-active-tab");
+      if (fromLs && tabs.some((t) => t.key === fromLs)) return fromLs;
+    }
+    return "packing";
+  })();
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
+
+  // Sync activeTab → URL + localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("scp-orders-active-tab", activeTab);
+    }
+    if (searchParams.get("tab") !== activeTab) {
+      const next = new URLSearchParams(searchParams);
+      next.set("tab", activeTab);
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // React if URL changes externally (e.g. /transport redirect)
+  useEffect(() => {
+    const fromUrl = searchParams.get("tab");
+    if (fromUrl && fromUrl !== activeTab && tabs.some((t) => t.key === fromUrl)) {
+      setActiveTab(fromUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Approval tab state
   const [selectedPos, setSelectedPos] = useState<Set<string>>(new Set());
