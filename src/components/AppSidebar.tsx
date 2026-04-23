@@ -1,7 +1,7 @@
 import { NavLink } from "@/components/NavLink";
 import {
   ClipboardCheck, Activity, BarChart3, Handshake, Boxes,
-  Package, CalendarDays, GitBranch,
+  Package, CalendarDays, GitBranch, Layers,
   Truck, Users, Database, FileBarChart, Settings,
   ChevronLeft, Play, BookOpen, Building, GraduationCap, LayoutDashboard,
   AlertTriangle, RefreshCw,
@@ -58,12 +58,11 @@ const navGroups: NavGroup[] = [
   {
     labelKey: "nav.dailyOps",
     items: [
-      { titleKey: "nav.nmSupply", icon: Package, url: "/supply" },
-      { titleKey: "nav.demandWeekly", icon: CalendarDays, url: "/demand-weekly" },
-      { titleKey: "nav.drpAllocation", icon: GitBranch, url: "/drp" },
-      { titleKey: "nav.orders", icon: Truck, url: "/orders" },
-      { titleKey: "nav.transport", icon: Truck, url: "/transport" },
-      { titleKey: "nav.sync", icon: RefreshCw, url: "/sync" },
+      { titleKey: "nav.nmSupply",      icon: Package,      url: "/supply" },          // F2-B1
+      { titleKey: "nav.demandWeekly",  icon: CalendarDays, url: "/demand-weekly" },   // F2-B2
+      { titleKey: "nav.drpAllocation", icon: GitBranch,    url: "/drp" },             // F2-B3
+      { titleKey: "nav.allocation",    icon: Layers,       url: "/allocation" },      // F2-B4
+      { titleKey: "nav.orders",        icon: Truck,        url: "/orders" },          // F2-B5/B6/B7
     ],
   },
   {
@@ -76,9 +75,10 @@ const navGroups: NavGroup[] = [
   {
     labelKey: "nav.config",
     items: [
-      { titleKey: "nav.masterData", icon: Database, url: "/master-data" },
-      { titleKey: "nav.reports", icon: FileBarChart, url: "/reports" },
-      { titleKey: "nav.configItem", icon: Settings, url: "/config", roles: ["SC_MANAGER"] },
+      { titleKey: "nav.masterData", icon: Database,     url: "/master-data" },
+      { titleKey: "nav.sync",       icon: RefreshCw,    url: "/sync" },         // chuyển từ vận hành về quản trị
+      { titleKey: "nav.reports",    icon: FileBarChart, url: "/reports" },
+      { titleKey: "nav.configItem", icon: Settings,     url: "/config", roles: ["SC_MANAGER"] },
     ],
   },
   {
