@@ -18,6 +18,7 @@ import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
 import { VersionComparePanel } from "@/components/sop/VersionComparePanel";
+import { DiagnosticsPanel } from "@/components/DiagnosticsPanel";
 
 const tabs = [
   { key: "consensus", label: "Consensus" },
@@ -384,7 +385,8 @@ export default function SopPage() {
       )}
 
       <AutoSaveIndicator lastSaved={cellPresence.lastSaved} offline={cellPresence.offline} />
-      <div className="mt-6">
+      <div className="mt-6 space-y-4">
+        <DiagnosticsPanel scope="sop" />
         <ChangeLogPanel entityType="sop_consensus" maxItems={6} />
       </div>
       <NextStepBanner step="sop.locked" />
