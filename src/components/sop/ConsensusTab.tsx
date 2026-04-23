@@ -5,6 +5,7 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { ViewPivotToggle, usePivotMode, WorstCnCell, CnGapBadge } from "@/components/ViewPivotToggle";
+import { SmartTableShell } from "@/components/SmartTableShell";
 import type { ConsensusRow } from "@/pages/SopPage";
 
 interface Props {
@@ -116,7 +117,13 @@ function buildSkuPivot(data: ConsensusRow[]): SkuPivotRow[] {
 export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUpdateNote, varianceExplanations = {}, onUpdateVariance }: Props) {
   const [pivotMode, setPivotMode] = usePivotMode("sop-consensus");
   const [drillCn, setDrillCn] = useState<number | null>(null);
-  const [drillSku, setDrillSku] = useState<string | null>(null);
+  const [expandedSku, setExpandedSku] = useState<Set<string>>(new Set());
+  const toggleSku = (key: string) =>
+    setExpandedSku((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
 
   /* P19 — Auto-expand SHORTAGE rows (variance >10%); OK rows collapsed by default.
      ⌘E toggles all rows. */
@@ -178,65 +185,7 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
 
   const skuPivotData = pivotMode === "sku" ? buildSkuPivot(data) : [];
 
-  /* ═══ SKU-first drill: per CN for a SKU ═══ */
-  if (pivotMode === "sku" && drillSku) {
-    const skuRow = skuPivotData.find(r => `${r.item}|${r.variant}` === drillSku);
-    if (!skuRow) return null;
-    return (
-      <div className="space-y-4 animate-fade-in">
-        <div className="flex items-center gap-2 text-table-sm">
-          <button onClick={() => setDrillSku(null)} className="text-primary font-medium hover:underline flex items-center gap-1">
-            <ChevronLeft className="h-3.5 w-3.5" /> Per SKU
-          </button>
-          <span className="text-text-3">/</span>
-          <span className="text-text-1 font-medium">{skuRow.item} {skuRow.variant} (v3: {skuRow.v3.toLocaleString()} m²)</span>
-        </div>
-        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-table-sm">
-              <thead>
-                <tr className="border-b border-surface-3 bg-surface-1/50">
-                  {["CN", "v0 Statistical", "v1 Sales", "v2 CN Input", "v3 Consensus", "AOP", "vs AOP", "FVA best"].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {skuRow.cnBreakdown.map((cb, i) => {
-                  const delta = cb.aop > 0 ? Math.round(((cb.v3 - cb.aop) / cb.aop) * 100) : 0;
-                  const aopColor = Math.abs(delta) <= 5 ? "text-success" : delta > 0 ? "text-warning" : "text-danger";
-                  return (
-                    <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
-                      <td className="px-4 py-2.5 font-medium text-text-1">{cb.cn}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-text-2">{cb.v0.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-text-2">{cb.v1.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-text-2">{cb.v2.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-primary font-bold">{cb.v3.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-text-3">{cb.aop.toLocaleString()}</td>
-                      <td className={cn("px-4 py-2.5 tabular-nums font-medium", aopColor)}>
-                        {delta > 0 ? "+" : ""}{delta}% {Math.abs(delta) > 5 ? "⚠" : ""}
-                      </td>
-                      <td className="px-4 py-2.5 text-text-2">{cb.fvaBest}</td>
-                    </tr>
-                  );
-                })}
-                <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
-                  <td className="px-4 py-2.5 text-text-1">TOTAL</td>
-                  <td className="px-4 py-2.5 tabular-nums text-text-1">{skuRow.v0.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-text-1">{skuRow.v1.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-text-1">{skuRow.v2.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-primary font-bold">{skuRow.v3.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-text-3">{skuRow.aop.toLocaleString()}</td>
-                  <td /><td />
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  /* SKU-first drill is now INLINE (expandedSku state) — no separate page. */
   /* ═══ CN-first drill (existing) ═══ */
   if (pivotMode === "cn" && drillCn !== null) {
     const row = data[drillCn];
@@ -306,11 +255,17 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Pivot toggle */}
-      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setDrillCn(null); setDrillSku(null); }} />
+      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setDrillCn(null); setExpandedSku(new Set()); }} />
 
       {pivotMode === "cn" ? (
         /* ═══ CN-FIRST Layer 1 ═══ */
-        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+        <SmartTableShell
+          title="Consensus — CN-first"
+          storageKey="sop-consensus-cn"
+          columns={["", "CN", "v0", "v1", "v2", "v3 ★", "AOP", "vs AOP", "FVA best", ""]}
+          defaultWidths={[40, 140, 130, 130, 130, 140, 130, 140, 200, 100]}
+        >
+          {() => (
           <div className="overflow-x-auto">
             <table className="w-full text-table-sm">
               <thead>
@@ -519,49 +474,109 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
               </tbody>
             </table>
           </div>
-        </div>
+          )}
+        </SmartTableShell>
       ) : (
         /* ═══ SKU-FIRST Layer 1 ═══ */
-        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+        <SmartTableShell
+          title="Consensus — SKU-first"
+          storageKey="sop-consensus-sku"
+          columns={["", "Item", "Variant", "v0", "v1", "v2", "v3 ★", "AOP", "vs AOP", "Worst CN", "# CN gap"]}
+          defaultWidths={[40, 110, 110, 130, 130, 130, 140, 130, 130, 160, 130]}
+        >
+          {() => (
           <div className="overflow-x-auto">
             <table className="w-full text-table-sm">
               <thead>
                 <tr className="border-b border-surface-3 bg-surface-1/50">
-                  {["Item", "Variant", "v0 Total", "v1 Total", "v2 Total", "v3 Total", "AOP", "vs AOP", "Worst CN", "# CN gap", ""].map(h => (
+                  <th className="w-8 px-2 py-2.5"></th>
+                  {["Item", "Variant", "v0 Total", "v1 Total", "v2 Total", "v3 Total", "AOP", "vs AOP", "Worst CN", "# CN gap"].map(h => (
                     <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {skuPivotData.map((row, i) => {
+                  const skuKey = `${row.item}|${row.variant}`;
+                  const isOpen = expandedSku.has(skuKey);
                   const delta = row.aop > 0 ? Math.round(((row.v3 - row.aop) / row.aop) * 100) : 0;
                   const aopColor = Math.abs(delta) <= 5 ? "text-success" : delta > 0 ? "text-warning" : "text-danger";
                   return (
-                    <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors cursor-pointer", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
-                      onClick={() => setDrillSku(`${row.item}|${row.variant}`)}>
-                      <td className="px-4 py-2.5 font-medium text-text-1">{row.item}</td>
-                      <td className="px-4 py-2.5 text-text-2">{row.variant}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-text-2">{row.v0.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-text-2">{row.v1.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-text-2">{row.v2.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-primary font-bold">{row.v3.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-text-3">{row.aop.toLocaleString()}</td>
-                      <td className={cn("px-4 py-2.5 tabular-nums font-medium", aopColor)}>
-                        {delta > 0 ? "+" : ""}{delta}% {Math.abs(delta) > 5 ? "⚠" : ""}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <WorstCnCell cnName={row.worstCn} hstk={Math.abs(row.worstDelta)} />
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <CnGapBadge count={row.cnGapCount} />
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <ChevronRight className="h-3.5 w-3.5 text-text-3" />
-                      </td>
-                    </tr>
+                    <React.Fragment key={i}>
+                      <tr
+                        className={cn(
+                          "border-b border-surface-3/50 hover:bg-primary/5 transition-colors cursor-pointer",
+                          i % 2 === 0 ? "bg-surface-0" : "bg-surface-2",
+                          isOpen && "bg-primary/5",
+                        )}
+                        onClick={() => toggleSku(skuKey)}
+                      >
+                        <td className="px-2 py-2.5 text-text-3">
+                          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </td>
+                        <td className="px-4 py-2.5 font-medium text-text-1">{row.item}</td>
+                        <td className="px-4 py-2.5 text-text-2">{row.variant}</td>
+                        <td className="px-4 py-2.5 tabular-nums text-text-2">{row.v0.toLocaleString()}</td>
+                        <td className="px-4 py-2.5 tabular-nums text-text-2">{row.v1.toLocaleString()}</td>
+                        <td className="px-4 py-2.5 tabular-nums text-text-2">{row.v2.toLocaleString()}</td>
+                        <td className="px-4 py-2.5 tabular-nums text-primary font-bold">{row.v3.toLocaleString()}</td>
+                        <td className="px-4 py-2.5 tabular-nums text-text-3">{row.aop.toLocaleString()}</td>
+                        <td className={cn("px-4 py-2.5 tabular-nums font-medium", aopColor)}>
+                          {delta > 0 ? "+" : ""}{delta}% {Math.abs(delta) > 5 ? "⚠" : ""}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <WorstCnCell cnName={row.worstCn} hstk={Math.abs(row.worstDelta)} />
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <CnGapBadge count={row.cnGapCount} />
+                        </td>
+                      </tr>
+                      {isOpen && (
+                        <tr className="border-b border-surface-3/50 bg-surface-1/40 animate-fade-in">
+                          <td></td>
+                          <td colSpan={10} className="px-4 py-3">
+                            <div className="text-caption uppercase text-text-3 tracking-wider mb-2">
+                              Phân rã theo {row.cnBreakdown.length} CN
+                            </div>
+                            <div className="rounded-md border border-surface-3 overflow-hidden">
+                              <table className="w-full text-table-sm">
+                                <thead className="bg-surface-2/60 text-text-3 text-caption uppercase">
+                                  <tr>
+                                    {["CN", "v0", "v1", "v2", "v3 ★", "AOP", "vs AOP", "FVA best"].map(h => (
+                                      <th key={h} className="px-3 py-1.5 text-left">{h}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {row.cnBreakdown.map((cb, j) => {
+                                    const cd = cb.aop > 0 ? Math.round(((cb.v3 - cb.aop) / cb.aop) * 100) : 0;
+                                    const cdColor = Math.abs(cd) <= 5 ? "text-success" : cd > 0 ? "text-warning" : "text-danger";
+                                    return (
+                                      <tr key={j} className="border-t border-surface-3/40">
+                                        <td className="px-3 py-1.5 font-medium text-text-1">{cb.cn}</td>
+                                        <td className="px-3 py-1.5 tabular-nums text-text-2">{cb.v0.toLocaleString()}</td>
+                                        <td className="px-3 py-1.5 tabular-nums text-text-2">{cb.v1.toLocaleString()}</td>
+                                        <td className="px-3 py-1.5 tabular-nums text-text-2">{cb.v2.toLocaleString()}</td>
+                                        <td className="px-3 py-1.5 tabular-nums text-primary font-bold">{cb.v3.toLocaleString()}</td>
+                                        <td className="px-3 py-1.5 tabular-nums text-text-3">{cb.aop.toLocaleString()}</td>
+                                        <td className={cn("px-3 py-1.5 tabular-nums font-medium", cdColor)}>
+                                          {cd > 0 ? "+" : ""}{cd}%
+                                        </td>
+                                        <td className="px-3 py-1.5 text-text-2">{cb.fvaBest}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
                 <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
+                  <td />
                   <td className="px-4 py-2.5 text-text-1">TOTAL</td>
                   <td />
                   <td className="px-4 py-2.5 tabular-nums text-text-1">{totals.v0.toLocaleString()}</td>
@@ -569,12 +584,13 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
                   <td className="px-4 py-2.5 tabular-nums text-text-1">{totals.v2.toLocaleString()}</td>
                   <td className="px-4 py-2.5 tabular-nums text-primary font-bold">{totals.v3.toLocaleString()}</td>
                   <td className="px-4 py-2.5 tabular-nums text-text-3">{totals.aop.toLocaleString()}</td>
-                  <td /><td /><td /><td />
+                  <td /><td /><td />
                 </tr>
               </tbody>
             </table>
           </div>
-        </div>
+          )}
+        </SmartTableShell>
       )}
 
       {/* AOP gap summary strip */}
