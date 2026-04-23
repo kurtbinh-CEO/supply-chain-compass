@@ -6,6 +6,7 @@ import { useI18n } from "@/components/i18n/I18nContext";
 import type { Locale } from "@/components/i18n/translations";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/components/AuthContext";
+import { ZoomControls } from "@/components/ZoomControls";
 
 const routeKeys: Record<string, string> = {
   "/workspace": "route.workspace",
@@ -141,6 +142,9 @@ export function TopBar() {
         <Globe className="h-3.5 w-3.5 text-text-3" />
         {locale}
       </button>
+
+      {/* Zoom controls (R14) */}
+      <ZoomControls />
 
       {/* Theme toggle */}
       <div className="flex items-center rounded-lg border border-surface-3 p-0.5 gap-0.5">

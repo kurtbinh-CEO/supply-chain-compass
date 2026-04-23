@@ -56,6 +56,36 @@
     outline-offset: -2px;
     background-color: color-mix(in srgb, var(--color-primary) 6%, transparent);
   }
+
+  /* ===== R14 — Zoom Modes ===== */
+  /* Z1: Section focus — dim non-focused panels (cards opt-in via [data-zoomable]) */
+  [data-zoom-focus="on"] [data-zoomable]:not(:hover):not(:focus-within) {
+    opacity: 0.45;
+    filter: saturate(0.85);
+    transition: opacity 0.2s ease, filter 0.2s ease;
+  }
+  [data-zoom-focus="on"] [data-zoomable]:hover,
+  [data-zoom-focus="on"] [data-zoomable]:focus-within {
+    opacity: 1;
+    filter: none;
+  }
+
+  /* Z2: Table fullscreen — promote [data-table-fullscreen] container */
+  [data-zoom-table="on"] [data-table-fullscreen] {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: var(--color-surface-0);
+    padding: 1.5rem;
+    overflow: auto;
+  }
+
+  /* Z3: Large numbers — bump tabular numerics +2px */
+  [data-zoom-large="on"] .tabular-nums,
+  [data-zoom-large="on"] [data-large-number] {
+    font-size: calc(1em + 2px);
+    font-weight: 600;
+  }
 }
 
 @layer utilities {

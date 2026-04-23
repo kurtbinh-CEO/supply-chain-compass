@@ -14,6 +14,7 @@ import { I18nProvider } from "@/components/i18n/I18nContext";
 import { ActivityLogProvider } from "@/components/ActivityLogContext";
 import { WalkthroughProvider } from "@/components/WalkthroughContext";
 import { AuthProvider, useAuth } from "@/components/AuthContext";
+import { ZoomProvider } from "@/components/ZoomControls";
 import AuthPage from "./pages/AuthPage";
 import Index from "./pages/Index";
 import DesignTest from "./pages/DesignTest";
@@ -106,6 +107,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
     <I18nProvider>
+    <ZoomProvider>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -118,6 +120,7 @@ const App = () => (
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
+    </ZoomProvider>
     </I18nProvider>
     </ThemeProvider>
   </QueryClientProvider>
