@@ -563,6 +563,7 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
                   );
                 })}
                 <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
+                  <td />
                   <td className="px-4 py-2.5 text-text-1">TOTAL</td>
                   <td />
                   <td className="px-4 py-2.5 tabular-nums text-text-1">{totals.v0.toLocaleString()}</td>
@@ -570,7 +571,7 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
                   <td className="px-4 py-2.5 tabular-nums text-text-1">{totals.v2.toLocaleString()}</td>
                   <td className="px-4 py-2.5 tabular-nums text-primary font-bold">{totals.v3.toLocaleString()}</td>
                   <td className="px-4 py-2.5 tabular-nums text-text-3">{totals.aop.toLocaleString()}</td>
-                  <td /><td /><td /><td />
+                  <td /><td /><td />
                 </tr>
               </tbody>
             </table>
