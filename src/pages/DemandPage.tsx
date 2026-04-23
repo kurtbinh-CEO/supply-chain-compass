@@ -168,6 +168,7 @@ export default function DemandPage() {
           <B2BInputTab deals={b2bDeals} setDeals={setB2bDeals} tenant={tenant} />
         )}
       </div>
+      {activeTab === "fc-actual" && <FcVsActualTab />}
       <ScreenFooter actionCount={8} />
     </AppLayout>
   );
