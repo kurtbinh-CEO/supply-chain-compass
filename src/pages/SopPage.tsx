@@ -323,16 +323,19 @@ export default function SopPage() {
         <>
           <div data-tour="sop-consensus">
             {activeTab === "consensus" && (
-              <ConsensusTab
-                data={consensusData}
-                totalAop={totalAop}
-                totalV3={totalV3}
-                locked={locked}
-                onUpdateV3={handleUpdateV3}
-                onUpdateNote={handleUpdateNote}
-                varianceExplanations={varianceExplanations}
-                onUpdateVariance={handleUpdateVariance}
-              />
+              <>
+                <ConsensusTab
+                  data={consensusData}
+                  totalAop={totalAop}
+                  totalV3={totalV3}
+                  locked={locked}
+                  onUpdateV3={handleUpdateV3}
+                  onUpdateNote={handleUpdateNote}
+                  varianceExplanations={varianceExplanations}
+                  onUpdateVariance={handleUpdateVariance}
+                />
+                <VersionComparePanel />
+              </>
             )}
           </div>
           <div data-tour="sop-balance">
