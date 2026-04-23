@@ -61,10 +61,10 @@ const initialHistory: HistoryRow[] = [
 ];
 
 const STATUS_META: Record<SyncStatus, { label: string; color: string; bg: string; icon: string; chipBg: string; chipText: string }> = {
-  fresh:   { label: "FRESH",   color: "text-success", bg: "bg-success",  icon: "🟢", chipBg: "bg-success/10",  chipText: "text-success" },
-  ok:      { label: "OK",      color: "text-success", bg: "bg-success",  icon: "🟢", chipBg: "bg-success/10",  chipText: "text-success" },
-  stale:   { label: "STALE",   color: "text-warning", bg: "bg-warning",  icon: "🟡", chipBg: "bg-warning/10",  chipText: "text-warning" },
-  blocked: { label: "BLOCKED", color: "text-danger",  bg: "bg-danger",   icon: "🔴", chipBg: "bg-danger/10",   chipText: "text-danger" },
+  fresh:   { label: "MỚI CẬP NHẬT", color: "text-success", bg: "bg-success",  icon: "🟢", chipBg: "bg-success/10",  chipText: "text-success" },
+  ok:      { label: "ĐẠT",           color: "text-success", bg: "bg-success",  icon: "🟢", chipBg: "bg-success/10",  chipText: "text-success" },
+  stale:   { label: "DỮ LIỆU CŨ",   color: "text-warning", bg: "bg-warning",  icon: "🟡", chipBg: "bg-warning/10",  chipText: "text-warning" },
+  blocked: { label: "BỊ CHẶN",       color: "text-danger",  bg: "bg-danger",   icon: "🔴", chipBg: "bg-danger/10",   chipText: "text-danger" },
 };
 
 function formatHours(h: number): string {
