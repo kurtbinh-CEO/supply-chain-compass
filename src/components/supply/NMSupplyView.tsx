@@ -537,6 +537,22 @@ export function NMSupplyView() {
                       onUpdate={(idx, val) => handleSkuUpdate(nm.id, idx, val)}
                     />
                   )}
+                  {expandedId === nm.id && (() => {
+                    const datasetId = resolveNmId(nm);
+                    if (!datasetId) return null;
+                    return (
+                      <tr key={`commit-${nm.id}`}>
+                        <td colSpan={7} className="p-0">
+                          <div className="border-t border-surface-3 bg-surface-1/30 px-6 py-4">
+                            <NmCommitmentResponses
+                              nmId={datasetId}
+                              isStale={staleNmIds.has(datasetId)}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })()}
                 </>
               ))}
               {/* TOTAL row */}
@@ -552,6 +568,17 @@ export function NMSupplyView() {
           </table>
         </div>
       </div>
+      )}
+
+      {/* 7-step Excel preview dialog */}
+      {previewState && (
+        <NmUploadPreviewDialog
+          nmId={previewState.nmId}
+          nmName={previewState.nmName}
+          fileName={previewState.fileName}
+          onClose={() => setPreviewState(null)}
+          onConfirm={() => setPreviewState(null)}
+        />
       )}
     </div>
   );
