@@ -6,6 +6,7 @@ import { useTenant } from "@/components/TenantContext";
 import { SourcingWorkbench } from "@/components/hub/SourcingWorkbench";
 import { ReconciliationTab } from "@/components/hub/ReconciliationTab";
 import { ClickableNumber } from "@/components/ClickableNumber";
+import { HubOverviewTab } from "@/components/hub/HubOverviewTab";
 
 type Objective = "hybrid" | "lt" | "cost";
 
@@ -21,12 +22,13 @@ function getHubTotals(scale: number) {
 
 
 const tabs = [
+  { key: "overview", label: "Hub ảo Overview" },
   { key: "sourcing", label: "Sourcing Workbench" },
   { key: "recon", label: "Đối chiếu" },
 ];
 
 export default function HubPage() {
-  const [activeTab, setActiveTab] = useState("sourcing");
+  const [activeTab, setActiveTab] = useState("overview");
   const [objective, setObjective] = useState<Objective>("hybrid");
   const { tenant } = useTenant();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
@@ -114,6 +116,9 @@ export default function HubPage() {
         ))}
       </div>
 
+      <div data-tour="hub-overview">
+        {activeTab === "overview" && <HubOverviewTab scale={scale} totals={totals} />}
+      </div>
       <div data-tour="hub-sourcing">
         {activeTab === "sourcing" && (
           <SourcingWorkbench
