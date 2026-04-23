@@ -1391,7 +1391,7 @@ export default function OrdersPage() {
                           ];
                           return (
                             <tr key={`${po.po_number}-lineage`} className="border-b border-surface-3/50 bg-info-bg/20">
-                              <td colSpan={9} className="px-4 py-4">
+                              <td colSpan={10} className="px-4 py-4">
                                 <div className="space-y-4">
                                   {/* ── Flow summary 6 bước ── */}
                                   <div>
