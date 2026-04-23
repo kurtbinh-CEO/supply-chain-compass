@@ -18,11 +18,23 @@ import {
   COMMITMENT_GAPS,
   FACTORIES,
   NM_COMMITMENTS,
+  getEffectivePrice,
   type CommitmentGapRow,
   type Factory,
   type GapStatus,
+  type NmId,
 } from "@/data/unis-enterprise-dataset";
 import { Button } from "@/components/ui/button";
+import { TermTooltip } from "@/components/TermTooltip";
+
+// Map mỗi NM → SKU base chính (dùng để tra giá thực)
+const NM_TOP_SKU: Record<NmId, string> = {
+  MIKADO:    "GA-300",
+  TOKO:      "GA-600",
+  DONGTAM:   "GT-300",
+  VIGRACERA: "GA-300",
+  PHUMY:     "PK-001",
+};
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /* Helpers                                                                     */
