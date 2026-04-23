@@ -3,7 +3,8 @@ import { CheckCircle2, AlertTriangle, X, FileSpreadsheet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SKU_BASES, type NmId } from "@/data/unis-enterprise-dataset";
-import { getSkuBasesForNm } from "@/data/unis-enterprise-dataset";
+const allowedSkusForNm = (nmId: NmId) =>
+  SKU_BASES.filter((b) => b.nmId === nmId).map((b) => b.code);
 
 interface PreviewRow {
   sku: string;
@@ -33,7 +34,7 @@ export function NmUploadPreviewDialog({
   // Build a synthetic preview based on the NM's allowed SKUs + a deliberate
   // mismatch so validators can show error rows.
   const rows = useMemo<PreviewRow[]>(() => {
-    const allowed = getSkuBasesForNm(nmId).map((b) => b.code);
+    const allowed = allowedSkusForNm(nmId);
     if (allowed.length === 0) return [];
     const valid: PreviewRow[] = allowed.slice(0, 4).map((sku, i) => ({
       sku,
