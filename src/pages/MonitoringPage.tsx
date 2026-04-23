@@ -14,6 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { InventorySSTab } from "@/components/monitoring/InventorySSTab";
 import { ActivityLogTab } from "@/components/monitoring/ActivityLogTab";
+import { TrustScoreCnPanel } from "@/components/monitoring/TrustScoreCnPanel";
+import { PlannerOverridePanel } from "@/components/monitoring/PlannerOverridePanel";
+import { TermTooltip } from "@/components/TermTooltip";
+import { SYSTEM_ACCURACY } from "@/data/unis-enterprise-dataset";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
