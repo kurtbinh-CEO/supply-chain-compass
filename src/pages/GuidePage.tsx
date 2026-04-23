@@ -693,6 +693,7 @@ export default function GuidePage() {
 
   const tabs = [
     { key: "overview", label: "Tổng quan" },
+    { key: "demo", label: "🎬 Demo UNIS 7'" },
     { key: "monthly", label: "Kế hoạch tháng" },
     { key: "daily", label: "Vận hành ngày" },
     { key: "formulas", label: "Công thức" },
