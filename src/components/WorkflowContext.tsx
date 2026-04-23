@@ -21,6 +21,7 @@ const monthlySteps: Omit<WorkflowStep, "status" | "completedAt">[] = [
   { label: "Demand Review", routes: ["/demand"], description: "Rà soát dự báo nhu cầu" },
   { label: "S&OP Consensus", routes: ["/sop"], description: "Đồng thuận kế hoạch" },
   { label: "Hub & Commitment", routes: ["/hub"], description: "Cam kết nhà máy" },
+  { label: "Khoảng cách & Kịch bản", routes: ["/gap-scenario"], description: "Theo dõi gap và mô phỏng kịch bản" },
 ];
 
 interface WorkflowContextType {
