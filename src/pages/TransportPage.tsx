@@ -649,7 +649,7 @@ function RoutesTab() {
 /* ─────────────────────────────────────────────────────────── */
 /* Carrier management tab                                     */
 /* ─────────────────────────────────────────────────────────── */
-function CarriersTab() {
+export function CarriersTab() {
   const [selected, setSelected] = useState<Carrier | null>(null);
   const unavailable = CARRIERS.filter((c) => !c.available);
 
