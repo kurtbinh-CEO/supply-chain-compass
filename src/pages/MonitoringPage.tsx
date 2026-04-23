@@ -848,6 +848,18 @@ export default function MonitoringPage() {
             </div>
           </CollapsibleSection>
 
+          {/* Section D2: Planner Override Analysis — top 5 lý do sửa PO */}
+          <CollapsibleSection
+            title="Planner Override Analysis"
+            summary="18/47 PO bị sửa · top reason: số lượng quá cao 35%"
+            expanded={expandedSections.has("override")}
+            onToggle={() => toggleSection("override")}
+          >
+            <div className="p-5">
+              <PlannerOverridePanel />
+            </div>
+          </CollapsibleSection>
+
           {/* Section E: Closed-loop Summary */}
           <CollapsibleSection title="Closed-loop Summary" summary="Hệ thống tự học — 4 điều chỉnh tháng này" expanded={expandedSections.has("loop")} onToggle={() => toggleSection("loop")}>
             <div className="p-5 space-y-3">
