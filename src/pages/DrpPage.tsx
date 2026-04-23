@@ -568,7 +568,7 @@ export default function DrpPage() {
   });
 
   // P19 — once skuBaseAggDrp is available, auto-open SHORTAGE SKU base rows.
-  useMemo(() => {
+  useEffect(() => {
     setExpandedByMode((prev) => {
       const next = new Set(prev.sku);
       let changed = false;
