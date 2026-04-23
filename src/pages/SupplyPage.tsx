@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowRight, Bell, Lock, AlertTriangle, CheckCircle2, Clock, ShieldAlert } from "lucide-react";
@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 import { useTenant } from "@/components/TenantContext";
+import { NextStepBanner } from "@/components/NextStepBanner";
+import { useNextStep } from "@/components/NextStepContext";
 import {
   FACTORIES,
   NM_COMMITMENTS,
@@ -413,6 +415,12 @@ function NmResponsesTab() {
 export default function SupplyPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"booking" | "responses" | "inventory">("booking");
+  const { markDone } = useNextStep();
+
+  // Booking is the default landing tab — once user views responses or inventory, mark booking done.
+  useEffect(() => {
+    if (activeTab !== "booking") markDone("supply.booking-done");
+  }, [activeTab, markDone]);
 
   const tabs: Array<{ id: typeof activeTab; label: string; icon: typeof CheckCircle2 }> = [
     { id: "booking", label: "Tính toán đặt hàng", icon: Clock },
@@ -457,17 +465,8 @@ export default function SupplyPage() {
       {activeTab === "responses" && <NmResponsesTab />}
       {activeTab === "inventory" && <NMSupplyView />}
 
-      {/* Next-step bridge */}
-      <div className="mt-6 rounded-card border border-info/30 bg-info-bg/40 px-4 py-3 flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2 text-table text-text-1">
-          <span className="font-medium">Bước tiếp:</span>
-          <span className="text-text-2">Booking xong → Cam kết NM tại Hub</span>
-        </div>
-        <Button onClick={() => navigate("/hub")} variant="default" size="sm">
-          Đi tới Hub
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Button>
-      </div>
+      {/* Next-step bridge — standardized banner */}
+      <NextStepBanner step="supply.booking-done" />
 
       <div className="mt-6">
         <ChangeLogPanel entityType="nm_supply" maxItems={6} />

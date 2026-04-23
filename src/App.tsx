@@ -16,8 +16,11 @@ import { WalkthroughProvider } from "@/components/WalkthroughContext";
 import { AuthProvider, useAuth } from "@/components/AuthContext";
 import { ZoomProvider } from "@/components/ZoomControls";
 import { CommandPaletteProvider } from "@/components/CommandPalette";
-import { useEffect } from "react";
+import { NextStepProvider } from "@/components/NextStepContext";
+import { useEffect, useCallback } from "react";
 import { dispatchExpandAll } from "@/hooks/useExpandableRows";
+import { useIdleNudge } from "@/hooks/useIdleNudge";
+import { useWorkspace } from "@/components/WorkspaceContext";
 import AuthPage from "./pages/AuthPage";
 import Index from "./pages/Index";
 import DesignTest from "./pages/DesignTest";
@@ -90,7 +93,9 @@ function ProtectedRoutes() {
       <WorkflowProvider>
       <SafetyStockProvider>
       <WalkthroughProvider>
+      <NextStepProvider>
       <CommandPaletteProvider>
+        <IdleNudgeMount />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/workspace" element={<WorkspacePage />} />
@@ -118,6 +123,7 @@ function ProtectedRoutes() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </CommandPaletteProvider>
+      </NextStepProvider>
       </WalkthroughProvider>
       </SafetyStockProvider>
       </WorkflowProvider>
@@ -127,6 +133,14 @@ function ProtectedRoutes() {
       </TenantProvider>
     </SidebarProvider>
   );
+}
+
+/** Mounts the global 5-min idle nudge — needs to live inside WorkspaceProvider. */
+function IdleNudgeMount() {
+  const { pendingCount, exceptions } = useWorkspace();
+  const getPendingCount = useCallback(() => pendingCount + exceptions.length, [pendingCount, exceptions.length]);
+  useIdleNudge({ getPendingCount });
+  return null;
 }
 
 const App = () => (

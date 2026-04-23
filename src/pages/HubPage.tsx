@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { AppLayout } from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,8 @@ import { ReconciliationTab } from "@/components/hub/ReconciliationTab";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { HubOverviewTab } from "@/components/hub/HubOverviewTab";
 import { ChangeLogPanel } from "@/components/ChangeLogPanel";
+import { NextStepBanner } from "@/components/NextStepBanner";
+import { useNextStep } from "@/components/NextStepContext";
 
 type Objective = "hybrid" | "lt" | "cost";
 
@@ -32,8 +34,15 @@ export default function HubPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [objective, setObjective] = useState<Objective>("hybrid");
   const { tenant } = useTenant();
+  const { markDone } = useNextStep();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
   const totals = getHubTotals(scale);
+
+  // After 1.5s on the page, mark "hub.reviewed" — banner points to /gap-scenario.
+  useEffect(() => {
+    const t = window.setTimeout(() => markDone("hub.reviewed"), 1500);
+    return () => window.clearTimeout(t);
+  }, [markDone]);
 
   return (
     <AppLayout>
@@ -137,6 +146,7 @@ export default function HubPage() {
           <ChangeLogPanel entityType="hub_stock" maxItems={6} />
         </div>
       )}
+      <NextStepBanner step="hub.reviewed" />
       <ScreenFooter actionCount={9} />
     </AppLayout>
   );
