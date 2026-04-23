@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Search, Plus, Upload, X, AlertTriangle, CheckCircle2, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
+import { PriceListsTab } from "@/components/master/PriceListsTab";
 import {
   SKU_BASES,
   SKU_VARIANTS,
@@ -36,6 +37,7 @@ const fmtVnd = (v: number) =>
 type TabKey =
   | "items"
   | "suppliers"
+  | "pricelists"
   | "branches"
   | "routes"
   | "distances"
@@ -45,6 +47,7 @@ type TabKey =
 const tabDefs: { key: TabKey; label: string }[] = [
   { key: "items",      label: "Mã hàng" },
   { key: "suppliers",  label: "NM" },
+  { key: "pricelists", label: "Bảng giá" },
   { key: "branches",   label: "CN" },
   { key: "routes",     label: "Tuyến" },
   { key: "distances",  label: "Khoảng cách" },
@@ -777,6 +780,7 @@ export default function MasterDataPage() {
 
         <TabsContent value="items"><ItemsTab /></TabsContent>
         <TabsContent value="suppliers"><SuppliersTab /></TabsContent>
+        <TabsContent value="pricelists"><PriceListsTab /></TabsContent>
         <TabsContent value="branches"><BranchesTab /></TabsContent>
         <TabsContent value="routes"><RoutesTab /></TabsContent>
         <TabsContent value="distances"><DistancesTab /></TabsContent>

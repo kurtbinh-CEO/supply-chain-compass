@@ -189,6 +189,36 @@ export const TERMS: Record<string, TermEntry> = {
     tooltip_vi: "Ghi chú bắt buộc khi Approve/Release/Reject. Lưu cùng actor + thời gian phục vụ truy vết.",
     tooltip_en: "Mandatory note on Approve/Release/Reject. Stored with actor + timestamp for traceability.",
   },
+  MOQ: {
+    vi: "MOQ",
+    en: "MOQ (Min Order Qty)",
+    tooltip_vi: "Sản lượng đặt hàng tối thiểu. Mỗi mức MOQ tương ứng một mức giá khác (giá lẻ, sỉ, container, hợp đồng năm).",
+    tooltip_en: "Minimum Order Quantity. Each MOQ tier maps to a different price level (retail, wholesale, container, annual contract).",
+  },
+  Break: {
+    vi: "Break (Mức MOQ)",
+    en: "Price Break",
+    tooltip_vi: "Ngưỡng sản lượng tại đó giá đổi sang mức kế tiếp. VD: ≥1.000m² → giá sỉ, ≥5.000m² → giá container.",
+    tooltip_en: "Quantity threshold where price drops to next tier. E.g. ≥1,000m² → wholesale, ≥5,000m² → container.",
+  },
+  Tier: {
+    vi: "Tier (Bậc giá)",
+    en: "Price Tier",
+    tooltip_vi: "Bậc giá tương ứng MOQ — tier 1 = giá lẻ, tier cao hơn = chiết khấu sản lượng.",
+    tooltip_en: "Price tier mapped to MOQ — tier 1 = retail, higher tiers = volume discount.",
+  },
+  Phu_phi: {
+    vi: "Phụ phí",
+    en: "Surcharge",
+    tooltip_vi: "Khoản cộng thêm vào giá gốc (năng lượng, vận chuyển, tỷ giá, nguyên liệu). Có thể bật/tắt độc lập, không ảnh hưởng giá gốc.",
+    tooltip_en: "Add-on cost on top of base price (energy, freight, FX, raw material). Toggleable independently without changing base price.",
+  },
+  Hieu_luc: {
+    vi: "Hiệu lực",
+    en: "Effective period",
+    tooltip_vi: "Khoảng thời gian bảng giá có hiệu lực (từ ngày → đến ngày). Sau ngày hết hạn cần phiên bản mới hoặc gia hạn.",
+    tooltip_en: "Date range during which the price list is valid. After expiry, a new version or renewal is required.",
+  },
 };
 
 export type TermKey = keyof typeof TERMS;

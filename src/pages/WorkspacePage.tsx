@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenFooter } from "@/components/ScreenShell";
 import { useWorkflow } from "@/components/WorkflowContext";
+import { useWorkspace } from "@/components/WorkspaceContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +11,7 @@ import { LogicTooltip } from "@/components/LogicTooltip";
 import { VoiceInput } from "@/components/VoiceInput";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
+import { getExpiringPriceLists, getNmWithoutActivePriceList } from "@/data/unis-enterprise-dataset";
 
 type ItemType = "approve" | "exception" | "notify";
 type Priority = "danger" | "warning" | "info";
@@ -52,11 +54,45 @@ type FilterKey = "all" | "approve" | "exception" | "notify";
 export default function WorkspacePage() {
   const navigate = useNavigate();
   const { startWorkflow } = useWorkflow();
+  const { addNotification } = useWorkspace();
   const [items, setItems] = useState(initialItems);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [showAll, setShowAll] = useState(false);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+
+  // Auto-check bảng giá NM (chỉ chạy 1 lần / mount)
+  const priceCheckRan = useRef(false);
+  useEffect(() => {
+    if (priceCheckRan.current) return;
+    priceCheckRan.current = true;
+
+    const expiring = getExpiringPriceLists(30);
+    expiring.forEach((x) => {
+      addNotification({
+        id: `PL-EXP-${x.pl.id}`,
+        type: "PRICE_EXPIRY",
+        typeColor: "warning",
+        message: `Bảng giá ${x.nmName} hết hạn trong ${x.days} ngày (${x.pl.expiryDate}). Đề nghị đàm phán gia hạn.`,
+        timeAgo: "vừa xong",
+        read: false,
+        url: "/master-data",
+      });
+    });
+
+    const missing = getNmWithoutActivePriceList();
+    missing.forEach((m) => {
+      addNotification({
+        id: `PL-MISS-${m.nmId}`,
+        type: "PRICE_MISSING",
+        typeColor: "danger",
+        message: `NM ${m.name} không có bảng giá hiệu lực. Booking và kịch bản sẽ dùng giá ước tính.`,
+        timeAgo: "vừa xong",
+        read: false,
+        url: "/master-data",
+      });
+    });
+  }, [addNotification]);
 
   const filtered = filter === "all" ? items : items.filter((i) => i.type === filter);
   const visible = showAll ? filtered : filtered.slice(0, 5);
