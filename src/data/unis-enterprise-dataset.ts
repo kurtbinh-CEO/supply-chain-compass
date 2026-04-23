@@ -998,9 +998,25 @@ export const FC_IMPORT_LOG: FcImportRow[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 export interface DemandVersionRow { cnCode: string; skuBaseCode: string; v0: number; v1: number; v2: number; v3: number; v4: number; }
 export const DEMAND_VERSIONS: DemandVersionRow[] = [
+  // GA-300 (gạch lát)
   { cnCode: "CN-BD",  skuBaseCode: "GA-300", v0: 2160, v1: 2200, v2: 2250, v3: 2185, v4: 2185 },
   { cnCode: "CN-HCM", skuBaseCode: "GA-300", v0: 1800, v1: 1850, v2: 1820, v3: 1800, v4: 1800 },
   { cnCode: "CN-HN",  skuBaseCode: "GA-300", v0: 1650, v1: 1700, v2: 1680, v3: 1650, v4: 1650 },
+  { cnCode: "CN-DN",  skuBaseCode: "GA-300", v0: 1420, v1: 1510, v2: 1480, v3: 1455, v4: 1455 },
+  { cnCode: "CN-CT",  skuBaseCode: "GA-300", v0: 980,  v1: 1050, v2: 1080, v3: 1020, v4: 1020 },
+  { cnCode: "CN-NA",  skuBaseCode: "GA-300", v0: 760,  v1: 720,  v2: 870,  v3: 780,  v4: 780  },
+  // GA-600
+  { cnCode: "CN-BD",  skuBaseCode: "GA-600", v0: 1850, v1: 1920, v2: 2050, v3: 1965, v4: 1965 },
+  { cnCode: "CN-HCM", skuBaseCode: "GA-600", v0: 1600, v1: 1680, v2: 1640, v3: 1620, v4: 1620 },
+  { cnCode: "CN-HN",  skuBaseCode: "GA-600", v0: 1380, v1: 1450, v2: 1410, v3: 1395, v4: 1395 },
+  { cnCode: "CN-DN",  skuBaseCode: "GA-600", v0: 1180, v1: 1240, v2: 1310, v3: 1225, v4: 1225 },
+  // GA-400
+  { cnCode: "CN-BD",  skuBaseCode: "GA-400", v0: 1240, v1: 1280, v2: 1330, v3: 1290, v4: 1290 },
+  { cnCode: "CN-HCM", skuBaseCode: "GA-400", v0: 1080, v1: 1150, v2: 1110, v3: 1095, v4: 1095 },
+  { cnCode: "CN-HN",  skuBaseCode: "GA-400", v0: 920,  v1: 960,  v2: 940,  v3: 930,  v4: 930  },
+  // GA-800
+  { cnCode: "CN-BD",  skuBaseCode: "GA-800", v0: 850,  v1: 920,  v2: 880,  v3: 870,  v4: 870  },
+  { cnCode: "CN-HCM", skuBaseCode: "GA-800", v0: 720,  v1: 760,  v2: 750,  v3: 735,  v4: 735  },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────

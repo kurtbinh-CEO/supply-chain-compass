@@ -17,6 +17,7 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
+import { VersionComparePanel } from "@/components/sop/VersionComparePanel";
 
 const tabs = [
   { key: "consensus", label: "Consensus" },
@@ -322,16 +323,19 @@ export default function SopPage() {
         <>
           <div data-tour="sop-consensus">
             {activeTab === "consensus" && (
-              <ConsensusTab
-                data={consensusData}
-                totalAop={totalAop}
-                totalV3={totalV3}
-                locked={locked}
-                onUpdateV3={handleUpdateV3}
-                onUpdateNote={handleUpdateNote}
-                varianceExplanations={varianceExplanations}
-                onUpdateVariance={handleUpdateVariance}
-              />
+              <>
+                <ConsensusTab
+                  data={consensusData}
+                  totalAop={totalAop}
+                  totalV3={totalV3}
+                  locked={locked}
+                  onUpdateV3={handleUpdateV3}
+                  onUpdateNote={handleUpdateNote}
+                  varianceExplanations={varianceExplanations}
+                  onUpdateVariance={handleUpdateVariance}
+                />
+                <VersionComparePanel />
+              </>
             )}
           </div>
           <div data-tour="sop-balance">
