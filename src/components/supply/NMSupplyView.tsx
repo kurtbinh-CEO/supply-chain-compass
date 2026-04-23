@@ -464,23 +464,42 @@ export function NMSupplyView() {
                             <Pencil className="h-3 w-3" /> Sửa
                           </button>
                         )}
-                        {nm.tongTon !== null && nm.skus.length > 0 && (
-                          <button
-                            onClick={() => {
-                              const input = document.createElement("input");
-                              input.type = "file";
-                              input.accept = ".xlsx,.xls,.csv";
-                              input.onchange = (ev) => {
-                                const file = (ev.target as HTMLInputElement).files?.[0];
-                                if (file) toast.success(`Upload cho ${nm.nm}: "${file.name}"`, { description: "Preview trước khi import." });
-                              };
-                              input.click();
-                            }}
-                            className="rounded-button border border-surface-3 px-2.5 py-1 text-caption font-medium text-text-2 hover:text-text-1 hover:bg-surface-1 flex items-center gap-1"
-                          >
-                            <Upload className="h-3 w-3" /> Upload
-                          </button>
-                        )}
+                        {nm.tongTon !== null && nm.skus.length > 0 && (() => {
+                          const datasetId = resolveNmId(nm);
+                          const blocked = datasetId ? staleNmIds.has(datasetId) : false;
+                          return (
+                            <>
+                              <button
+                                onClick={() => {
+                                  if (datasetId) openUploadFor(datasetId, nm.nm);
+                                  else toast.error("Không xác định được mã NM trong dataset.");
+                                }}
+                                className="rounded-button border border-surface-3 px-2.5 py-1 text-caption font-medium text-text-2 hover:text-text-1 hover:bg-surface-1 flex items-center gap-1"
+                              >
+                                <Upload className="h-3 w-3" /> Upload
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (blocked) return;
+                                  toast.success(`Đã phát hành PO cho ${nm.nm}`, {
+                                    description: "Chuyển sang /orders để theo dõi vòng đời PO.",
+                                  });
+                                }}
+                                disabled={blocked}
+                                title={blocked ? "Bị chặn: dữ liệu NM ≥ 72h" : "Phát hành PO mới"}
+                                className={cn(
+                                  "rounded-button px-2.5 py-1 text-caption font-medium flex items-center gap-1 border",
+                                  blocked
+                                    ? "border-surface-3 bg-surface-2 text-text-3 cursor-not-allowed opacity-60"
+                                    : "border-primary/40 bg-info-bg text-primary hover:bg-primary/10"
+                                )}
+                              >
+                                {blocked && <ShieldAlert className="h-3 w-3" />}
+                                Phát hành PO
+                              </button>
+                            </>
+                          );
+                        })()}
                         {nm.tongTon === null && (
                           <button
                             onClick={() => {
