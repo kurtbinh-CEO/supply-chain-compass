@@ -491,6 +491,7 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
                       <button onClick={(e) => { e.stopPropagation(); setOverrideModal({ sku: `${sk.item} ${sk.variant}`, value: sk.total }); }}
                         className="text-[11px] text-primary hover:underline font-medium">Override</button>
                     </td>
+                    <td />
                   </tr>
                 ))}
               </React.Fragment>
@@ -511,6 +512,7 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
             </td>
             <td className="px-3 py-3 text-center tabular-nums text-success">+{totals.vsLm}%</td>
             <td className="px-3 py-3 text-center tabular-nums text-text-1">{totals.cover}d</td>
+            <td className="px-3 py-3 text-center text-text-3 text-caption">—</td>
           </tr>
         </tbody>
       </table>
