@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { LogicLink } from "@/components/LogicLink";
 import { AvatarBar, AutoSaveIndicator, useCellPresence } from "@/components/CellPresence";
 import { CnOwnershipBanner } from "@/components/BatchLockBanner";
+import { ClickableNumber } from "@/components/ClickableNumber";
 
 /* ═══ DATA ═══ */
 const allCns = ["CN-BD", "CN-ĐN", "CN-HN", "CN-CT"];
