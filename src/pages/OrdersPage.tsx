@@ -20,6 +20,7 @@ import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { usePurchaseOrders, type PurchaseOrderRow } from "@/hooks/usePurchaseOrders";
 import { useRbac } from "@/components/RbacContext";
+import { ClickableNumber } from "@/components/ClickableNumber";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
