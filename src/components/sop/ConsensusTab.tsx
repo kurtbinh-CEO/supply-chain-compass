@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronRight, ChevronLeft, AlertTriangle } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
 import { LogicTooltip } from "@/components/LogicTooltip";
@@ -14,6 +14,8 @@ interface Props {
   locked: boolean;
   onUpdateV3: (cnIdx: number, skuIdx: number | null, value: number) => void;
   onUpdateNote: (cnIdx: number, skuIdx: number, note: string) => void;
+  varianceExplanations?: Record<string, string>;
+  onUpdateVariance?: (cnCode: string, text: string) => void;
 }
 
 function EditableCell({ value, onChange, disabled }: { value: number; onChange: (v: number) => void; disabled: boolean }) {
@@ -111,7 +113,7 @@ function buildSkuPivot(data: ConsensusRow[]): SkuPivotRow[] {
   return Array.from(map.values()).sort((a, b) => b.v3 - a.v3);
 }
 
-export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUpdateNote }: Props) {
+export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUpdateNote, varianceExplanations = {}, onUpdateVariance }: Props) {
   const [pivotMode, setPivotMode] = usePivotMode("sop-consensus");
   const [drillCn, setDrillCn] = useState<number | null>(null);
   const [drillSku, setDrillSku] = useState<string | null>(null);
@@ -290,47 +292,115 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
                   const minV = Math.min(row.v0, row.v1, row.v2, row.v3);
                   const versionSpread = minV > 0 ? ((maxV - minV) / minV) * 100 : 0;
 
+                  // Top-down vs bottom-up variance check
+                  const bottomUpV3 = row.skus.reduce((a, s) => a + s.v3, 0);
+                  const variancePct = row.v0 > 0 ? ((bottomUpV3 - row.v0) / row.v0) * 100 : 0;
+                  const variancePctAbs = Math.abs(variancePct);
+                  const isVariance = variancePctAbs > 10;
+                  const explanation = varianceExplanations[row.cn] ?? "";
+                  const explanationOk = explanation.trim().length >= 6;
+
                   return (
-                    <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
-                      <td className="px-4 py-3 font-medium text-text-1">{row.cn}</td>
-                      <td className="px-4 py-3 tabular-nums text-text-2">
-                        <ClickableNumber value={row.v0} label="v0 Statistical" color="text-text-2"
-                          breakdown={[{ label: "Model", value: "Holt-Winters" }, { label: "History", value: "24M" }, { label: "MAPE", value: "18,4%" }, { label: "Run", value: "10/05 auto" }]}
-                          note={`Per CN: ${data.map(d => `${d.cn} ${d.v0.toLocaleString()}`).join(" | ")}`}
-                        />
-                      </td>
-                      <td className={cn("px-4 py-3 tabular-nums text-text-2", versionSpread > 10 && "bg-warning/10")}>
-                        <ClickableNumber value={row.v1} label="v1 Sales" color="text-text-2"
-                          breakdown={[{ label: "Nhập bởi", value: "Anh Tuấn, Chị Lan" }, { label: "Ngày", value: "03/05" }]}
-                          note={`Per CN: ${data.map(d => `${d.cn} ${d.v1.toLocaleString()} (${d.v0 > 0 ? (d.v1 > d.v0 ? "+" : "") + Math.round(((d.v1-d.v0)/d.v0)*100) + "% vs v0" : ""})`).join(" | ")}\nSales thấy pipeline B2B tăng Q2`}
-                        />
-                      </td>
-                      <td className="px-4 py-3 tabular-nums text-text-2">{row.v2.toLocaleString()}</td>
-                      <td className="px-4 py-3">
-                        <span className="flex items-center gap-1">
-                          <span className="text-primary text-[10px]">★</span>
-                          <EditableCell value={row.v3} onChange={v => onUpdateV3(i, null, v)} disabled={locked} />
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 tabular-nums text-text-3">{row.aop.toLocaleString()}</td>
-                      <td className={cn("px-4 py-3 tabular-nums font-medium", aopColor)}>
-                        {delta > 0 ? "+" : ""}{(row.v3 - row.aop).toLocaleString()} ({delta > 0 ? "+" : ""}{delta}%) {absDelta > 5 ? "⚠" : ""}
-                      </td>
-                      <td className="px-4 py-3 text-table-sm text-text-2">
-                        <span className="inline-flex items-center gap-1">
-                          {row.fvaBest}
-                          <LogicTooltip
-                            title={`FVA — ${row.cn}`}
-                            content={`FVA = Forecast Value Add = ai dự báo chính xác nhất THÁNG TRƯỚC?\n\nTháng 4 actual ${row.cn} = ${Math.round(row.v3 * 0.87).toLocaleString()}m²\nv0 Statistical: FC = ${row.v0.toLocaleString()} → MAPE 8,1%\nv1 Sales: FC = ${row.v1.toLocaleString()} → MAPE 16,6%\nv2 CN Input: FC = ${row.v2.toLocaleString()} → MAPE 2,2% ★ Best\nv3 Consensus: FC = ${row.v3.toLocaleString()} → MAPE 1,3%\n\nFVA v2 = MAPE(v0) − MAPE(v2) = 8,1% − 2,2% = +5,9% (tốt hơn model)\nFVA v1 = 8,1% − 16,6% = −8,5% (xấu hơn model!)\n→ v2 CN Input có giá trị cao nhất → recommend dùng cho ${row.cn}.`}
+                    <React.Fragment key={i}>
+                      <tr
+                        className={cn(
+                          "border-b border-surface-3/50 hover:bg-primary/5 transition-colors",
+                          i % 2 === 0 ? "bg-surface-0" : "bg-surface-2",
+                          isVariance && "!bg-danger-bg/60 border-l-2 border-l-danger",
+                        )}
+                        title={isVariance ? "Chênh lệch >10% — phải giải thích trước khi khóa" : undefined}
+                      >
+                        <td className="px-4 py-3 font-medium text-text-1">
+                          <span className="flex items-center gap-1.5">
+                            {row.cn}
+                            {isVariance && (
+                              <span
+                                className="inline-flex items-center gap-0.5 rounded-full bg-danger text-danger-foreground text-[10px] font-bold px-1.5 py-0.5"
+                                title="Top-down v0 vs Σ(SKU v3) chênh >10%"
+                              >
+                                <AlertTriangle className="h-2.5 w-2.5" />
+                                {variancePct > 0 ? "+" : ""}{Math.round(variancePct)}%
+                              </span>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 tabular-nums text-text-2">
+                          <ClickableNumber value={row.v0} label="v0 Statistical" color="text-text-2"
+                            breakdown={[{ label: "Model", value: "Holt-Winters" }, { label: "History", value: "24M" }, { label: "MAPE", value: "18,4%" }, { label: "Run", value: "10/05 auto" }]}
+                            note={`Per CN: ${data.map(d => `${d.cn} ${d.v0.toLocaleString()}`).join(" | ")}`}
                           />
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <button onClick={() => setDrillCn(i)} className="text-primary text-table-sm font-medium hover:underline flex items-center gap-0.5">
-                          Detail <ChevronRight className="h-3.5 w-3.5" />
-                        </button>
-                      </td>
-                    </tr>
+                        </td>
+                        <td className={cn("px-4 py-3 tabular-nums text-text-2", versionSpread > 10 && "bg-warning/10")}>
+                          <ClickableNumber value={row.v1} label="v1 Sales" color="text-text-2"
+                            breakdown={[{ label: "Nhập bởi", value: "Anh Tuấn, Chị Lan" }, { label: "Ngày", value: "03/05" }]}
+                            note={`Per CN: ${data.map(d => `${d.cn} ${d.v1.toLocaleString()} (${d.v0 > 0 ? (d.v1 > d.v0 ? "+" : "") + Math.round(((d.v1-d.v0)/d.v0)*100) + "% vs v0" : ""})`).join(" | ")}\nSales thấy pipeline B2B tăng Q2`}
+                          />
+                        </td>
+                        <td className="px-4 py-3 tabular-nums text-text-2">{row.v2.toLocaleString()}</td>
+                        <td className="px-4 py-3">
+                          <span className="flex items-center gap-1">
+                            <span className="text-primary text-[10px]">★</span>
+                            <EditableCell value={row.v3} onChange={v => onUpdateV3(i, null, v)} disabled={locked} />
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 tabular-nums text-text-3">{row.aop.toLocaleString()}</td>
+                        <td className={cn("px-4 py-3 tabular-nums font-medium", aopColor)}>
+                          {delta > 0 ? "+" : ""}{(row.v3 - row.aop).toLocaleString()} ({delta > 0 ? "+" : ""}{delta}%) {absDelta > 5 ? "⚠" : ""}
+                        </td>
+                        <td className="px-4 py-3 text-table-sm text-text-2">
+                          <span className="inline-flex items-center gap-1">
+                            {row.fvaBest}
+                            <LogicTooltip
+                              title={`FVA — ${row.cn}`}
+                              content={`FVA = Forecast Value Add = ai dự báo chính xác nhất THÁNG TRƯỚC?\n\nTháng 4 actual ${row.cn} = ${Math.round(row.v3 * 0.87).toLocaleString()}m²\nv0 Statistical: FC = ${row.v0.toLocaleString()} → MAPE 8,1%\nv1 Sales: FC = ${row.v1.toLocaleString()} → MAPE 16,6%\nv2 CN Input: FC = ${row.v2.toLocaleString()} → MAPE 2,2% ★ Best\nv3 Consensus: FC = ${row.v3.toLocaleString()} → MAPE 1,3%\n\nFVA v2 = MAPE(v0) − MAPE(v2) = 8,1% − 2,2% = +5,9% (tốt hơn model)\nFVA v1 = 8,1% − 16,6% = −8,5% (xấu hơn model!)\n→ v2 CN Input có giá trị cao nhất → recommend dùng cho ${row.cn}.`}
+                            />
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button onClick={() => setDrillCn(i)} className="text-primary text-table-sm font-medium hover:underline flex items-center gap-0.5">
+                            Detail <ChevronRight className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                      {isVariance && (
+                        <tr className="bg-danger-bg/30 border-b border-danger/20 animate-fade-in">
+                          <td colSpan={9} className="px-4 py-3">
+                            <div className="flex items-start gap-3">
+                              <AlertTriangle className="h-4 w-4 text-danger mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="text-table-sm text-text-1 font-medium mb-1">
+                                  Chênh lệch top-down vs bottom-up = {variancePct > 0 ? "+" : ""}{Math.round(variancePct)}% — vượt biên ±10%
+                                  <span className="text-text-3 font-normal ml-2">
+                                    (v0 top-down: {row.v0.toLocaleString()} m² · Σ(SKU v3): {bottomUpV3.toLocaleString()} m²)
+                                  </span>
+                                </p>
+                                <p className="text-caption text-text-3 mb-2">
+                                  Phải giải thích trước khi khóa. Tối thiểu 6 ký tự.
+                                </p>
+                                <textarea
+                                  value={explanation}
+                                  onChange={(e) => onUpdateVariance?.(row.cn, e.target.value)}
+                                  disabled={locked}
+                                  placeholder="VD: B2B deal lớn confirmed Q2 — pipeline +14% vs FC gốc."
+                                  className={cn(
+                                    "w-full rounded-md border px-3 py-2 text-table-sm bg-surface-0 focus:outline-none focus:ring-2 transition-colors",
+                                    explanationOk
+                                      ? "border-success/40 focus:ring-success/30 text-text-1"
+                                      : "border-danger/40 focus:ring-danger/30 text-text-1",
+                                  )}
+                                  rows={2}
+                                />
+                                {explanationOk && (
+                                  <p className="text-caption text-success mt-1 font-medium">
+                                    ✅ Đã giải thích — sẵn sàng khóa
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   );
                 })}
                 <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">

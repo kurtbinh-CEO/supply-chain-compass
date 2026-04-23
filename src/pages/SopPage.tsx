@@ -1,16 +1,18 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/TenantContext";
 import { ConsensusTab } from "@/components/sop/ConsensusTab";
 import { BalanceLockTab } from "@/components/sop/BalanceLockTab";
+import { SopDeadlineStepper } from "@/components/sop/SopDeadlineStepper";
 import { FileText, Loader2, PackageOpen } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
 import { AvatarBar, AutoSaveIndicator, useCellPresence } from "@/components/CellPresence";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PreLockDialog } from "@/components/BatchLockBanner";
 import { useSopConsensus } from "@/hooks/useSopConsensus";
+import { BRANCHES, DEMAND_FC, SKU_BASES, SKU_VARIANTS } from "@/data/unis-enterprise-dataset";
 
 const tabs = [
   { key: "consensus", label: "Consensus" },
@@ -39,6 +41,72 @@ export interface SkuRow {
   note: string;
 }
 
+/* ─── Build 12-CN consensus from enterprise dataset ─────────────────────── */
+function buildEnterpriseConsensus(): ConsensusRow[] {
+  // Top 4 SKU bases by FC volume to keep tables readable
+  const topBases = [...SKU_BASES]
+    .map((b) => ({
+      base: b,
+      total: DEMAND_FC.filter((r) => r.skuBaseCode === b.code).reduce((a, r) => a + r.fcM2, 0),
+    }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 4)
+    .map((x) => x.base);
+
+  const fvaModels = ["v2 CN Input", "v0 Statistical", "v1 Sales", "v3 Consensus"];
+
+  return BRANCHES.map((cn, cnIdx) => {
+    const skus: SkuRow[] = topBases.flatMap((base) => {
+      const variants = SKU_VARIANTS.filter((v) => v.baseCode === base.code).slice(0, 1);
+      const fcRow = DEMAND_FC.find((r) => r.skuBaseCode === base.code && r.cnCode === cn.code);
+      const baseFc = fcRow?.fcM2 ?? 0;
+      return variants.map((vt) => {
+        const v0 = Math.round(baseFc * 0.95);
+        const v1 = Math.round(baseFc * 1.05);
+        const v2 = Math.round(baseFc * 1.02);
+        const v3 = baseFc;
+        const aop = Math.round(baseFc * 0.92);
+        return {
+          item: base.code,
+          variant: vt.variantTag,
+          v0,
+          v1,
+          v2,
+          v3,
+          aop,
+          note: "",
+        };
+      });
+    });
+
+    // Top-down v0 deliberately differs slightly from Σ(SKU v0) for some CNs to
+    // demonstrate the >10% top-down/bottom-up variance row highlight.
+    const sumV0 = skus.reduce((a, s) => a + s.v0, 0);
+    const sumV1 = skus.reduce((a, s) => a + s.v1, 0);
+    const sumV2 = skus.reduce((a, s) => a + s.v2, 0);
+    const sumV3 = skus.reduce((a, s) => a + s.v3, 0);
+    const sumAop = skus.reduce((a, s) => a + s.aop, 0);
+    // Inject 2 deliberate variance cases for the demo (CN-HCM +14%, CN-NA -12%)
+    const topDownV0 =
+      cn.code === "CN-HCM"
+        ? Math.round(sumV0 * 0.86)
+        : cn.code === "CN-NA"
+          ? Math.round(sumV0 * 1.14)
+          : sumV0;
+
+    return {
+      cn: cn.code,
+      v0: topDownV0,
+      v1: sumV1,
+      v2: sumV2,
+      v3: sumV3,
+      aop: sumAop,
+      fvaBest: fvaModels[cnIdx % fvaModels.length],
+      skus,
+    };
+  });
+}
+
 export default function SopPage() {
   const [activeTab, setActiveTab] = useState("consensus");
   const { tenant } = useTenant();
@@ -46,19 +114,32 @@ export default function SopPage() {
   const [locked, setLocked] = useState(false);
   const [showPreLock, setShowPreLock] = useState(false);
 
+  // Mock current S&OP day-of-cycle (Day 5/30 — Cân đối phase)
+  const [currentDay] = useState(5);
+
   const cellPresence = useCellPresence("sop-consensus", { id: "u-me", name: "Bạn", role: "Planner", color: "bg-primary text-primary-foreground" });
   const { conflict, triggerConflict, clearConflict } = useVersionConflict();
 
   // DB data
   const { data: dbData, loading } = useSopConsensus();
 
+  // Enterprise dataset fallback (12 CN)
+  const enterpriseData = useMemo(() => buildEnterpriseConsensus(), []);
+
+  // Use DB if it has 12 rows, otherwise fall back to enterprise dataset (12 CN)
+  const seedData: ConsensusRow[] = dbData.length >= 12 ? dbData : enterpriseData;
+
   // Make consensus data stateful for local edits
-  const [consensusData, setConsensusData] = useState<ConsensusRow[]>([]);
-  const [prevDbData, setPrevDbData] = useState<ConsensusRow[]>([]);
-  if (dbData !== prevDbData && dbData.length > 0) {
-    setPrevDbData(dbData);
-    setConsensusData(dbData);
+  const [consensusData, setConsensusData] = useState<ConsensusRow[]>(enterpriseData);
+  const [prevSeed, setPrevSeed] = useState<ConsensusRow[]>(enterpriseData);
+  if (seedData !== prevSeed && seedData.length > 0) {
+    setPrevSeed(seedData);
+    setConsensusData(seedData);
   }
+
+  // Variance explanations for top-down vs bottom-up >±10%
+  const [varianceExplanations, setVarianceExplanations] = useState<Record<string, string>>({});
+
   const handleUpdateV3 = useCallback((cnIdx: number, skuIdx: number | null, value: number) => {
     setConsensusData(prev => {
       const next = prev.map((r, i) => {
@@ -81,8 +162,24 @@ export default function SopPage() {
     }));
   }, []);
 
+  const handleUpdateVariance = useCallback((cnCode: string, text: string) => {
+    setVarianceExplanations((prev) => ({ ...prev, [cnCode]: text }));
+  }, []);
+
   const totalAop = consensusData.reduce((a, r) => a + r.aop, 0);
   const totalV3 = consensusData.reduce((a, r) => a + r.v3, 0);
+
+  // Compute unresolved variance: |Σ(SKU v3) − v0_topdown| / v0_topdown > 10%
+  // and explanation < 6 chars
+  const unresolvedVariance = useMemo(() => {
+    return consensusData.filter((r) => {
+      if (r.v0 <= 0) return false;
+      const bottomUp = r.skus.reduce((a, s) => a + s.v3, 0);
+      const variancePct = Math.abs(bottomUp - r.v0) / r.v0;
+      if (variancePct <= 0.1) return false;
+      return (varianceExplanations[r.cn] ?? "").trim().length < 6;
+    }).length;
+  }, [consensusData, varianceExplanations]);
 
   return (
     <AppLayout>
@@ -99,13 +196,16 @@ export default function SopPage() {
         }
       />
 
+      {/* Deadline stepper */}
+      <SopDeadlineStepper currentDay={currentDay} locked={locked} />
+
       {/* Status strip */}
       <div data-tour="sop-status" className="flex items-center gap-3 mb-5 flex-wrap">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-info-bg text-info text-table-sm font-medium px-3 py-1">
-          Day 5/30
+          Day {currentDay}/30
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-warning-bg text-warning text-table-sm font-medium px-3 py-1">
-          🔒 Lock Day 7 — còn 2 ngày
+          🔒 Lock Day 7 — còn {Math.max(0, 7 - currentDay)} ngày
         </span>
         {locked && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-success-bg text-success text-table-sm font-medium px-3 py-1">
@@ -138,7 +238,7 @@ export default function SopPage() {
       </div>
 
       {/* Loading */}
-      {loading && (
+      {loading && consensusData.length === 0 && (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -156,7 +256,7 @@ export default function SopPage() {
       )}
 
       {/* Content */}
-      {!loading && consensusData.length > 0 && (
+      {consensusData.length > 0 && (
         <>
           <div data-tour="sop-consensus">
             {activeTab === "consensus" && (
@@ -167,6 +267,8 @@ export default function SopPage() {
                 locked={locked}
                 onUpdateV3={handleUpdateV3}
                 onUpdateNote={handleUpdateNote}
+                varianceExplanations={varianceExplanations}
+                onUpdateVariance={handleUpdateVariance}
               />
             )}
           </div>
@@ -177,6 +279,7 @@ export default function SopPage() {
                 totalV3={totalV3}
                 totalAop={totalAop}
                 locked={locked}
+                unresolvedVariance={unresolvedVariance}
                 onLock={() => {
                   if (cellPresence.onlineUsers.length > 1) {
                     setShowPreLock(true);
