@@ -11,8 +11,8 @@ export interface AllocSources {
 }
 
 const SOURCE_META = [
-  { key: "onHand" as const, label: "On-hand", short: "OH", color: "bg-success/80", textColor: "text-success", Icon: Package, desc: "Tồn kho có sẵn tại CN", formula: "Số lượng đang nằm trong kho CN, sẵn sàng allocate ngay (không cần vận chuyển)." },
-  { key: "pipeline" as const, label: "Pipeline", short: "PL", color: "bg-info/80", textColor: "text-info", Icon: Truck, desc: "RPO/PO đang về (Hub đã đặt trước)", formula: "PO/RPO Hub đã phát trước đó, đang trên đường về CN. Tính theo ETA ≤ horizon DRP." },
+  { key: "onHand" as const, label: "Tồn hiện có", short: "OH", color: "bg-success/80", textColor: "text-success", Icon: Package, desc: "Tồn kho có sẵn tại CN", formula: "Số lượng đang nằm trong kho CN, sẵn sàng phân bổ ngay (không cần vận chuyển)." },
+  { key: "pipeline" as const, label: "Đang về", short: "PL", color: "bg-info/80", textColor: "text-info", Icon: Truck, desc: "RPO/PO đang về (Hub đã đặt trước)", formula: "PO/RPO Hub đã phát trước đó, đang trên đường về CN. Tính theo ETA ≤ kỳ DRP." },
   { key: "hubPo" as const, label: "Hub PO", short: "Hub", color: "bg-primary/80", textColor: "text-primary", Icon: Factory, desc: "PO mới sourcing từ Hub (NM ngoài)", formula: "PO mới Hub sourcing trong DRP run này từ NM bên ngoài (Mikado, Toko, …). LT = NM lead-time." },
   { key: "lcnbIn" as const, label: "LCNB", short: "LCNB", color: "bg-warning/80", textColor: "text-warning", Icon: ArrowLeftRight, desc: "Lateral nhận từ CN khác (LCNB)", formula: "Lateral transfer NHẬN từ CN có excess (gap < 0). Tiết kiệm cost vs PO mới, LT ~ 1 ngày." },
   { key: "internalTransfer" as const, label: "Internal TO", short: "TO", color: "bg-accent", textColor: "text-accent-foreground", Icon: Repeat, desc: "Luân chuyển nội bộ giữa kho cùng CN", formula: "Transfer Order nội bộ giữa các kho cùng một CN (DC ↔ kho vệ tinh). Số âm = chuyển đi sang CN khác." },
