@@ -113,7 +113,7 @@ function buildSkuPivot(data: ConsensusRow[]): SkuPivotRow[] {
   return Array.from(map.values()).sort((a, b) => b.v3 - a.v3);
 }
 
-export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUpdateNote }: Props) {
+export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUpdateNote, varianceExplanations = {}, onUpdateVariance }: Props) {
   const [pivotMode, setPivotMode] = usePivotMode("sop-consensus");
   const [drillCn, setDrillCn] = useState<number | null>(null);
   const [drillSku, setDrillSku] = useState<string | null>(null);
