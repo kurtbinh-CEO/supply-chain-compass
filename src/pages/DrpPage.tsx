@@ -1276,12 +1276,12 @@ export default function DrpPage() {
                                 <div>{ex.suggestion}</div>
                                 {ex.type === "SHORTAGE" && (
                                   <div className="mt-1 text-danger font-medium">
-                                    ⚠ Thiếu {ex.gap.toLocaleString()}m² {ex.sku} tại {ex.cn} vì chỉ còn {ex.onHand.toLocaleString()}m² nhưng cần {ex.fcPhased.toLocaleString()}m²/tuần + {ex.ssTarget.toLocaleString()}m² dự phòng
+                                    ⚠ Thiếu {ex.gap.toLocaleString()}m² {ex.item} tại {activeCn.cn} vì chỉ còn {ex.netting.onHand.toLocaleString()}m² nhưng cần {ex.netting.fcPhased.toLocaleString()}m²/tuần + {ex.netting.ssTarget.toLocaleString()}m² dự phòng
                                   </div>
                                 )}
                                 {ex.type === "WATCH" && (
                                   <div className="mt-1 text-warning font-medium">
-                                    🟡 Watch {ex.gap.toLocaleString()}m² {ex.sku} tại {ex.cn} vì on-hand {ex.onHand.toLocaleString()} + pipeline {ex.pipeline.toLocaleString()} chưa đủ buffer SS {ex.ssTarget.toLocaleString()}
+                                    🟡 Watch {ex.gap.toLocaleString()}m² {ex.item} tại {activeCn.cn} vì on-hand {ex.netting.onHand.toLocaleString()} + pipeline {ex.netting.pipeline.toLocaleString()} chưa đủ buffer SS {ex.netting.ssTarget.toLocaleString()}
                                   </div>
                                 )}
                               </>
