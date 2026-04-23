@@ -16,6 +16,8 @@ import { WalkthroughProvider } from "@/components/WalkthroughContext";
 import { AuthProvider, useAuth } from "@/components/AuthContext";
 import { ZoomProvider } from "@/components/ZoomControls";
 import { CommandPaletteProvider } from "@/components/CommandPalette";
+import { useEffect } from "react";
+import { dispatchExpandAll } from "@/hooks/useExpandableRows";
 import AuthPage from "./pages/AuthPage";
 import Index from "./pages/Index";
 import DesignTest from "./pages/DesignTest";
@@ -46,6 +48,23 @@ const queryClient = new QueryClient();
 
 function ProtectedRoutes() {
   const { session, loading } = useAuth();
+
+  /* P19 — global ⌘E / Ctrl+E shortcut: toggle expand/collapse ALL rows on the
+     active page. Tables that opt-in via useExpandableRows will react. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === "e") {
+        // Don't interfere with form/text inputs.
+        const t = e.target as HTMLElement | null;
+        const tag = t?.tagName?.toLowerCase();
+        if (tag === "input" || tag === "textarea" || t?.isContentEditable) return;
+        e.preventDefault();
+        dispatchExpandAll();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   if (loading) {
     return (
