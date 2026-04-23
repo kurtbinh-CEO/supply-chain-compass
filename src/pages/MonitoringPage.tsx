@@ -14,6 +14,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { InventorySSTab } from "@/components/monitoring/InventorySSTab";
 import { ActivityLogTab } from "@/components/monitoring/ActivityLogTab";
+import { TrustScoreCnPanel } from "@/components/monitoring/TrustScoreCnPanel";
+import { PlannerOverridePanel } from "@/components/monitoring/PlannerOverridePanel";
+import { TermTooltip } from "@/components/TermTooltip";
+import { SYSTEM_ACCURACY } from "@/data/unis-enterprise-dataset";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
@@ -421,22 +425,29 @@ export default function MonitoringPage() {
       {/* ═══ TAB 1: Tổng quan ═══ */}
       {activeTab === "overview" && (
         <div className="space-y-6 animate-fade-in">
-          {/* Section A: 6 KPI Cards */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* Section A: 7 KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[
-              { label: "HSTK trung bình", value: "8,5d", target: "target 7d", delta: "↗ +1,3d vs tháng trước", spark: kpiSparklines.hstk, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "inv", logicTab: "ss" as const, logicNode: 0, logicTip: "Công thức Safety Stock" },
-              { label: "Fill rate", value: "95,5%", target: "target 95%", delta: "→ stable", spark: kpiSparklines.fillRate, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "inv", logicTab: "daily" as const, logicNode: 3, logicTip: "Logic phân bổ 6 lớp" },
-              { label: "FC Accuracy (MAPE)", value: "18,4%", target: "target <15%", delta: "↘ từ 15,2%", spark: kpiSparklines.fcAccuracy, color: "var(--color-danger-text)", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 2, logicTip: "MAPE là gì?" },
-              { label: "NM Honoring", value: "77%", target: "target 85%", delta: "↘ xấu hơn", spark: kpiSparklines.nmHonoring, color: "var(--color-danger-text)", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 4, logicTip: "FVA & NM Honoring" },
-              { label: "Working Capital", value: "1,2 tỷ₫", target: "target 1,0B", delta: "+20% over", spark: kpiSparklines.wc, color: "var(--color-warning-text)", bg: "bg-warning-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 2, logicTip: "SS ↔ Working Capital" },
-              { label: "LCNB Savings", value: "96M₫", target: "tháng này", delta: "↗ +14M vs T3", spark: kpiSparklines.lcnb, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 3, logicTip: "LCNB giảm SS network" },
+              { label: "HSTK trung bình", termKey: "HSTK", value: "8,5d", target: "target 7d", delta: "↗ +1,3d vs tháng trước", spark: kpiSparklines.hstk, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "inv", logicTab: "ss" as const, logicNode: 0, logicTip: "Công thức Safety Stock" },
+              { label: "Fill rate", termKey: "FillRate", value: "95,5%", target: "target 95%", delta: "→ stable", spark: kpiSparklines.fillRate, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "inv", logicTab: "daily" as const, logicNode: 3, logicTip: "Logic phân bổ 6 lớp" },
+              { label: "FC Accuracy (MAPE)", termKey: "MAPE", value: "18,4%", target: "target <15%", delta: "↘ từ 15,2%", spark: kpiSparklines.fcAccuracy, color: "var(--color-danger-text)", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 2, logicTip: "MAPE là gì?" },
+              { label: "NM Honoring", termKey: "HonoringRate", value: "77%", target: "target 85%", delta: "↘ xấu hơn", spark: kpiSparklines.nmHonoring, color: "var(--color-danger-text)", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 4, logicTip: "FVA & NM Honoring" },
+              { label: "Working Capital", termKey: undefined as string | undefined, value: "1,2 tỷ₫", target: "target 1,0B", delta: "+20% over", spark: kpiSparklines.wc, color: "var(--color-warning-text)", bg: "bg-warning-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 2, logicTip: "SS ↔ Working Capital" },
+              { label: "LCNB Savings", termKey: "LCNB", value: "96M₫", target: "tháng này", delta: "↗ +14M vs T3", spark: kpiSparklines.lcnb, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 3, logicTip: "LCNB giảm SS network" },
+              { label: "Độ chính xác hệ thống", termKey: undefined, value: `${Math.round((SYSTEM_ACCURACY.fillRatePct + SYSTEM_ACCURACY.drpAccuracyPct + SYSTEM_ACCURACY.lcnbHitRatePct + SYSTEM_ACCURACY.containerFillAvgPct) / 4)}%`, target: "target 80%", delta: "↗ +3pp vs T4", spark: kpiSparklines.fillRate, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 0, logicTip: "Hệ thống chính xác = trung bình 4 chỉ số: Fill Rate, DRP accuracy, LCNB hit rate, Container fill" },
             ].map((kpi) => (
               <div
                 key={kpi.label}
                 className={cn("rounded-card border border-surface-3 p-4 text-left", kpi.bg)}
               >
                 <div className="text-[11px] font-body uppercase tracking-wider text-text-3 mb-1 flex items-center gap-1">
-                  {kpi.label}
+                  {kpi.termKey ? (
+                    <TermTooltip term={kpi.termKey}>
+                      <span>{kpi.label}</span>
+                    </TermTooltip>
+                  ) : (
+                    <span>{kpi.label}</span>
+                  )}
                   <LogicLink tab={kpi.logicTab} node={kpi.logicNode} tooltip={kpi.logicTip} />
                 </div>
                 <div className="flex items-end justify-between gap-3">
@@ -501,7 +512,13 @@ export default function MonitoringPage() {
 
           {/* Section B: Heatmap HSTK */}
           <div className="rounded-card border border-surface-3 bg-surface-2 p-5">
-            <h3 className="font-display text-body font-semibold text-text-1 mb-3">Heatmap HSTK (ngày)</h3>
+            <h3 className="font-display text-body font-semibold text-text-1 mb-3">
+              Heatmap{" "}
+              <TermTooltip term="HSTK">
+                <span className="text-text-1">HSTK</span>
+              </TermTooltip>{" "}
+              (ngày)
+            </h3>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -540,6 +557,9 @@ export default function MonitoringPage() {
               <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-success-bg border border-success/20" /> ≥10d</span>
             </div>
           </div>
+
+          {/* Section B2: Trust Score per CN — 12 chi nhánh + sparkline 12 tuần */}
+          <TrustScoreCnPanel />
 
           {/* Section C: Top Exceptions */}
           <div>
@@ -612,8 +632,23 @@ export default function MonitoringPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
-                    {["CN", "MAPE tháng này", "Tháng trước", "Trend 3M", "Best model", "FVA"].map((h, i) => (
-                      <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
+                    {[
+                      { h: "CN", term: undefined as string | undefined },
+                      { h: "MAPE tháng này", term: "MAPE" },
+                      { h: "Tháng trước", term: undefined },
+                      { h: "Trend 3M", term: undefined },
+                      { h: "Best model", term: undefined },
+                      { h: "FVA", term: "FVA" },
+                    ].map((col, i) => (
+                      <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
+                        {col.term ? (
+                          <TermTooltip term={col.term}>
+                            <span>{col.h}</span>
+                          </TermTooltip>
+                        ) : (
+                          col.h
+                        )}
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -669,17 +704,23 @@ export default function MonitoringPage() {
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
                     {[
-                      { h: "NM", tooltip: null },
-                      { h: "Honoring%", tooltip: null },
-                      { h: "On-time%", tooltip: "On-time = delivered ≤ ETA + grace period (2d).\nOn-time% = (# PO on-time) ÷ (# PO total) × 100\nConfig: /config → PO → on_time_grace_days = 2." },
-                      { h: "LT actual vs plan", tooltip: null },
-                      { h: "Trend", tooltip: null },
-                      { h: "Grade", tooltip: "NM Grade dựa trên Honoring% trung bình 3 tháng:\nA 🟢 ≥ 90%: NM đáng tin. ATP full confidence.\nB    ≥ 80%: OK. ATP × honoring factor.\nC 🟡 ≥ 60%: Cần cải thiện. ATP discounted. Review meeting.\nD 🔴 < 60%: Risk cao. Xem xét thay NM. Share% giảm.\nAuto-action: effective_ATP = raw_ATP × honoring%.\nConfig: /config → NM ATP → grade thresholds." },
-                      { h: "Action", tooltip: null },
+                      { h: "NM", tooltip: null, term: undefined as string | undefined },
+                      { h: "Honoring%", tooltip: null, term: "HonoringRate" },
+                      { h: "On-time%", tooltip: "On-time = delivered ≤ ETA + grace period (2d).\nOn-time% = (# PO on-time) ÷ (# PO total) × 100\nConfig: /config → PO → on_time_grace_days = 2.", term: undefined },
+                      { h: "LT actual vs plan", tooltip: null, term: undefined },
+                      { h: "Trend", tooltip: null, term: undefined },
+                      { h: "Grade", tooltip: "NM Grade dựa trên Honoring% trung bình 3 tháng:\nA 🟢 ≥ 90%: NM đáng tin. ATP full confidence.\nB    ≥ 80%: OK. ATP × honoring factor.\nC 🟡 ≥ 60%: Cần cải thiện. ATP discounted. Review meeting.\nD 🔴 < 60%: Risk cao. Xem xét thay NM. Share% giảm.\nAuto-action: effective_ATP = raw_ATP × honoring%.\nConfig: /config → NM ATP → grade thresholds.", term: undefined },
+                      { h: "Action", tooltip: null, term: undefined },
                     ].map((col, i) => (
                       <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
                         <span className="inline-flex items-center gap-1">
-                          {col.h}
+                          {col.term ? (
+                            <TermTooltip term={col.term}>
+                              <span>{col.h}</span>
+                            </TermTooltip>
+                          ) : (
+                            col.h
+                          )}
                           {col.tooltip && <LogicTooltip title={col.h} content={col.tooltip} />}
                         </span>
                       </th>
@@ -825,6 +866,18 @@ export default function MonitoringPage() {
               <div className="rounded-md bg-info-bg/50 border border-info/20 px-4 py-2.5 text-table-sm text-text-1 italic">
                 WC +20% over target. Giảm SS CN-ĐN (over-stocked) → tiết kiệm 56M₫/tháng. Chuyển allocation Toko→Mikado → giảm 30M₫ freight.
               </div>
+            </div>
+          </CollapsibleSection>
+
+          {/* Section D2: Planner Override Analysis — top 5 lý do sửa PO */}
+          <CollapsibleSection
+            title="Planner Override Analysis"
+            summary="18/47 PO bị sửa · top reason: số lượng quá cao 35%"
+            expanded={expandedSections.has("override")}
+            onToggle={() => toggleSection("override")}
+          >
+            <div className="p-5">
+              <PlannerOverridePanel />
             </div>
           </CollapsibleSection>
 
