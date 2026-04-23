@@ -409,6 +409,21 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
         </table>
       </div>
 
+      {/* Variance gate banner */}
+      {!locked && unresolvedVariance > 0 && (
+        <div className="rounded-card border border-danger/40 bg-danger-bg p-4 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-danger mt-0.5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-table font-semibold text-danger mb-0.5">
+              Còn {unresolvedVariance} CN có chênh lệch top-down vs bottom-up &gt; ±10%
+            </p>
+            <p className="text-table-sm text-text-2">
+              Quay lại tab <span className="font-medium text-text-1">Consensus</span> để giải thích trước khi khóa S&OP.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Lock Section */}
       <div className={cn("rounded-card border p-5", locked ? "border-success/30 bg-success-bg" : "border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10")}>
         <div className="flex items-center justify-between mb-4">
