@@ -906,6 +906,35 @@ export default function OrdersPage() {
       {/* ═══════════════════ TAB 1: APPROVAL ═══════════════════ */}
       {activeTab === "approval" && !isEmpty && (
         <div className="animate-fade-in space-y-4">
+          {/* NM Counter Cascade Flag — counter received AFTER nightly DRP run */}
+          {!cascadeDismissed && (
+            <div className="rounded-card border-l-4 border-warning bg-warning-bg/50 border border-warning/30 p-4 flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-table-sm font-semibold text-text-1">
+                  ⚠️ Toko giảm cam kết 32% lúc 10:15 — sau khi DRP chạy đêm qua (23:00)
+                </p>
+                <p className="text-caption text-text-2 mt-1 leading-relaxed">
+                  PO chờ duyệt bên dưới đang dựa trên <span className="font-semibold">DRP CŨ</span>.
+                  Cam kết NM mới có thể đã thay đổi available Hub. Cần review trước khi release ERP.
+                </p>
+                <div className="flex items-center gap-3 mt-2">
+                  <button
+                    onClick={() => navigate("/hub")}
+                    className="inline-flex items-center gap-1 text-caption font-medium text-warning hover:underline"
+                  >
+                    Xem cam kết mới <ChevronRight className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={() => setCascadeDismissed(true)}
+                    className="text-caption text-text-3 hover:text-text-1"
+                  >
+                    ✕ Đã review
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Queue header */}
           {approvalQueue.length > 0 ? (
             <div className="rounded-card border border-warning/30 bg-warning-bg/40">
