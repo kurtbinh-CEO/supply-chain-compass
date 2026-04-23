@@ -116,7 +116,7 @@ function FreshnessIndicator() {
       return { id: f.id, name: f.name, s, hours, hasData: items.length > 0 };
     }).filter((x) => x.hasData);
 
-    const worst = perNm.some((x) => x.s === "stale")
+    const worst: "fresh" | "1d" | "stale" = perNm.some((x) => x.s === "stale")
       ? "stale"
       : perNm.some((x) => x.s === "1d")
       ? "1d"
