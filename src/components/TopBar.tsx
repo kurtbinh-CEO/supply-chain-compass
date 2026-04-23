@@ -7,6 +7,7 @@ import type { Locale } from "@/components/i18n/translations";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/components/AuthContext";
 import { ZoomControls } from "@/components/ZoomControls";
+import { useCommandPalette } from "@/components/CommandPalette";
 
 const routeKeys: Record<string, string> = {
   "/workspace": "route.workspace",
@@ -92,6 +93,7 @@ export function TopBar() {
   const { theme, setTheme } = useThemeMode();
   const { locale, setLocale, t } = useI18n();
   const { profile, signOut } = useAuth();
+  const { open: openPalette } = useCommandPalette();
 
   const routeKey = routeKeys[location.pathname];
   const pageName = routeKey ? t(routeKey) : t("route.overview");
@@ -127,7 +129,11 @@ export function TopBar() {
       <div className="flex-1" />
 
       {/* Search */}
-      <button className="flex items-center gap-2 rounded-lg border border-surface-3 bg-surface-0 px-3 py-1.5 text-table-sm text-text-3 hover:border-primary/40 transition-all hover:shadow-sm">
+      <button
+        onClick={openPalette}
+        className="flex items-center gap-2 rounded-lg border border-surface-3 bg-surface-0 px-3 py-1.5 text-table-sm text-text-3 hover:border-primary/40 transition-all hover:shadow-sm"
+        title="Command palette (⌘K)"
+      >
         <Search className="h-3.5 w-3.5" />
         <span className="hidden xl:inline">{t("search.placeholder")}</span>
         <kbd className="ml-3 rounded bg-surface-3/50 px-1.5 py-0.5 text-caption font-mono text-text-3">⌘K</kbd>
