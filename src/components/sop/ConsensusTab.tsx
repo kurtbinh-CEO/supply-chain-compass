@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronRight, ChevronLeft, AlertTriangle } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
 import { LogicTooltip } from "@/components/LogicTooltip";
