@@ -7,7 +7,8 @@ import { B2BInputTab } from "@/components/demand/B2BInputTab";
 import { useTenant } from "@/components/TenantContext";
 import { useDemandForecasts } from "@/hooks/useDemandForecasts";
 import { Loader2 } from "lucide-react";
-import { B2B_DEALS, B2B_STAGE_PROB, type B2bStage, type B2bDeal } from "@/data/unis-enterprise-dataset";
+import { B2B_DEALS, B2B_STAGE_PROB, DEMAND_FC, type B2bStage, type B2bDeal } from "@/data/unis-enterprise-dataset";
+import { ClickableNumber } from "@/components/ClickableNumber";
 
 const tabs = [
   { key: "total", label: "Demand tổng" },
