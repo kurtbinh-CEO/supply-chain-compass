@@ -193,8 +193,14 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
   const [expandedSkus, setExpandedSkus] = useState<Set<string>>(new Set());
   const [overrideModal, setOverrideModal] = useState<{ sku: string; value: number } | null>(null);
   const [pivotMode, setPivotMode] = usePivotMode("demand");
+  const [fcVersion, setFcVersion] = useState<FcVersion>("v3");
 
   const s = tenantScale[tenant] || 1;
+
+  // Per-version multiplier on top of v0 baseline (FC numbers).
+  // Versions reflect successive review passes; v3 is the SC Manager-locked plan.
+  const versionMult: Record<FcVersion, number> = { v0: 0.96, v1: 0.99, v2: 1.02, v3: 1.0 };
+  const vMult = versionMult[fcVersion];
 
   const toggleCn = (cnKey: string) => {
     setExpandedCns(prev => {
@@ -212,29 +218,27 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
     });
   };
 
-  // Use DB data if available, otherwise fall back to mock
-  const useDbData = cnSummaries.length > 0;
-
+  /* ── Single source of truth: DEMAND_FC (12 CN × 15 SKU bases ≈ 47 000 m²) ── */
   const cnData = useMemo(() => {
-    if (useDbData) {
-      return cnSummaries.map(c => {
-        const b2b = b2bPerCn[c.cn.replace("CN-", "")] || c.b2b;
-        const total = c.fc + b2b + c.po;
-        const stock = Math.round(total * 0.15); // estimated
-        const cover = total > 0 ? Math.round((stock / (total / 30)) * 10) / 10 : 0;
-        return { cn: c.cn, fc: c.fc, b2b, po: c.po, total, stock, cover, vsLm: 0, skus: c.skus };
-      });
-    }
-    return baseCnDataMock.map(c => {
-      const fc = Math.round(c.fc * s);
-      const b2b = b2bPerCn[c.cn.replace("CN-", "")] || Math.round(c.b2b * s);
-      const po = Math.round(c.po * s);
+    return BRANCHES.map((br) => {
+      const fcRows = DEMAND_FC.filter((r) => r.cnCode === br.code);
+      const fcRaw = fcRows.reduce((a, r) => a + r.fcM2, 0);
+      const fc = Math.round(fcRaw * s * vMult);
+      const b2b = b2bPerCn[br.code] ?? 0;
+      // PO confirmed ≈ 22 % of FC (deterministic estimate per branch)
+      const po = Math.round(fc * 0.22);
       const total = fc + b2b + po;
-      const stock = Math.round(c.stock * s);
+      const stock = Math.round(total * 0.45);
       const cover = total > 0 ? Math.round((stock / (total / 30)) * 10) / 10 : 0;
-      return { ...c, fc, b2b, po, total, stock, cover, skus: [] as any[] };
+      // vsLM derived deterministically from CN trust hash → −8 .. +14
+      const seed = br.code.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+      const vsLm = (seed % 23) - 8;
+      return { cn: br.code, fc, b2b, po, total, stock, cover, vsLm, skus: [] as DemandCnSummary["skus"] };
     });
-  }, [s, b2bPerCn, cnSummaries, useDbData]);
+  }, [s, vMult, b2bPerCn]);
+
+  // DB summaries (when present) are merged in only as overlay info — totals stay canonical.
+  const useDbData = cnSummaries.length > 0;
 
   const totals = useMemo(() => ({
     fc: cnData.reduce((a, c) => a + c.fc, 0),
@@ -245,26 +249,34 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
     cover: 8.5,
   }), [cnData]);
 
-  // Build skuPerCn from DB data or mock
+  /* ── skuPerCn built from DEMAND_FC ── */
   const skuPerCn = useMemo(() => {
-    if (useDbData) {
-      const result: Record<string, { item: string; variant: string; fc: number; b2b: number; po: number; vsLm: number; source: string; mape: number }[]> = {};
-      cnSummaries.forEach(cs => {
-        result[cs.cn] = cs.skus.map(sk => ({
-          item: sk.item,
-          variant: sk.variant,
-          fc: sk.fc,
-          b2b: Math.round(sk.fc * 0.3), // estimated B2B split
-          po: Math.round(sk.fc * 0.15), // estimated PO split
-          vsLm: Math.round((sk.adjustment / Math.max(sk.fc, 1)) * 100),
-          source: sk.source === "system" ? "XGBoost" : sk.source === "manual" ? "Holt-Winters" : "B2B-Input",
-          mape: Math.round((1 - sk.confidence) * 100 * 10) / 10,
-        }));
-      });
-      return result;
-    }
-    return skuPerCnMock;
-  }, [cnSummaries, useDbData]);
+    const result: Record<string, { item: string; variant: string; fc: number; b2b: number; po: number; vsLm: number; source: string; mape: number }[]> = {};
+    BRANCHES.forEach((br) => {
+      const rows = DEMAND_FC.filter((r) => r.cnCode === br.code);
+      result[br.code] = rows
+        .map((r) => {
+          const base = SKU_BASES.find((b) => b.code === r.skuBaseCode);
+          const fc = Math.round(r.fcM2 * s * vMult);
+          const seed = (br.code + r.skuBaseCode).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+          const mape = 9 + (seed % 14); // 9–22 %
+          const vsLm = ((seed % 19) - 7);
+          return {
+            item: r.skuBaseCode,
+            variant: base?.name?.split(" ")[0] ?? "—",
+            fc,
+            b2b: Math.round(fc * 0.18),
+            po: Math.round(fc * 0.22),
+            vsLm,
+            source: mape <= 14 ? "XGBoost" : "Holt-Winters",
+            mape,
+          };
+        })
+        .sort((a, b) => b.fc - a.fc)
+        .slice(0, 6); // keep table compact
+    });
+    return result;
+  }, [s, vMult]);
 
   // SKU-first aggregation
   const skuAggregated = useMemo(() => {
