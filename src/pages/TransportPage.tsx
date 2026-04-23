@@ -396,7 +396,7 @@ function OverrideDialog({
 /* ─────────────────────────────────────────────────────────── */
 /* Packing tab                                                */
 /* ─────────────────────────────────────────────────────────── */
-function PackingTab() {
+export function PackingTab() {
   const { user } = useRbac();
   const isScManager = user.role === "sc_manager" || user.role === "admin";
 
