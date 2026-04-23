@@ -950,3 +950,55 @@ if (import.meta.env?.DEV) {
     console.warn("[unis-enterprise-dataset] SELF-AUDIT failed:", failed.map(([n]) => n));
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §22 NM_COUNTER_HISTORY (6 months per NM)
+// ─────────────────────────────────────────────────────────────────────────────
+export interface NmCounterRow {
+  nmId: NmId; month: string; committedM2: number; counterM2: number;
+  deliveredM2: number | null; realizationPct: number | null;
+}
+export const NM_COUNTER_HISTORY: NmCounterRow[] = [
+  { nmId: "TOKO",   month: "T12/25", committedM2: 5000,  counterM2: 4500,  deliveredM2: 3800, realizationPct: 76 },
+  { nmId: "TOKO",   month: "T1/26",  committedM2: 5500,  counterM2: 4200,  deliveredM2: 3950, realizationPct: 72 },
+  { nmId: "TOKO",   month: "T2/26",  committedM2: 6000,  counterM2: 3800,  deliveredM2: 3600, realizationPct: 60 },
+  { nmId: "TOKO",   month: "T3/26",  committedM2: 5000,  counterM2: 5000,  deliveredM2: 4800, realizationPct: 96 },
+  { nmId: "TOKO",   month: "T4/26",  committedM2: 6000,  counterM2: 4080,  deliveredM2: null, realizationPct: null },
+  { nmId: "MIKADO", month: "T4/26",  committedM2: 14200, counterM2: 14200, deliveredM2: null, realizationPct: null },
+  { nmId: "PHUMY",  month: "T4/26",  committedM2: 3000,  counterM2: 1500,  deliveredM2: null, realizationPct: null },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §23 NM_LT_HISTORY (last 5 POs per NM)
+// ─────────────────────────────────────────────────────────────────────────────
+export interface NmLtRow { nmId: NmId; poNumber: string; configLt: number; actualLt: number; onTime: boolean; }
+export const NM_LT_HISTORY: NmLtRow[] = [
+  { nmId: "MIKADO", poNumber: "PO-001", configLt: 14, actualLt: 12, onTime: true  },
+  { nmId: "MIKADO", poNumber: "PO-002", configLt: 14, actualLt: 18, onTime: false },
+  { nmId: "TOKO",   poNumber: "PO-101", configLt: 21, actualLt: 25, onTime: false },
+  { nmId: "TOKO",   poNumber: "PO-102", configLt: 21, actualLt: 28, onTime: false },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §24 FC_IMPORT_LOG (last 3 imports)
+// ─────────────────────────────────────────────────────────────────────────────
+export interface FcImportRow {
+  id: string; month: string; source: "excel_upload" | "api" | "baseline";
+  modelName: string; modelMape: number; records: number; warnings: number;
+  importedBy: string; importedAt: string;
+}
+export const FC_IMPORT_LOG: FcImportRow[] = [
+  { id: "FC-001", month: "T3/26", source: "excel_upload", modelName: "Holt-Winters", modelMape: 22, records: 180, warnings: 0, importedBy: "Chị Thùy", importedAt: "01/03 09:30" },
+  { id: "FC-002", month: "T4/26", source: "excel_upload", modelName: "XGBoost",      modelMape: 15, records: 180, warnings: 1, importedBy: "Chị Thùy", importedAt: "01/04 10:15" },
+  { id: "FC-003", month: "T5/26", source: "excel_upload", modelName: "HW+XGB",       modelMape: 19, records: 180, warnings: 2, importedBy: "Chị Thùy", importedAt: "01/05 14:30" },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §25 DEMAND_VERSIONS (v0–v4 per CN × top SKU)
+// ─────────────────────────────────────────────────────────────────────────────
+export interface DemandVersionRow { cnCode: string; skuBaseCode: string; v0: number; v1: number; v2: number; v3: number; v4: number; }
+export const DEMAND_VERSIONS: DemandVersionRow[] = [
+  { cnCode: "CN-BD",  skuBaseCode: "GA-300", v0: 2160, v1: 2200, v2: 2250, v3: 2185, v4: 2185 },
+  { cnCode: "CN-HCM", skuBaseCode: "GA-300", v0: 1800, v1: 1850, v2: 1820, v3: 1800, v4: 1800 },
+  { cnCode: "CN-HN",  skuBaseCode: "GA-300", v0: 1650, v1: 1700, v2: 1680, v3: 1650, v4: 1650 },
+];
