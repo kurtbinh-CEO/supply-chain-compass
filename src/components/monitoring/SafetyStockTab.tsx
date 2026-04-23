@@ -28,21 +28,97 @@ const trendData = [
 
 const simParams = ["Target Service Level (α)", "Lead Time (days)", "Demand Volatility (σ)", "Review Period"];
 
+// SS Alert (top of tab) — δ ≥ 10% → PENDING confirm
+const ssAlert = {
+  sku: "GA-300",
+  oldSs: 2719,
+  newSs: 2350,
+  deltaPct: -13.6,
+  reason: "MAPE giảm từ 22% → 14% (CN-BD 3 tuần liên tiếp)",
+};
+
 export function SafetyStockTab() {
   const [simParam, setSimParam] = useState(simParams[0]);
   const [simValue, setSimValue] = useState(98);
   const [dateFilter, setDateFilter] = useState("all");
+  const [ssAlertStatus, setSsAlertStatus] = useState<"pending" | "confirmed" | "kept">("pending");
 
   const beforeSS = 12402;
   const afterSS = Math.round(beforeSS * (simValue / 95));
   const wcDelta = Math.round((afterSS - beforeSS) * 18.5);
+  const isLargeDelta = Math.abs(ssAlert.deltaPct) >= 10;
 
   const handleApply = () => {
     toast.success("Đã gửi đề xuất SS đến Workspace", { description: `Service Level: ${simValue}% → SS: ${afterSS.toLocaleString()}` });
   };
 
+  const handleConfirmSs = () => {
+    setSsAlertStatus("confirmed");
+    toast.success("Đã xác nhận SS mới", { description: `${ssAlert.sku}: ${ssAlert.oldSs.toLocaleString()} → ${ssAlert.newSs.toLocaleString()} m²` });
+  };
+
+  const handleKeepSs = () => {
+    setSsAlertStatus("kept");
+    toast.info("Giữ SS cũ", { description: `${ssAlert.sku}: vẫn ${ssAlert.oldSs.toLocaleString()} m². Logged.` });
+  };
+
   return (
     <div className="space-y-6">
+      {/* SS ALERT CARD — top of tab */}
+      {ssAlertStatus === "pending" && (
+        <div className={cn(
+          "rounded-card border-l-4 p-5 animate-fade-in",
+          isLargeDelta ? "border-warning bg-warning-bg/40 border border-warning/30" : "border-success bg-success-bg/40 border border-success/30"
+        )}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-table font-semibold text-text-1">
+                  {isLargeDelta ? "⚠ SS đề xuất — chờ xác nhận" : "✅ SS auto-applied"}
+                </span>
+                <span className={cn(
+                  "rounded-full px-2 py-0.5 text-caption font-bold",
+                  isLargeDelta ? "bg-warning text-warning-foreground" : "bg-success text-success-foreground"
+                )}>
+                  {isLargeDelta ? "PENDING" : "AUTO"}
+                </span>
+              </div>
+              <p className="text-table text-text-1">
+                <span className="font-mono font-medium">SS {ssAlert.sku}</span>:{" "}
+                <span className="tabular-nums">{ssAlert.oldSs.toLocaleString()}</span>
+                {" → "}
+                <span className="tabular-nums font-semibold">{ssAlert.newSs.toLocaleString()}</span>
+                {" m² "}
+                <span className={cn("font-semibold", ssAlert.deltaPct < 0 ? "text-success" : "text-danger")}>
+                  ({ssAlert.deltaPct > 0 ? "+" : ""}{ssAlert.deltaPct}%)
+                </span>
+              </p>
+              <p className="text-table-sm text-text-2 mt-1">{ssAlert.reason}</p>
+              {!isLargeDelta && (
+                <p className="text-caption text-text-3 italic mt-1">
+                  δ &lt; 10% → tự động áp dụng. Đã ghi log audit.
+                </p>
+              )}
+            </div>
+            {isLargeDelta && (
+              <div className="flex flex-col gap-2 shrink-0">
+                <Button size="sm" onClick={handleConfirmSs} className="bg-success text-success-foreground hover:bg-success/90">
+                  ✅ Xác nhận
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleKeepSs}>
+                  ❌ Giữ cũ
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {ssAlertStatus !== "pending" && (
+        <div className="rounded-card border border-surface-3 bg-surface-2 px-4 py-2.5 text-table-sm text-text-2 flex items-center gap-2">
+          {ssAlertStatus === "confirmed" ? "✅ SS đã xác nhận" : "❌ Giữ SS cũ"} —{" "}
+          <span className="font-mono">{ssAlert.sku}</span>. Audit đã ghi.
+        </div>
+      )}
       <div className="grid grid-cols-5 gap-6">
         {/* A: SS Targets Table */}
         <div className="col-span-3 rounded-card border border-surface-3 bg-surface-2">

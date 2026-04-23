@@ -16,6 +16,8 @@ import { InventorySSTab } from "@/components/monitoring/InventorySSTab";
 import { ActivityLogTab } from "@/components/monitoring/ActivityLogTab";
 import { TrustScoreCnPanel } from "@/components/monitoring/TrustScoreCnPanel";
 import { PlannerOverridePanel } from "@/components/monitoring/PlannerOverridePanel";
+import { NmRiskTab } from "@/components/monitoring/NmRiskTab";
+import { RoiFlywheelTab } from "@/components/monitoring/RoiFlywheelTab";
 import { TermTooltip } from "@/components/TermTooltip";
 import { SYSTEM_ACCURACY } from "@/data/unis-enterprise-dataset";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
@@ -343,6 +345,8 @@ const tabs = [
   { key: "overview", label: "Tổng quan" },
   { key: "inv", label: "Tồn kho & SS" },
   { key: "perf", label: "Hiệu suất" },
+  { key: "nm-risk", label: "Rủi ro NM" },
+  { key: "roi", label: "ROI & Flywheel" },
   { key: "activity", label: "Activity Log" },
 ];
 
@@ -926,7 +930,13 @@ export default function MonitoringPage() {
         </div>
       )}
 
-      {/* ═══ TAB 4: Activity Log ═══ */}
+      {/* ═══ TAB: Rủi ro NM ═══ */}
+      {activeTab === "nm-risk" && <NmRiskTab />}
+
+      {/* ═══ TAB: ROI & Flywheel ═══ */}
+      {activeTab === "roi" && <RoiFlywheelTab />}
+
+      {/* ═══ TAB: Activity Log ═══ */}
       {activeTab === "activity" && <ActivityLogTab />}
 
       <ScreenFooter actionCount={11} />
