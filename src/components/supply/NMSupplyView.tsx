@@ -1,13 +1,17 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTenant } from "@/components/TenantContext";
 import { NMSummary, NMSkuRow } from "./supplyData";
 import { useInventoryData } from "@/hooks/useInventoryData";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronRight, ChevronDown, Upload, Download, Pencil, Bell, FileSpreadsheet, Loader2, PackageOpen } from "lucide-react";
+import { ChevronRight, ChevronDown, Upload, Download, Pencil, Bell, FileSpreadsheet, Loader2, PackageOpen, ShieldAlert } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
+import { FACTORIES, NM_INVENTORY, type NmId } from "@/data/unis-enterprise-dataset";
+import { NmCommitmentResponses } from "./NmCommitmentResponses";
+import { NmSupplyHeader } from "./NmSupplyHeader";
+import { NmUploadPreviewDialog } from "./NmUploadPreviewDialog";
 
 /* ─── Upload Zone ─── */
 function UploadZone() {
@@ -157,6 +161,47 @@ function SkuTable({ nm, skus, share, onUpdate }: { nm: string; skus: NMSkuRow[];
   );
 }
 
+/** Map UI NM display name → dataset NmId for cross-referencing freshness/commitments. */
+const NM_NAME_TO_ID: Record<string, NmId> = {
+  "Mikado": "MIKADO",
+  "Toko": "TOKO",
+  "Đồng Tâm": "DONGTAM",
+  "Vigracera": "VIGRACERA",
+  "Phú Mỹ": "PHUMY",
+};
+
+function resolveNmId(nm: NMSummary): NmId | null {
+  return NM_NAME_TO_ID[nm.nm] ?? null;
+}
+
+/** Returns true when the worst staleness across that NM's inventory rows is "stale". */
+function isNmStale(nmId: NmId | null): boolean {
+  if (!nmId) return false;
+  const rows = NM_INVENTORY.filter((r) => r.nmId === nmId);
+  return rows.length > 0 && rows.every((r) => r.staleness === "stale");
+}
+
+/** Triggers a download of a synthetic per-NM Excel template via Blob. */
+function downloadNmTemplate(nmId: NmId, nmName: string) {
+  const allowed = FACTORIES.find((f) => f.id === nmId);
+  if (!allowed) return;
+  const skus = NM_INVENTORY.filter((r) => r.nmId === nmId);
+  const header = "Mã hàng,Tên,Tồn kho (m²),Đang SX (m²),Ghi chú\n";
+  const body = skus
+    .map((s) => `${s.skuBaseCode},,${s.onHandM2},${s.inProductionM2},`)
+    .join("\n");
+  const blob = new Blob([header + body], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `template-${nmId.toLowerCase()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast.success(`Đã tải mẫu cho ${nmName}`, {
+    description: `${skus.length} mã hàng sẵn có để cập nhật tồn kho.`,
+  });
+}
+
 /* ─── Main View ─── */
 export function NMSupplyView() {
   const { tenant } = useTenant();
@@ -166,8 +211,29 @@ export function NMSupplyView() {
   const [reminded, setReminded] = useState<Set<string>>(new Set());
   const { conflict: supplyConflict, triggerConflict: triggerSupplyConflict, clearConflict: clearSupplyConflict } = useVersionConflict();
 
+  // Per-NM dialog state for the 7-step Excel preview workflow.
+  const [previewState, setPreviewState] = useState<{ nmId: NmId; nmName: string; fileName: string } | null>(null);
+
   // Merge DB data with local edits
   const nmData = inventoryData.map(nm => localEdits[nm.id] || nm);
+
+  // Identify NMs blocked by freshness gate (stale ≥ 72h).
+  const staleNmIds = useMemo(() => {
+    const set = new Set<NmId>();
+    nmData.forEach((nm) => {
+      const id = resolveNmId(nm);
+      if (id && isNmStale(id)) set.add(id);
+    });
+    return set;
+  }, [nmData]);
+
+  const staleNames = useMemo(
+    () =>
+      [...staleNmIds]
+        .map((id) => FACTORIES.find((f) => f.id === id)?.name ?? id)
+        .filter(Boolean) as string[],
+    [staleNmIds]
+  );
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
@@ -192,6 +258,17 @@ export function NMSupplyView() {
       ...prev,
       [nmId]: { ...edited, tongTon: newTongTon, unisDung: newUnisDung, skus: newSkus, updatedAt: `Hôm nay ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`, updatedAgo: "today" as const },
     }));
+  };
+
+  const openUploadFor = (nmId: NmId, nmName: string) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".xlsx,.xls,.csv";
+    input.onchange = (ev) => {
+      const file = (ev.target as HTMLInputElement).files?.[0];
+      if (file) setPreviewState({ nmId, nmName, fileName: file.name });
+    };
+    input.click();
   };
 
   const totalTon = nmData.reduce((s, n) => s + (n.tongTon || 0), 0);
@@ -220,13 +297,67 @@ export function NMSupplyView() {
           onClose={clearSupplyConflict}
         />
       )}
+      {/* Bravo sync header */}
+      <NmSupplyHeader />
+
+      {/* Freshness gate banner — blocks Phú Mỹ when ≥72h stale */}
+      {staleNames.length > 0 && (
+        <div className="rounded-card border border-danger/40 bg-danger-bg px-4 py-3 flex items-start gap-2.5">
+          <ShieldAlert className="h-5 w-5 text-danger shrink-0 mt-0.5" />
+          <div className="space-y-0.5 min-w-0">
+            <p className="text-table-sm font-semibold text-danger">
+              Dữ liệu NM quá cũ (≥ 72h) — CHẶN phát hành PO cho{" "}
+              {staleNames.join(", ")}
+            </p>
+            <p className="text-caption text-text-2">
+              Vui lòng đồng bộ Bravo hoặc upload file mới trước khi tạo PO. Mọi thao tác
+              "Phát hành" cho NM này đã bị vô hiệu hóa để tránh đặt hàng trên dữ liệu sai.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header actions */}
       <div className="flex items-center gap-3" data-tour="supply-upload">
-        <button className="rounded-button bg-gradient-primary text-primary-foreground px-4 py-2 text-table-sm font-medium flex items-center gap-2">
+        <button
+          onClick={() => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".xlsx,.xls,.csv";
+            input.onchange = (ev) => {
+              const file = (ev.target as HTMLInputElement).files?.[0];
+              if (file) {
+                // Default to first NM in the list when uploading from the global header.
+                const first = nmData[0];
+                const id = first ? resolveNmId(first) : null;
+                if (id && first) {
+                  setPreviewState({ nmId: id, nmName: first.nm, fileName: file.name });
+                } else {
+                  toast.success(`Đã nhận file "${file.name}"`, {
+                    description: "Hãy mở từng NM để preview & validate.",
+                  });
+                }
+              }
+            };
+            input.click();
+          }}
+          className="rounded-button bg-gradient-primary text-primary-foreground px-4 py-2 text-table-sm font-medium flex items-center gap-2"
+        >
           <Upload className="h-4 w-4" /> Upload Excel
         </button>
-        <button className="rounded-button border border-surface-3 bg-surface-2 text-text-1 px-4 py-2 text-table-sm font-medium flex items-center gap-2 hover:bg-surface-1">
-          <Download className="h-4 w-4" /> Download template
+        <button
+          onClick={() => {
+            const first = nmData[0];
+            const id = first ? resolveNmId(first) : null;
+            if (id && first) {
+              downloadNmTemplate(id, first.nm);
+            } else {
+              toast("Hãy chọn 1 NM cụ thể để tải mẫu chính xác.");
+            }
+          }}
+          className="rounded-button border border-surface-3 bg-surface-2 text-text-1 px-4 py-2 text-table-sm font-medium flex items-center gap-2 hover:bg-surface-1"
+        >
+          <Download className="h-4 w-4" /> Tải mẫu
         </button>
       </div>
 
@@ -333,23 +464,42 @@ export function NMSupplyView() {
                             <Pencil className="h-3 w-3" /> Sửa
                           </button>
                         )}
-                        {nm.tongTon !== null && nm.skus.length > 0 && (
-                          <button
-                            onClick={() => {
-                              const input = document.createElement("input");
-                              input.type = "file";
-                              input.accept = ".xlsx,.xls,.csv";
-                              input.onchange = (ev) => {
-                                const file = (ev.target as HTMLInputElement).files?.[0];
-                                if (file) toast.success(`Upload cho ${nm.nm}: "${file.name}"`, { description: "Preview trước khi import." });
-                              };
-                              input.click();
-                            }}
-                            className="rounded-button border border-surface-3 px-2.5 py-1 text-caption font-medium text-text-2 hover:text-text-1 hover:bg-surface-1 flex items-center gap-1"
-                          >
-                            <Upload className="h-3 w-3" /> Upload
-                          </button>
-                        )}
+                        {nm.tongTon !== null && nm.skus.length > 0 && (() => {
+                          const datasetId = resolveNmId(nm);
+                          const blocked = datasetId ? staleNmIds.has(datasetId) : false;
+                          return (
+                            <>
+                              <button
+                                onClick={() => {
+                                  if (datasetId) openUploadFor(datasetId, nm.nm);
+                                  else toast.error("Không xác định được mã NM trong dataset.");
+                                }}
+                                className="rounded-button border border-surface-3 px-2.5 py-1 text-caption font-medium text-text-2 hover:text-text-1 hover:bg-surface-1 flex items-center gap-1"
+                              >
+                                <Upload className="h-3 w-3" /> Upload
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (blocked) return;
+                                  toast.success(`Đã phát hành PO cho ${nm.nm}`, {
+                                    description: "Chuyển sang /orders để theo dõi vòng đời PO.",
+                                  });
+                                }}
+                                disabled={blocked}
+                                title={blocked ? "Bị chặn: dữ liệu NM ≥ 72h" : "Phát hành PO mới"}
+                                className={cn(
+                                  "rounded-button px-2.5 py-1 text-caption font-medium flex items-center gap-1 border",
+                                  blocked
+                                    ? "border-surface-3 bg-surface-2 text-text-3 cursor-not-allowed opacity-60"
+                                    : "border-primary/40 bg-info-bg text-primary hover:bg-primary/10"
+                                )}
+                              >
+                                {blocked && <ShieldAlert className="h-3 w-3" />}
+                                Phát hành PO
+                              </button>
+                            </>
+                          );
+                        })()}
                         {nm.tongTon === null && (
                           <button
                             onClick={() => {
@@ -387,6 +537,22 @@ export function NMSupplyView() {
                       onUpdate={(idx, val) => handleSkuUpdate(nm.id, idx, val)}
                     />
                   )}
+                  {expandedId === nm.id && (() => {
+                    const datasetId = resolveNmId(nm);
+                    if (!datasetId) return null;
+                    return (
+                      <tr key={`commit-${nm.id}`}>
+                        <td colSpan={7} className="p-0">
+                          <div className="border-t border-surface-3 bg-surface-1/30 px-6 py-4">
+                            <NmCommitmentResponses
+                              nmId={datasetId}
+                              isStale={staleNmIds.has(datasetId)}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })()}
                 </>
               ))}
               {/* TOTAL row */}
@@ -402,6 +568,17 @@ export function NMSupplyView() {
           </table>
         </div>
       </div>
+      )}
+
+      {/* 7-step Excel preview dialog */}
+      {previewState && (
+        <NmUploadPreviewDialog
+          nmId={previewState.nmId}
+          nmName={previewState.nmName}
+          fileName={previewState.fileName}
+          onClose={() => setPreviewState(null)}
+          onConfirm={() => setPreviewState(null)}
+        />
       )}
     </div>
   );
