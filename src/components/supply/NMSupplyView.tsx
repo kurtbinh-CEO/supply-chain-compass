@@ -1,13 +1,17 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTenant } from "@/components/TenantContext";
 import { NMSummary, NMSkuRow } from "./supplyData";
 import { useInventoryData } from "@/hooks/useInventoryData";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { ChevronRight, ChevronDown, Upload, Download, Pencil, Bell, FileSpreadsheet, Loader2, PackageOpen } from "lucide-react";
+import { ChevronRight, ChevronDown, Upload, Download, Pencil, Bell, FileSpreadsheet, Loader2, PackageOpen, ShieldAlert } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
+import { FACTORIES, NM_INVENTORY, type NmId } from "@/data/unis-enterprise-dataset";
+import { NmCommitmentResponses } from "./NmCommitmentResponses";
+import { NmSupplyHeader } from "./NmSupplyHeader";
+import { NmUploadPreviewDialog } from "./NmUploadPreviewDialog";
 
 /* ─── Upload Zone ─── */
 function UploadZone() {
