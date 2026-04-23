@@ -512,7 +512,13 @@ export default function MonitoringPage() {
 
           {/* Section B: Heatmap HSTK */}
           <div className="rounded-card border border-surface-3 bg-surface-2 p-5">
-            <h3 className="font-display text-body font-semibold text-text-1 mb-3">Heatmap HSTK (ngày)</h3>
+            <h3 className="font-display text-body font-semibold text-text-1 mb-3">
+              Heatmap{" "}
+              <TermTooltip term="HSTK">
+                <span className="text-text-1">HSTK</span>
+              </TermTooltip>{" "}
+              (ngày)
+            </h3>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
