@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Search, Plus, Upload, X, AlertTriangle, CheckCircle2, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
+import { PriceListsTab } from "@/components/master/PriceListsTab";
 import {
   SKU_BASES,
   SKU_VARIANTS,
