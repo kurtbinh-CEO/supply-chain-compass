@@ -19,6 +19,7 @@ import {
   FACTORIES, NM_COMMITMENTS, NM_INVENTORY,
   type CommitmentTier, type NmId,
 } from "@/data/unis-enterprise-dataset";
+import { NmCounterHistoryPanel } from "@/components/supply/NmCounterHistoryPanel";
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  Portal scope: 1 NM = TOKO (logged-in supplier identity)                   */
@@ -453,6 +454,9 @@ export default function SupplierPortalPage() {
 
           {/* ─────────────────────────────────── TAB 1: Commitments ──────── */}
           <TabsContent value="commitments" className="space-y-4">
+            {/* Counter history (renders only if counter_rate > 30%) */}
+            <NmCounterHistoryPanel nmId={PORTAL_NM} nmName={portalFactory.name} threshold={30} />
+
             {/* Tier legend */}
             <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
               <div className="text-caption uppercase text-text-3 mb-2">Khung cam kết</div>
