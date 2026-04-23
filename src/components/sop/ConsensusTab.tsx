@@ -185,65 +185,7 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
 
   const skuPivotData = pivotMode === "sku" ? buildSkuPivot(data) : [];
 
-  /* ═══ SKU-first drill: per CN for a SKU ═══ */
-  if (pivotMode === "sku" && drillSku) {
-    const skuRow = skuPivotData.find(r => `${r.item}|${r.variant}` === drillSku);
-    if (!skuRow) return null;
-    return (
-      <div className="space-y-4 animate-fade-in">
-        <div className="flex items-center gap-2 text-table-sm">
-          <button onClick={() => setDrillSku(null)} className="text-primary font-medium hover:underline flex items-center gap-1">
-            <ChevronLeft className="h-3.5 w-3.5" /> Per SKU
-          </button>
-          <span className="text-text-3">/</span>
-          <span className="text-text-1 font-medium">{skuRow.item} {skuRow.variant} (v3: {skuRow.v3.toLocaleString()} m²)</span>
-        </div>
-        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-table-sm">
-              <thead>
-                <tr className="border-b border-surface-3 bg-surface-1/50">
-                  {["CN", "v0 Statistical", "v1 Sales", "v2 CN Input", "v3 Consensus", "AOP", "vs AOP", "FVA best"].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {skuRow.cnBreakdown.map((cb, i) => {
-                  const delta = cb.aop > 0 ? Math.round(((cb.v3 - cb.aop) / cb.aop) * 100) : 0;
-                  const aopColor = Math.abs(delta) <= 5 ? "text-success" : delta > 0 ? "text-warning" : "text-danger";
-                  return (
-                    <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
-                      <td className="px-4 py-2.5 font-medium text-text-1">{cb.cn}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-text-2">{cb.v0.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-text-2">{cb.v1.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-text-2">{cb.v2.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-primary font-bold">{cb.v3.toLocaleString()}</td>
-                      <td className="px-4 py-2.5 tabular-nums text-text-3">{cb.aop.toLocaleString()}</td>
-                      <td className={cn("px-4 py-2.5 tabular-nums font-medium", aopColor)}>
-                        {delta > 0 ? "+" : ""}{delta}% {Math.abs(delta) > 5 ? "⚠" : ""}
-                      </td>
-                      <td className="px-4 py-2.5 text-text-2">{cb.fvaBest}</td>
-                    </tr>
-                  );
-                })}
-                <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
-                  <td className="px-4 py-2.5 text-text-1">TOTAL</td>
-                  <td className="px-4 py-2.5 tabular-nums text-text-1">{skuRow.v0.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-text-1">{skuRow.v1.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-text-1">{skuRow.v2.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-primary font-bold">{skuRow.v3.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-text-3">{skuRow.aop.toLocaleString()}</td>
-                  <td /><td />
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+  /* SKU-first drill is now INLINE (expandedSku state) — no separate page. */
   /* ═══ CN-first drill (existing) ═══ */
   if (pivotMode === "cn" && drillCn !== null) {
     const row = data[drillCn];
