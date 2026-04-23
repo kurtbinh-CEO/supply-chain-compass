@@ -213,6 +213,9 @@ export function TopBar() {
       {/* Tenant selector */}
       <TenantDropdown tenant={tenant} setTenant={setTenant} tenants={tenants} />
 
+      {/* Freshness indicator (P26) */}
+      <FreshnessIndicator />
+
       {/* Divider */}
       <div className="h-5 w-px bg-surface-3" />
 
