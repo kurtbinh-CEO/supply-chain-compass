@@ -425,22 +425,29 @@ export default function MonitoringPage() {
       {/* ═══ TAB 1: Tổng quan ═══ */}
       {activeTab === "overview" && (
         <div className="space-y-6 animate-fade-in">
-          {/* Section A: 6 KPI Cards */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* Section A: 7 KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {[
-              { label: "HSTK trung bình", value: "8,5d", target: "target 7d", delta: "↗ +1,3d vs tháng trước", spark: kpiSparklines.hstk, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "inv", logicTab: "ss" as const, logicNode: 0, logicTip: "Công thức Safety Stock" },
-              { label: "Fill rate", value: "95,5%", target: "target 95%", delta: "→ stable", spark: kpiSparklines.fillRate, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "inv", logicTab: "daily" as const, logicNode: 3, logicTip: "Logic phân bổ 6 lớp" },
-              { label: "FC Accuracy (MAPE)", value: "18,4%", target: "target <15%", delta: "↘ từ 15,2%", spark: kpiSparklines.fcAccuracy, color: "var(--color-danger-text)", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 2, logicTip: "MAPE là gì?" },
-              { label: "NM Honoring", value: "77%", target: "target 85%", delta: "↘ xấu hơn", spark: kpiSparklines.nmHonoring, color: "var(--color-danger-text)", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 4, logicTip: "FVA & NM Honoring" },
-              { label: "Working Capital", value: "1,2 tỷ₫", target: "target 1,0B", delta: "+20% over", spark: kpiSparklines.wc, color: "var(--color-warning-text)", bg: "bg-warning-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 2, logicTip: "SS ↔ Working Capital" },
-              { label: "LCNB Savings", value: "96M₫", target: "tháng này", delta: "↗ +14M vs T3", spark: kpiSparklines.lcnb, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 3, logicTip: "LCNB giảm SS network" },
+              { label: "HSTK trung bình", termKey: "HSTK", value: "8,5d", target: "target 7d", delta: "↗ +1,3d vs tháng trước", spark: kpiSparklines.hstk, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "inv", logicTab: "ss" as const, logicNode: 0, logicTip: "Công thức Safety Stock" },
+              { label: "Fill rate", termKey: "FillRate", value: "95,5%", target: "target 95%", delta: "→ stable", spark: kpiSparklines.fillRate, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "inv", logicTab: "daily" as const, logicNode: 3, logicTip: "Logic phân bổ 6 lớp" },
+              { label: "FC Accuracy (MAPE)", termKey: "MAPE", value: "18,4%", target: "target <15%", delta: "↘ từ 15,2%", spark: kpiSparklines.fcAccuracy, color: "var(--color-danger-text)", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 2, logicTip: "MAPE là gì?" },
+              { label: "NM Honoring", termKey: "HonoringRate", value: "77%", target: "target 85%", delta: "↘ xấu hơn", spark: kpiSparklines.nmHonoring, color: "var(--color-danger-text)", bg: "bg-danger-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 4, logicTip: "FVA & NM Honoring" },
+              { label: "Working Capital", termKey: undefined as string | undefined, value: "1,2 tỷ₫", target: "target 1,0B", delta: "+20% over", spark: kpiSparklines.wc, color: "var(--color-warning-text)", bg: "bg-warning-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 2, logicTip: "SS ↔ Working Capital" },
+              { label: "LCNB Savings", termKey: "LCNB", value: "96M₫", target: "tháng này", delta: "↗ +14M vs T3", spark: kpiSparklines.lcnb, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "perf", logicTab: "ss" as const, logicNode: 3, logicTip: "LCNB giảm SS network" },
+              { label: "Độ chính xác hệ thống", termKey: undefined, value: `${Math.round((SYSTEM_ACCURACY.fillRatePct + SYSTEM_ACCURACY.drpAccuracyPct + SYSTEM_ACCURACY.lcnbHitRatePct + SYSTEM_ACCURACY.containerFillAvgPct) / 4)}%`, target: "target 80%", delta: "↗ +3pp vs T4", spark: kpiSparklines.fillRate, color: "var(--color-success-text)", bg: "bg-success-bg/40", tab: "perf", logicTab: "forecast" as const, logicNode: 0, logicTip: "Hệ thống chính xác = trung bình 4 chỉ số: Fill Rate, DRP accuracy, LCNB hit rate, Container fill" },
             ].map((kpi) => (
               <div
                 key={kpi.label}
                 className={cn("rounded-card border border-surface-3 p-4 text-left", kpi.bg)}
               >
                 <div className="text-[11px] font-body uppercase tracking-wider text-text-3 mb-1 flex items-center gap-1">
-                  {kpi.label}
+                  {kpi.termKey ? (
+                    <TermTooltip term={kpi.termKey}>
+                      <span>{kpi.label}</span>
+                    </TermTooltip>
+                  ) : (
+                    <span>{kpi.label}</span>
+                  )}
                   <LogicLink tab={kpi.logicTab} node={kpi.logicNode} tooltip={kpi.logicTip} />
                 </div>
                 <div className="flex items-end justify-between gap-3">
