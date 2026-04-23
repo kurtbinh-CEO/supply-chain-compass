@@ -315,6 +315,7 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
             <table className="w-full text-table-sm">
               <thead>
                 <tr className="border-b border-surface-3 bg-surface-1/50">
+                  <th className="w-8 px-2 py-2.5"></th>
                   {[
                     { h: "CN" }, { h: "v0 Statistical" }, { h: "v1 Sales" }, { h: "v2 CN Input" }, { h: "v3 Consensus ★" },
                     { h: "AOP target" }, { h: "vs AOP" },
@@ -347,17 +348,31 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
                   const explanation = varianceExplanations[row.cn] ?? "";
                   const explanationOk = explanation.trim().length >= 6;
 
+                  const severity: "shortage" | "ok" = isVariance ? "shortage" : "ok";
+                  const isOpen = expandedCn.has(row.cn);
+                  const bottomUpAop = row.skus.reduce((a, s) => a + s.aop, 0);
+
                   return (
                     <React.Fragment key={i}>
                       <tr
+                        data-severity={severity}
+                        data-keyboard-row={`sop-cn-${row.cn}`}
                         className={cn(
                           "border-b border-surface-3/50 hover:bg-primary/5 transition-colors",
                           i % 2 === 0 ? "bg-surface-0" : "bg-surface-2",
                           isVariance && "!bg-danger-bg/60 border-l-2 border-l-danger",
+                          isOpen && !isVariance && "bg-surface-1/40",
                         )}
                         title={isVariance ? "Chênh lệch >10% — phải giải thích trước khi khóa" : undefined}
                       >
-                        <td className="px-4 py-3 font-medium text-text-1">
+                        <td
+                          className="px-2 py-3 text-text-3 cursor-pointer"
+                          onClick={() => toggleCn(row.cn)}
+                          title={isOpen ? "Thu gọn" : "Mở rộng"}
+                        >
+                          {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-text-1 cursor-pointer" onClick={() => toggleCn(row.cn)}>
                           <span className="flex items-center gap-1.5">
                             {row.cn}
                             {isVariance && (
@@ -409,41 +424,74 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
                           </button>
                         </td>
                       </tr>
-                      {isVariance && (
-                        <tr className="bg-danger-bg/30 border-b border-danger/20 animate-fade-in">
+                      {isOpen && (
+                        <tr className={cn("border-b border-surface-3/50 animate-fade-in", isVariance ? "bg-danger-bg/30" : "bg-surface-1/30")}>
+                          <td></td>
                           <td colSpan={9} className="px-4 py-3">
-                            <div className="flex items-start gap-3">
-                              <AlertTriangle className="h-4 w-4 text-danger mt-0.5 flex-shrink-0" />
-                              <div className="flex-1">
-                                <p className="text-table-sm text-text-1 font-medium mb-1">
-                                  Chênh lệch top-down vs bottom-up = {variancePct > 0 ? "+" : ""}{Math.round(variancePct)}% — vượt biên ±10%
-                                  <span className="text-text-3 font-normal ml-2">
-                                    (v0 top-down: {row.v0.toLocaleString()} m² · Σ(SKU v3): {bottomUpV3.toLocaleString()} m²)
-                                  </span>
-                                </p>
-                                <p className="text-caption text-text-3 mb-2">
-                                  Phải giải thích trước khi khóa. Tối thiểu 6 ký tự.
-                                </p>
-                                <textarea
-                                  value={explanation}
-                                  onChange={(e) => onUpdateVariance?.(row.cn, e.target.value)}
-                                  disabled={locked}
-                                  placeholder="VD: B2B deal lớn confirmed Q2 — pipeline +14% vs FC gốc."
-                                  className={cn(
-                                    "w-full rounded-md border px-3 py-2 text-table-sm bg-surface-0 focus:outline-none focus:ring-2 transition-colors",
-                                    explanationOk
-                                      ? "border-success/40 focus:ring-success/30 text-text-1"
-                                      : "border-danger/40 focus:ring-danger/30 text-text-1",
-                                  )}
-                                  rows={2}
-                                />
-                                {explanationOk && (
-                                  <p className="text-caption text-success mt-1 font-medium">
-                                    ✅ Đã giải thích — sẵn sàng khóa
+                            {isVariance ? (
+                              <div className="flex items-start gap-3">
+                                <AlertTriangle className="h-4 w-4 text-danger mt-0.5 flex-shrink-0" />
+                                <div className="flex-1">
+                                  <p className="text-table-sm text-text-1 font-medium mb-1">
+                                    Chênh lệch top-down vs bottom-up = {variancePct > 0 ? "+" : ""}{Math.round(variancePct)}% — vượt biên ±10%
+                                    <span className="text-text-3 font-normal ml-2">
+                                      (v0 top-down: {row.v0.toLocaleString()} m² · Σ(SKU v3): {bottomUpV3.toLocaleString()} m²)
+                                    </span>
                                   </p>
-                                )}
+                                  <p className="text-caption text-text-3 mb-2">
+                                    Phải giải thích trước khi khóa. Tối thiểu 6 ký tự.
+                                  </p>
+                                  <textarea
+                                    value={explanation}
+                                    onChange={(e) => onUpdateVariance?.(row.cn, e.target.value)}
+                                    disabled={locked}
+                                    placeholder="VD: B2B deal lớn confirmed Q2 — pipeline +14% vs FC gốc."
+                                    className={cn(
+                                      "w-full rounded-md border px-3 py-2 text-table-sm bg-surface-0 focus:outline-none focus:ring-2 transition-colors",
+                                      explanationOk
+                                        ? "border-success/40 focus:ring-success/30 text-text-1"
+                                        : "border-danger/40 focus:ring-danger/30 text-text-1",
+                                    )}
+                                    rows={2}
+                                  />
+                                  {explanationOk && (
+                                    <p className="text-caption text-success mt-1 font-medium">
+                                      ✅ Đã giải thích — sẵn sàng khóa
+                                    </p>
+                                  )}
+                                </div>
                               </div>
-                            </div>
+                            ) : (
+                              /* OK row breakdown — version journey + SKU sub-totals */
+                              <div className="space-y-2">
+                                <p className="text-caption uppercase text-text-3 tracking-wider">
+                                  Hành trình version cho {row.cn}
+                                </p>
+                                <div className="flex items-center gap-2 text-table-sm">
+                                  {[
+                                    { k: "v0", v: row.v0, color: "text-text-2" },
+                                    { k: "v1", v: row.v1, color: "text-text-2" },
+                                    { k: "v2", v: row.v2, color: "text-text-2" },
+                                    { k: "v3", v: row.v3, color: "text-primary font-semibold" },
+                                  ].map((step, idx, arr) => (
+                                    <React.Fragment key={step.k}>
+                                      <div className="flex flex-col items-start">
+                                        <span className="text-caption text-text-3">{step.k}</span>
+                                        <span className={cn("tabular-nums", step.color)}>{step.v.toLocaleString()}</span>
+                                      </div>
+                                      {idx < arr.length - 1 && <ChevronRight className="h-3.5 w-3.5 text-text-3" />}
+                                    </React.Fragment>
+                                  ))}
+                                  <div className="flex-1" />
+                                  <span className="text-caption text-text-3">
+                                    Σ(SKU v3) = {bottomUpV3.toLocaleString()} m² · Σ(SKU AOP) = {bottomUpAop.toLocaleString()} m²
+                                  </span>
+                                </div>
+                                <p className="text-caption text-text-3">
+                                  {row.skus.length} SKU đã tổng hợp · top-down ↔ bottom-up khớp trong ±10% — không cần giải trình.
+                                </p>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       )}
@@ -451,6 +499,7 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
                   );
                 })}
                 <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
+                  <td></td>
                   <td className="px-4 py-3 text-text-1">TOTAL</td>
                   <td className="px-4 py-3 tabular-nums text-text-1">{totals.v0.toLocaleString()}</td>
                   <td className="px-4 py-3 tabular-nums text-text-1">{totals.v1.toLocaleString()}</td>
