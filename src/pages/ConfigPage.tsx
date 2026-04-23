@@ -1,328 +1,404 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Search, History } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TermTooltip } from "@/components/TermTooltip";
+import { TERMS } from "@/components/i18n/terms";
 import { toast } from "sonner";
+import { CONFIG_KEYS, type ConfigGroup, type ConfigKey as DsConfigKey } from "@/data/unis-enterprise-dataset";
 
-/* ── Config data types ── */
-interface ConfigKey {
-  key: string;
+/* ── Tab structure (8 functional groupings) ── */
+type TabDef = {
+  v: string;
+  l: string; // VN label
+  groups: ConfigGroup[];
+  // optional include/exclude predicate to refine
+  include?: (k: DsConfigKey) => boolean;
+};
+
+const TABS: TabDef[] = [
+  {
+    v: "demand_sop",
+    l: "A. Nhu cầu & S&OP",
+    groups: ["Demand", "S&OP"],
+  },
+  {
+    v: "safety_stock",
+    l: "B. Tồn kho an toàn",
+    groups: ["Inventory", "Feedback"],
+    include: (k) =>
+      k.group === "Inventory" ||
+      k.key.includes("ss") ||
+      k.key.includes("trust") ||
+      k.key.includes("mape") ||
+      k.key.includes("fillrate"),
+  },
+  {
+    v: "nm_commit",
+    l: "C. Cam kết nhà máy",
+    groups: ["Supply", "Hub"],
+  },
+  {
+    v: "cn_adjust",
+    l: "D. Điều chỉnh CN",
+    groups: ["RBAC", "Tenant"],
+  },
+  {
+    v: "alloc_lcnb",
+    l: "E. Phân bổ & LCNB",
+    groups: ["LCNB", "DRP"],
+    include: (k) => k.group === "LCNB" || k.key.startsWith("drp.ss") || k.key.includes("netting") || k.key.includes("review") || k.key.includes("auto_lock"),
+  },
+  {
+    v: "transport",
+    l: "F. Vận tải & đóng hàng",
+    groups: ["Transport", "Hub"],
+    include: (k) => k.group === "Transport" || k.key.startsWith("hub.moq"),
+  },
+  {
+    v: "po_sync",
+    l: "G. PO & đồng bộ",
+    groups: ["DRP"],
+    include: (k) => k.key.startsWith("drp.run") || k.key.startsWith("drp.batch") || k.key.startsWith("drp.release") || k.key.startsWith("drp.high_value") || k.key.includes("required_role"),
+  },
+  {
+    v: "feedback_ops",
+    l: "H. Phản hồi & vận hành",
+    groups: ["Workflow", "Notification", "Audit", "Feedback"],
+    include: (k) =>
+      k.group === "Workflow" ||
+      k.group === "Notification" ||
+      k.group === "Audit" ||
+      (k.group === "Feedback" && (k.key.includes("honoring") || k.key.includes("lcnb_hit"))),
+  },
+];
+
+/* ── Mutable runtime config row ── */
+type RuntimeConfig = DsConfigKey & {
   value: string;
-  desc: string;
-  type: "text" | "number" | "toggle" | "select";
+  inputType: "number" | "toggle" | "select" | "text";
   options?: string[];
+};
+
+function deriveType(k: DsConfigKey): { inputType: RuntimeConfig["inputType"]; options?: string[] } {
+  if (typeof k.defaultValue === "boolean") return { inputType: "toggle" };
+  if (typeof k.defaultValue === "number") return { inputType: "number" };
+  // string heuristics
+  const v = String(k.defaultValue);
+  // enum-like options
+  if (k.key === "supply.commit.tier_default") return { inputType: "select", options: ["Firm", "Soft", "Best-effort"] };
+  if (k.key === "drp.netting.level") return { inputType: "select", options: ["sku_base", "sku_variant"] };
+  if (k.key === "drp.ss.formula") return { inputType: "select", options: ["sigma_fc_error", "sigma_demand"] };
+  if (k.key.endsWith("required_role") || k.key === "audit.export.role") return { inputType: "select", options: ["admin", "sc_manager", "cn_manager", "buyer", "viewer"] };
+  if (k.key === "rbac.default_role") return { inputType: "select", options: ["admin", "sc_manager", "cn_manager", "buyer", "sales", "viewer"] };
+  if (k.key === "rbac.cn_manager.scope") return { inputType: "select", options: ["own_cn", "region", "all"] };
+  if (k.key === "lcnb.order") return { inputType: "select", options: ["scan_cn_then_hub", "hub_first", "cn_only"] };
+  if (k.key === "hub.sourcing.objective") return { inputType: "select", options: ["Hybrid", "LT", "Cost"] };
+  if (k.key === "sop.fva.benchmark") return { inputType: "select", options: ["AI", "HW", "Naive"] };
+  if (k.key === "tenant.default") return { inputType: "select", options: ["UNIS Group", "TTC Agro", "Mondelez VN"] };
+  if (k.key.startsWith("notify.") && k.key.endsWith(".channel")) return { inputType: "select", options: ["in_app", "email", "in_app+email", "sms"] };
+  return { inputType: "text" };
 }
 
-interface NotifType {
-  type: string;
-  channel: string;
-  urgency: string;
-  recipients: string;
+function toRuntime(k: DsConfigKey): RuntimeConfig {
+  const { inputType, options } = deriveType(k);
+  return { ...k, value: String(k.defaultValue), inputType, options };
 }
 
-interface FeatureToggle {
-  feature: string;
-  unis: boolean;
-  ttc: boolean;
-  mdlz: boolean;
+/* ── Audit log entry ── */
+interface AuditEntry {
+  id: string;
+  key: string;
+  oldValue: string;
+  newValue: string;
+  by: string;
+  at: number;
 }
 
-interface RbacRow {
-  screen: string;
-  cn_manager: string;
-  sc_manager: string;
-  sales: string;
-  buyer: string;
-  viewer: string;
+const SEED_AUDIT: AuditEntry[] = [
+  { id: "a1", key: "drp.ss.z_default", oldValue: "1.50", newValue: "1.65", by: "Nguyễn Văn A (SC)", at: Date.now() - 3600_000 * 4 },
+  { id: "a2", key: "supply.nm.honoring_min", oldValue: "75", newValue: "80", by: "Trần Thị B (Admin)", at: Date.now() - 3600_000 * 12 },
+  { id: "a3", key: "lcnb.distance_max_km", oldValue: "400", newValue: "500", by: "Lê Văn C (SC)", at: Date.now() - 3600_000 * 26 },
+  { id: "a4", key: "sop.balance.tolerance_pct", oldValue: "10", newValue: "5", by: "Nguyễn Văn A (SC)", at: Date.now() - 3600_000 * 48 },
+  { id: "a5", key: "transport.container.fill_min", oldValue: "55", newValue: "60", by: "Phạm Thị D (Admin)", at: Date.now() - 3600_000 * 72 },
+];
+
+/* ── Helpers ── */
+function timeAgo(ts: number): string {
+  const diff = Date.now() - ts;
+  const h = Math.floor(diff / 3_600_000);
+  if (h < 1) return "vừa xong";
+  if (h < 24) return `${h}h trước`;
+  return `${Math.floor(h / 24)}d trước`;
 }
 
-const planningKeys: ConfigKey[] = [
-  { key: "sop.lock_day", value: "7", desc: "Ngày lock consensus trong tháng", type: "number" },
-  { key: "sop.compare_versions", value: "4", desc: "Số versions so sánh (v0-v3)", type: "number" },
-  { key: "booking.moq_round_policy", value: "ceil", desc: "Cách round MOQ", type: "select", options: ["ceil", "nearest", "manual"] },
-  { key: "booking.poq_weeks", value: "2", desc: "Gộp mấy tuần cho POQ", type: "number" },
-  { key: "booking.container_optimization", value: "true", desc: "Tối ưu container capacity", type: "toggle" },
-  { key: "cn_adjust.cutoff_time", value: "18:00", desc: "Deadline CN nhập điều chỉnh", type: "text" },
-  { key: "cn_adjust.tolerance_default", value: "30", desc: "Tolerance mặc định per CN (%)", type: "number" },
-  { key: "cn_adjust.auto_approve_threshold", value: "10", desc: "Dưới % → auto-approve", type: "number" },
-];
+/** Simple key→TERMS heuristic so the description gets a tooltip when relevant. */
+function termKeyFor(cfgKey: string): string | null {
+  const upper = cfgKey.toUpperCase();
+  if (upper.includes("LCNB")) return "LCNB";
+  if (upper.includes(".SS") || upper.includes("SAFETY")) return "SS";
+  if (upper.includes("MAPE")) return "MAPE";
+  if (upper.includes("FVA")) return "FVA";
+  if (upper.includes("HSTK")) return "HSTK";
+  if (upper.startsWith("DRP.") && upper.includes("BATCH")) return "PO";
+  return null;
+}
 
-const drpKeys: ConfigKey[] = [
-  { key: "drp.run_time", value: "23:00", desc: "Thời gian DRP chạy nightly", type: "text" },
-  { key: "drp.horizon_weeks", value: "6", desc: "Horizon netting", type: "number" },
-  { key: "nm_atp.stale_threshold_hours", value: "24", desc: "NM data > X giờ = stale", type: "number" },
-  { key: "nm_atp.confidence_weight_api", value: "0.95", desc: "Confidence cho data API", type: "number" },
-  { key: "nm_atp.confidence_weight_manual", value: "0.60", desc: "Confidence cho data manual", type: "number" },
-  { key: "gap.shortage_handling", value: "request_supply", desc: "Khi shortage: lost_sales / request / partial", type: "select", options: ["lost_sales", "request_supply", "partial_fill"] },
-];
-
-const lateralKeys: ConfigKey[] = [
-  { key: "lcnb.enabled", value: "true", desc: "Bật/tắt LCNB", type: "toggle" },
-  { key: "lcnb.priority_rule", value: "HYBRID", desc: "nearest / most-excess / hybrid", type: "select", options: ["nearest", "most-excess", "HYBRID"] },
-  { key: "lcnb.min_excess", value: "50", desc: "Minimum excess để trigger lateral (m²)", type: "number" },
-  { key: "lcnb.max_transfer_pct", value: "80", desc: "Max % excess được chuyển", type: "number" },
-  { key: "lcnb.require_approval", value: "true", desc: "Cần duyệt trước khi chuyển", type: "toggle" },
-  { key: "lcnb.cost_threshold", value: "70", desc: "Chỉ lateral nếu cost < X% vs PO mới", type: "number" },
-];
-
-const feedforwardKeys: ConfigKey[] = [
-  { key: "feedback.honoring_discount_enabled", value: "true", desc: "Auto-discount ATP khi NM honoring thấp", type: "toggle" },
-  { key: "feedback.honoring_threshold", value: "80", desc: "Dưới → auto-discount (%)", type: "number" },
-  { key: "feedback.trust_score_auto_adjust", value: "true", desc: "CN trust tự giảm khi gap > 15%", type: "toggle" },
-  { key: "feedback.ss_auto_increase_on_stockout", value: "true", desc: "SS +15% khi stockout > 2x/month", type: "toggle" },
-  { key: "pod.overdue_hours", value: "24", desc: "Quá X giờ → POD_OVERDUE alert", type: "number" },
-  { key: "pod.auto_remind", value: "true", desc: "Tự nhắc CN upload POD", type: "toggle" },
-];
-
-const notifTypes: NotifType[] = [
-  { type: "SHORTAGE", channel: "Push + Email", urgency: "High", recipients: "Planner, SC Manager" },
-  { type: "PO_OVERDUE", channel: "Push + Email", urgency: "Medium", recipients: "Buyer, Planner" },
-  { type: "FC_DRIFT", channel: "Push", urgency: "Low", recipients: "Planner" },
-  { type: "POD_OVERDUE", channel: "Push", urgency: "Medium", recipients: "CN Manager" },
-  { type: "APPROVAL_NEEDED", channel: "Push + Email", urgency: "High", recipients: "Approver (per type)" },
-  { type: "SS_BREACH", channel: "Push", urgency: "Medium", recipients: "Planner" },
-  { type: "NM_STALE", channel: "Push", urgency: "Low", recipients: "Planner" },
-  { type: "LCNB_TRIGGER", channel: "Push", urgency: "Medium", recipients: "SC Manager" },
-  { type: "FC_LOCK", channel: "Email", urgency: "Low", recipients: "All stakeholders" },
-];
-
-const rbacMatrix: RbacRow[] = [
-  { screen: "/cn-portal Tab 1 Điều chỉnh", cn_manager: "✅ Sửa CN mình", sc_manager: "✅ Sửa all + duyệt", sales: "👁 Read-only", buyer: "❌", viewer: "❌" },
-  { screen: "/cn-portal Tab 2 Tồn kho", cn_manager: "👁 CN mình", sc_manager: "👁 All CN", sales: "❌", buyer: "👁 All", viewer: "❌" },
-  { screen: "/cn-portal Tab 3 Trao đổi", cn_manager: "✅ CN mình", sc_manager: "✅ All", sales: "✅ Threads mình", buyer: "👁", viewer: "❌" },
-  { screen: "/demand", cn_manager: "❌", sc_manager: "✅ Full", sales: "✅ B2B tab only", buyer: "❌", viewer: "👁" },
-  { screen: "/sop", cn_manager: "❌", sc_manager: "✅ Full", sales: "👁 Tab 1 only", buyer: "❌", viewer: "👁" },
-  { screen: "/hub", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "✅ Full", viewer: "👁" },
-  { screen: "/supply", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "✅ Full", viewer: "❌" },
-  { screen: "/orders", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "✅ Full", viewer: "👁" },
-  { screen: "/drp", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "❌", viewer: "👁" },
-  { screen: "/monitoring", cn_manager: "👁 CN mình", sc_manager: "✅ Full", sales: "❌", buyer: "❌", viewer: "👁" },
-  { screen: "/supplier-portal", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "❌", viewer: "❌" },
-  { screen: "/config", cn_manager: "❌", sc_manager: "✅ Full", sales: "❌", buyer: "❌", viewer: "❌" },
-];
-
-const concurrentKeys: ConfigKey[] = [
-  { key: "concurrent.cell_lock_ttl_seconds", value: "120", desc: "Cell lock timeout (giây). Idle → release.", type: "number" },
-  { key: "concurrent.heartbeat_interval_seconds", value: "10", desc: "WebSocket ping interval.", type: "number" },
-  { key: "concurrent.heartbeat_timeout_seconds", value: "15", desc: "Disconnect = release lock sau X giây.", type: "number" },
-  { key: "concurrent.auto_save_interval_seconds", value: "30", desc: "Draft auto-save mỗi X giây.", type: "number" },
-  { key: "concurrent.force_edit_allowed", value: "true", desc: "Cho phép ghi đè cell locked.", type: "toggle" },
-  { key: "concurrent.version_check_enabled", value: "true", desc: "Entity version check khi save.", type: "toggle" },
-  { key: "concurrent.batch_lock_enabled", value: "true", desc: "Exclusive lock cho DRP batch.", type: "toggle" },
-  { key: "concurrent.batch_max_duration_minutes", value: "30", desc: "Force-kill batch sau X phút.", type: "number" },
-  { key: "concurrent.snapshot_retention_days", value: "30", desc: "Giữ snapshots X ngày cho audit.", type: "number" },
-  { key: "concurrent.pre_lock_grace_minutes", value: "5", desc: "Notify editors X phút trước lock.", type: "number" },
-  { key: "concurrent.pending_action_ttl_hours", value: "24", desc: "Hủy queued actions sau X giờ.", type: "number" },
-];
-
-const featureToggles: FeatureToggle[] = [
-  { feature: "LCNB Lateral", unis: true, ttc: false, mdlz: false },
-  { feature: "B2B Pipeline", unis: true, ttc: false, mdlz: true },
-  { feature: "FC Commitment Tiers", unis: true, ttc: true, mdlz: false },
-  { feature: "Container Optimization", unis: true, ttc: false, mdlz: false },
-  { feature: "CN Mobile Adjust", unis: true, ttc: true, mdlz: true },
-];
-
-/* ── Inline editable value cell ── */
-function EditableValue({ config, onChange }: { config: ConfigKey; onChange: (v: string) => void }) {
-  if (config.type === "toggle") {
-    const on = config.value === "true";
+/* ── Editable value cell ── */
+function ValueEditor({ cfg, onChange }: { cfg: RuntimeConfig; onChange: (v: string) => void }) {
+  if (cfg.inputType === "toggle") {
+    const on = cfg.value === "true";
     return (
-      <button
-        onClick={() => onChange(on ? "false" : "true")}
-        className={`w-10 h-5 rounded-full transition-colors relative ${on ? "bg-primary" : "bg-surface-3"}`}
-      >
-        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface-2 shadow transition-transform ${on ? "left-5" : "left-0.5"}`} />
-      </button>
+      <Switch
+        checked={on}
+        onCheckedChange={(c) => onChange(c ? "true" : "false")}
+        aria-label={cfg.key}
+      />
     );
   }
-  if (config.type === "select" && config.options) {
+  if (cfg.inputType === "select" && cfg.options) {
     return (
-      <select
-        value={config.value}
-        onChange={e => onChange(e.target.value)}
-        className="h-8 rounded-button border border-surface-3 bg-surface-0 px-2 text-table text-text-1"
-      >
-        {config.options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
+      <Select value={cfg.value} onValueChange={onChange}>
+        <SelectTrigger className="h-8 w-44 text-table">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {cfg.options.map((o) => (
+            <SelectItem key={o} value={o} className="text-table">
+              {o}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+  if (cfg.inputType === "number") {
+    return (
+      <Input
+        type="number"
+        value={cfg.value}
+        onChange={(e) => {
+          const v = e.target.value;
+          // Validate numeric
+          if (v !== "" && Number.isNaN(Number(v))) return;
+          onChange(v);
+        }}
+        className="h-8 w-28 text-table tabular-nums"
+      />
     );
   }
   return (
-    <input
-      type={config.type === "number" ? "number" : "text"}
-      value={config.value}
-      onChange={e => onChange(e.target.value)}
-      className="w-24 h-8 rounded-button border border-surface-3 bg-surface-0 px-2 text-table text-text-1 tabular-nums"
+    <Input
+      value={cfg.value}
+      onChange={(e) => onChange(e.target.value)}
+      className="h-8 w-44 text-table"
     />
   );
 }
 
-/* ── Config table for key-value tabs ── */
-function ConfigTable({ keys, setKeys }: { keys: ConfigKey[]; setKeys: (k: ConfigKey[]) => void }) {
-  const update = (idx: number, val: string) => {
-    const next = [...keys];
-    next[idx] = { ...next[idx], value: val };
-    setKeys(next);
-    toast.success(`${next[idx].key} = ${val}`);
-  };
-
+/* ── Config table ── */
+function ConfigTable({
+  rows,
+  onUpdate,
+}: {
+  rows: RuntimeConfig[];
+  onUpdate: (key: string, newValue: string) => void;
+}) {
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-card border border-surface-3 bg-surface-2 p-8 text-center text-text-3 text-table">
+        Không có config nào khớp.
+      </div>
+    );
+  }
   return (
     <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
       <table className="w-full text-table">
         <thead>
           <tr className="bg-surface-1">
             <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 w-[280px]">Key</th>
-            <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 w-[140px]">Giá trị</th>
-            <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Mô tả</th>
+            <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Tên / Mô tả VN</th>
+            <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 w-[200px]">Giá trị</th>
+            <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 w-[110px]">Loại</th>
           </tr>
         </thead>
         <tbody>
-          {keys.map((k, i) => (
-            <tr key={k.key} className={i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"}>
-              <td className="px-4 py-2.5 font-mono text-table-sm text-text-1">{k.key}</td>
-              <td className="px-4 py-2.5"><EditableValue config={k} onChange={v => update(i, v)} /></td>
-              <td className="px-4 py-2.5 text-text-2">{k.desc}</td>
-            </tr>
-          ))}
+          {rows.map((cfg, i) => {
+            const tk = termKeyFor(cfg.key);
+            const hasTerm = tk && TERMS[tk];
+            return (
+              <tr key={cfg.key} className={i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"}>
+                <td className="px-4 py-2.5 font-mono text-table-sm text-text-1 align-top">{cfg.key}</td>
+                <td className="px-4 py-2.5 text-text-2 align-top">
+                  <div className="flex items-start gap-1.5">
+                    <span>{cfg.description}</span>
+                    {hasTerm && <TermTooltip term={tk!} />}
+                  </div>
+                  {cfg.unit && (
+                    <div className="text-caption text-text-3 mt-0.5">Đơn vị: {cfg.unit}</div>
+                  )}
+                </td>
+                <td className="px-4 py-2.5 align-top">
+                  <ValueEditor cfg={cfg} onChange={(v) => onUpdate(cfg.key, v)} />
+                </td>
+                <td className="px-4 py-2.5 align-top">
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm bg-surface-1 text-caption text-text-3 uppercase tracking-wide">
+                    {cfg.inputType}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
 
+/* ── Page ── */
 export default function ConfigPage() {
-  const [planning, setPlanning] = useState(planningKeys);
-  const [drp, setDrp] = useState(drpKeys);
-  const [lateral, setLateral] = useState(lateralKeys);
-  const [feedforward, setFeedforward] = useState(feedforwardKeys);
-  const [concurrent, setConcurrent] = useState(concurrentKeys);
-  const [toggles, setToggles] = useState(featureToggles);
+  const [configs, setConfigs] = useState<RuntimeConfig[]>(() => CONFIG_KEYS.map(toRuntime));
+  const [audit, setAudit] = useState<AuditEntry[]>(SEED_AUDIT);
+  const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState(TABS[0].v);
 
-  const toggleFeature = (idx: number, tenant: "unis" | "ttc" | "mdlz") => {
-    const next = [...toggles];
-    next[idx] = { ...next[idx], [tenant]: !next[idx][tenant] };
-    setToggles(next);
-    toast.success(`${next[idx].feature} ${tenant.toUpperCase()}: ${next[idx][tenant] ? "ON" : "OFF"}`);
+  /** Filter rows by tab + search. */
+  const visibleByTab = useMemo(() => {
+    const map: Record<string, RuntimeConfig[]> = {};
+    const q = search.trim().toLowerCase();
+    for (const tab of TABS) {
+      let rows = configs.filter((c) => tab.groups.includes(c.group));
+      if (tab.include) rows = rows.filter(tab.include);
+      if (q) {
+        rows = rows.filter(
+          (c) =>
+            c.key.toLowerCase().includes(q) ||
+            c.description.toLowerCase().includes(q),
+        );
+      }
+      map[tab.v] = rows;
+    }
+    return map;
+  }, [configs, search]);
+
+  const totalKeys = configs.length;
+
+  const handleUpdate = (key: string, newValue: string) => {
+    setConfigs((prev) => {
+      const idx = prev.findIndex((c) => c.key === key);
+      if (idx < 0) return prev;
+      const old = prev[idx].value;
+      if (old === newValue) return prev;
+      const next = [...prev];
+      next[idx] = { ...next[idx], value: newValue };
+      // record audit
+      setAudit((a) => [
+        {
+          id: `audit-${Date.now()}`,
+          key,
+          oldValue: old,
+          newValue,
+          by: "Bạn (SC Manager)",
+          at: Date.now(),
+        },
+        ...a,
+      ].slice(0, 50));
+      toast.success(`${key} = ${newValue}`);
+      return next;
+    });
   };
 
   return (
     <AppLayout>
-      <ScreenHeader title="Config" subtitle="Cấu hình hệ thống và tham số" />
-      <Tabs defaultValue="planning">
-        <TabsList className="bg-surface-1 border border-surface-3 mb-4 flex-wrap">
-          {[
-            { v: "planning", l: "Planning" },
-            { v: "drp", l: "DRP & Allocation" },
-            { v: "lateral", l: "Lateral & LCNB" },
-            { v: "feedforward", l: "Feed-forward" },
-            { v: "concurrent", l: "Concurrent" },
-            { v: "notifications", l: "Notifications" },
-            { v: "toggles", l: "Feature Toggles" },
-          ].map(t => (
-            <TabsTrigger key={t.v} value={t.v} className="data-[state=active]:bg-surface-2 data-[state=active]:text-text-1 text-text-2 text-table">
+      <ScreenHeader
+        title="Config"
+        subtitle={`Cấu hình hệ thống — ${totalKeys} tham số trong ${TABS.length} nhóm chức năng`}
+      />
+
+      {/* Search bar */}
+      <div className="mb-4 flex items-center gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-3" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm theo key code hoặc tên VN…"
+            className="pl-8 h-9 text-table"
+          />
+        </div>
+        <span className="text-caption text-text-3">
+          Hiển thị {visibleByTab[activeTab]?.length ?? 0} / {totalKeys} tham số
+        </span>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="bg-surface-1 border border-surface-3 mb-4 flex-wrap h-auto">
+          {TABS.map((t) => (
+            <TabsTrigger
+              key={t.v}
+              value={t.v}
+              className="data-[state=active]:bg-surface-2 data-[state=active]:text-text-1 text-text-2 text-table"
+            >
               {t.l}
+              <span className="ml-1.5 text-caption text-text-3">
+                ({visibleByTab[t.v]?.length ?? 0})
+              </span>
             </TabsTrigger>
           ))}
         </TabsList>
 
-        <TabsContent value="planning"><ConfigTable keys={planning} setKeys={setPlanning} /></TabsContent>
-        <TabsContent value="drp"><ConfigTable keys={drp} setKeys={setDrp} /></TabsContent>
-        <TabsContent value="lateral"><ConfigTable keys={lateral} setKeys={setLateral} /></TabsContent>
-        <TabsContent value="feedforward"><ConfigTable keys={feedforward} setKeys={setFeedforward} /></TabsContent>
-        <TabsContent value="concurrent"><ConfigTable keys={concurrent} setKeys={setConcurrent} /></TabsContent>
-
-        <TabsContent value="notifications">
-          <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-            <table className="w-full text-table">
-              <thead>
-                <tr className="bg-surface-1">
-                  <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Type</th>
-                  <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Channel</th>
-                  <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Urgency</th>
-                  <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Recipients</th>
-                </tr>
-              </thead>
-              <tbody>
-                {notifTypes.map((n, i) => (
-                  <tr key={n.type} className={i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"}>
-                    <td className="px-4 py-2.5 font-medium text-text-1">{n.type}</td>
-                    <td className="px-4 py-2.5 text-text-2">{n.channel}</td>
-                    <td className="px-4 py-2.5">
-                      <span className={`text-caption font-medium px-1.5 py-0.5 rounded-sm ${
-                        n.urgency === "High" ? "bg-danger-bg text-danger" : n.urgency === "Medium" ? "bg-warning-bg text-warning" : "bg-info-bg text-info"
-                      }`}>{n.urgency}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-text-2">{n.recipients}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="toggles">
-          <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-            <table className="w-full text-table">
-              <thead>
-                <tr className="bg-surface-1">
-                  <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Feature</th>
-                  <th className="text-center px-4 py-2.5 text-table-header uppercase text-text-3">UNIS</th>
-                  <th className="text-center px-4 py-2.5 text-table-header uppercase text-text-3">TTC</th>
-                  <th className="text-center px-4 py-2.5 text-table-header uppercase text-text-3">MDLZ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {toggles.map((t, i) => (
-                  <tr key={t.feature} className={i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"}>
-                    <td className="px-4 py-2.5 font-medium text-text-1">{t.feature}</td>
-                    {(["unis", "ttc", "mdlz"] as const).map(tenant => (
-                      <td key={tenant} className="px-4 py-2.5 text-center">
-                        <button
-                          onClick={() => toggleFeature(i, tenant)}
-                          className={`w-10 h-5 rounded-full transition-colors relative inline-block ${t[tenant] ? "bg-primary" : "bg-surface-3"}`}
-                        >
-                          <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface-2 shadow transition-transform ${t[tenant] ? "left-5" : "left-0.5"}`} />
-                        </button>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* RBAC Permission Matrix */}
-          <h3 className="font-display text-body font-semibold text-text-1 mt-6 mb-3">Phân quyền RBAC</h3>
-          <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-table">
-                <thead>
-                  <tr className="bg-surface-1">
-                    <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">Feature / Screen</th>
-                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">CN Manager</th>
-                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">SC Manager</th>
-                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">Sales</th>
-                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">Buyer</th>
-                    <th className="text-center px-3 py-2.5 text-table-header uppercase text-text-3 whitespace-nowrap">Viewer</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rbacMatrix.map((r, i) => (
-                    <tr key={r.screen} className={i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"}>
-                      <td className="px-4 py-2 font-medium text-text-1 whitespace-nowrap text-table-sm">{r.screen}</td>
-                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.cn_manager}</td>
-                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.sc_manager}</td>
-                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.sales}</td>
-                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.buyer}</td>
-                      <td className="px-3 py-2 text-center text-table-sm text-text-2">{r.viewer}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </TabsContent>
+        {TABS.map((t) => (
+          <TabsContent key={t.v} value={t.v}>
+            <ConfigTable rows={visibleByTab[t.v] ?? []} onUpdate={handleUpdate} />
+          </TabsContent>
+        ))}
       </Tabs>
+
+      {/* Audit log panel */}
+      <div className="mt-6">
+        <div className="flex items-center gap-2 mb-3">
+          <History className="h-4 w-4 text-text-2" />
+          <h3 className="font-display text-body font-semibold text-text-1">
+            Nhật ký thay đổi cấu hình
+          </h3>
+          <span className="text-caption text-text-3">(5 thay đổi gần nhất)</span>
+        </div>
+        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+          <table className="w-full text-table">
+            <thead>
+              <tr className="bg-surface-1">
+                <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Key</th>
+                <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Giá trị cũ</th>
+                <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Giá trị mới</th>
+                <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Bởi</th>
+                <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3">Khi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {audit.slice(0, 5).map((a, i) => (
+                <tr key={a.id} className={i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"}>
+                  <td className="px-4 py-2 font-mono text-table-sm text-text-1">{a.key}</td>
+                  <td className="px-4 py-2 text-text-3 line-through tabular-nums">{a.oldValue}</td>
+                  <td className="px-4 py-2 text-success font-medium tabular-nums">{a.newValue}</td>
+                  <td className="px-4 py-2 text-text-2">{a.by}</td>
+                  <td className="px-4 py-2 text-text-3">{timeAgo(a.at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <ScreenFooter actionCount={4} />
     </AppLayout>
   );
