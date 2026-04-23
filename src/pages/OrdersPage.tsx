@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { TransferOrdersTab } from "@/components/orders/TransferOrdersTab";
 import { HoldOrShipPanel } from "@/components/orders/HoldOrShipPanel";
-import { PO_DRAFT } from "@/data/unis-enterprise-dataset";
+import { PO_DRAFT, TRANSPORT_PLANS, CARRIERS } from "@/data/unis-enterprise-dataset";
+import { TermTooltip } from "@/components/TermTooltip";
 import { DemandToOrderBridge, buildFullBridgeSteps } from "@/components/DemandToOrderBridge";
 import { ChevronDown } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
