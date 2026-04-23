@@ -14,6 +14,7 @@ import { PreLockDialog } from "@/components/BatchLockBanner";
 import { useSopConsensus } from "@/hooks/useSopConsensus";
 import { BRANCHES, DEMAND_FC, SKU_BASES, SKU_VARIANTS } from "@/data/unis-enterprise-dataset";
 import { ClickableNumber } from "@/components/ClickableNumber";
+import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 
 const tabs = [
   { key: "consensus", label: "Consensus" },
@@ -370,6 +371,9 @@ export default function SopPage() {
       )}
 
       <AutoSaveIndicator lastSaved={cellPresence.lastSaved} offline={cellPresence.offline} />
+      <div className="mt-6">
+        <ChangeLogPanel entityType="sop_consensus" maxItems={6} />
+      </div>
       <ScreenFooter actionCount={5} />
     </AppLayout>
   );

@@ -27,6 +27,7 @@ import { DrpReleaseBar, type DrpBatch, type DrpBatchStatus } from "@/components/
 import { supabase } from "@/integrations/supabase/client";
 import { TermTooltip } from "@/components/TermTooltip";
 import { DRP_RESULTS, BRANCHES, SKU_BASES, getSkuNm } from "@/data/unis-enterprise-dataset";
+import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -2475,6 +2476,9 @@ export default function DrpPage() {
           </div>
         );
       })()}
+      <div className="mt-6">
+        <ChangeLogPanel entityType="drp_run" maxItems={6} />
+      </div>
       <ScreenFooter actionCount={14} />
 
       {/* TO Detail slide-in panel */}

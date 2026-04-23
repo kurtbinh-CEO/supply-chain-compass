@@ -7,6 +7,7 @@ import { SourcingWorkbench } from "@/components/hub/SourcingWorkbench";
 import { ReconciliationTab } from "@/components/hub/ReconciliationTab";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { HubOverviewTab } from "@/components/hub/HubOverviewTab";
+import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 
 type Objective = "hybrid" | "lt" | "cost";
 
@@ -131,6 +132,11 @@ export default function HubPage() {
       <div data-tour="hub-recon">
         {activeTab === "recon" && <ReconciliationTab scale={scale} />}
       </div>
+      {activeTab !== "overview" && (
+        <div className="mt-6">
+          <ChangeLogPanel entityType="hub_stock" maxItems={6} />
+        </div>
+      )}
       <ScreenFooter actionCount={9} />
     </AppLayout>
   );
