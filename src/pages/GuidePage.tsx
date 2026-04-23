@@ -1216,6 +1216,11 @@ export default function GuidePage() {
         </div>
       )}
 
+      {/* ═══ TAB: DEMO UNIS 7 PHÚT ═══ */}
+      {activeTab === "demo" && (
+        <DemoSection onNavigate={(route) => navigate(route)} />
+      )}
+
       {/* ═══ TAB: KẾ HOẠCH THÁNG ═══ */}
       {activeTab === "monthly" && (
         <div className="animate-fade-in">
