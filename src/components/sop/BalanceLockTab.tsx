@@ -57,7 +57,7 @@ const decisionLog = [
   { initials: "NQ", who: "Nguyễn Quân (Sales)", when: "2024-05-10 17:45", action: "Submit v1 Sales", note: "Flash sale E-commerce" },
 ];
 
-export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant }: Props) {
+export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant, unresolvedVariance = 0 }: Props) {
   const navigate = useNavigate();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
   const [pivotMode, setPivotMode] = usePivotMode("sop-balance");
@@ -421,9 +421,23 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
             </p>
           </div>
           {!locked ? (
-            <button onClick={() => setShowLockModal(true)}
-              className="rounded-button bg-gradient-primary text-white px-6 py-2.5 text-table font-medium flex items-center gap-2 shadow-lg">
+            <button
+              onClick={() => unresolvedVariance === 0 && setShowLockModal(true)}
+              disabled={unresolvedVariance > 0}
+              title={unresolvedVariance > 0 ? `Còn ${unresolvedVariance} CN có chênh lệch >10% chưa giải thích — quay lại tab Consensus.` : undefined}
+              className={cn(
+                "rounded-button px-6 py-2.5 text-table font-medium flex items-center gap-2 shadow-lg transition-opacity",
+                unresolvedVariance > 0
+                  ? "bg-surface-3 text-text-3 cursor-not-allowed opacity-70"
+                  : "bg-gradient-primary text-white",
+              )}
+            >
               <Lock className="h-4 w-4" /> Lock Consensus
+              {unresolvedVariance > 0 && (
+                <span className="rounded-full bg-danger text-danger-foreground text-caption font-bold px-1.5 py-0.5 ml-1">
+                  {unresolvedVariance}
+                </span>
+              )}
             </button>
           ) : (
             <div className="flex items-center gap-2">
