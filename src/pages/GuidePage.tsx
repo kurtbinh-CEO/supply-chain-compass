@@ -24,7 +24,7 @@ const roleMeta: RoleMeta[] = [
   {
     key: "SC_MANAGER", icon: <Target className="h-6 w-6" />, label: "SC Manager", sub: "Điều phối toàn chuỗi",
     color: "#004AC6", colorLight: "#004AC6", colorText: "#004AC6",
-    heroDesc: "Điều phối toàn bộ chuỗi cung ứng", timeDaily: "25'", timeMonthly: "1h",
+    heroDesc: "Điều phối toàn bộ chuỗi cung ứng", timeDaily: "30'", timeMonthly: "1h",
   },
   {
     key: "CN_MANAGER", icon: <Building2 className="h-6 w-6" />, label: "CN Manager", sub: "Quản lý chi nhánh",
@@ -65,18 +65,8 @@ interface RoleFlows {
 const scFlows: RoleFlows = {
   daily: [
     {
-      route: "/workspace", label: "Cần làm", time: "5'", icon: <Target className="h-5 w-5" />,
-      keyAction: "Scan → Duyệt → Navigate", kpi: "0 đỏ",
-      why: "1 list thay 3 list. Sort: đỏ → vàng → xanh.", what: "List unified: duyệt + exceptions + thông báo. 4 KPI mini + 2 CTA workflow.",
-      how: "1. Scan đỏ trước\n2. [Duyệt] inline\n3. [Xử lý →] navigate\n4. [▶ Vận hành ngày]", formula: "",
-      highlights: [
-        { selector: "workspace-kpi", label: "4 KPI Cards", description: "Demand, Exceptions, HSTK, FC Accuracy — click số để xem breakdown chi tiết." },
-        { selector: "workspace-actions", label: "Danh sách Cần làm", description: "Unified list: đỏ → vàng → xanh. [Duyệt] inline hoặc [Xử lý →] navigate tới trang liên quan." },
-      ],
-    },
-    {
-      route: "/supply", label: "Tồn NM", time: "2'", icon: <Package className="h-5 w-5" />,
-      keyAction: "Upload Excel → Xác nhận", kpi: "Fresh <24h",
+      route: "/supply", label: "Tồn NM", time: "~2'", icon: <Package className="h-5 w-5" />,
+      keyAction: "Kiểm tra NM cập nhật tồn", kpi: "Mới < 24h",
       why: "DRP cần data NM fresh. Stale >24h → DRP sai.", what: "Upload Excel hoặc nhập tay. UNIS dùng = tồn × share%.",
       how: "1. Drag-drop file NM\n2. Preview → [Xác nhận]\n3. NM chưa gửi → [Nhắc NM]", formula: "UNIS_dùng = on_hand × share%\nMikado: 2.500 × 60% = 1.500 − 120 = 1.380",
       highlights: [
@@ -85,8 +75,14 @@ const scFlows: RoleFlows = {
       ],
     },
     {
-      route: "/drp", label: "DRP Exceptions", time: "10'", icon: <AlertTriangle className="h-5 w-5" />,
-      keyAction: "Xử lý 5% exceptions", kpi: "Fill ≥95%",
+      route: "/demand-weekly", label: "Nhu cầu tuần", time: "~5'", icon: <Activity className="h-5 w-5" />,
+      keyAction: "Xem CN điều chỉnh trước cutoff", kpi: "CN đã điều chỉnh",
+      why: "CN biết thị trường — adjust giúp DRP chính xác hơn.", what: "Bảng demand tuần per CN: Phased FC | CN adjust | Delta | Lý do.",
+      how: "1. Mở /demand-weekly trước cutoff 18:00\n2. Xem CN nào chưa adjust → [Nhắc CN]\n3. Approve adjust hợp lý", formula: "Demand_tuần = FC_phased + Σ(CN_adjust)\nDelta >5% → cần lý do",
+    },
+    {
+      route: "/drp", label: "Xem DRP", time: "~10'", icon: <GitBranch className="h-5 w-5" />,
+      keyAction: "DRP chạy 23:00 — xem kết quả", kpi: "Lấp đầy ≥ 95%",
       why: "DRP đêm qua tính 95% OK. Focus 5% exceptions.", what: "3 lớp: Kết quả → Cách tính → Điều chỉnh.",
       how: "1. CN-BD 86%, 2 exceptions\n2. GA-300 SHORTAGE 345\n3. Lateral / PO mới / Kết hợp", formula: "Net = Demand − On_hand − Pipeline + SS\n617 − 120 − 557 + 900 = 840\nSS = z × σ_fc_error × √LT",
       highlights: [
@@ -97,20 +93,32 @@ const scFlows: RoleFlows = {
       ],
     },
     {
-      route: "/orders", label: "Duyệt PO", time: "5'", icon: <Truck className="h-5 w-5" />,
-      keyAction: "ATP → Duyệt → Post Bravo", kpi: "0 pending",
+      route: "/allocation", label: "Phân bổ", time: "~5'", icon: <Layers className="h-5 w-5" />,
+      keyAction: "LCNB + Hub Pool + exceptions", kpi: "0 thiếu hàng",
+      why: "Phân bổ đúng → không thiếu hàng + tận dụng LCNB.", what: "6 lớp phân bổ: LCNB → Hub Pool → NM Primary → Backup → Spot → Exception.",
+      how: "1. Xem priority queue\n2. LCNB first → tiết kiệm cước\n3. Hub Pool → netting NM commits\n4. Exception → escalate SC", formula: "Priority = HSTK_gap × revenue_at_risk\nLCNB tiết kiệm 8-12% cước",
+    },
+    {
+      route: "/orders?tab=packing", label: "Đóng hàng", time: "~5'", icon: <Package className="h-5 w-5" />,
+      keyAction: "Gom PO vào container, chọn nhà xe", kpi: "Lấp đầy ≥ 85%",
+      why: "Container đầy → tiết kiệm cước. Xe trống = lãng phí.", what: "Gom PO theo tuyến NM→CN. Hold-or-Ship rule: <60% HOLD, 60-85% TOP-UP, ≥85% SHIP.",
+      how: "1. Xem container fill%\n2. <60% → HOLD chờ gom\n3. Chọn nhà xe (Vinatrans/Gemadept)\n4. Override nếu CN cần gấp", formula: "Fill% = loaded / capacity\n40ft cap = 1.800m² · 20ft cap = 900m²",
+    },
+    {
+      route: "/orders?tab=approval", label: "Duyệt PO", time: "~5'", icon: <CheckCircle2 className="h-5 w-5" />,
+      keyAction: "Duyệt PO/TO trước khi gửi NM", kpi: "0 chờ duyệt",
       why: "NM chỉ sản xuất khi nhận PO trong Bravo.", what: "ATP check → Duyệt → Post. SHIP/HOLD inline.",
       how: "1. [Gửi ATP tất cả]\n2. Pass → [Duyệt tất cả]\n3. [Post Bravo]", formula: "ATP = on_hand × share% × honoring\n2.500 × 60% × 92% = 1.380",
       highlights: [
-        { selector: "orders-tabs", label: "2 Tab: PO & Tracking", description: "Tab 1: Quản lý PO lifecycle (Draft → ATP → Approved → Posted → Shipped). Tab 2: Theo dõi giao hàng per NM." },
+        { selector: "orders-tabs", label: "5 Tab: Đóng hàng / Duyệt / Theo dõi / Chuyển ngang / Nhà xe", description: "Workflow lifecycle PO từ đóng hàng đến giao hàng." },
         { selector: "orders-status-table", label: "Status Summary Table", description: "Click hàng status → drill xuống danh sách PO cụ thể. Action buttons per status: [Gửi ATP] → [Duyệt] → [Post Bravo]." },
       ],
     },
   ],
   monthly: [
     {
-      route: "/demand", label: "Demand", time: "Day 1-3", icon: <BarChart3 className="h-5 w-5" />,
-      keyAction: "Review FC + B2B + PO", kpi: "7.650 m²",
+      route: "/demand", label: "Nhập nhu cầu", time: "Ngày 1-3", icon: <BarChart3 className="h-5 w-5" />,
+      keyAction: "FC + B2B pipeline", kpi: "7.650 m²",
       why: "Demand = nền tảng mọi quyết định. Sai demand → sai tất cả.", what: "Tab 1: tổng per CN. Tab 2: B2B deals. Click số → breakdown.",
       how: "1. /demand tab 1 → trend 12M\n2. Click cell → FC + B2B + PO breakdown\n3. Tab 2: review deals\n4. Ready → /sop",
       formula: "Demand = FC + Σ(B2B × prob%) + PO − Overlap\n4.800 + 2.200 + 1.100 − 450 = 7.650",
@@ -121,8 +129,8 @@ const scFlows: RoleFlows = {
       ],
     },
     {
-      route: "/sop", label: "S&OP Lock", time: "Day 5-7", icon: <ShieldCheck className="h-5 w-5" />,
-      keyAction: "Consensus → FVA → Lock", kpi: "1 số đồng ý",
+      route: "/sop", label: "Đồng thuận S&OP", time: "Ngày 3-5", icon: <ShieldCheck className="h-5 w-5" />,
+      keyAction: "So sánh v0→v4, khóa demand", kpi: "1 số đồng ý",
       why: "4 bộ phận, 4 con số → phải ĐỒNG Ý 1 số.", what: "Tab 1: 4 versions × FVA. Tab 2: FormulaBar 6 ô → Lock.",
       how: "1. v0/v1/v2 → FVA chọn best\n2. FormulaBar: D−S−P=Net+SS=FCMin\n3. [🔒 Lock] → phasing auto",
       formula: "Net = D − S − P = 7.650 − 3.200 − 1.757 = 2.693\nFVA = MAPE(v0) − MAPE(vX)\nFVA_CN = 8,1% − 2,2% = +5,9%",
@@ -133,22 +141,38 @@ const scFlows: RoleFlows = {
       ],
     },
     {
-      route: "/hub", label: "Sourcing", time: "Day 7-8", icon: <Factory className="h-5 w-5" />,
-      keyAction: "Rank NM → Allocate → BPO", kpi: "BPO created",
-      why: "NM nào cung cấp? Ranking transparent, bạn quyết định.", what: "4 bước: Cần gì → NM nào → Phân bổ → MOQ+BPO.",
-      how: "1. GA-300 CRITICAL\n2. Mikado 88★ vs Toko 52⚠\n3. Mikado 700 + ĐT 140\n4. [Tạo BPO]",
-      formula: "Score = W₁×LT + W₂×Cost + W₃×Reliability\nHybrid: 50/30/20\nMOQ = ceil(alloc ÷ MOQ) × MOQ",
-      highlights: [
-        { selector: "hub-tabs", label: "2 Tab: Sourcing & Đối chiếu", description: "Tab 1: Workbench 4 bước sourcing. Tab 2: Đối chiếu BPO vs delivery." },
-        { selector: "hub-sourcing", label: "Sourcing Workbench", description: "4 bước: ① SKU cần mua → ② NM ranking (Score = LT×50% + Cost×30% + Rel×20%) → ③ Phân bổ → ④ MOQ + BPO." },
-      ],
+      route: "/supply", label: "Tính đặt hàng", time: "Ngày 5-6", icon: <Calculator className="h-5 w-5" />,
+      keyAction: "Booking netting per SKU", kpi: "Booking ready",
+      why: "Booking = cam kết với NM trước khi đặt PO chính thức.", what: "Booking per SKU: Demand_locked − On_hand − Pipeline + SS.",
+      how: "1. Mở /supply → Booking tab\n2. Netting per SKU\n3. Confirm → gửi NM cam kết", formula: "Booking = Σ(Demand_locked) − Inventory − Pipeline + SS",
+    },
+    {
+      route: "/hub", label: "Cam kết NM", time: "Ngày 6-7", icon: <Factory className="h-5 w-5" />,
+      keyAction: "Hard/Firm/Soft → NM xác nhận", kpi: "Honoring ≥ 85%",
+      why: "NM cam kết 3 mức: Hard (chốt) / Firm (90%) / Soft (60%).", what: "Workbench rank NM, gửi cam kết, theo dõi response.",
+      how: "1. Rank NM (Score = LT×50 + Cost×30 + Rel×20)\n2. Gửi Hard/Firm/Soft\n3. NM confirm → tạo BPO",
+      formula: "Score = W₁×LT + W₂×Cost + W₃×Reliability\nHybrid: 50/30/20",
+    },
+    {
+      route: "/hub", label: "Hub ảo", time: "Ngày 7-8", icon: <Layers className="h-5 w-5" />,
+      keyAction: "Hub = Σ confirmed − released − SS", kpi: "Hub balance",
+      why: "Hub ảo = tổng cam kết NM trừ đã release, dùng cho allocation.", what: "Real-time Hub balance per SKU. Dùng cho phân bổ DRP hằng ngày.",
+      how: "1. Xem Hub balance per SKU\n2. So sánh vs Demand tuần\n3. Gap → kích hoạt kịch bản",
+      formula: "Hub = Σ(NM_confirmed) − Σ(Released_PO) − SS_buffer",
+    },
+    {
+      route: "/gap-scenario", label: "Gap & Kịch bản", time: "Ngày 8-10", icon: <AlertTriangle className="h-5 w-5" />,
+      keyAction: "4 kịch bản, AI khuyến nghị", kpi: "Gap closed",
+      why: "Khi Hub < Demand → cần kịch bản đóng gap.", what: "4 kịch bản: A (NM thêm) | B (Spot mua) | C (Giảm SS) | D (Delay demand).",
+      how: "1. Xem gap per SKU\n2. AI rank 4 kịch bản\n3. Chọn → execute",
+      formula: "Gap = Demand_locked − Hub_available\nKịch bản chọn: min(cost) + max(fill_rate)",
     },
   ],
   tips: [
-    { icon: <MousePointerClick className="h-4 w-4" />, text: "Click bất kỳ số → thấy nguồn gốc" },
-    { icon: <Calculator className="h-4 w-4" />, text: "FormulaBar /sop: 6 ô click được" },
-    { icon: <Zap className="h-4 w-4" />, text: "[▶ Chạy DRP] bất kỳ lúc nào" },
-    { icon: <TrendingUp className="h-4 w-4" />, text: "Pivot toggle: CN↔SKU 2 góc nhìn" },
+    { icon: <MousePointerClick className="h-4 w-4" />, text: "✨ Nhấn bất kỳ số → xem nguồn gốc" },
+    { icon: <Calculator className="h-4 w-4" />, text: "📊 Thanh công thức /sop: 6 ô nhấn được" },
+    { icon: <Zap className="h-4 w-4" />, text: "▶ [Chạy DRP] bất kỳ lúc nào" },
+    { icon: <TrendingUp className="h-4 w-4" />, text: "🔄 Xoay bảng: CN ↔ Mã hàng — 2 góc nhìn" },
   ],
   formulas: [
     {
@@ -1150,7 +1174,7 @@ export default function GuidePage() {
                       </div>
                       {node.kpi && (
                         <div className="mt-2 rounded-md bg-primary/5 px-2 py-1 text-[10px] font-mono text-primary font-medium">
-                          Target: {node.kpi}
+                          Mục tiêu: {node.kpi}
                         </div>
                       )}
                     </div>
