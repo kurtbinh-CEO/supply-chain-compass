@@ -286,9 +286,10 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
     Object.entries(skuPerCn).forEach(([cnKey, skus]) => {
       skus.forEach(sk => {
         const key = `${sk.item}-${sk.variant}`;
-        const fc = useDbData ? sk.fc : Math.round(sk.fc * s);
-        const b2b = useDbData ? sk.b2b : Math.round(sk.b2b * s);
-        const po = useDbData ? sk.po : Math.round(sk.po * s);
+        // skuPerCn already scaled by tenant `s` × FC version `vMult`.
+        const fc = sk.fc;
+        const b2b = sk.b2b;
+        const po = sk.po;
         if (!skuMap[key]) {
           skuMap[key] = { item: sk.item, variant: sk.variant, totalFc: 0, totalB2b: 0, totalPo: 0, totalDemand: 0, cnDetails: [] };
         }
@@ -369,10 +370,8 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
           {cnData.map((c, i) => {
             const isExpanded = expandedCns.has(c.cn);
             const skus = (skuPerCn[c.cn] || []).map(sk => {
-              const fc = useDbData ? sk.fc : Math.round(sk.fc * s);
-              const b2b = useDbData ? sk.b2b : Math.round(sk.b2b * s);
-              const po = useDbData ? sk.po : Math.round(sk.po * s);
-              return { ...sk, fc, b2b, po, total: fc + b2b + po };
+              // Already scaled by tenant + FC version inside skuPerCn useMemo.
+              return { ...sk, total: sk.fc + sk.b2b + sk.po };
             });
             const shareOfTotal = totals.total > 0 ? Math.round((c.total / totals.total) * 100) : 0;
             return (
