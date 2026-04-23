@@ -824,6 +824,11 @@ export const CONFIG_KEYS: ConfigKey[] = [
   { key: "audit.note.required_actions",  group: "Audit", defaultValue: "approve,release,reject", description: "Hành động bắt buộc note" },
   { key: "audit.high_value.required",    group: "Audit", defaultValue: true, description: "Bắt buộc note với high-value" },
   { key: "audit.export.role",            group: "Audit", defaultValue: "admin", description: "Role được export audit" },
+  // Extra (4) — round to 70
+  { key: "demand.fc.outlier_zscore",     group: "Demand", defaultValue: 3, description: "Loại outlier nếu |z| > N" },
+  { key: "drp.batch.unresolved_block",   group: "DRP", defaultValue: true, description: "Chặn Release nếu còn unresolved" },
+  { key: "lcnb.suggest.cooldown_h",      group: "LCNB", defaultValue: 6, unit: "hour", description: "Cooldown đề xuất LCNB lặp lại" },
+  { key: "feedback.honoring.target",     group: "Feedback", defaultValue: 90, unit: "%", description: "Honoring NM mục tiêu" },
 ];
 
 /* ────────────────────────────────────────────────────────────────────────── */
