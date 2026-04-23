@@ -398,7 +398,7 @@ function OverrideDialog({
 /* ─────────────────────────────────────────────────────────── */
 export function PackingTab() {
   const { user } = useRbac();
-  const isScManager = user.role === "sc_manager" || user.role === "admin";
+  const isScManager = user.role === "SC_MANAGER";
 
   const [plans, setPlans] = useState<TransportPlan[]>(TRANSPORT_PLANS);
   const [expanded, setExpanded] = useState<string | null>(null);
