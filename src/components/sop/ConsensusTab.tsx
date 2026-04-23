@@ -255,7 +255,7 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Pivot toggle */}
-      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setDrillCn(null); setDrillSku(null); }} />
+      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setDrillCn(null); setExpandedSku(new Set()); }} />
 
       {pivotMode === "cn" ? (
         /* ═══ CN-FIRST Layer 1 ═══ */
