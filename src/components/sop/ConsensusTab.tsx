@@ -474,10 +474,17 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
               </tbody>
             </table>
           </div>
-        </div>
+          )}
+        </SmartTableShell>
       ) : (
         /* ═══ SKU-FIRST Layer 1 ═══ */
-        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+        <SmartTableShell
+          title="Consensus — SKU-first"
+          storageKey="sop-consensus-sku"
+          columns={["", "Item", "Variant", "v0", "v1", "v2", "v3 ★", "AOP", "vs AOP", "Worst CN", "# CN gap"]}
+          defaultWidths={[40, 110, 110, 130, 130, 130, 140, 130, 130, 160, 130]}
+        >
+          {() => (
           <div className="overflow-x-auto">
             <table className="w-full text-table-sm">
               <thead>
