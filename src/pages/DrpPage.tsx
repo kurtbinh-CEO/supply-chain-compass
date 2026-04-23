@@ -1402,6 +1402,86 @@ export default function DrpPage() {
             </table>
           </div>
         </div>
+
+        {/* FIX 3 — Compare "vs đêm qua" collapsible panel + Hub snapshot */}
+        <div className="rounded-card border border-surface-3 bg-surface-1 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setCompareOpen((v) => !v)}
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-surface-2/50 transition-colors"
+            aria-expanded={compareOpen}
+          >
+            <div className="flex items-center gap-2">
+              {compareOpen ? <ChevronDown className="h-4 w-4 text-text-3" /> : <ChevronRight className="h-4 w-4 text-text-3" />}
+              <span className="text-table font-semibold text-text-1">So sánh DRP vs đêm qua</span>
+              <span className="text-caption text-text-3">— xem mã nào dịch chuyển nhiều nhất</span>
+            </div>
+            <span className="text-caption text-text-3">{compareRows.length} cặp CN×SKU</span>
+          </button>
+
+          {compareOpen && (
+            <div className="px-4 py-3 border-t border-surface-3 space-y-3">
+              <div className={cn(
+                "rounded-md border px-3 py-2 text-table-sm",
+                hubChangedSinceDrp ? "border-warning/30 bg-warning-bg/40" : "border-info/30 bg-info-bg/40",
+              )}>
+                <div className="flex items-start gap-2">
+                  <span>{hubChangedSinceDrp ? "⚠️" : "ℹ️"}</span>
+                  <div className="flex-1">
+                    <div className="text-text-1">
+                      DRP chạy <span className="font-semibold">23:00 đêm qua</span>. Hub GA-300 lúc chạy:{" "}
+                      <span className="font-semibold tabular-nums">{hubAtRunM2.toLocaleString()} m²</span>
+                    </div>
+                    {hubChangedSinceDrp && (
+                      <div className="mt-1 text-warning font-medium">
+                        ⚠️ Hub +{hubDeltaSinceRun.toLocaleString()}m² do NM confirm sau DRP. PO dựa số CŨ — cân nhắc rerun trước khi release.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-surface-3 overflow-hidden">
+                <table className="w-full text-table-sm">
+                  <thead className="bg-surface-2 text-caption uppercase text-text-3">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-medium">CN</th>
+                      <th className="text-left px-3 py-2 font-medium">SKU</th>
+                      <th className="text-right px-3 py-2 font-medium">Đêm qua</th>
+                      <th className="text-right px-3 py-2 font-medium">Đêm nay</th>
+                      <th className="text-right px-3 py-2 font-medium">Δ %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {compareRows.map((r, i) => {
+                      const absDelta = Math.abs(r.deltaPct);
+                      const tone = absDelta > 25 ? "danger" : absDelta > 10 ? "warning" : "ok";
+                      const sev = tone === "danger" ? "shortage" : tone === "warning" ? "watch" : "ok";
+                      const toneCls =
+                        tone === "danger" ? "text-danger font-semibold bg-danger-bg/30"
+                        : tone === "warning" ? "text-warning font-semibold bg-warning-bg/40"
+                        : "text-text-2";
+                      return (
+                        <tr key={i} data-severity={sev} className="border-t border-surface-3/50">
+                          <td className="px-3 py-2 text-text-1 font-medium">{r.cn}</td>
+                          <td className="px-3 py-2 text-text-2">{r.base}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-text-3">{r.prev.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-text-1">{r.now.toLocaleString()}</td>
+                          <td className={cn("px-3 py-2 text-right tabular-nums", toneCls)}>
+                            {r.deltaPct >= 0 ? "+" : ""}{r.deltaPct.toFixed(1)}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-caption text-text-3">
+                Δ &gt;10% (vàng) cần để ý · Δ &gt;25% (đỏ) thường do FC adjust hoặc NM counter lớn.
+              </p>
+            </div>
+          )}
+        </div>
         </div>
       )}
 
