@@ -129,6 +129,16 @@ function buildRows(): GapRow[] {
 /* Scenario engine                                                             */
 /* ─────────────────────────────────────────────────────────────────────────── */
 
+interface ScenarioPriceInfo {
+  basePrice: number;       // giá gốc /m² (theo break)
+  totalPrice: number;      // giá gốc + phụ phí /m²
+  breakLabel: string;
+  surchargeText: string | null;  // "Phụ phí năng lượng 3% (5.640₫)" hoặc null
+  expiryDate: string | null;
+  daysUntilExpiry: number | null;
+  priceListId: string | null;
+}
+
 interface Scenario {
   key: "A" | "B" | "C" | "D" | "E";
   title: string;
@@ -140,60 +150,95 @@ interface Scenario {
   cons: string[];
   recommended: boolean;
   needsCeoApproval?: boolean;
+  priceInfo?: ScenarioPriceInfo;       // common to A/B/D
 }
 
 function buildScenarios(row: GapRow): Scenario[] {
-  const tier1 = row.nm.priceTier1;
-  const tier2 = row.nm.priceTier2;
+  const skuBase = NM_TOP_SKU[row.nm.id];
   const gapQty = row.gapM2;
   const committed = row.totalCommittedM2;
 
-  const costA = gapQty * tier1;
-  const costB = committed * (tier2 - tier1);
-  const costC = Math.max(5_000_000, Math.round(gapQty * 9_500)); // negotiation overhead
+  // Lấy giá thực từ bảng giá hiệu lực
+  const eff = getEffectivePrice(row.nm.id, skuBase, gapQty);
+  const basePrice = eff?.pricePerM2 ?? row.nm.priceTier1;
+  const totalPrice = eff?.totalPerM2 ?? row.nm.priceTier1;
+  const surchargeAmount = totalPrice - basePrice;
+
+  // Tìm break tiếp theo (cao hơn) cho kịch bản B
+  const nextBreakPrice = eff
+    ? eff.allBreaks.find((b) => b.fromQty > eff.matchedBreak.fromQty)?.pricePerM2 ?? Math.round(basePrice * 1.15)
+    : row.nm.priceTier2;
+
+  // Format phụ phí text (cho card display)
+  const surchargeText = eff && eff.surcharges.length > 0
+    ? eff.surcharges
+        .map((s) => {
+          const amt = s.calcMethod === "percent"
+            ? Math.round((basePrice * s.rate) / 100)
+            : s.rate;
+          return `Phụ phí ${s.type.toLowerCase()} ${s.calcMethod === "percent" ? `${s.rate}%` : `${s.rate.toLocaleString("vi-VN")}₫`} (${amt.toLocaleString("vi-VN")}₫)`;
+        })
+        .join(" + ")
+    : null;
+
+  const priceInfo: ScenarioPriceInfo = {
+    basePrice,
+    totalPrice,
+    breakLabel: eff?.breakLabel ?? "Giá ước tính",
+    surchargeText,
+    expiryDate: eff?.expiryDate ?? null,
+    daysUntilExpiry: eff?.daysUntilExpiry ?? null,
+    priceListId: eff?.priceListId ?? null,
+  };
+
+  // ─── Chi phí từng kịch bản ─────────────────────────────────────
+  const costA = gapQty * totalPrice;                                  // dùng totalPrice (gồm phụ phí)
+  const costB = committed * (nextBreakPrice - basePrice);             // chênh giữa break hiện tại & break tiếp
+  const costC = Math.max(5_000_000, Math.round(gapQty * 9_500));      // negotiation overhead
   const costD = Math.round(costA * 0.5 + costC * 0.5);
 
   const recommendC = row.relationshipPct >= 80 && !row.stale;
+
+  const formulaA = surchargeText
+    ? `${gapQty.toLocaleString("vi-VN")} × ${totalPrice.toLocaleString("vi-VN")}₫ (gốc ${basePrice.toLocaleString("vi-VN")} + phụ phí ${surchargeAmount.toLocaleString("vi-VN")})`
+    : `${gapQty.toLocaleString("vi-VN")} × ${totalPrice.toLocaleString("vi-VN")}₫`;
 
   return [
     {
       key: "A",
       title: "Mua hết phần thiếu",
-      subtitle: "Đặt PO bù toàn bộ gap với giá tier-1",
+      subtitle: `Đặt PO bù toàn bộ gap với ${eff?.breakLabel ?? "giá ước tính"}`,
       cost: costA,
-      costFormula: `${gapQty.toLocaleString("vi-VN")} × ${tier1.toLocaleString(
-        "vi-VN"
-      )}₫`,
+      costFormula: formulaA,
       risk: "Rủi ro tồn đọng nếu nhu cầu thực tế giảm",
       pros: ["Đơn giản, nhanh chốt", "Đảm bảo cam kết DRP"],
       cons: ["Tốn vốn lớn", "Rủi ro slow-mover"],
       recommended: false,
+      priceInfo,
     },
     {
       key: "B",
-      title: "Chấp nhận giá cao",
-      subtitle: "Áp tier-2 cho toàn bộ committed (retroactive)",
+      title: "Chấp nhận giá break cao hơn",
+      subtitle: `Áp giá break tiếp theo cho toàn bộ committed`,
       cost: costB,
-      costFormula: `${committed.toLocaleString(
-        "vi-VN"
-      )} × (${tier2.toLocaleString("vi-VN")} − ${tier1.toLocaleString(
-        "vi-VN"
-      )})₫`,
+      costFormula: `${committed.toLocaleString("vi-VN")} × (${nextBreakPrice.toLocaleString("vi-VN")} − ${basePrice.toLocaleString("vi-VN")})₫`,
       risk: "Tăng giá vốn cả lô, ảnh hưởng margin",
       pros: ["Giữ được sản lượng", "Không cần đàm phán mới"],
-      cons: ["Áp ngược toàn bộ committed", "Mất lợi thế giá tier-1"],
+      cons: ["Áp ngược toàn bộ committed", "Mất lợi thế giá break thấp"],
       recommended: false,
+      priceInfo,
     },
     {
       key: "C",
       title: "Đàm phán chuyển kỳ",
-      subtitle: "Dời gap sang tháng kế, giữ giá tier-1",
+      subtitle: `Dời gap sang tháng kế, giữ ${eff?.breakLabel ?? "giá hiện tại"}`,
       cost: costC,
-      costFormula: "Chi phí xử lý + bù pipeline (~10M₫)",
+      costFormula: "Chi phí xử lý + bù pipeline (~10 triệu ₫)",
       risk: "NM phải đồng ý — phụ thuộc relationship",
       pros: ["Tiết kiệm vốn nhất", "Giữ giá thỏa thuận"],
       cons: ["Cần NM chấp thuận", "Có thể trễ DRP tuần"],
       recommended: recommendC,
+      priceInfo,
     },
     {
       key: "D",
@@ -205,6 +250,7 @@ function buildScenarios(row: GapRow): Scenario[] {
       pros: ["Cân bằng rủi ro", "Linh hoạt theo NM"],
       cons: ["Quản lý 2 lệnh song song"],
       recommended: !recommendC,
+      priceInfo,
     },
   ];
 }
