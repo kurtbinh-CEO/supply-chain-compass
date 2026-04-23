@@ -217,6 +217,57 @@ export default function SopPage() {
         <AvatarBar users={cellPresence.onlineUsers} />
       </div>
 
+      {/* KPI strip — clickable totals */}
+      {consensusData.length > 0 && (
+        <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-surface-3 bg-surface-1 px-4 py-3">
+          <div className="flex flex-col">
+            <span className="text-caption uppercase text-text-3 tracking-wider">Σ v3 Consensus</span>
+            <ClickableNumber
+              value={`${totalV3.toLocaleString()} m²`}
+              label="Σ v3 Consensus"
+              color="text-text-1 font-display text-section-header"
+              breakdown={consensusData.slice(0, 6).map((r) => ({
+                label: r.cn,
+                value: `${r.v3.toLocaleString()} m²`,
+              }))}
+              formula={`Σ v3 = ${consensusData.map((r) => r.v3.toLocaleString()).slice(0, 4).join(" + ")}${consensusData.length > 4 ? " + ..." : ""} = ${totalV3.toLocaleString()} m²`}
+              note="v3 = phiên bản consensus cuối, sẽ lock Day 7"
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-caption uppercase text-text-3 tracking-wider">Σ AOP</span>
+            <ClickableNumber
+              value={`${totalAop.toLocaleString()} m²`}
+              label="Σ AOP cả năm chia"
+              color="text-text-2 font-display text-section-header"
+              note="AOP = Annual Operating Plan, baseline so sánh"
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-caption uppercase text-text-3 tracking-wider">Variance v3 vs AOP</span>
+            <ClickableNumber
+              value={`${totalAop > 0 ? (((totalV3 - totalAop) / totalAop) * 100).toFixed(1) : "0"}%`}
+              label="Δ v3 vs AOP"
+              color={cn(
+                "font-display text-section-header",
+                totalV3 > totalAop ? "text-warning" : "text-success",
+              )}
+              formula={`(Σ v3 − Σ AOP) / Σ AOP\n= (${totalV3.toLocaleString()} − ${totalAop.toLocaleString()}) / ${totalAop.toLocaleString()}\n= ${totalAop > 0 ? (((totalV3 - totalAop) / totalAop) * 100).toFixed(1) : "0"}%`}
+              note={
+                totalV3 > totalAop
+                  ? `Demand consensus cao hơn AOP ${((totalV3 - totalAop) / 1000).toFixed(1)}k m² vì sales tự tin Q2`
+                  : "Demand consensus thấp hơn AOP — cần kiểm tra B2B pipeline"
+              }
+            />
+          </div>
+          {unresolvedVariance > 0 && (
+            <div className="ml-auto rounded-button bg-danger-bg/50 border border-danger/20 px-3 py-1.5 text-table-sm text-danger">
+              ⚠ {unresolvedVariance} CN có variance &gt;10% chưa giải trình vì top-down ≠ Σ(SKU bottom-up)
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Tab bar */}
       <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
         {tabs.map((tab) => (
