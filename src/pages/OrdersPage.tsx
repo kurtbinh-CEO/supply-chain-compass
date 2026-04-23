@@ -1073,6 +1073,7 @@ export default function OrdersPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
+                    <th className="w-8 px-2 py-2"></th>
                     {["PO#", "Type", "NM", "Item", "Qty m²", "Order date", "ETA", "Trạng thái"].map((h) => (
                       <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
                     ))}
@@ -1101,34 +1102,91 @@ export default function OrdersPage() {
                           : st === "cancelled"
                             ? "shortage"
                             : "ok";
+                    const isExpanded = expandedPo === po.po_number;
+                    const nmName = supplierToNm[po.supplier] || po.supplier;
+                    const orderQty = Number(po.quantity);
+                    // Build mock lineage data — derived deterministically from PO
+                    const ssTarget = Math.round(orderQty * 0.18);
+                    const onHand = Math.round(orderQty * 0.55);
+                    const pipeline = Math.round(orderQty * 0.12);
+                    const demand = orderQty - ssTarget + onHand + pipeline;
+                    const moq = Math.max(500, Math.round(orderQty / 100) * 100);
+                    const bridgeSteps = buildFullBridgeSteps({
+                      demand, fcPhased: Math.round(demand * 0.85), cnAdj: Math.round(demand * 0.10),
+                      po: Math.round(demand * 0.05), overlap: 0,
+                      onHand, pipeline, pipelineSource: "ASN tracking + Bravo",
+                      ssTarget, zVal: 1.65, sigma: Math.round(orderQty * 0.08), lt: 7,
+                      moq, moqNm: nmName, finalOrder: orderQty, rpoNum: po.po_number,
+                    });
                     return (
-                      <tr
-                        key={po.po_number}
-                        data-severity={severity}
-                        data-keyboard-row={`po-${po.po_number}`}
-                        tabIndex={0}
-                        className="border-b border-surface-3/50 hover:bg-surface-1/30 outline-none"
-                      >
-                        <td className={cn("px-3 py-2.5", poNumClasses, tb.text)}>
-                          {po.po_number}
-                          {severity === "overdue" && eta && (
-                            <div className="text-caption text-danger mt-0.5 font-normal" title="Lý do trễ ETA">
-                              ⚠ Trễ {Math.ceil((Date.now() - eta.getTime()) / 86400000)} ngày vì NM {supplierToNm[po.supplier] || po.supplier} LT thực tế dài hơn config (status: {stageLabels[st]})
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", tb.bg, tb.text)}>{type}</span>
-                        </td>
-                        <td className="px-3 py-2.5 text-table text-text-2">{supplierToNm[po.supplier] || po.supplier}</td>
-                        <td className="px-3 py-2.5 text-table text-text-2">{po.sku}</td>
-                        <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{Number(po.quantity).toLocaleString()}</td>
-                        <td className="px-3 py-2.5 text-table text-text-2">{fmtDate(po.order_date)}</td>
-                        <td className="px-3 py-2.5 text-table text-text-2">{fmtDate(po.expected_date)}</td>
-                        <td className="px-3 py-2.5">
-                          <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", stColor)}>{stageLabels[st]}</span>
-                        </td>
-                      </tr>
+                      <>
+                        <tr
+                          key={po.po_number}
+                          data-severity={severity}
+                          data-keyboard-row={`po-${po.po_number}`}
+                          tabIndex={0}
+                          onClick={() => setExpandedPo(isExpanded ? null : po.po_number)}
+                          className="border-b border-surface-3/50 hover:bg-surface-1/30 outline-none cursor-pointer"
+                        >
+                          <td className="px-2 py-2.5 text-text-3">
+                            {isExpanded
+                              ? <ChevronDown className="h-3.5 w-3.5" />
+                              : <ChevronRight className="h-3.5 w-3.5" />}
+                          </td>
+                          <td className={cn("px-3 py-2.5", poNumClasses, tb.text)}>
+                            {po.po_number}
+                            {severity === "overdue" && eta && (
+                              <div className="text-caption text-danger mt-0.5 font-normal" title="Lý do trễ ETA">
+                                ⚠ Trễ {Math.ceil((Date.now() - eta.getTime()) / 86400000)} ngày vì NM {nmName} LT thực tế dài hơn config (status: {stageLabels[st]})
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", tb.bg, tb.text)}>{type}</span>
+                          </td>
+                          <td className="px-3 py-2.5 text-table text-text-2">{nmName}</td>
+                          <td className="px-3 py-2.5 text-table text-text-2">{po.sku}</td>
+                          <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{orderQty.toLocaleString()}</td>
+                          <td className="px-3 py-2.5 text-table text-text-2">{fmtDate(po.order_date)}</td>
+                          <td className="px-3 py-2.5 text-table text-text-2">{fmtDate(po.expected_date)}</td>
+                          <td className="px-3 py-2.5">
+                            <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", stColor)}>{stageLabels[st]}</span>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr key={`${po.po_number}-lineage`} className="border-b border-surface-3/50 bg-info-bg/20">
+                            <td colSpan={9} className="px-4 py-4">
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-table-sm font-semibold text-text-1">
+                                    PO Lineage — Demand → Netting → Allocation → PO
+                                  </p>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); navigate("/drp"); }}
+                                    className="inline-flex items-center gap-1 text-caption font-medium text-primary hover:underline"
+                                  >
+                                    Xem DRP run <ChevronRight className="h-3 w-3" />
+                                  </button>
+                                </div>
+                                <DemandToOrderBridge
+                                  item={po.sku}
+                                  variant=""
+                                  cn={po.to_cn || "CN"}
+                                  steps={bridgeSteps}
+                                  footer={{
+                                    demandQty: demand,
+                                    orderQty: orderQty,
+                                    reasons: [
+                                      { label: "Safety Stock", value: `+${ssTarget.toLocaleString()}m²` },
+                                      { label: "MOQ round", value: `${moq.toLocaleString()}m² (${nmName})` },
+                                    ],
+                                  }}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     );
                   })}
                 </tbody>
