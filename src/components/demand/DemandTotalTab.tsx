@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ViewPivotToggle, usePivotMode, CnGapBadge } from "@/components/ViewPivotToggle";
 import type { DemandCnSummary } from "@/hooks/useDemandForecasts";
 import { BRANCHES, DEMAND_FC, SKU_BASES } from "@/data/unis-enterprise-dataset";
+import { FcSourceBadge } from "@/components/demand/FcSourceBadge";
 
 /* ────────────────────────────────────────────────────────────────────── */
 /* FC version selector — v3 = SC Manager-adjusted (canonical)            */
@@ -808,6 +809,17 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
   // ═══════════════════════════════════════════
   return (
     <div className="space-y-6">
+      {/* FC Source Badge — top-right */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="font-display text-section-header text-text-1">Demand tổng — Tháng 5</h2>
+          <p className="text-table-sm text-text-2 mt-0.5">
+            FC bottom-up · {BRANCHES.length} CN × {SKU_BASES.length} SKU · scaled theo tenant
+          </p>
+        </div>
+        <FcSourceBadge />
+      </div>
+
       {/* KPI Cards */}
       {renderKpiCards()}
 

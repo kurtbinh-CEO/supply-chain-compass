@@ -4,6 +4,7 @@ import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { cn } from "@/lib/utils";
 import { DemandTotalTab } from "@/components/demand/DemandTotalTab";
 import { B2BInputTab } from "@/components/demand/B2BInputTab";
+import { FcVsActualTab } from "@/components/demand/FcVsActualTab";
 import { useTenant } from "@/components/TenantContext";
 import { useDemandForecasts } from "@/hooks/useDemandForecasts";
 import { Loader2 } from "lucide-react";
@@ -13,6 +14,7 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 const tabs = [
   { key: "total", label: "Demand tổng" },
   { key: "b2b", label: "B2B nhập liệu" },
+  { key: "fc-actual", label: "FC vs Actual" },
 ];
 
 const TENANT_SCALE: Record<string, number> = {
