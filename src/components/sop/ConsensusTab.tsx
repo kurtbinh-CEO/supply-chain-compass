@@ -117,7 +117,13 @@ function buildSkuPivot(data: ConsensusRow[]): SkuPivotRow[] {
 export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUpdateNote, varianceExplanations = {}, onUpdateVariance }: Props) {
   const [pivotMode, setPivotMode] = usePivotMode("sop-consensus");
   const [drillCn, setDrillCn] = useState<number | null>(null);
-  const [drillSku, setDrillSku] = useState<string | null>(null);
+  const [expandedSku, setExpandedSku] = useState<Set<string>>(new Set());
+  const toggleSku = (key: string) =>
+    setExpandedSku((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
 
   /* P19 — Auto-expand SHORTAGE rows (variance >10%); OK rows collapsed by default.
      ⌘E toggles all rows. */
