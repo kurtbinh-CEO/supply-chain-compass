@@ -53,6 +53,30 @@ export default function DemandPage() {
     return out;
   }, [b2bDeals]);
 
+  // Σ FC totals from dataset (scaled per tenant)
+  const fcTotals = useMemo(() => {
+    const total = Math.round(DEMAND_FC.reduce((s, r) => s + r.fcM2, 0) * scale);
+    const perSku: Record<string, number> = {};
+    DEMAND_FC.forEach((r) => {
+      perSku[r.skuBaseCode] = (perSku[r.skuBaseCode] ?? 0) + Math.round(r.fcM2 * scale);
+    });
+    const totalB2bWeighted = Object.values(b2bPerCn).reduce((s, v) => s + v, 0);
+    return { total, perSku, totalB2bWeighted };
+  }, [scale, b2bPerCn]);
+
+  const topSkuRows = useMemo(
+    () =>
+      Object.entries(fcTotals.perSku)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 6)
+        .map(([sku, qty]) => ({
+          label: sku,
+          value: `${qty.toLocaleString()} m²`,
+          pct: `${((qty / fcTotals.total) * 100).toFixed(1)}%`,
+        })),
+    [fcTotals],
+  );
+
   return (
     <AppLayout>
       {/* Header */}
