@@ -1277,7 +1277,7 @@ export default function OrdersPage() {
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
                     <th className="w-8 px-2 py-2"></th>
-                    {["PO#", "Type", "NM", "Item", "Qty m²", "Order date", "ETA", "Trạng thái"].map((h) => (
+                    {["PO#", "Type", "NM", "Item", "Qty m²", "Container", "Order date", "ETA", "Trạng thái"].map((h) => (
                       <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
                     ))}
                   </tr>
