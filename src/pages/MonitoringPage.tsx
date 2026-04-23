@@ -677,6 +677,9 @@ export default function MonitoringPage() {
               </table>
               <div className="mt-3 rounded-md bg-danger-bg/50 border border-danger/20 px-4 py-2.5 text-table-sm text-text-1">
                 <span className="font-medium text-danger">⚠ CN-HN MAPE 31% &gt; target 15%.</span> FVA negative → CN input đang làm tệ hơn statistical. Recommend: dùng v0 cho CN-HN.
+                <div className="mt-1 text-danger font-medium">
+                  ⚠ MAPE CN-BD xấu đi 18%→22% vì 3 tuần liên tiếp adjust lệch &gt;25% → SS Hub tăng 60m² → tốn thêm ~11M₫/tháng vốn lưu động
+                </div>
               </div>
             </div>
           </CollapsibleSection>
