@@ -113,7 +113,7 @@ function FreshnessIndicator() {
       // Giờ "thực" tính từ thời điểm dataset (ngày 13/05/2026 10:00)
       const refTs = new Date("2026-05-13T10:00:00+07:00").getTime();
       const hours = Math.max(0, Math.round((refTs - latestTs) / 3_600_000));
-      return { id: f.id, name: f.name, s, hours, hasData: items.length > 0 };
+      return { id: f.id, name: f.name, s: s as "fresh" | "1d" | "stale", hours, hasData: items.length > 0 };
     }).filter((x) => x.hasData);
 
     const worst: "fresh" | "1d" | "stale" = perNm.some((x) => x.s === "stale")
