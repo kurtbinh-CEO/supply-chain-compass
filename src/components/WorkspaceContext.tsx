@@ -93,7 +93,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addNotification = useCallback((n: Notification) => {
-    setNotifications((prev) => [n, ...prev]);
+    setNotifications((prev) => prev.some((x) => x.id === n.id) ? prev : [n, ...prev]);
   }, []);
 
   const pendingCount = approvals.length + initialExceptions.length + notifications.filter(n => !n.read).length;
