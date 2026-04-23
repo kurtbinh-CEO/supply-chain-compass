@@ -171,7 +171,8 @@ export default function OrdersPage() {
   const [pendingApproval, setPendingApproval] = useState<null | { kind: "approve" | "reject" | "bulk"; pos: PurchaseOrderRow[] }>(null);
   const [approvalNote, setApprovalNote] = useState("");
   const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
-  const [expandedPo, setExpandedPo] = useState<string | null>(null);
+  // P19 — multi-row expand state. OVERDUE PO auto-open, OK PO collapsed.
+  const [expandedPo, setExpandedPo] = useState<Set<string>>(new Set());
   const [cascadeDismissed, setCascadeDismissed] = useState(false);
 
   // Burn-down tab state
