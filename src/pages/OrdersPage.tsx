@@ -1350,6 +1350,26 @@ export default function OrdersPage() {
                           <td className="px-3 py-2.5 text-table text-text-2">{nmName}</td>
                           <td className="px-3 py-2.5 text-table text-text-2">{po.sku}</td>
                           <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{orderQty.toLocaleString()}</td>
+                          <td className="px-3 py-2.5">
+                            {(() => {
+                              const tpRow = TRANSPORT_PLANS.find((t) => t.poRefs.includes(po.po_number));
+                              if (!tpRow) return <span className="text-caption text-text-3">—</span>;
+                              return (
+                                <span className="inline-flex items-center gap-1 text-caption">
+                                  <span className="rounded-full border border-info/30 bg-info-bg/40 px-1.5 py-0.5 font-mono text-info">
+                                    {tpRow.containerType}
+                                  </span>
+                                  <span className={cn(
+                                    "tabular-nums font-medium",
+                                    tpRow.fillPct >= 95 ? "text-success" :
+                                    tpRow.fillPct >= 80 ? "text-info" : "text-warning"
+                                  )}>
+                                    {tpRow.fillPct}%
+                                  </span>
+                                </span>
+                              );
+                            })()}
+                          </td>
                           <td className="px-3 py-2.5 text-table text-text-2">{fmtDate(po.order_date)}</td>
                           <td className="px-3 py-2.5 text-table text-text-2">{fmtDate(po.expected_date)}</td>
                           <td className="px-3 py-2.5">
