@@ -237,7 +237,7 @@ function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggl
             )}
           </span>
           <button onClick={() => { toast.success("Exporting CSV..."); }} className="shrink-0 rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-caption text-text-2 hover:bg-surface-3 transition-colors">
-            Export CSV
+            Xuất CSV
           </button>
         </div>
 
@@ -346,7 +346,7 @@ const tabs = [
   { key: "inv", label: "Tồn kho & SS" },
   { key: "perf", label: "Hiệu suất" },
   { key: "nm-risk", label: "Rủi ro NM" },
-  { key: "roi", label: "ROI & Flywheel" },
+  { key: "roi", label: "ROI & Bánh đà" },
   { key: "activity", label: "Activity Log" },
 ];
 

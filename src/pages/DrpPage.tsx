@@ -371,8 +371,8 @@ export default function DrpPage() {
   const overnightChanges = useMemo(
     () => [
       { icon: "🟢", text: "CN-BD: CN adjust GA-300 +25m² lúc 16:45" },
-      { icon: "🟡", text: "Toko: Counter GA-600 −32% lúc 10:15" },
-      { icon: "🔴", text: "PO-BD-W19: OVERDUE 3 ngày" },
+      { icon: "🟡", text: "Toko: Đề xuất khác GA-600 −32% lúc 10:15" },
+      { icon: "🔴", text: "PO-BD-W19: QUÁ HẠN 3 ngày" },
     ],
     [],
   );

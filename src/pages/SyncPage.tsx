@@ -231,7 +231,7 @@ export default function SyncPage() {
           <div className="flex items-center gap-2">
             <Button onClick={handleSyncNow} disabled={syncing} className="gap-2">
               <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
-              {syncing ? "Đang sync..." : "Sync Now (Bravo)"}
+              {syncing ? "Đang đồng bộ..." : "Đồng bộ ngay (Bravo)"}
             </Button>
             <Button variant="outline" onClick={() => setShowUpload(true)} className="gap-2">
               <Upload className="h-4 w-4" />

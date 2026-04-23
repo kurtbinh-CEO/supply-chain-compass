@@ -26,7 +26,7 @@ const trendData = [
   { month: "DEC", fc: 2.0, ss: 1.7, wc: 2.2 },
 ];
 
-const simParams = ["Target Service Level (α)", "Lead Time (days)", "Demand Volatility (σ)", "Review Period"];
+const simParams = ["Mức phục vụ mục tiêu (α)", "Thời gian đặt hàng (ngày)", "Biến động nhu cầu (σ)", "Chu kỳ kiểm tra"];
 
 // SS Alert (top of tab) — δ ≥ 10% → PENDING confirm
 const ssAlert = {
@@ -49,7 +49,7 @@ export function SafetyStockTab() {
   const isLargeDelta = Math.abs(ssAlert.deltaPct) >= 10;
 
   const handleApply = () => {
-    toast.success("Đã gửi đề xuất SS đến Workspace", { description: `Service Level: ${simValue}% → SS: ${afterSS.toLocaleString()}` });
+    toast.success("Đã gửi đề xuất SS đến Workspace", { description: `Mức phục vụ: ${simValue}% → SS: ${afterSS.toLocaleString()}` });
   };
 
   const handleConfirmSs = () => {
@@ -186,7 +186,7 @@ export function SafetyStockTab() {
           </div>
           <div className="space-y-2 py-2">
             <div className="flex justify-between text-table text-text-2 border-b border-surface-3/50 pb-2">
-              <span>Working Capital Impact</span>
+              <span>Tác động đến Vốn lưu động</span>
               <span className={cn("font-medium", wcDelta > 0 ? "text-danger" : "text-success")}>
                 {wcDelta > 0 ? "+" : ""}{(wcDelta / 1000).toFixed(0)}K VND
               </span>

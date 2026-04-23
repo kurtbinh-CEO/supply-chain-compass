@@ -57,7 +57,7 @@ export const NEXT_STEPS: Record<NextStepKey, NextStepConfig> = {
     hint: "Consensus v3 đã chốt — chuyển sang đặt commitment với Nhà Máy.",
   },
   "supply.booking-done": {
-    label: "Booking xong",
+    label: "Đặt hàng xong",
     ctaLabel: "Cam kết NM",
     ctaRoute: "/hub",
     hint: "Đơn đặt đã gửi NM — theo dõi commitment & reconciliation.",
@@ -81,7 +81,7 @@ export const NEXT_STEPS: Record<NextStepKey, NextStepConfig> = {
     hint: "Tất cả nguồn dữ liệu đã đồng bộ — Chi Nhánh có thể nhập điều chỉnh.",
   },
   "cn-portal.adjusted": {
-    label: "CN adjust",
+    label: "CN điều chỉnh",
     ctaLabel: "Xem DRP",
     ctaRoute: "/drp",
     hint: "Điều chỉnh CN đã ghi nhận — chạy DRP để phân bổ lại.",
