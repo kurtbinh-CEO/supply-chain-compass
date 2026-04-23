@@ -141,11 +141,19 @@ function DealModal({
 /* ────────────────────────────────────────────────────────────────────── */
 /* Main                                                                   */
 /* ────────────────────────────────────────────────────────────────────── */
+interface PendingCascade {
+  form: Omit<B2bDeal, "id">;
+  editId: string;
+  prev: B2bDeal;
+  deltaPct: number;
+}
+
 export function B2BInputTab({ deals, setDeals }: Props) {
   const [modalDeal, setModalDeal] = useState<{ deal: Omit<B2bDeal, "id">; editId?: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [stageFilter, setStageFilter] = useState<B2bStage | "all">("all");
   const [search, setSearch] = useState("");
+  const [cascadeConfirm, setCascadeConfirm] = useState<PendingCascade | null>(null);
 
   const filtered = useMemo(() => {
     return deals.filter((d) => {
@@ -169,24 +177,39 @@ export function B2BInputTab({ deals, setDeals }: Props) {
     return map;
   }, [deals]);
 
+  const applyEdit = (form: Omit<B2bDeal, "id">, editId: string) => {
+    const updated = deals.map((d) => (d.id === editId ? { ...form, id: d.id } : d));
+    setDeals(updated);
+    toast.success(`Đã cập nhật deal ${form.customer}`);
+  };
+
   const handleSave = (form: Omit<B2bDeal, "id">) => {
     if (modalDeal?.editId) {
       const prev = deals.find((d) => d.id === modalDeal.editId);
-      const updated = deals.map((d) => (d.id === modalDeal.editId ? { ...form, id: d.id } : d));
-      setDeals(updated);
-      if (prev && prev.qtyM2 > 0 && Math.abs(form.qtyM2 - prev.qtyM2) / prev.qtyM2 > 0.2) {
-        toast.warning(
-          `Deal ${form.customer}: thay đổi qty ${form.qtyM2 > prev.qtyM2 ? "+" : ""}${Math.round(((form.qtyM2 - prev.qtyM2) / prev.qtyM2) * 100)}%`,
-        );
-      } else {
-        toast.success(`Đã cập nhật deal ${form.customer}`);
+      if (prev && prev.qtyM2 > 0) {
+        const deltaPct = ((form.qtyM2 - prev.qtyM2) / prev.qtyM2) * 100;
+        if (Math.abs(deltaPct) > 20) {
+          setCascadeConfirm({ form, editId: modalDeal.editId, prev, deltaPct: Math.round(deltaPct) });
+          setModalDeal(null);
+          return;
+        }
       }
+      applyEdit(form, modalDeal.editId);
     } else {
       const newId = `DEAL-${String(deals.length + 1).padStart(3, "0")}`;
       setDeals([...deals, { ...form, id: newId }]);
       toast.success(`Đã thêm deal ${form.customer}`);
     }
     setModalDeal(null);
+  };
+
+  const confirmCascade = () => {
+    if (!cascadeConfirm) return;
+    applyEdit(cascadeConfirm.form, cascadeConfirm.editId);
+    toast.warning("Cascade đã trigger", {
+      description: `${cascadeConfirm.form.customer}: S&OP v3 → DRP rerun → NM commitment refresh.`,
+    });
+    setCascadeConfirm(null);
   };
 
   const handleDelete = (id: string) => {
