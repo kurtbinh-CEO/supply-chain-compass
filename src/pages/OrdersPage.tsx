@@ -202,6 +202,51 @@ export default function OrdersPage() {
   /* ── Derive effective status (with overrides) ── */
   const effectiveStatus = (po: PurchaseOrderRow): string => statusOverrides[po.po_number] || po.status;
 
+  /* P19 — Auto-expand OVERDUE PO rows (past ETA & not delivered/cancelled).
+     Reseeds when the order list changes. User toggles persist after that. */
+  const overdueKeys = useMemo(() => {
+    return allOrders
+      .filter((po) => {
+        const st = effectiveStatus(po);
+        const eta = po.expected_date ? new Date(po.expected_date) : null;
+        const isPastEta = !!eta && eta.getTime() < Date.now();
+        const notDelivered = st !== "received" && st !== "cancelled";
+        return isPastEta && notDelivered;
+      })
+      .map((po) => po.po_number);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allOrders, statusOverrides]);
+
+  useEffect(() => {
+    setExpandedPo((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      overdueKeys.forEach((k) => { if (!next.has(k)) { next.add(k); changed = true; } });
+      return changed ? next : prev;
+    });
+  }, [overdueKeys]);
+
+  // P19 — global ⌘E listener: toggle expand/collapse all PO rows in approval table.
+  useEffect(() => {
+    const onEvt = () => {
+      setExpandedPo((prev) => {
+        const allKeys = allOrders.map((po) => po.po_number);
+        const allOpen = allKeys.length > 0 && allKeys.every((k) => prev.has(k));
+        return allOpen ? new Set() : new Set(allKeys);
+      });
+    };
+    window.addEventListener("lov:expand-all-rows", onEvt);
+    return () => window.removeEventListener("lov:expand-all-rows", onEvt);
+  }, [allOrders]);
+
+  const togglePoRow = (poNumber: string) => {
+    setExpandedPo((prev) => {
+      const next = new Set(prev);
+      next.has(poNumber) ? next.delete(poNumber) : next.add(poNumber);
+      return next;
+    });
+  };
+
   /**
    * Per-line received quantity (partial GRN aware).
    *
@@ -1103,7 +1148,7 @@ export default function OrdersPage() {
                           : st === "cancelled"
                             ? "shortage"
                             : "ok";
-                    const isExpanded = expandedPo === po.po_number;
+                    const isExpanded = expandedPo.has(po.po_number);
                     const nmName = supplierToNm[po.supplier] || po.supplier;
                     const orderQty = Number(po.quantity);
                     // Build mock lineage data — derived deterministically from PO
@@ -1126,7 +1171,7 @@ export default function OrdersPage() {
                           data-severity={severity}
                           data-keyboard-row={`po-${po.po_number}`}
                           tabIndex={0}
-                          onClick={() => setExpandedPo(isExpanded ? null : po.po_number)}
+                          onClick={() => togglePoRow(po.po_number)}
                           className="border-b border-surface-3/50 hover:bg-surface-1/30 outline-none cursor-pointer"
                         >
                           <td className="px-2 py-2.5 text-text-3">
