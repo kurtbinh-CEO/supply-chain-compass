@@ -4,7 +4,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenShell";
 import { cn } from "@/lib/utils";
 import { useRbac, UserRole } from "@/components/RbacContext";
-import { ChevronDown, ChevronRight, ExternalLink, Clock, ArrowRight, Zap, Target, Building2, Briefcase, Factory, TrendingUp, BarChart3, ShieldCheck, Package, Truck, Calculator, MousePointerClick, Mic, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, ExternalLink, Clock, ArrowRight, Zap, Target, Building2, Briefcase, Factory, TrendingUp, BarChart3, ShieldCheck, Package, Truck, Calculator, MousePointerClick, Mic, AlertTriangle, CheckCircle2, XCircle, PlayCircle, Sparkles, GitBranch, Layers, Activity } from "lucide-react";
 import { useWalkthrough, TourHighlight } from "@/components/WalkthroughContext";
 
 /* ═══ TYPES ═══ */
