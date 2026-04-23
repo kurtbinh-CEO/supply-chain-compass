@@ -89,6 +89,106 @@ function TenantDropdown({ tenant, setTenant, tenants }: { tenant: string; setTen
   );
 }
 
+/* ─────────── Freshness indicator (P26) ───────────
+ * Tổng hợp staleness từ NM_INVENTORY → 1 icon trên TopBar.
+ * 🟢 Data mới (tất cả NM fresh)
+ * 🟡 1+ NM cũ (24–72h)
+ * 🔴 1+ NM stale > 72h → DRP có thể bị chặn
+ */
+function FreshnessIndicator() {
+  const navigate = useNavigate();
+
+  const { worst, perNm, label, tone } = useMemo(() => {
+    // Lấy staleness tệ nhất theo từng NM
+    const perNm = FACTORIES.map((f) => {
+      const items = NM_INVENTORY.filter((i) => i.nmId === f.id);
+      let s: "fresh" | "1d" | "stale" = "fresh";
+      let latestTs = 0;
+      items.forEach((it) => {
+        if (it.staleness === "stale") s = "stale";
+        else if (it.staleness === "1d" && s !== "stale") s = "1d";
+        const ts = new Date(it.updatedAt).getTime();
+        if (ts > latestTs) latestTs = ts;
+      });
+      // Giờ "thực" tính từ thời điểm dataset (ngày 13/05/2026 10:00)
+      const refTs = new Date("2026-05-13T10:00:00+07:00").getTime();
+      const hours = Math.max(0, Math.round((refTs - latestTs) / 3_600_000));
+      return { id: f.id, name: f.name, s, hours, hasData: items.length > 0 };
+    }).filter((x) => x.hasData);
+
+    const worst = perNm.some((x) => x.s === "stale")
+      ? "stale"
+      : perNm.some((x) => x.s === "1d")
+      ? "1d"
+      : "fresh";
+
+    const staleCount = perNm.filter((x) => x.s === "stale").length;
+    const oldCount = perNm.filter((x) => x.s === "1d").length;
+
+    const label =
+      worst === "stale"
+        ? `DRP bị chặn — ${staleCount} NM > 72h`
+        : worst === "1d"
+        ? `${oldCount} NM cũ`
+        : "Data mới";
+
+    const tone =
+      worst === "stale"
+        ? { dot: "bg-danger", text: "text-danger", border: "border-danger/40 hover:border-danger" }
+        : worst === "1d"
+        ? { dot: "bg-warning", text: "text-warning", border: "border-warning/40 hover:border-warning" }
+        : { dot: "bg-success", text: "text-success", border: "border-success/40 hover:border-success" };
+
+    return { worst, perNm, label, tone };
+  }, []);
+
+  return (
+    <Tooltip delayDuration={150}>
+      <TooltipTrigger asChild>
+        <button
+          onClick={() => navigate("/sync")}
+          className={cn(
+            "flex items-center gap-1.5 rounded-lg border bg-surface-0 px-2.5 py-1.5 text-caption font-medium transition-all hover:shadow-sm",
+            tone.border,
+            tone.text,
+          )}
+          title="Mở Đồng bộ dữ liệu"
+        >
+          <Wifi className="h-3.5 w-3.5" />
+          <span className={cn("h-2 w-2 rounded-full animate-pulse", tone.dot)} />
+          <span className="hidden lg:inline">{label}</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent
+        side="bottom"
+        align="start"
+        sideOffset={6}
+        className="max-w-[300px] bg-surface-1 text-text-1 border border-surface-3 shadow-lg p-3"
+      >
+        <div className="font-semibold mb-2 text-text-1">Độ tươi dữ liệu NM</div>
+        <div className="space-y-1">
+          {perNm.map((x) => {
+            const icon = x.s === "stale" ? "🔴" : x.s === "1d" ? "⚠️" : "✅";
+            const hoursLabel =
+              x.hours < 1 ? "vừa cập nhật" : x.hours < 24 ? `${x.hours}h` : `${Math.round(x.hours / 24)} ngày`;
+            return (
+              <div key={x.id} className="flex items-center justify-between gap-3 text-table-sm">
+                <span className="text-text-2">{x.name}</span>
+                <span className="font-mono text-text-3">
+                  {hoursLabel} {icon}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-2 pt-2 border-t border-surface-3 text-caption text-text-3">
+          Bấm để mở trang <strong>Đồng bộ dữ liệu</strong>.
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function TopBar() {
   const location = useLocation();
   const navigate = useNavigate();
