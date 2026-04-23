@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { HoldOrShipPanel } from "@/components/orders/HoldOrShipPanel";
 import {
@@ -274,7 +275,8 @@ export default function TransportPage() {
   }, []);
 
   return (
-    <div className="p-8 max-w-screen-2xl mx-auto">
+    <AppLayout>
+      <div className="p-8 max-w-screen-2xl mx-auto">
       <ScreenHeader
         title="Đóng hàng & Vận tải"
         subtitle={`F2-B5 · ${summary.total} container · ${summary.ship} SHIP · ${summary.hold} HOLD · ${summary.topUp} TOP_UP`}
@@ -333,6 +335,7 @@ export default function TransportPage() {
       </button>
 
       <ScreenFooter actionCount={summary.total} />
-    </div>
+      </div>
+    </AppLayout>
   );
 }
