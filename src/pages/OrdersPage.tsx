@@ -942,6 +942,17 @@ export default function OrdersPage() {
         </div>
       )}
 
+      {/* ─── Breadcrumb ─── */}
+      <nav className="flex items-center gap-1.5 text-caption text-text-3 mb-3">
+        <span>Vận hành hàng ngày</span>
+        <ChevronRight className="h-3 w-3" />
+        <span>Đơn hàng</span>
+        <ChevronRight className="h-3 w-3" />
+        <span className="text-text-1 font-medium">
+          {tabs.find((t) => t.key === activeTab)?.label}
+        </span>
+      </nav>
+
       {/* ─── Tabs ─── */}
       <div className="flex items-center gap-1 mb-5 rounded-full border border-surface-3 bg-surface-0 p-0.5 w-fit">
         {tabs.map((t) => {
@@ -961,6 +972,40 @@ export default function OrdersPage() {
           );
         })}
       </div>
+
+      {/* ═══════════════════ TAB: ĐÓNG HÀNG (gộp từ /transport) ═══════════════════ */}
+      {activeTab === "packing" && (
+        <div className="animate-fade-in space-y-5">
+          <PackingTab />
+          <div>
+            <h3 className="font-display text-section-header text-text-1 mb-2">
+              Quyết định Giữ / Xuất container
+            </h3>
+            <HoldOrShipPanel />
+          </div>
+          <button
+            onClick={() => setActiveTab("approval")}
+            className="w-full rounded-card border border-primary/30 bg-primary/5 px-5 py-3 flex items-center justify-between hover:bg-primary/10 transition-colors group"
+          >
+            <div className="text-left">
+              <div className="text-caption text-text-3 uppercase tracking-wider">Bước tiếp</div>
+              <div className="text-table font-semibold text-text-1 mt-0.5">
+                Đóng hàng xong → Duyệt PO/TO
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 text-primary font-medium text-table-sm">
+              Mở Duyệt PO <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* ═══════════════════ TAB: NHÀ XE ═══════════════════ */}
+      {activeTab === "carrier" && (
+        <div className="animate-fade-in">
+          <CarriersTab />
+        </div>
+      )}
 
       {poLoading && (
         <div className="flex items-center gap-2 text-text-3 text-table-sm mb-4">
