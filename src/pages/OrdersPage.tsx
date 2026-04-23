@@ -942,6 +942,51 @@ export default function OrdersPage() {
         </div>
       )}
 
+      {/* ─── Flow tổng thể (PRD 4.0 Allocate → Execute) ─── */}
+      <div className="mb-3 rounded-card border border-surface-3 bg-surface-0 px-4 py-3">
+        <p className="text-caption uppercase text-text-3 tracking-[0.14em] font-medium mb-2">
+          Flow tổng thể · Allocate → Execute
+        </p>
+        <div className="flex items-center gap-1.5 flex-wrap text-caption">
+          {[
+            { key: "drp",      label: "DRP tự động",          count: null,                                      tab: null },
+            { key: "alloc",    label: "Phân bổ (gán container)", count: TRANSPORT_PLANS.length,                 tab: null,        suffix: "container" },
+            { key: "approval", label: "Duyệt PO/TO",          count: approvalQueue.length,                      tab: "approval",  suffix: "chờ duyệt" },
+            { key: "packing",  label: "Chọn nhà xe",          count: stageCounts.confirmed?.count ?? 0,         tab: "packing",   suffix: "chờ NX" },
+            { key: "ship",    label: "NM gửi hàng",           count: stageCounts.shipped?.count ?? 0,           tab: "tracking",  suffix: "đang giao" },
+            { key: "tracking", label: "Theo dõi",             count: stageCounts.shipped?.count ?? 0,           tab: "tracking",  suffix: "đang giao" },
+            { key: "received", label: "CN nhận",              count: stageCounts.received?.count ?? 0,          tab: "tracking",  suffix: "đã nhận" },
+          ].map((node, i, arr) => (
+            <div key={node.key} className="flex items-center gap-1.5">
+              <button
+                onClick={() => node.tab && setActiveTab(node.tab)}
+                disabled={!node.tab}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition-colors",
+                  node.tab
+                    ? "border-surface-3 bg-surface-1 text-text-2 hover:border-primary/40 hover:text-text-1 cursor-pointer"
+                    : "border-surface-3 bg-surface-2 text-text-3 cursor-default",
+                  activeTab === node.tab && "border-primary bg-primary/10 text-primary font-semibold"
+                )}
+              >
+                <span>{node.label}</span>
+                {node.count !== null && node.count > 0 && (
+                  <span className={cn(
+                    "tabular-nums rounded-full px-1.5 py-0 text-caption font-semibold",
+                    activeTab === node.tab
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-surface-3 text-text-2"
+                  )}>
+                    {node.count}
+                  </span>
+                )}
+              </button>
+              {i < arr.length - 1 && <ArrowRight className="h-3 w-3 text-text-3 shrink-0" />}
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* ─── Breadcrumb ─── */}
       <nav className="flex items-center gap-1.5 text-caption text-text-3 mb-3">
         <span>Vận hành hàng ngày</span>
