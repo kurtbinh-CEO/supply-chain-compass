@@ -2293,7 +2293,7 @@ export default function OrdersPage() {
       )}
 
       {/* ═══════════════════ TAB 4: TRANSFER ORDERS (LCNB) ═══════════════════ */}
-      {activeTab === "to" && (
+      {activeTab === "transfer" && (
         <div className="animate-fade-in space-y-3">
           <div className="rounded-card border border-info/30 bg-info-bg px-3 py-2 text-table-sm text-text-2 flex items-center gap-2">
             <ArrowLeftRight className="h-4 w-4 text-primary shrink-0" />
