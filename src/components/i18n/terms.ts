@@ -219,6 +219,42 @@ export const TERMS: Record<string, TermEntry> = {
     tooltip_vi: "Khoảng thời gian bảng giá có hiệu lực (từ ngày → đến ngày). Sau ngày hết hạn cần phiên bản mới hoặc gia hạn.",
     tooltip_en: "Date range during which the price list is valid. After expiry, a new version or renewal is required.",
   },
+  CONTAINER: {
+    vi: "Container",
+    en: "Container",
+    tooltip_vi: "Đơn vị đóng hàng tiêu chuẩn. 20ft chứa ~900 m², 40ft chứa ~1.800 m². Tải càng đầy thì chi phí/m² càng thấp.",
+    tooltip_en: "Standard packing unit. 20ft holds ~900 m², 40ft holds ~1,800 m². Higher fill = lower cost per m².",
+  },
+  FILL_RATE: {
+    vi: "Tỉ lệ lấp đầy",
+    en: "Fill rate",
+    tooltip_vi: "Phần trăm tải / sức chứa container. ≥85% = đủ xuất, 60–84% = gợi ý gom thêm, <60% = giữ chờ gom.",
+    tooltip_en: "Loaded m² / container capacity. ≥85% = ship, 60–84% = top-up suggested, <60% = hold to consolidate.",
+  },
+  HOLD_OR_SHIP: {
+    vi: "Giữ hay Xuất",
+    en: "Hold or Ship",
+    tooltip_vi: "Quy tắc tự động chốt container: <60% giữ, 60–84% gợi ý gom, ≥85% xuất. SC Manager có thể override kèm lý do.",
+    tooltip_en: "Auto rule for container release: <60% hold, 60–84% top-up, ≥85% ship. SC Manager can override with reason.",
+  },
+  CARRIER: {
+    vi: "Nhà xe",
+    en: "Carrier",
+    tooltip_vi: "Đơn vị vận chuyển (nội bộ, đối tác, hoặc NM tự vận chuyển). Mỗi nhà xe có vùng phục vụ, giá theo loại container và SLA đúng giờ.",
+    tooltip_en: "Logistics provider (in-house, partner, or NM self-haul). Each carrier has region coverage, rate per container type, and on-time SLA.",
+  },
+  ATP: {
+    vi: "ATP",
+    en: "Available to Promise",
+    tooltip_vi: "Số lượng có thể cam kết bán/giao đến khách hàng (sau khi trừ booking đã giữ chỗ). ATP = Tồn − Booking đã chốt.",
+    tooltip_en: "Quantity available to promise to customers (after deducting reserved bookings). ATP = Inventory − Confirmed bookings.",
+  },
+  SHIPDETAILS: {
+    vi: "Thông tin vận chuyển",
+    en: "Ship details",
+    tooltip_vi: "Thông tin chi tiết chuyến hàng: số xe, container, nhà xe, tài xế. NM cập nhật khi xe rời nhà máy.",
+    tooltip_en: "Shipment details: vehicle plate, container number, carrier, driver. NM updates when vehicle departs the factory.",
+  },
 };
 
 export type TermKey = keyof typeof TERMS;

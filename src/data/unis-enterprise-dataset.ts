@@ -669,18 +669,126 @@ export interface TransportPlan {
   recommendation: string;
   poRefs: string[];
   scheduledDate: string;
+  // Lot-sizing & carrier assignment (P25)
+  carrierId: string | null;
+  driverName: string | null;
+  driverPhone: string | null;
+  vehiclePlate: string | null;
+  containerNo: string | null;
 }
 
 export const TRANSPORT_PLANS: TransportPlan[] = [
-  { id: "TP-001", fromCode: "NM-MKD", toCnCode: "CN-HN",  containerType: "40ft", capacityM2: 1800, loadedM2: 1750, fillPct: 97, status: "SHIP",             recommendation: "Khởi hành đúng kế hoạch",                 poRefs: ["PO-2026-05-001"], scheduledDate: "2026-05-14" },
-  { id: "TP-002", fromCode: "NM-DTM", toCnCode: "CN-HCM", containerType: "40ft", capacityM2: 1800, loadedM2: 1620, fillPct: 90, status: "SHIP",             recommendation: "Khởi hành đúng kế hoạch",                 poRefs: ["PO-2026-05-002", "PO-2026-05-005"], scheduledDate: "2026-05-15" },
-  { id: "TP-003", fromCode: "NM-TKO", toCnCode: "CN-DN",  containerType: "20ft", capacityM2: 900,  loadedM2: 480,  fillPct: 53, status: "HOLD",             recommendation: "Chờ gom hàng — fill < 60%",               poRefs: ["PO-2026-05-008"], scheduledDate: "2026-05-16" },
-  { id: "TP-004", fromCode: "NM-VGC", toCnCode: "CN-HN",  containerType: "20ft", capacityM2: 900,  loadedM2: 720,  fillPct: 80, status: "TOP_UP_SUGGESTED", recommendation: "Bổ sung 180m² GM-400 để full container",  poRefs: ["PO-2026-05-011"], scheduledDate: "2026-05-15" },
-  { id: "TP-005", fromCode: "NM-DTM", toCnCode: "CN-CT",  containerType: "40ft", capacityM2: 1800, loadedM2: 1680, fillPct: 93, status: "SHIP",             recommendation: "Khởi hành đúng kế hoạch",                 poRefs: ["PO-2026-05-006"], scheduledDate: "2026-05-16" },
-  { id: "TP-006", fromCode: "NM-PMY", toCnCode: "CN-BMT", containerType: "20ft", capacityM2: 900,  loadedM2: 410,  fillPct: 46, status: "HOLD",             recommendation: "Chờ Phú Mỹ phản hồi cam kết PK-001",      poRefs: ["PO-2026-05-013"], scheduledDate: "2026-05-18" },
-  { id: "TP-007", fromCode: "NM-MKD", toCnCode: "CN-BD",  containerType: "40ft", capacityM2: 1800, loadedM2: 1450, fillPct: 81, status: "TOP_UP_SUGGESTED", recommendation: "Bổ sung 320m² GA-400 để fill 99%",        poRefs: ["PO-2026-05-003"], scheduledDate: "2026-05-15" },
-  { id: "TP-008", fromCode: "NM-TKO", toCnCode: "CN-HCM", containerType: "40ft", capacityM2: 1800, loadedM2: 1700, fillPct: 94, status: "SHIP",             recommendation: "Khởi hành đúng kế hoạch",                 poRefs: ["PO-2026-05-004"], scheduledDate: "2026-05-17" },
+  { id: "TP-001", fromCode: "NM-MKD", toCnCode: "CN-HN",  containerType: "40ft", capacityM2: 1800, loadedM2: 1750, fillPct: 97, status: "SHIP",             recommendation: "Khởi hành đúng kế hoạch",                 poRefs: ["PO-2026-05-001"], scheduledDate: "2026-05-14", carrierId: "CR-04", driverName: "Trần Văn Nam",   driverPhone: "0903 111 555", vehiclePlate: "29C-18472", containerNo: "MKDU1234560" },
+  { id: "TP-002", fromCode: "NM-DTM", toCnCode: "CN-HCM", containerType: "40ft", capacityM2: 1800, loadedM2: 1620, fillPct: 90, status: "SHIP",             recommendation: "Khởi hành đúng kế hoạch",                 poRefs: ["PO-2026-05-002", "PO-2026-05-005"], scheduledDate: "2026-05-15", carrierId: "CR-01", driverName: "Lê Văn Hùng",    driverPhone: "0903 555 222", vehiclePlate: "51C-72184", containerNo: "TCKU2200881" },
+  { id: "TP-003", fromCode: "NM-TKO", toCnCode: "CN-DN",  containerType: "20ft", capacityM2: 900,  loadedM2: 480,  fillPct: 53, status: "HOLD",             recommendation: "Chờ gom hàng — lấp đầy 53% < 60%",        poRefs: ["PO-2026-05-008"], scheduledDate: "2026-05-16", carrierId: null,    driverName: null,             driverPhone: null,           vehiclePlate: null,        containerNo: null },
+  { id: "TP-004", fromCode: "NM-VGC", toCnCode: "CN-HN",  containerType: "20ft", capacityM2: 900,  loadedM2: 720,  fillPct: 80, status: "TOP_UP_SUGGESTED", recommendation: "Gợi ý bổ sung 180m² GM-400 để lấp đầy",  poRefs: ["PO-2026-05-011"], scheduledDate: "2026-05-15", carrierId: "CR-02", driverName: null,             driverPhone: null,           vehiclePlate: null,        containerNo: null },
+  { id: "TP-005", fromCode: "NM-DTM", toCnCode: "CN-CT",  containerType: "40ft", capacityM2: 1800, loadedM2: 1680, fillPct: 93, status: "SHIP",             recommendation: "Khởi hành đúng kế hoạch",                 poRefs: ["PO-2026-05-006"], scheduledDate: "2026-05-16", carrierId: "CR-03", driverName: "Phạm Quốc Anh",  driverPhone: "0908 444 333", vehiclePlate: "51C-65902", containerNo: "TCNU3344120" },
+  { id: "TP-006", fromCode: "NM-PMY", toCnCode: "CN-BMT", containerType: "20ft", capacityM2: 900,  loadedM2: 410,  fillPct: 46, status: "HOLD",             recommendation: "Chờ Phú Mỹ phản hồi cam kết PK-001",      poRefs: ["PO-2026-05-013"], scheduledDate: "2026-05-18", carrierId: null,    driverName: null,             driverPhone: null,           vehiclePlate: null,        containerNo: null },
+  { id: "TP-007", fromCode: "NM-MKD", toCnCode: "CN-BD",  containerType: "40ft", capacityM2: 1800, loadedM2: 1450, fillPct: 81, status: "TOP_UP_SUGGESTED", recommendation: "Gợi ý bổ sung 320m² GA-400 để lấp đầy",  poRefs: ["PO-2026-05-003"], scheduledDate: "2026-05-15", carrierId: "CR-04", driverName: null,             driverPhone: null,           vehiclePlate: null,        containerNo: null },
+  { id: "TP-008", fromCode: "NM-TKO", toCnCode: "CN-HCM", containerType: "40ft", capacityM2: 1800, loadedM2: 1700, fillPct: 94, status: "SHIP",             recommendation: "Khởi hành đúng kế hoạch",                 poRefs: ["PO-2026-05-004"], scheduledDate: "2026-05-17", carrierId: "CR-01", driverName: "Nguyễn Văn Tài", driverPhone: "0902 777 888", vehiclePlate: "51C-88521", containerNo: "TCKU5567890" },
 ];
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* §15.1 CARRIERS — danh mục nhà xe (P25)                                    */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+export interface Carrier {
+  id: string;
+  name: string;
+  type: "Nội bộ" | "Đối tác" | "NM tự vận chuyển";
+  phone: string;
+  region: string[];          // "Bắc" | "Trung" | "Nam"
+  rate20ft: number;          // VND / chuyến
+  rate40ft: number;
+  slaOnTimePct: number;
+  available: boolean;
+  note: string;
+}
+
+export const CARRIERS: Carrier[] = [
+  { id: "CR-01", name: "Vinatrans",         type: "Đối tác",            phone: "028 3822 8888", region: ["Nam", "Trung"],         rate20ft: 8_500_000, rate40ft: 14_200_000, slaOnTimePct: 92, available: true,  note: "Đối tác chính UNIS miền Nam" },
+  { id: "CR-02", name: "Gemadept Logistics", type: "Đối tác",           phone: "028 3811 7777", region: ["Nam", "Trung", "Bắc"], rate20ft: 9_200_000, rate40ft: 15_800_000, slaOnTimePct: 95, available: true,  note: "Phủ toàn quốc, giá cao hơn" },
+  { id: "CR-03", name: "Tân Cảng STC",       type: "Đối tác",           phone: "028 3742 0888", region: ["Nam"],                 rate20ft: 7_800_000, rate40ft: 13_500_000, slaOnTimePct: 88, available: true,  note: "Giá tốt nhất miền Nam" },
+  { id: "CR-04", name: "Vận tải Mikado",     type: "NM tự vận chuyển",   phone: "0221 382 1234", region: ["Bắc"],                 rate20ft: 0,         rate40ft: 0,          slaOnTimePct: 85, available: true,  note: "Mikado tự vận chuyển, không tính phí riêng" },
+  { id: "CR-05", name: "Hải Vân Express",    type: "Đối tác",           phone: "0236 388 5555", region: ["Trung"],               rate20ft: 7_200_000, rate40ft: 12_800_000, slaOnTimePct: 82, available: false, note: "Tạm ngưng — xe bảo trì tháng 5" },
+];
+
+// Map CN → vùng (để lọc carrier theo region)
+export const CN_REGION: Record<string, "Bắc" | "Trung" | "Nam"> = {
+  "CN-HN": "Bắc", "CN-HP": "Bắc", "CN-NA": "Bắc",
+  "CN-DN": "Trung", "CN-QN": "Trung", "CN-NT": "Trung", "CN-PK": "Trung", "CN-BMT": "Trung",
+  "CN-HCM": "Nam", "CN-CT": "Nam", "CN-BD": "Nam", "CN-LA": "Nam",
+};
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* §15.2 generateTransportPlans — algorithm gom PO vào container             */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+export function generateTransportPlans(poList: PoDraftRow[]): TransportPlan[] {
+  const CAPACITY_20FT = 900;   // transport.20ft.capacity_m2
+  const CAPACITY_40FT = 1800;  // transport.40ft.capacity_m2
+  const FILL_MIN = 60;         // transport.container.fill_min
+  const FILL_TOPUP = 85;       // transport.container.fill_topup
+
+  // Bước 1: gom PO theo tuyến NM→CN (chỉ confirmed)
+  const routes = new Map<string, PoDraftRow[]>();
+  poList.filter((po) => po.status === "confirmed").forEach((po) => {
+    const key = `NM-${po.nmId}→${po.cnCode}`;
+    routes.set(key, [...(routes.get(key) ?? []), po]);
+  });
+
+  const plans: TransportPlan[] = [];
+
+  routes.forEach((pos, routeKey) => {
+    const totalQty = pos.reduce((s, po) => s + po.qtyM2, 0);
+    const [fromCode, toCnCode] = routeKey.split("→");
+    let remaining = totalQty;
+    let seq = 1;
+
+    // Bước 2: chia container
+    while (remaining > 0) {
+      const containerType: "20ft" | "40ft" = remaining > CAPACITY_20FT ? "40ft" : "20ft";
+      const capacity = containerType === "40ft" ? CAPACITY_40FT : CAPACITY_20FT;
+      const loaded = Math.min(remaining, capacity);
+      const fillPct = Math.round((loaded / capacity) * 100);
+
+      // Bước 3: Hold-or-Ship rule
+      let status: TransportPlanStatus = "SHIP";
+      let recommendation = "Khởi hành đúng kế hoạch";
+      if (fillPct < FILL_MIN) {
+        status = "HOLD";
+        recommendation = `Chờ gom hàng — lấp đầy ${fillPct}% < ${FILL_MIN}%`;
+      } else if (fillPct < FILL_TOPUP) {
+        status = "TOP_UP_SUGGESTED";
+        recommendation = `Gợi ý bổ sung ${(capacity - loaded).toLocaleString("vi-VN")}m² để lấp đầy`;
+      }
+
+      plans.push({
+        id: `TP-${fromCode.replace("NM-", "")}-${toCnCode.replace("CN-", "")}-${seq}`,
+        fromCode,
+        toCnCode,
+        containerType,
+        capacityM2: capacity,
+        loadedM2: loaded,
+        fillPct,
+        status,
+        recommendation,
+        poRefs: pos.map((p) => p.poNumber),
+        scheduledDate: pos[0]?.expectedDate ?? "",
+        carrierId: null,
+        driverName: null,
+        driverPhone: null,
+        vehiclePlate: null,
+        containerNo: null,
+      });
+
+      remaining -= loaded;
+      seq++;
+    }
+  });
+
+  return plans;
+}
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /* §16 FEEDBACK_METRICS — FC MAPE, trust, honoring, fill rate                */
