@@ -15,6 +15,8 @@ import { useSopConsensus } from "@/hooks/useSopConsensus";
 import { BRANCHES, DEMAND_FC, SKU_BASES, SKU_VARIANTS } from "@/data/unis-enterprise-dataset";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { ChangeLogPanel } from "@/components/ChangeLogPanel";
+import { NextStepBanner } from "@/components/NextStepBanner";
+import { useNextStep } from "@/components/NextStepContext";
 
 const tabs = [
   { key: "consensus", label: "Consensus" },
@@ -112,9 +114,16 @@ function buildEnterpriseConsensus(): ConsensusRow[] {
 export default function SopPage() {
   const [activeTab, setActiveTab] = useState("consensus");
   const { tenant } = useTenant();
+  const { markDone } = useNextStep();
 
   const [locked, setLocked] = useState(false);
   const [showPreLock, setShowPreLock] = useState(false);
+
+  // Mark "S&OP locked" → trigger banner pointing to /supply.
+  const lockAndMark = useCallback(() => {
+    setLocked(true);
+    markDone("sop.locked");
+  }, [markDone]);
 
   // Mock current S&OP day-of-cycle (Day 5/30 — Cân đối phase)
   const [currentDay] = useState(5);
@@ -337,7 +346,7 @@ export default function SopPage() {
                   if (cellPresence.onlineUsers.length > 1) {
                     setShowPreLock(true);
                   } else {
-                    setLocked(true);
+                    lockAndMark();
                   }
                 }}
                 tenant={tenant}
@@ -355,7 +364,7 @@ export default function SopPage() {
             { name: "Sales N", cell: "CT×GA-600", duration: "45s" },
           ]}
           onNotifyWait={() => { import("sonner").then(m => m.toast.info("Đã gửi thông báo tới editors. Chờ 5 phút...")); }}
-          onForceLock={() => { setLocked(true); setShowPreLock(false); import("sonner").then(m => m.toast.warning("S&OP đã locked. Unsaved data → Drafts.")); }}
+          onForceLock={() => { lockAndMark(); setShowPreLock(false); import("sonner").then(m => m.toast.warning("S&OP đã locked. Unsaved data → Drafts.")); }}
           onClose={() => setShowPreLock(false)}
         />
       )}
@@ -374,6 +383,7 @@ export default function SopPage() {
       <div className="mt-6">
         <ChangeLogPanel entityType="sop_consensus" maxItems={6} />
       </div>
+      <NextStepBanner step="sop.locked" />
       <ScreenFooter actionCount={5} />
     </AppLayout>
   );

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,8 @@ import { useDemandForecasts } from "@/hooks/useDemandForecasts";
 import { Loader2 } from "lucide-react";
 import { B2B_DEALS, B2B_STAGE_PROB, DEMAND_FC, type B2bStage, type B2bDeal } from "@/data/unis-enterprise-dataset";
 import { ClickableNumber } from "@/components/ClickableNumber";
+import { NextStepBanner } from "@/components/NextStepBanner";
+import { useNextStep } from "@/components/NextStepContext";
 
 const tabs = [
   { key: "total", label: "Demand tổng" },
@@ -27,6 +29,15 @@ export default function DemandPage() {
   const [activeTab, setActiveTab] = useState("total");
   const { tenant } = useTenant();
   const { cnSummaries, loading: forecastLoading } = useDemandForecasts();
+  const { markDone } = useNextStep();
+
+  // Mark "FC nhập xong" once forecasts are loaded with data — banner appears so the user can move to /sop.
+  useEffect(() => {
+    if (!forecastLoading && cnSummaries.length > 0) {
+      const t = window.setTimeout(() => markDone("demand.fc-imported"), 800);
+      return () => window.clearTimeout(t);
+    }
+  }, [forecastLoading, cnSummaries.length, markDone]);
 
   const scale = TENANT_SCALE[tenant] ?? 1;
 
@@ -169,6 +180,7 @@ export default function DemandPage() {
         )}
       </div>
       {activeTab === "fc-actual" && <FcVsActualTab />}
+      <NextStepBanner step="demand.fc-imported" />
       <ScreenFooter actionCount={8} />
     </AppLayout>
   );
