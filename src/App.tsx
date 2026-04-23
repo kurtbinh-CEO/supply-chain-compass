@@ -15,6 +15,7 @@ import { ActivityLogProvider } from "@/components/ActivityLogContext";
 import { WalkthroughProvider } from "@/components/WalkthroughContext";
 import { AuthProvider, useAuth } from "@/components/AuthContext";
 import { ZoomProvider } from "@/components/ZoomControls";
+import { CommandPaletteProvider } from "@/components/CommandPalette";
 import AuthPage from "./pages/AuthPage";
 import Index from "./pages/Index";
 import DesignTest from "./pages/DesignTest";
@@ -70,6 +71,7 @@ function ProtectedRoutes() {
       <WorkflowProvider>
       <SafetyStockProvider>
       <WalkthroughProvider>
+      <CommandPaletteProvider>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/workspace" element={<WorkspacePage />} />
@@ -96,6 +98,7 @@ function ProtectedRoutes() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+      </CommandPaletteProvider>
       </WalkthroughProvider>
       </SafetyStockProvider>
       </WorkflowProvider>
