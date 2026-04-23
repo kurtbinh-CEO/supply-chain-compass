@@ -465,6 +465,17 @@ function ScenarioCard({
         <p className="text-table-sm text-text-3 mt-0.5">{scenario.subtitle}</p>
       </div>
 
+      {/* Cảnh báo bảng giá sắp hết hạn */}
+      {scenario.priceInfo?.daysUntilExpiry != null && scenario.priceInfo.daysUntilExpiry < 30 && (
+        <div className="rounded-button bg-warning-bg/60 border border-warning/30 px-3 py-2 text-caption text-warning flex items-start gap-1.5">
+          <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+          <span>
+            Bảng giá hết hạn trong <strong>{scenario.priceInfo.daysUntilExpiry} ngày</strong>
+            {" "}({scenario.priceInfo.expiryDate}). Giá có thể thay đổi sau đó.
+          </span>
+        </div>
+      )}
+
       <div className="rounded-button bg-surface-2 px-3 py-2.5">
         <p className="text-caption text-text-3 uppercase tracking-wider">
           Chi phí ước tính
@@ -473,6 +484,13 @@ function ScenarioCard({
           {fmtVnd(scenario.cost)}
         </p>
         <p className="text-caption text-text-3 mt-0.5">{scenario.costFormula}</p>
+        {/* Phụ phí breakdown */}
+        {scenario.priceInfo?.surchargeText && (scenario.key === "A" || scenario.key === "D") && (
+          <p className="text-caption text-info mt-1.5 leading-relaxed">
+            💡 Giá gốc: <span className="tabular-nums">{scenario.priceInfo.basePrice.toLocaleString("vi-VN")}₫</span>
+            {" + "}{scenario.priceInfo.surchargeText} = <strong className="tabular-nums">{scenario.priceInfo.totalPrice.toLocaleString("vi-VN")}₫/m²</strong>
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
