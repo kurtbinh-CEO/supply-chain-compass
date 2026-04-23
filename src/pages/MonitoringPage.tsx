@@ -704,13 +704,13 @@ export default function MonitoringPage() {
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
                     {[
-                      { h: "NM", tooltip: null },
-                      { h: "Honoring%", tooltip: null },
-                      { h: "On-time%", tooltip: "On-time = delivered ≤ ETA + grace period (2d).\nOn-time% = (# PO on-time) ÷ (# PO total) × 100\nConfig: /config → PO → on_time_grace_days = 2." },
-                      { h: "LT actual vs plan", tooltip: null },
-                      { h: "Trend", tooltip: null },
-                      { h: "Grade", tooltip: "NM Grade dựa trên Honoring% trung bình 3 tháng:\nA 🟢 ≥ 90%: NM đáng tin. ATP full confidence.\nB    ≥ 80%: OK. ATP × honoring factor.\nC 🟡 ≥ 60%: Cần cải thiện. ATP discounted. Review meeting.\nD 🔴 < 60%: Risk cao. Xem xét thay NM. Share% giảm.\nAuto-action: effective_ATP = raw_ATP × honoring%.\nConfig: /config → NM ATP → grade thresholds." },
-                      { h: "Action", tooltip: null },
+                      { h: "NM", tooltip: null, term: undefined as string | undefined },
+                      { h: "Honoring%", tooltip: null, term: "HonoringRate" },
+                      { h: "On-time%", tooltip: "On-time = delivered ≤ ETA + grace period (2d).\nOn-time% = (# PO on-time) ÷ (# PO total) × 100\nConfig: /config → PO → on_time_grace_days = 2.", term: undefined },
+                      { h: "LT actual vs plan", tooltip: null, term: undefined },
+                      { h: "Trend", tooltip: null, term: undefined },
+                      { h: "Grade", tooltip: "NM Grade dựa trên Honoring% trung bình 3 tháng:\nA 🟢 ≥ 90%: NM đáng tin. ATP full confidence.\nB    ≥ 80%: OK. ATP × honoring factor.\nC 🟡 ≥ 60%: Cần cải thiện. ATP discounted. Review meeting.\nD 🔴 < 60%: Risk cao. Xem xét thay NM. Share% giảm.\nAuto-action: effective_ATP = raw_ATP × honoring%.\nConfig: /config → NM ATP → grade thresholds.", term: undefined },
+                      { h: "Action", tooltip: null, term: undefined },
                     ].map((col, i) => (
                       <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
                         <span className="inline-flex items-center gap-1">
