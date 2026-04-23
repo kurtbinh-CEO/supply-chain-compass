@@ -361,6 +361,29 @@ export default function DrpPage() {
   const [drpStep, setDrpStep] = useState(0);
   const [resolvedExceptions, setResolvedExceptions] = useState<Record<string, string>>({});
 
+  /* FIX 2 — "What changed" banner (overnight change feed, dismissible/persisted) */
+  const WHATS_NEW_KEY = "drp:whatsNewDismissed:2026-05-13";
+  const [whatsNewDismissed, setWhatsNewDismissed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(WHATS_NEW_KEY) === "1";
+  });
+  const overnightChanges = useMemo(
+    () => [
+      { icon: "🟢", text: "CN-BD: CN adjust GA-300 +25m² lúc 16:45" },
+      { icon: "🟡", text: "Toko: Counter GA-600 −32% lúc 10:15" },
+      { icon: "🔴", text: "PO-BD-W19: OVERDUE 3 ngày" },
+    ],
+    [],
+  );
+  const dismissWhatsNew = () => {
+    setWhatsNewDismissed(true);
+    if (typeof window !== "undefined") localStorage.setItem(WHATS_NEW_KEY, "1");
+  };
+
+  /* FIX 3 — Compare "vs đêm qua" collapsible panel state (data computed below) */
+  const [compareOpen, setCompareOpen] = useState(false);
+  const hubChangedSinceDrp = true; // demo: NM confirmed +2,000m² after DRP run
+
   /* ── DRP Batch lifecycle (Approve & Release flow) ── */
   const [batchStatus, setBatchStatus] = useState<DrpBatchStatus>("idle");
   const [drpBatchData, setDrpBatchData] = useState<DrpBatch | null>(null);
@@ -417,6 +440,24 @@ export default function DrpPage() {
   const totalFill = totalDemand > 0 ? Math.round(((totalDemand - totalGap) / totalDemand) * 1000) / 10 : 100;
   const activeCn = drillCn ? data.find((r) => r.cn === drillCn) : null;
 
+  /* FIX 3 — Compare "vs đêm qua" derived rows + hub snapshot deltas */
+  const compareRows = useMemo(() => {
+    const rows: Array<{ cn: string; base: string; prev: number; now: number; deltaPct: number }> = [];
+    data.slice(0, 4).forEach((cn) => {
+      cn.allSkus.slice(0, 2).forEach((sk) => {
+        const now = sk.demand;
+        const seed = (cn.cn + sk.item + sk.variant).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+        const pctShift = ((seed % 60) - 25) / 100; // -25%..+35%
+        const prev = Math.max(0, Math.round(now / (1 + pctShift)));
+        const deltaPct = prev > 0 ? ((now - prev) / prev) * 100 : 0;
+        rows.push({ cn: cn.cn, base: `${sk.item} ${sk.variant}`, prev, now, deltaPct });
+      });
+    });
+    return rows.sort((a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct));
+  }, [data]);
+  const hubAtRunM2 = Math.round(5681 * s);
+  const hubDeltaSinceRun = Math.round(2000 * s);
+
   // SKU-first aggregation for DRP
   const skuAggDrp = useMemo(() => {
     const map: Record<string, { item: string; variant: string; totalDemand: number; totalAllocated: number; totalGap: number; fillPct: number;
@@ -460,6 +501,47 @@ export default function DrpPage() {
     });
     return Object.values(map).sort((a, b) => a.fillPct - b.fillPct);
   }, [data]);
+
+  /* FIX 1 (ADR-SCP-008) — Group variants under SKU base for netting display.
+     Variants become expandable sub-rows; main row shows base totals. */
+  const skuBaseAggDrp = useMemo(() => {
+    const map: Record<string, {
+      base: string;
+      totalDemand: number;
+      totalAllocated: number;
+      totalGap: number;
+      fillPct: number;
+      cnGapCount: number;
+      sources: AllocSources;
+      variants: typeof skuAggDrp;
+    }> = {};
+    skuAggDrp.forEach((v) => {
+      const key = v.item;
+      if (!map[key]) {
+        map[key] = {
+          base: key, totalDemand: 0, totalAllocated: 0, totalGap: 0, fillPct: 0,
+          cnGapCount: 0,
+          sources: { onHand: 0, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 },
+          variants: [],
+        };
+      }
+      map[key].totalDemand += v.totalDemand;
+      map[key].totalAllocated += v.totalAllocated;
+      map[key].totalGap += v.totalGap;
+      map[key].cnGapCount += v.cnGapCount;
+      map[key].sources.onHand += v.sources.onHand;
+      map[key].sources.pipeline += v.sources.pipeline;
+      map[key].sources.hubPo += v.sources.hubPo;
+      map[key].sources.lcnbIn += v.sources.lcnbIn;
+      map[key].sources.internalTransfer += v.sources.internalTransfer;
+      map[key].variants.push(v);
+    });
+    Object.values(map).forEach((b) => {
+      b.fillPct = b.totalDemand > 0 ? Math.round((b.totalAllocated / b.totalDemand) * 100) : 100;
+      b.variants.sort((a, b) => a.variant.localeCompare(b.variant));
+    });
+    return Object.values(map).sort((a, b) => a.fillPct - b.fillPct);
+  }, [skuAggDrp]);
 
   // Inline expand state for Layer 1 — persisted per pivot mode in sessionStorage
   const STORAGE_KEY = "drp:expandedRows";
@@ -866,6 +948,41 @@ export default function DrpPage() {
         />
       )}
 
+      {/* FIX 2 — What changed since last DRP run (08:00 morning brief) */}
+      {!whatsNewDismissed && (
+        <div className="mb-4 rounded-card border border-info/30 bg-info-bg/40 px-4 py-3" role="status" aria-label="Thay đổi từ đêm qua">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2 flex-1 min-w-0">
+              <span className="text-table">📋</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                  <span className="text-table font-semibold text-text-1">Thay đổi từ đêm qua:</span>
+                  <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-info text-primary-foreground text-caption font-bold">
+                    {overnightChanges.length}
+                  </span>
+                  <span className="text-caption text-text-3">cập nhật từ 23:00 hôm qua đến 08:00 sáng nay</span>
+                </div>
+                <ul className="space-y-1">
+                  {overnightChanges.map((c, i) => (
+                    <li key={i} className="text-table-sm text-text-2 flex items-start gap-2">
+                      <span className="shrink-0">{c.icon}</span>
+                      <span>{c.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <button
+              onClick={dismissWhatsNew}
+              className="shrink-0 text-caption text-text-3 hover:text-text-1 px-2 py-1 rounded-button hover:bg-surface-1"
+              aria-label="Đã xem, ẩn banner"
+            >
+              ✕ Đã xem
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Header ── */}
       <div className="flex items-center justify-between mb-1" data-tour="drp-header">
         <div className="flex items-center gap-3">
@@ -1159,45 +1276,110 @@ export default function DrpPage() {
                   );
                 })}
 
-                {pivotMode === "sku" && skuAggDrp.filter(sk => matchesSourceFilter(sk.sources)).map((sk) => {
-                  const rowKey = `sku-${sk.item}-${sk.variant}`;
+                {/* FIX 1 (ADR-SCP-008) — Netting at SKU base; variants as expandable sub-rows */}
+                {pivotMode === "sku" && skuBaseAggDrp.filter(b => matchesSourceFilter(b.sources)).map((b) => {
+                  const rowKey = `skubase-${b.base}`;
                   const isOpen = expandedRows.has(rowKey);
+                  const netReq = b.totalDemand - (b.sources.onHand + b.sources.pipeline);
+                  const severity: "shortage" | "watch" | "ok" =
+                    b.totalGap > 0 ? "shortage" : b.fillPct < 95 ? "watch" : "ok";
                   return (
                     <Fragment key={rowKey}>
-                      <tr className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", sk.totalGap > 0 && "bg-danger-bg/20", isOpen && "bg-surface-1/40")}>
+                      <tr
+                        data-severity={severity}
+                        data-keyboard-row={`drp-skubase-${b.base}`}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === " " || e.key === "Enter") {
+                            e.preventDefault();
+                            toggleRow(rowKey);
+                          }
+                        }}
+                        className={cn("border-b border-surface-3/50 hover:bg-surface-1/30 outline-none", isOpen && "bg-surface-1/40")}
+                      >
                         <td className="px-3 py-3 text-text-3 cursor-pointer" onClick={() => toggleRow(rowKey)}>
                           {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </td>
-                        <td className="px-4 py-3 text-table font-medium text-text-1 cursor-pointer" onClick={() => toggleRow(rowKey)}>
-                          {sk.item} <span className="text-text-3 font-normal">{sk.variant}</span>
+                        <td className="px-4 py-3 text-table font-semibold text-text-1 cursor-pointer" onClick={() => toggleRow(rowKey)}>
+                          <span className="inline-flex items-center gap-1.5">
+                            {b.base}
+                            <span className="text-caption text-text-3 font-normal">({b.variants.length} biến thể)</span>
+                          </span>
                         </td>
-                        <td className="px-4 py-3 text-table tabular-nums text-text-1">{sk.totalDemand.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-table tabular-nums text-text-2">{sk.totalAllocated.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-table tabular-nums text-text-1">
+                          <ClickableNumber
+                            value={Math.max(0, netReq).toLocaleString()}
+                            label={`${b.base} net req`}
+                            color="text-text-1 font-medium"
+                            formula={`Net Req = Demand − (On-hand + Pipeline)\n= ${b.totalDemand.toLocaleString()} − (${b.sources.onHand.toLocaleString()} + ${b.sources.pipeline.toLocaleString()})\n= ${Math.max(0, netReq).toLocaleString()} m²`}
+                            note="ℹ️ Netting tại mã gốc. Phân rã đuôi tự động theo tồn kho."
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-table tabular-nums text-text-2">{b.totalAllocated.toLocaleString()}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <div className="w-16 h-2 rounded-full bg-surface-3 overflow-hidden">
-                              <div className={cn("h-full rounded-full", sk.fillPct >= 95 ? "bg-success" : sk.fillPct >= 85 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(sk.fillPct, 100)}%` }} />
+                              <div className={cn("h-full rounded-full", b.fillPct >= 95 ? "bg-success" : b.fillPct >= 85 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(b.fillPct, 100)}%` }} />
                             </div>
-                            <span className={cn("text-table-sm font-medium", sk.fillPct >= 95 ? "text-success" : sk.fillPct >= 85 ? "text-warning" : "text-danger")}>{sk.fillPct}%</span>
+                            <span className={cn("text-table-sm font-medium", b.fillPct >= 95 ? "text-success" : b.fillPct >= 85 ? "text-warning" : "text-danger")}>{b.fillPct}%</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-table tabular-nums">
-                          {sk.totalGap > 0 ? <span className="text-danger font-medium">{sk.totalGap.toLocaleString()}</span> : <span className="text-text-3">0</span>}
+                          {b.totalGap > 0 ? <span className="text-danger font-medium">{b.totalGap.toLocaleString()}</span> : <span className="text-text-3">0</span>}
                         </td>
                         <td className="px-4 py-3 text-table">
-                          <CnGapBadge count={sk.cnGapCount} />
-                          {sk.lcnb && <span className="ml-1"><LcnbBadge text={sk.lcnb} /></span>}
+                          <CnGapBadge count={b.cnGapCount} />
                         </td>
-                        <td className="px-4 py-3"><AllocSourceBar sources={sk.sources} compact demand={sk.totalDemand} allocated={sk.totalAllocated} /></td>
+                        <td className="px-4 py-3"><AllocSourceBar sources={b.sources} compact demand={b.totalDemand} allocated={b.totalAllocated} /></td>
                         <td></td>
                       </tr>
                       {isOpen && (
-                        <tr className="bg-surface-1/20">
-                          <td></td>
-                          <td colSpan={8} className="px-4 py-3">
-                            <ExpandedCnBreakdown title={`CN breakdown — ${sk.item} ${sk.variant}`} cnRows={sk.cnRows.filter(cr => matchesSourceFilter(cr.sources))} />
-                          </td>
-                        </tr>
+                        <>
+                          <tr className="bg-info-bg/20">
+                            <td></td>
+                            <td colSpan={8} className="px-4 py-2 text-caption text-text-2 italic">
+                              ℹ️ Netting tại mã gốc <span className="font-semibold text-text-1">{b.base}</span>. Phân rã đuôi tự động theo tồn kho — biến thể bên dưới chỉ để theo dõi:
+                            </td>
+                          </tr>
+                          {b.variants.map((v) => {
+                            const vKey = `${rowKey}-${v.variant}`;
+                            const vOpen = expandedRows.has(vKey);
+                            return (
+                              <Fragment key={vKey}>
+                                <tr className="bg-surface-1/40 border-b border-surface-3/30 text-table-sm">
+                                  <td className="px-3 py-2 text-text-3 cursor-pointer pl-8" onClick={() => toggleRow(vKey)}>
+                                    {vOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                  </td>
+                                  <td className="px-4 py-2 pl-8 text-text-2 cursor-pointer" onClick={() => toggleRow(vKey)}>
+                                    <span className="text-text-3">└</span> {v.variant}
+                                  </td>
+                                  <td className="px-4 py-2 tabular-nums text-text-2">{v.totalDemand.toLocaleString()}</td>
+                                  <td className="px-4 py-2 tabular-nums text-text-2">{v.totalAllocated.toLocaleString()}</td>
+                                  <td className="px-4 py-2">
+                                    <span className={cn("text-table-sm font-medium", v.fillPct >= 95 ? "text-success" : v.fillPct >= 85 ? "text-warning" : "text-danger")}>{v.fillPct}%</span>
+                                  </td>
+                                  <td className="px-4 py-2 tabular-nums">
+                                    {v.totalGap > 0 ? <span className="text-danger">{v.totalGap.toLocaleString()}</span> : <span className="text-text-3">0</span>}
+                                  </td>
+                                  <td className="px-4 py-2 text-table-sm">
+                                    <CnGapBadge count={v.cnGapCount} />
+                                    {v.lcnb && <span className="ml-1"><LcnbBadge text={v.lcnb} /></span>}
+                                  </td>
+                                  <td className="px-4 py-2"><AllocSourceBar sources={v.sources} compact demand={v.totalDemand} allocated={v.totalAllocated} /></td>
+                                  <td></td>
+                                </tr>
+                                {vOpen && (
+                                  <tr className="bg-surface-1/20">
+                                    <td></td>
+                                    <td colSpan={8} className="px-4 py-3 pl-12">
+                                      <ExpandedCnBreakdown title={`CN breakdown — ${v.item} ${v.variant}`} cnRows={v.cnRows.filter(cr => matchesSourceFilter(cr.sources))} />
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
+                            );
+                          })}
+                        </>
                       )}
                     </Fragment>
                   );
@@ -1219,6 +1401,86 @@ export default function DrpPage() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* FIX 3 — Compare "vs đêm qua" collapsible panel + Hub snapshot */}
+        <div className="rounded-card border border-surface-3 bg-surface-1 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setCompareOpen((v) => !v)}
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-surface-2/50 transition-colors"
+            aria-expanded={compareOpen}
+          >
+            <div className="flex items-center gap-2">
+              {compareOpen ? <ChevronDown className="h-4 w-4 text-text-3" /> : <ChevronRight className="h-4 w-4 text-text-3" />}
+              <span className="text-table font-semibold text-text-1">So sánh DRP vs đêm qua</span>
+              <span className="text-caption text-text-3">— xem mã nào dịch chuyển nhiều nhất</span>
+            </div>
+            <span className="text-caption text-text-3">{compareRows.length} cặp CN×SKU</span>
+          </button>
+
+          {compareOpen && (
+            <div className="px-4 py-3 border-t border-surface-3 space-y-3">
+              <div className={cn(
+                "rounded-md border px-3 py-2 text-table-sm",
+                hubChangedSinceDrp ? "border-warning/30 bg-warning-bg/40" : "border-info/30 bg-info-bg/40",
+              )}>
+                <div className="flex items-start gap-2">
+                  <span>{hubChangedSinceDrp ? "⚠️" : "ℹ️"}</span>
+                  <div className="flex-1">
+                    <div className="text-text-1">
+                      DRP chạy <span className="font-semibold">23:00 đêm qua</span>. Hub GA-300 lúc chạy:{" "}
+                      <span className="font-semibold tabular-nums">{hubAtRunM2.toLocaleString()} m²</span>
+                    </div>
+                    {hubChangedSinceDrp && (
+                      <div className="mt-1 text-warning font-medium">
+                        ⚠️ Hub +{hubDeltaSinceRun.toLocaleString()}m² do NM confirm sau DRP. PO dựa số CŨ — cân nhắc rerun trước khi release.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-surface-3 overflow-hidden">
+                <table className="w-full text-table-sm">
+                  <thead className="bg-surface-2 text-caption uppercase text-text-3">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-medium">CN</th>
+                      <th className="text-left px-3 py-2 font-medium">SKU</th>
+                      <th className="text-right px-3 py-2 font-medium">Đêm qua</th>
+                      <th className="text-right px-3 py-2 font-medium">Đêm nay</th>
+                      <th className="text-right px-3 py-2 font-medium">Δ %</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {compareRows.map((r, i) => {
+                      const absDelta = Math.abs(r.deltaPct);
+                      const tone = absDelta > 25 ? "danger" : absDelta > 10 ? "warning" : "ok";
+                      const sev = tone === "danger" ? "shortage" : tone === "warning" ? "watch" : "ok";
+                      const toneCls =
+                        tone === "danger" ? "text-danger font-semibold bg-danger-bg/30"
+                        : tone === "warning" ? "text-warning font-semibold bg-warning-bg/40"
+                        : "text-text-2";
+                      return (
+                        <tr key={i} data-severity={sev} className="border-t border-surface-3/50">
+                          <td className="px-3 py-2 text-text-1 font-medium">{r.cn}</td>
+                          <td className="px-3 py-2 text-text-2">{r.base}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-text-3">{r.prev.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-text-1">{r.now.toLocaleString()}</td>
+                          <td className={cn("px-3 py-2 text-right tabular-nums", toneCls)}>
+                            {r.deltaPct >= 0 ? "+" : ""}{r.deltaPct.toFixed(1)}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-caption text-text-3">
+                Δ &gt;10% (vàng) cần để ý · Δ &gt;25% (đỏ) thường do FC adjust hoặc NM counter lớn.
+              </p>
+            </div>
+          )}
         </div>
         </div>
       )}
