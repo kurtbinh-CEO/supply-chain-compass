@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   RefreshCw,
@@ -119,7 +119,7 @@ export default function SyncPage() {
   const hasBlocked = !!blocked;
 
   // Trigger blocked notification once on mount if any source is blocked
-  useMemo(() => {
+  useEffect(() => {
     if (hasBlocked && blocked) {
       addNotification({
         id: `NTF-SYNC-${Date.now()}`,
