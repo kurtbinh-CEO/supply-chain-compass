@@ -5,6 +5,7 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { ViewPivotToggle, usePivotMode, WorstCnCell, CnGapBadge } from "@/components/ViewPivotToggle";
+import { SmartTableShell } from "@/components/SmartTableShell";
 import type { ConsensusRow } from "@/pages/SopPage";
 
 interface Props {
