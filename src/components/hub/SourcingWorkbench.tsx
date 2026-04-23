@@ -1,8 +1,15 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { Check, ChevronRight, AlertTriangle, HelpCircle, Star, Send, RotateCcw, Zap } from "lucide-react";
+import { Check, ChevronRight, AlertTriangle, HelpCircle, Send, Zap, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { generatePONumber, getNmCode, poNumClasses, getPoTypeBadge } from "@/lib/po-numbers";
+import {
+  SKU_BASES,
+  FACTORIES,
+  NM_INVENTORY,
+  NM_COMMITMENTS,
+  getSkuNm,
+} from "@/data/unis-enterprise-dataset";
 
 interface Props { scale: number; objective?: Objective; onObjectiveChange?: (o: Objective) => void }
 
@@ -10,119 +17,96 @@ interface Props { scale: number; objective?: Objective; onObjectiveChange?: (o: 
 type Objective = "hybrid" | "lt" | "cost";
 type Urgency = "CRITICAL" | "MEDIUM" | "LOW" | "OK";
 
+/** SKU BASE-level requirement (variant aggregated) */
 interface SkuReq {
-  item: string; variant: string; netReq: number; ssBuffer: number; fcMin: number;
-  urgency: Urgency; urgencyLabel: string; eligibleNms: string[];
+  item: string;            // SKU base code (e.g. "GA-300")
+  netReq: number;          // net requirement at base level (m²)
+  ssBuffer: number;        // SS Hub at base level
+  fcMin: number;
+  urgency: Urgency;
+  urgencyLabel: string;
+  nmName: string;          // SINGLE source (rule #1)
 }
 
-interface NmRank {
-  nm: string; atp: number; lt: number; costPerM2: number; reliability: number;
-  honoring: number; dataFresh: string; dataFreshStatus: "green" | "amber" | "red";
-  score: number; offline?: boolean;
+/** Single-NM capability snapshot per SKU base */
+interface NmCapability {
+  nm: string;
+  atp: number;             // Available-to-promise (m²) — onHand + inProduction
+  lt: number;              // lead-time days
+  costPerM2: number;
+  reliability: number;     // 0-100 honoring %
+  honoring: number;
+  dataFresh: string;       // human label e.g. "32m", "3d"
+  dataFreshStatus: "green" | "amber" | "red";
+  moq: number;
+  capacity: number;
+  isStale: boolean;        // staleness === "stale"
 }
 
-interface Allocation { nm: string; qty: number; role: "Primary" | "Backup" | "Single source" | "" }
-
-interface MoqRow { nm: string; allocated: number; moq: number; afterRound: number; surplus: number; cost: string; container: string }
-
-/* ─── Data ─── */
+/* ─── Base SKU requirements (BASE level — no per-variant rows) ─── */
 const baseSkus: SkuReq[] = [
-  { item: "GA-300", variant: "A4", netReq: 840, ssBuffer: 900, fcMin: 1740, urgency: "CRITICAL", urgencyLabel: "HSTK 1,2d BD", eligibleNms: ["Mikado", "Toko", "Đồng Tâm", "Vigracera"] },
-  { item: "GA-300", variant: "B2", netReq: 498, ssBuffer: 700, fcMin: 1198, urgency: "MEDIUM", urgencyLabel: "", eligibleNms: ["Mikado", "Đồng Tâm", "Vigracera"] },
-  { item: "GA-300", variant: "C1", netReq: 220, ssBuffer: 150, fcMin: 370, urgency: "LOW", urgencyLabel: "", eligibleNms: ["Mikado", "Toko", "Đồng Tâm", "Vigracera"] },
-  { item: "GA-400", variant: "A4", netReq: 147, ssBuffer: 600, fcMin: 747, urgency: "LOW", urgencyLabel: "", eligibleNms: ["Mikado", "Toko", "Đồng Tâm", "Vigracera", "Phú Mỹ"] },
-  { item: "GA-400", variant: "D5", netReq: 80, ssBuffer: 200, fcMin: 280, urgency: "LOW", urgencyLabel: "", eligibleNms: ["Mikado", "Đồng Tâm", "Vigracera"] },
-  { item: "GA-600", variant: "A4", netReq: 0, ssBuffer: 1000, fcMin: 0, urgency: "OK", urgencyLabel: "ĐỦ HÀNG", eligibleNms: [] },
-  { item: "GA-600", variant: "B2", netReq: 0, ssBuffer: 500, fcMin: 0, urgency: "OK", urgencyLabel: "ĐỦ HÀNG", eligibleNms: [] },
+  { item: "GA-300", netReq: 1558, ssBuffer: 1750, fcMin: 3308, urgency: "CRITICAL", urgencyLabel: "HSTK 1,2d BD", nmName: getSkuNm("GA-300") || "Mikado" },
+  { item: "GA-400", netReq: 227,  ssBuffer: 800,  fcMin: 1027, urgency: "MEDIUM",   urgencyLabel: "HSTK 4d",      nmName: getSkuNm("GA-400") || "Mikado" },
+  { item: "GN-600", netReq: 480,  ssBuffer: 600,  fcMin: 1080, urgency: "MEDIUM",   urgencyLabel: "",             nmName: getSkuNm("GN-600") || "Mikado" },
+  { item: "GA-600", netReq: 0,    ssBuffer: 1500, fcMin: 0,    urgency: "OK",       urgencyLabel: "ĐỦ HÀNG",      nmName: getSkuNm("GA-600") || "Toko"   },
+  { item: "GT-300", netReq: 620,  ssBuffer: 900,  fcMin: 1520, urgency: "MEDIUM",   urgencyLabel: "",             nmName: getSkuNm("GT-300") || "Đồng Tâm" },
+  { item: "GM-300", netReq: 340,  ssBuffer: 500,  fcMin: 840,  urgency: "LOW",      urgencyLabel: "",             nmName: getSkuNm("GM-300") || "Vigracera" },
+  { item: "PK-001", netReq: 950,  ssBuffer: 600,  fcMin: 1550, urgency: "CRITICAL", urgencyLabel: "NM stale 3d",  nmName: getSkuNm("PK-001") || "Phú Mỹ" },
 ];
 
-// Raw NM data (without pre-computed score — score is computed per objective)
-type NmRaw = Omit<NmRank, "score">;
+/** Build NM capability snapshot for any SKU base from SSOT data. */
+function getNmCapability(skuBaseCode: string): NmCapability | null {
+  const base = SKU_BASES.find((b) => b.code === skuBaseCode);
+  if (!base) return null;
+  const factory = FACTORIES.find((f) => f.id === base.nmId);
+  if (!factory) return null;
+  const inv = NM_INVENTORY.find((r) => r.nmId === base.nmId && r.skuBaseCode === skuBaseCode);
+  const com = NM_COMMITMENTS.find((c) => c.nmId === base.nmId && c.skuBaseCode === skuBaseCode);
 
-const baseNmRaws: Record<string, NmRaw[]> = {
-  "GA-300|A4": [
-    { nm: "Mikado", atp: 1500, lt: 14, costPerM2: 185000, reliability: 92, honoring: 92, dataFresh: "32m", dataFreshStatus: "green" },
-    { nm: "Đồng Tâm", atp: 450, lt: 7, costPerM2: 170000, reliability: 90, honoring: 90, dataFresh: "4h", dataFreshStatus: "amber" },
-    { nm: "Vigracera", atp: 455, lt: 10, costPerM2: 175000, reliability: 88, honoring: 88, dataFresh: "2h", dataFreshStatus: "green" },
-    { nm: "Toko", atp: 960, lt: 14, costPerM2: 180000, reliability: 68, honoring: 68, dataFresh: "18h", dataFreshStatus: "red" },
-    { nm: "Phú Mỹ", atp: 0, lt: 18, costPerM2: 160000, reliability: 45, honoring: 45, dataFresh: "3d", dataFreshStatus: "red", offline: true },
-  ],
-};
+  const atp = (inv?.onHandM2 ?? 0) + (inv?.inProductionM2 ?? 0);
+  const isStale = inv?.staleness === "stale";
+  const dataFresh = inv?.staleness === "fresh" ? "< 1h" : inv?.staleness === "1d" ? "18h" : "3d";
+  const dataFreshStatus: NmCapability["dataFreshStatus"] =
+    inv?.staleness === "fresh" ? "green" : inv?.staleness === "1d" ? "amber" : "red";
 
-const OBJECTIVE_WEIGHTS: Record<Objective, [number, number, number]> = {
-  hybrid: [0.5, 0.3, 0.2],
-  lt: [0.8, 0.1, 0.1],
-  cost: [0.1, 0.8, 0.1],
-};
-
-function computeScores(raws: NmRaw[], objective: Objective): NmRank[] {
-  const [w1, w2, w3] = OBJECTIVE_WEIGHTS[objective];
-  const maxLt = Math.max(...raws.map(r => r.lt));
-  const maxCost = Math.max(...raws.map(r => r.costPerM2));
-
-  const scored = raws.map(r => {
-    if (r.offline) return { ...r, score: Math.round(r.reliability * w3 * 100 / 100) };
-    const ltScore = 1 - r.lt / maxLt;
-    const costScore = 1 - r.costPerM2 / maxCost;
-    const relScore = r.reliability / 100;
-    const raw = (w1 * ltScore + w2 * costScore + w3 * relScore) * 100;
-    return { ...r, score: Math.round(raw) };
-  });
-
-  return scored.sort((a, b) => {
-    if (a.offline && !b.offline) return 1;
-    if (!a.offline && b.offline) return -1;
-    return b.score - a.score;
-  });
+  return {
+    nm: factory.name,
+    atp,
+    lt: factory.ltDays,
+    costPerM2: base.unitPrice,
+    reliability: factory.honoringPct,
+    honoring: factory.honoringPct,
+    dataFresh,
+    dataFreshStatus,
+    moq: factory.moqM2,
+    capacity: factory.capacityM2Month,
+    isStale,
+  };
 }
-
-function getRanking(item: string, variant: string, eligibleNms: string[], objective: Objective): NmRank[] {
-  const key = `${item}|${variant}`;
-  const raws: NmRaw[] = baseNmRaws[key] || eligibleNms.map((nm, i) => ({
-    nm, atp: 300 + i * 200, lt: 7 + i * 3, costPerM2: 170000 + i * 5000,
-    reliability: 92 - i * 4, honoring: 92 - i * 4,
-    dataFresh: i < 2 ? "1h" : "6h", dataFreshStatus: (i < 2 ? "green" : "amber") as "green" | "amber",
-  }));
-  return computeScores(raws, objective);
-}
-
-const defaultAllocations: Record<string, Allocation[]> = {
-  "GA-300|A4": [{ nm: "Mikado", qty: 700, role: "Primary" }, { nm: "Đồng Tâm", qty: 140, role: "Backup" }],
-  "GA-300|B2": [{ nm: "Đồng Tâm", qty: 310, role: "Primary" }, { nm: "Vigracera", qty: 188, role: "Backup" }],
-  "GA-300|C1": [{ nm: "Mikado", qty: 220, role: "Single source" }],
-  "GA-400|A4": [{ nm: "Mikado", qty: 147, role: "Single source" }],
-  "GA-400|D5": [{ nm: "Vigracera", qty: 80, role: "Single source" }],
-};
 
 const STEPS = [
-  { num: 1, label: "Cần gì?", desc: "Net Requirement" },
-  { num: 2, label: "NM nào có?", desc: "Source Ranking" },
-  { num: 3, label: "Phân bổ", desc: "Allocation" },
-  { num: 4, label: "MOQ + Gửi", desc: "Confirm & BPO" },
+  { num: 1, label: "Cần gì?",         desc: "Net Requirement" },
+  { num: 2, label: "NM & năng lực",   desc: "Single Source" },
+  { num: 3, label: "Phân bổ & MOQ",   desc: "Booking + MOQ" },
+  { num: 4, label: "Xác nhận & Gửi",  desc: "Confirm & BPO" },
 ];
 
 const OBJECTIVE_LABELS: Record<Objective, string> = {
-  hybrid: "Weighted Hybrid",
-  lt: "Shortest Lead Time",
-  cost: "Lowest Cost",
-};
-
-const WEIGHT_INFO: Record<Objective, string> = {
-  hybrid: "W1=50% (LT) + W2=30% (cost) + W3=20% (reliability)",
-  lt: "W1=80% + W2=10% + W3=10%",
-  cost: "W1=10% + W2=80% + W3=10%",
+  hybrid: "Cân bằng",
+  lt:     "Ưu tiên LT",
+  cost:   "Ưu tiên chi phí",
 };
 
 function urgencyBadge(u: Urgency) {
   switch (u) {
-    case "CRITICAL": return { bg: "bg-danger-bg", text: "text-danger", icon: "🔴" };
-    case "MEDIUM": return { bg: "bg-warning-bg", text: "text-warning", icon: "🟡" };
-    case "LOW": return { bg: "bg-surface-1", text: "text-text-2", icon: "" };
-    case "OK": return { bg: "bg-success-bg", text: "text-success", icon: "✅" };
+    case "CRITICAL": return { bg: "bg-danger-bg",  text: "text-danger",  icon: "🔴" };
+    case "MEDIUM":   return { bg: "bg-warning-bg", text: "text-warning", icon: "🟡" };
+    case "LOW":      return { bg: "bg-surface-1",  text: "text-text-2",  icon: "" };
+    case "OK":       return { bg: "bg-success-bg", text: "text-success", icon: "✅" };
   }
 }
 
-/* ═══ STEP HEADER ═══ */
+/* ═══ STEPPER BAR ═══ */
 function StepperBar({ active, completed, onStep }: { active: number; completed: Set<number>; onStep: (n: number) => void }) {
   return (
     <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
@@ -139,14 +123,14 @@ function StepperBar({ active, completed, onStep }: { active: number; completed: 
                 "flex items-center gap-2.5 rounded-card px-4 py-3 border transition-all min-w-[180px] text-left",
                 isActive && "bg-info-bg border-info shadow-sm",
                 isDone && "bg-success-bg/50 border-success/30",
-                isFuture && "bg-surface-1 border-surface-3 opacity-60"
+                isFuture && "bg-surface-1 border-surface-3 opacity-60",
               )}
             >
               <div className={cn(
                 "w-7 h-7 rounded-full flex items-center justify-center text-table-sm font-bold shrink-0",
                 isActive && "bg-info text-white",
                 isDone && "bg-success text-white",
-                isFuture && "bg-surface-3 text-text-3"
+                isFuture && "bg-surface-3 text-text-3",
               )}>
                 {isDone ? <Check className="h-4 w-4" /> : step.num}
               </div>
@@ -162,15 +146,15 @@ function StepperBar({ active, completed, onStep }: { active: number; completed: 
   );
 }
 
-/* ═══ STEP 1 ═══ */
+/* ═══ STEP 1 — Net Requirement (BASE level) ═══ */
 function Step1({ skus, onSelectSku, onAutoAll }: {
   skus: SkuReq[];
-  onSelectSku: (item: string, variant: string) => void;
+  onSelectSku: (item: string) => void;
   onAutoAll: () => void;
 }) {
   const [showSufficient, setShowSufficient] = useState(false);
-  const needSourcing = skus.filter(s => s.urgency !== "OK");
-  const sufficient = skus.filter(s => s.urgency === "OK");
+  const needSourcing = skus.filter((s) => s.urgency !== "OK");
+  const sufficient = skus.filter((s) => s.urgency === "OK");
   const totalNetReq = needSourcing.reduce((a, s) => a + s.netReq, 0);
   const totalSs = needSourcing.reduce((a, s) => a + s.ssBuffer, 0);
   const totalFcMin = needSourcing.reduce((a, s) => a + s.fcMin, 0);
@@ -178,9 +162,12 @@ function Step1({ skus, onSelectSku, onAutoAll }: {
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between">
-        <p className="text-table text-text-2">Auto-pull từ S&OP Lock. <span className="text-text-3">Read-only.</span></p>
+        <p className="text-table text-text-2">
+          Auto-pull từ S&OP Lock (mức <span className="font-medium text-text-1">mã gốc</span>).{" "}
+          <span className="text-text-3">Read-only.</span>
+        </p>
         <button onClick={onAutoAll} className="inline-flex items-center gap-1.5 rounded-button bg-gradient-primary text-primary-foreground px-4 py-2 text-table-sm font-medium hover:opacity-90">
-          <Zap className="h-3.5 w-3.5" /> Auto-allocate tất cả
+          <Zap className="h-3.5 w-3.5" /> Tự động phân bổ tất cả
         </button>
       </div>
 
@@ -189,7 +176,7 @@ function Step1({ skus, onSelectSku, onAutoAll }: {
           <table className="w-full text-table-sm">
             <thead>
               <tr className="border-b border-surface-3 bg-surface-1/50">
-                {["Item", "Variant", "Net req (m²)", "SS buffer", "FC Min", "Urgency", "# NM eligible", ""].map((h, i) => (
+                {["Mã gốc", "Nhu cầu ròng (m²)", "SS Hub", "FC tối thiểu", "Mức độ", "Nhà máy (duy nhất)", ""].map((h, i) => (
                   <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -198,9 +185,8 @@ function Step1({ skus, onSelectSku, onAutoAll }: {
               {needSourcing.map((sk) => {
                 const ub = urgencyBadge(sk.urgency);
                 return (
-                  <tr key={`${sk.item}-${sk.variant}`} className="border-b border-surface-3/50 hover:bg-surface-1/30">
+                  <tr key={sk.item} className="border-b border-surface-3/50 hover:bg-surface-1/30">
                     <td className="px-4 py-2.5 font-medium text-text-1">{sk.item}</td>
-                    <td className="px-4 py-2.5 text-text-2">{sk.variant}</td>
                     <td className="px-4 py-2.5 tabular-nums font-medium text-text-1">{sk.netReq.toLocaleString()}</td>
                     <td className="px-4 py-2.5 tabular-nums text-text-2">{sk.ssBuffer.toLocaleString()}</td>
                     <td className="px-4 py-2.5 tabular-nums font-medium text-text-1">{sk.fcMin.toLocaleString()}</td>
@@ -209,22 +195,25 @@ function Step1({ skus, onSelectSku, onAutoAll }: {
                         {ub.icon} {sk.urgency}{sk.urgencyLabel ? ` (${sk.urgencyLabel})` : ""}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-text-2">{sk.eligibleNms.length} NM</td>
                     <td className="px-4 py-2.5">
-                      <button onClick={() => onSelectSku(sk.item, sk.variant)} className="inline-flex items-center gap-1 text-primary text-table-sm font-medium hover:underline">
-                        Chọn NM <ChevronRight className="h-3 w-3" />
+                      <span className="inline-flex items-center gap-1 text-text-1 font-medium">
+                        <Lock className="h-3 w-3 text-text-3" /> {sk.nmName}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <button onClick={() => onSelectSku(sk.item)} className="inline-flex items-center gap-1 text-primary text-table-sm font-medium hover:underline">
+                        Xem năng lực <ChevronRight className="h-3 w-3" />
                       </button>
                     </td>
                   </tr>
                 );
               })}
               <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
-                <td className="px-4 py-2.5 text-text-1">TOTAL</td>
-                <td />
+                <td className="px-4 py-2.5 text-text-1">TỔNG</td>
                 <td className="px-4 py-2.5 tabular-nums text-text-1">{totalNetReq.toLocaleString()}</td>
                 <td className="px-4 py-2.5 tabular-nums text-text-1">{totalSs.toLocaleString()}</td>
                 <td className="px-4 py-2.5 tabular-nums text-text-1">{totalFcMin.toLocaleString()}</td>
-                <td className="px-4 py-2.5 text-text-2">{needSourcing.length} SKU cần sourcing</td>
+                <td className="px-4 py-2.5 text-text-2">{needSourcing.length} mã gốc cần đặt</td>
                 <td colSpan={2} />
               </tr>
             </tbody>
@@ -234,21 +223,21 @@ function Step1({ skus, onSelectSku, onAutoAll }: {
 
       {sufficient.length > 0 && (
         <button onClick={() => setShowSufficient(!showSufficient)} className="text-table-sm text-text-3 hover:text-text-2">
-          {showSufficient ? "▾" : "▸"} {sufficient.length} SKU đủ hàng
+          {showSufficient ? "▾" : "▸"} {sufficient.length} mã gốc đủ hàng
         </button>
       )}
       {showSufficient && (
         <div className="rounded-card border border-surface-3 bg-surface-1/30 overflow-hidden">
           <table className="w-full text-table-sm">
             <tbody>
-              {sufficient.map(sk => (
-                <tr key={`${sk.item}-${sk.variant}`} className="border-b border-surface-3/30 text-text-3">
+              {sufficient.map((sk) => (
+                <tr key={sk.item} className="border-b border-surface-3/30 text-text-3">
                   <td className="px-4 py-2">{sk.item}</td>
-                  <td className="px-4 py-2">{sk.variant}</td>
                   <td className="px-4 py-2">0</td>
                   <td className="px-4 py-2">{sk.ssBuffer.toLocaleString()}</td>
                   <td className="px-4 py-2">0</td>
                   <td className="px-4 py-2"><span className="text-success">✅ ĐỦ HÀNG</span></td>
+                  <td className="px-4 py-2">{sk.nmName}</td>
                 </tr>
               ))}
             </tbody>
@@ -259,378 +248,397 @@ function Step1({ skus, onSelectSku, onAutoAll }: {
   );
 }
 
-/* ═══ STEP 2 ═══ */
-function Step2({ sku, rankings, objective, onObjective, onSelect, onAutoSelect, showFormula, setShowFormula }: {
+/* ═══ STEP 2 — Single-source NM capability ═══ */
+function Step2({ sku, capability, onConfirm }: {
   sku: SkuReq;
-  rankings: NmRank[];
-  objective: Objective;
-  onObjective: (o: Objective) => void;
-  onSelect: (nms: { nm: string; role: string }[]) => void;
-  onAutoSelect: () => void;
-  showFormula: boolean;
-  setShowFormula: (b: boolean) => void;
+  capability: NmCapability | null;
+  onConfirm: () => void;
 }) {
-  const [selected, setSelected] = useState<{ nm: string; role: string }[]>([]);
+  if (!capability) {
+    return (
+      <div className="rounded-card border border-danger/30 bg-danger-bg/30 p-4 text-danger text-table-sm">
+        Không tìm thấy nhà máy nguồn cho {sku.item}. Kiểm tra Master Data.
+      </div>
+    );
+  }
 
-  const toggleNm = (nm: string, role: string) => {
-    setSelected(prev => {
-      const exists = prev.find(s => s.nm === nm);
-      if (exists) return prev.filter(s => s.nm !== nm);
-      return [...prev, { nm, role }];
-    });
-  };
-
-  const scoreColor = (s: number) => s >= 80 ? "text-success" : s >= 60 ? "text-warning" : "text-danger";
-  const scoreBarColor = (s: number) => s >= 80 ? "bg-success" : s >= 60 ? "bg-warning" : "bg-danger";
   const relColor = (r: number) => r >= 80 ? "text-success" : r >= 60 ? "text-warning" : "text-danger";
   const relGrade = (r: number) => r >= 90 ? "A" : r >= 80 ? "B" : r >= 70 ? "C" : "D";
+  const atpOk = capability.atp >= sku.netReq;
 
   return (
     <div className="space-y-4 animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h3 className="font-display text-body font-semibold text-text-1">
-          {sku.item} {sku.variant} — Cần {sku.netReq.toLocaleString()}m². Chọn NM.
+          {sku.item} — Cần {sku.netReq.toLocaleString()} m². Nhà máy nguồn duy nhất:{" "}
+          <span className="text-primary">{capability.nm}</span>
         </h3>
-        <div className="flex items-center gap-2">
-          <select
-            value={objective}
-            onChange={(e) => onObjective(e.target.value as Objective)}
-            className="rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-table-sm text-text-1 outline-none"
-          >
-            <option value="hybrid">Weighted Hybrid</option>
-            <option value="lt">Shortest Lead Time</option>
-            <option value="cost">Lowest Cost</option>
-          </select>
-          <button onClick={() => setShowFormula(!showFormula)} className="text-info hover:text-primary">
-            <HelpCircle className="h-4 w-4" />
-          </button>
-        </div>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-info-bg px-3 py-1 text-caption font-medium text-info">
+          <Lock className="h-3 w-3" /> Single-source (1 mã gốc = 1 NM)
+        </span>
       </div>
 
-      {showFormula && (
-        <div className="rounded-card border border-info/30 bg-info-bg/30 px-4 py-3 text-table-sm text-text-2 space-y-1">
-          <p className="font-mono text-caption">Score = W1 × (1−LT/max_LT) + W2 × (1−cost/max_cost) + W3 × reliability</p>
-          <p className="font-medium text-info">{OBJECTIVE_LABELS[objective]}: {WEIGHT_INFO[objective]}</p>
-          <p className="text-caption text-text-3">Config: /config → Planning → source_ranking_weights</p>
+      {/* Stale data banner */}
+      {capability.isStale && (
+        <div className="rounded-card border border-danger/40 bg-danger-bg/40 px-4 py-3 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-danger shrink-0 mt-0.5" />
+          <div>
+            <p className="text-table-sm font-semibold text-danger">
+              Dữ liệu NM cũ — cần cập nhật trước khi đặt hàng
+            </p>
+            <p className="text-caption text-text-2 mt-1">
+              Tồn kho {capability.nm} đã không cập nhật {capability.dataFresh}. Liên hệ NM hoặc chuyển sang Cổng nhà máy để yêu cầu sync.
+            </p>
+          </div>
         </div>
       )}
 
+      {/* NM capability card */}
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-table-sm">
-            <thead>
-              <tr className="border-b border-surface-3 bg-surface-1/50">
-                {["Rank", "NM", "ATP (m²)", "LT", "Cost/m²", "Reliability", "Honoring%", "Data fresh", "Score", "Action"].map((h, i) => (
-                  <th key={i} className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rankings.map((nm, i) => {
-                const isTop = i === 0 && !nm.offline;
-                const isLowRel = nm.reliability < 70;
-                const isSelected = selected.some(s => s.nm === nm.nm);
-                return (
-                  <tr key={nm.nm} className={cn(
-                    "border-b border-surface-3/50 transition-colors",
-                    nm.offline && "opacity-40",
-                    isTop && !isSelected && "bg-success/5",
-                    isSelected && "bg-primary/5 ring-1 ring-inset ring-primary/20",
-                    !nm.offline && !isTop && !isSelected && "hover:bg-surface-1/30"
-                  )}>
-                    <td className="px-3 py-2.5 text-text-2">
-                      {isTop && <Star className="h-3.5 w-3.5 text-warning inline mr-0.5" />}
-                      {nm.offline ? "—" : i + 1}
-                      {isLowRel && !nm.offline && <span className="ml-1 text-warning">⚠</span>}
-                    </td>
-                    <td className="px-3 py-2.5 font-medium text-text-1">{nm.nm}</td>
-                    <td className="px-3 py-2.5 tabular-nums text-text-1">{nm.offline ? "—" : nm.atp.toLocaleString()}</td>
-                    <td className="px-3 py-2.5 tabular-nums text-text-2">{nm.lt}d</td>
-                    <td className="px-3 py-2.5 tabular-nums text-text-2">{(nm.costPerM2 / 1000).toFixed(0)}K</td>
-                    <td className="px-3 py-2.5">
-                      <span className={cn("font-medium", relColor(nm.reliability))}>
-                        {nm.reliability}% {relGrade(nm.reliability)} {nm.reliability >= 80 ? "🟢" : nm.reliability >= 70 ? "" : "🔴"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5 tabular-nums text-text-2">{nm.honoring}%</td>
-                    <td className="px-3 py-2.5">
-                      <span className={cn("text-caption", nm.dataFreshStatus === "green" ? "text-success" : nm.dataFreshStatus === "amber" ? "text-warning" : "text-danger")}>
-                        {nm.dataFreshStatus === "green" ? "🟢" : nm.dataFreshStatus === "amber" ? "🟡" : "🔴"} {nm.dataFresh}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className={cn("font-bold tabular-nums", scoreColor(nm.score))}>{nm.score}</span>
-                        <div className="w-16 h-1.5 bg-surface-3 rounded-full overflow-hidden">
-                          <div className={cn("h-full rounded-full", scoreBarColor(nm.score))} style={{ width: `${nm.score}%` }} />
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {nm.offline ? (
-                        <span className="text-text-3 text-caption">Offline</span>
-                      ) : (
-                        <button
-                          onClick={() => toggleNm(nm.nm, isTop ? "Primary" : "Backup")}
-                          className={cn(
-                            "rounded-button px-2.5 py-1 text-caption font-medium transition-all",
-                            isSelected
-                              ? "bg-primary text-primary-foreground"
-                              : isLowRel
-                              ? "border border-warning text-warning hover:bg-warning/10"
-                              : "border border-primary text-primary hover:bg-primary/10"
-                          )}
-                        >
-                          {isSelected ? "✓ Selected" : isLowRel ? "Chọn (risk ⚠)" : isTop ? "Chọn primary" : "Chọn"}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="px-5 py-3 border-b border-surface-3 bg-surface-1/40 flex items-center justify-between">
+          <span className="font-display text-body font-semibold text-text-1">{capability.nm}</span>
+          <span className={cn(
+            "inline-flex items-center gap-1 text-caption font-medium",
+            capability.dataFreshStatus === "green" ? "text-success" : capability.dataFreshStatus === "amber" ? "text-warning" : "text-danger",
+          )}>
+            {capability.dataFreshStatus === "green" ? "🟢" : capability.dataFreshStatus === "amber" ? "🟡" : "🔴"} Dữ liệu: {capability.dataFresh}
+          </span>
         </div>
-        {rankings.some(r => r.reliability < 70 && !r.offline) && (
-          <div className="px-4 py-2 bg-warning-bg/30 border-t border-warning/20 text-caption text-warning flex items-center gap-1.5">
-            <AlertTriangle className="h-3 w-3" /> Low reliability. ATP có thể không chính xác.
-          </div>
-        )}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-surface-3">
+          <Metric label="ATP (m²)" value={capability.atp.toLocaleString()} status={atpOk ? "ok" : "warn"} />
+          <Metric label="Lead-time" value={`${capability.lt} ngày`} />
+          <Metric label="Cost/m²" value={`${(capability.costPerM2 / 1000).toFixed(0)}K₫`} />
+          <Metric label="Honoring" value={`${capability.honoring}% ${relGrade(capability.honoring)}`} valueClass={relColor(capability.honoring)} />
+          <Metric label="MOQ (m²)" value={capability.moq.toLocaleString()} />
+          <Metric label="Capacity tháng" value={`${(capability.capacity / 1000).toFixed(0)}K m²`} />
+          <Metric label="Reliability" value={`${capability.reliability}%`} valueClass={relColor(capability.reliability)} />
+          <Metric label="Mã NM" value={getNmCode(capability.nm)} valueClass="font-mono text-info" />
+        </div>
+        <div className="px-5 py-3 bg-info-bg/20 border-t border-surface-3 text-caption text-text-2 flex items-center gap-1.5">
+          <HelpCircle className="h-3 w-3 text-info shrink-0" />
+          Phase 1: Single-source — không cho chọn NM khác. Multi-NM sẽ mở ở Phase 2 cho mã gốc thuộc nhóm fungible.
+        </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      {/* ATP shortfall warning */}
+      {!atpOk && (
+        <div className="rounded-card border border-warning/30 bg-warning-bg/30 px-4 py-2.5 flex items-center gap-2 text-table-sm text-warning">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          ATP {capability.atp.toLocaleString()} m² &lt; nhu cầu {sku.netReq.toLocaleString()} m². Cần chờ NM sản xuất bổ sung.
+        </div>
+      )}
+
+      <div className="flex justify-end">
         <button
-          onClick={onAutoSelect}
-          className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-table-sm text-text-2 hover:text-text-1 hover:border-primary/30"
+          onClick={onConfirm}
+          disabled={capability.isStale}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-button px-5 py-2 text-table-sm font-medium",
+            capability.isStale
+              ? "bg-surface-3 text-text-3 cursor-not-allowed"
+              : "bg-gradient-primary text-primary-foreground hover:opacity-90",
+          )}
         >
-          <Star className="h-3.5 w-3.5 text-warning" /> Auto-select ★
+          {capability.isStale ? "Đang chờ cập nhật dữ liệu" : "Tiếp → Phân bổ & MOQ"} <ChevronRight className="h-3.5 w-3.5" />
         </button>
-        {selected.length > 0 && (
-          <button
-            onClick={() => onSelect(selected)}
-            className="inline-flex items-center gap-1.5 rounded-button bg-gradient-primary text-primary-foreground px-4 py-1.5 text-table-sm font-medium"
-          >
-            Tiếp → Bước 3 <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        )}
       </div>
     </div>
   );
 }
 
-/* ═══ STEP 3 ═══ */
-function Step3({ skus, allocations, onUpdate, onConfirm }: {
+function Metric({ label, value, status, valueClass }: { label: string; value: string; status?: "ok" | "warn"; valueClass?: string }) {
+  return (
+    <div className="bg-surface-2 px-4 py-3">
+      <div className="text-caption uppercase text-text-3 tracking-wide">{label}</div>
+      <div className={cn(
+        "mt-1 font-display text-body font-semibold tabular-nums",
+        status === "ok" && "text-success",
+        status === "warn" && "text-warning",
+        !status && !valueClass && "text-text-1",
+        valueClass,
+      )}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+/* ═══ STEP 3 — Booking allocation + MOQ (per SKU base × NM) ═══ */
+interface Booking {
+  item: string;
+  nm: string;
+  hubAvailable: number;
+  pipeline: number;
+  fc3M: number;
+  ssHub: number;
+  delta: number;        // ssHub - (hubAvailable + pipeline - fc3M); if positive => need booking
+  bookingQty: number;   // user-editable; default = max(0, delta) rounded up to MOQ
+  moq: number;
+  afterRound: number;
+  surplus: number;
+}
+
+function buildDefaultBookings(skus: SkuReq[]): Record<string, Booking> {
+  const result: Record<string, Booking> = {};
+  for (const sk of skus.filter((s) => s.urgency !== "OK")) {
+    const cap = getNmCapability(sk.item);
+    if (!cap) continue;
+    // Demo numbers — derived from the SKU req profile
+    const hubAvailable = Math.round(sk.ssBuffer * 0.45);
+    const pipeline = Math.round(sk.netReq * 0.20);
+    const fc3M = Math.round(sk.fcMin * 1.6);
+    const ssHub = sk.ssBuffer;
+    const projection = hubAvailable + pipeline - fc3M;
+    const delta = ssHub - projection;
+    const bookingQty = Math.max(0, delta);
+    const afterRound = bookingQty < cap.moq && bookingQty > 0 ? cap.moq : bookingQty;
+    const surplus = afterRound - bookingQty;
+    result[sk.item] = {
+      item: sk.item,
+      nm: cap.nm,
+      hubAvailable,
+      pipeline,
+      fc3M,
+      ssHub,
+      delta,
+      bookingQty,
+      moq: cap.moq,
+      afterRound,
+      surplus,
+    };
+  }
+  return result;
+}
+
+function Step3({ skus, bookings, onUpdate, onConfirm }: {
   skus: SkuReq[];
-  allocations: Record<string, Allocation[]>;
-  onUpdate: (key: string, allocs: Allocation[]) => void;
+  bookings: Record<string, Booking>;
+  onUpdate: (item: string, qty: number) => void;
   onConfirm: () => void;
 }) {
-  const needSourcing = skus.filter(s => s.urgency !== "OK");
-
-  // NM summary
-  const nmTotals: Record<string, Record<string, number>> = {};
-  let grandTotal = 0;
-  for (const sk of needSourcing) {
-    const key = `${sk.item}|${sk.variant}`;
-    const allocs = allocations[key] || [];
-    for (const a of allocs) {
-      if (!nmTotals[a.nm]) nmTotals[a.nm] = {};
-      nmTotals[a.nm][key] = a.qty;
-      grandTotal += a.qty;
-    }
-  }
-
-  const handleQtyChange = (skuKey: string, nmName: string, val: number) => {
-    const current = allocations[skuKey] || [];
-    const updated = current.map(a => a.nm === nmName ? { ...a, qty: val } : a);
-    onUpdate(skuKey, updated);
-  };
+  const needSourcing = skus.filter((s) => s.urgency !== "OK");
+  const grandBooking = needSourcing.reduce((a, sk) => a + (bookings[sk.item]?.bookingQty || 0), 0);
+  const grandRounded = needSourcing.reduce((a, sk) => a + (bookings[sk.item]?.afterRound || 0), 0);
+  const grandSurplus = grandRounded - grandBooking;
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Section A: Per SKU allocation */}
-      <div className="space-y-4">
-        <h3 className="font-display text-body font-semibold text-text-1">Phân bổ per SKU</h3>
-        {needSourcing.map(sk => {
-          const key = `${sk.item}|${sk.variant}`;
-          const allocs = allocations[key] || [];
-          const total = allocs.reduce((a, al) => a + al.qty, 0);
-          const isOver = total > sk.netReq;
-          const isUnder = total < sk.netReq;
-          const isOk = total === sk.netReq;
+      <div className="rounded-card border border-info/30 bg-info-bg/30 px-4 py-3 text-table-sm text-text-2">
+        <p className="font-medium text-info mb-1">Công thức booking (mức mã gốc):</p>
+        <p className="font-mono text-caption">
+          Δ = SS_Hub − (Hub_available + Pipeline − FC_3M)
+        </p>
+        <p className="text-caption text-text-3 mt-0.5">
+          Nếu Δ &gt; 0 → cần đặt; sau đó round-up theo MOQ NM.
+        </p>
+      </div>
+
+      {/* Per-SKU base booking cards */}
+      <div className="space-y-3">
+        {needSourcing.map((sk) => {
+          const b = bookings[sk.item];
+          if (!b) return null;
+          const moqTriggered = b.bookingQty > 0 && b.bookingQty < b.moq;
+          const projection = b.hubAvailable + b.pipeline - b.fc3M;
 
           return (
-            <div key={key} className="rounded-card border border-surface-3 bg-surface-2 p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-text-1">{sk.item} {sk.variant} <span className="text-text-3">(cần {sk.netReq.toLocaleString()}m²)</span></span>
-                <span className={cn("text-table-sm font-medium", isOk ? "text-success" : isOver ? "text-danger" : "text-warning")}>
-                  Total: {total.toLocaleString()}/{sk.netReq.toLocaleString()} {isOk ? "✅" : isOver ? "❌ Over" : `⚠ -${(sk.netReq - total).toLocaleString()}`}
-                </span>
+            <div key={sk.item} className="rounded-card border border-surface-3 bg-surface-2 p-4 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-display text-body font-semibold text-text-1">{sk.item}</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-surface-1 px-2 py-0.5 text-caption text-text-2">
+                    <Lock className="h-3 w-3" /> {b.nm} · Duy nhất
+                  </span>
+                </div>
+                <span className="text-caption text-text-3">SS Hub mục tiêu: {b.ssHub.toLocaleString()} m²</span>
               </div>
-              {allocs.map((al) => {
-                const pct = sk.netReq > 0 ? Math.round((al.qty / sk.netReq) * 100) : 0;
-                return (
-                  <div key={al.nm} className="flex items-center gap-3">
-                    <span className="w-20 text-table-sm text-text-2 truncate">{al.nm}</span>
-                    <input
-                      type="number"
-                      value={al.qty}
-                      onChange={(e) => handleQtyChange(key, al.nm, parseInt(e.target.value) || 0)}
-                      className="w-20 rounded border border-surface-3 bg-surface-0 px-2 py-1 text-table-sm tabular-nums text-text-1 outline-none focus:border-primary"
-                    />
-                    <div className="flex-1 h-2 bg-surface-3 rounded-full overflow-hidden">
-                      <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
-                    </div>
-                    <span className="text-caption text-text-3 w-10 text-right">{pct}%</span>
-                    <span className="text-caption text-text-3 w-24">{al.role}</span>
-                  </div>
-                );
-              })}
+
+              {/* Formula breakdown */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-table-sm">
+                <FormulaCell label="Hub có" value={b.hubAvailable} />
+                <FormulaCell label="+ Pipeline" value={b.pipeline} />
+                <FormulaCell label="− FC 3T" value={-b.fc3M} negative />
+                <FormulaCell label="= Dự báo cuối" value={projection} highlight />
+                <FormulaCell label={`Δ vs SS Hub`} value={b.delta} status={b.delta > 0 ? "warn" : "ok"} />
+              </div>
+
+              {/* Booking qty + MOQ */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <label className="text-table-sm text-text-2">Booking (m²):</label>
+                <input
+                  type="number"
+                  value={b.bookingQty}
+                  onChange={(e) => onUpdate(sk.item, parseInt(e.target.value) || 0)}
+                  className="w-28 rounded border border-surface-3 bg-surface-0 px-2 py-1 text-table-sm tabular-nums text-text-1 outline-none focus:border-primary"
+                />
+                <span className="text-table-sm text-text-3">MOQ {b.nm}: {b.moq.toLocaleString()}</span>
+                {moqTriggered && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-warning-bg px-2.5 py-0.5 text-caption font-medium text-warning">
+                    <AlertTriangle className="h-3 w-3" /> Booking &lt; MOQ → round-up {b.afterRound.toLocaleString()} (+{b.surplus.toLocaleString()})
+                  </span>
+                )}
+                {b.bookingQty >= b.moq && b.bookingQty > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-success-bg px-2.5 py-0.5 text-caption font-medium text-success">
+                    ✓ ≥ MOQ
+                  </span>
+                )}
+                {b.bookingQty === 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-surface-1 px-2.5 py-0.5 text-caption text-text-3">
+                    Không cần booking (Δ ≤ 0)
+                  </span>
+                )}
+              </div>
             </div>
           );
         })}
       </div>
 
-      {/* Section B: NM Summary */}
+      {/* Per-NM rollup summary */}
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
         <div className="px-4 py-2.5 bg-surface-1/50 border-b border-surface-3">
           <span className="text-table-sm font-medium text-text-1">Tổng hợp per NM</span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-table-sm">
-            <thead>
-              <tr className="border-b border-surface-3 bg-surface-1/30">
-                <th className="px-4 py-2 text-left text-table-header uppercase text-text-3">NM</th>
-                {needSourcing.map(sk => (
-                  <th key={`${sk.item}-${sk.variant}`} className="px-3 py-2 text-center text-table-header uppercase text-text-3">{sk.item} {sk.variant}</th>
-                ))}
-                <th className="px-4 py-2 text-right text-table-header uppercase text-text-3">Total</th>
-                <th className="px-3 py-2 text-right text-table-header uppercase text-text-3">%</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(nmTotals).map(([nm, skuMap]) => {
-                const nmTotal = Object.values(skuMap).reduce((a, v) => a + v, 0);
-                return (
-                  <tr key={nm} className="border-b border-surface-3/50 hover:bg-surface-1/20">
-                    <td className="px-4 py-2 font-medium text-text-1">{nm}</td>
-                    {needSourcing.map(sk => {
-                      const key = `${sk.item}|${sk.variant}`;
-                      return (
-                        <td key={key} className="px-3 py-2 text-center tabular-nums text-text-2">{skuMap[key] ? skuMap[key].toLocaleString() : "—"}</td>
-                      );
-                    })}
-                    <td className="px-4 py-2 text-right tabular-nums font-medium text-text-1">{nmTotal.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-text-2">{grandTotal > 0 ? Math.round((nmTotal / grandTotal) * 100) : 0}%</td>
-                  </tr>
-                );
-              })}
-              <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
-                <td className="px-4 py-2 text-text-1">TOTAL</td>
-                {needSourcing.map(sk => {
-                  const key = `${sk.item}|${sk.variant}`;
-                  const colTotal = Object.values(nmTotals).reduce((a, m) => a + (m[key] || 0), 0);
-                  return <td key={key} className="px-3 py-2 text-center tabular-nums text-text-1">{colTotal.toLocaleString()}</td>;
-                })}
-                <td className="px-4 py-2 text-right tabular-nums text-text-1">{grandTotal.toLocaleString()}</td>
-                <td className="px-3 py-2 text-right text-text-1">100%</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <table className="w-full text-table-sm">
+          <thead>
+            <tr className="border-b border-surface-3 bg-surface-1/30">
+              {["Nhà máy", "# mã gốc", "Booking (m²)", "Sau MOQ", "Surplus"].map((h, i) => (
+                <th key={i} className="px-4 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from(new Set(Object.values(bookings).map((b) => b.nm))).map((nm) => {
+              const list = Object.values(bookings).filter((b) => b.nm === nm);
+              const book = list.reduce((a, b) => a + b.bookingQty, 0);
+              const round = list.reduce((a, b) => a + b.afterRound, 0);
+              const surp = round - book;
+              return (
+                <tr key={nm} className="border-b border-surface-3/50 hover:bg-surface-1/20">
+                  <td className="px-4 py-2 font-medium text-text-1">{nm}</td>
+                  <td className="px-4 py-2 text-text-2">{list.length}</td>
+                  <td className="px-4 py-2 tabular-nums text-text-1">{book.toLocaleString()}</td>
+                  <td className="px-4 py-2 tabular-nums text-text-1">{round.toLocaleString()}</td>
+                  <td className="px-4 py-2 tabular-nums text-warning">{surp > 0 ? `+${surp.toLocaleString()}` : "—"}</td>
+                </tr>
+              );
+            })}
+            <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
+              <td className="px-4 py-2 text-text-1">TỔNG</td>
+              <td className="px-4 py-2 text-text-2">{Object.keys(bookings).length}</td>
+              <td className="px-4 py-2 tabular-nums text-text-1">{grandBooking.toLocaleString()}</td>
+              <td className="px-4 py-2 tabular-nums text-text-1">{grandRounded.toLocaleString()}</td>
+              <td className="px-4 py-2 tabular-nums text-warning">{grandSurplus > 0 ? `+${grandSurplus.toLocaleString()}` : "—"}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <div className="flex justify-end">
         <button onClick={onConfirm} className="inline-flex items-center gap-1.5 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2 text-table-sm font-medium">
-          Xác nhận phân bổ → Bước 4 <ChevronRight className="h-3.5 w-3.5" />
+          Xác nhận cam kết → Bước 4 <ChevronRight className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
   );
 }
 
-/* ═══ STEP 4 ═══ */
-function Step4({ allocations, scale, onCreateBpo }: {
-  allocations: Record<string, Allocation[]>;
-  scale: number;
+function FormulaCell({ label, value, negative, highlight, status }: { label: string; value: number; negative?: boolean; highlight?: boolean; status?: "ok" | "warn" }) {
+  return (
+    <div className={cn(
+      "rounded border px-3 py-2",
+      highlight ? "border-primary/30 bg-primary/5" : "border-surface-3 bg-surface-1/30",
+    )}>
+      <div className="text-caption text-text-3">{label}</div>
+      <div className={cn(
+        "tabular-nums font-semibold",
+        negative && "text-danger",
+        status === "warn" && "text-warning",
+        status === "ok" && "text-success",
+        !negative && !status && "text-text-1",
+      )}>
+        {value > 0 ? value.toLocaleString() : value < 0 ? value.toLocaleString() : "0"}
+      </div>
+    </div>
+  );
+}
+
+/* ═══ STEP 4 — Confirm & Create BPO ═══ */
+function Step4({ bookings, onCreateBpo }: {
+  bookings: Record<string, Booking>;
   onCreateBpo: () => void;
 }) {
   const [showConfirm, setShowConfirm] = useState(false);
 
   // Aggregate per NM
-  const nmAgg: Record<string, number> = {};
-  for (const allocs of Object.values(allocations)) {
-    for (const a of allocs) {
-      nmAgg[a.nm] = (nmAgg[a.nm] || 0) + a.qty;
-    }
+  const nmAgg: Record<string, { qty: number; cost: number; items: string[] }> = {};
+  for (const b of Object.values(bookings)) {
+    if (b.afterRound <= 0) continue;
+    const base = SKU_BASES.find((s) => s.code === b.item);
+    const cost = (base?.unitPrice || 0) * b.afterRound;
+    if (!nmAgg[b.nm]) nmAgg[b.nm] = { qty: 0, cost: 0, items: [] };
+    nmAgg[b.nm].qty += b.afterRound;
+    nmAgg[b.nm].cost += cost;
+    nmAgg[b.nm].items.push(b.item);
   }
 
-  const moqData: MoqRow[] = [
-    { nm: "Mikado", allocated: nmAgg["Mikado"] || 1067, moq: 1000, afterRound: 2000, surplus: 933, cost: "370M", container: "1,2 cont → 2 cont" },
-    { nm: "Đồng Tâm", allocated: nmAgg["Đồng Tâm"] || 450, moq: 500, afterRound: 500, surplus: 50, cost: "85M", container: "0,3 cont → LTL" },
-    { nm: "Vigracera", allocated: nmAgg["Vigracera"] || 268, moq: 500, afterRound: 500, surplus: 232, cost: "87,5M", container: "0,3 cont → LTL" },
-  ].filter(r => r.allocated > 0);
+  const totalQty = Object.values(nmAgg).reduce((a, n) => a + n.qty, 0);
+  const totalCost = Object.values(nmAgg).reduce((a, n) => a + n.cost, 0);
 
-  const totalAllocated = moqData.reduce((a, r) => a + r.allocated, 0);
-  const totalAfterRound = moqData.reduce((a, r) => a + r.afterRound, 0);
-  const totalSurplus = moqData.reduce((a, r) => a + r.surplus, 0);
-
-  const bpos = moqData.map(r => ({
-    id: `BPO-${getNmCode(r.nm)}-2605`,
-    nm: r.nm,
-    qty: r.afterRound,
+  const bpos = Object.entries(nmAgg).map(([nm, agg]) => ({
+    id: `BPO-${getNmCode(nm)}-2605`,
+    nm,
+    qty: agg.qty,
+    cost: agg.cost,
+    items: agg.items,
   }));
+
+  const fmtVnd = (n: number) => `${(n / 1_000_000).toFixed(1)}M₫`;
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <h3 className="font-display text-body font-semibold text-text-1">MOQ Round & Confirm</h3>
+      <h3 className="font-display text-body font-semibold text-text-1">Xác nhận cam kết & tạo BPO</h3>
 
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-table-sm">
-            <thead>
-              <tr className="border-b border-surface-3 bg-surface-1/50">
-                {["NM", "Allocated", "MOQ", "Sau round", "Surplus", "Cost", "Container"].map((h, i) => (
-                  <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {moqData.map(r => (
-                <tr key={r.nm} className="border-b border-surface-3/50 hover:bg-surface-1/30">
-                  <td className="px-4 py-2.5 font-medium text-text-1">{r.nm}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-text-2">{r.allocated.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-text-3">{r.moq.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 tabular-nums font-medium text-text-1">{r.afterRound.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-warning font-medium">+{r.surplus.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-text-2">{r.cost}₫</td>
-                  <td className="px-4 py-2.5 text-text-3 text-caption">{r.container}</td>
-                </tr>
+        <table className="w-full text-table-sm">
+          <thead>
+            <tr className="border-b border-surface-3 bg-surface-1/50">
+              {["Nhà máy", "Mã gốc", "Tổng (m²)", "Chi phí", "BPO ID"].map((h, i) => (
+                <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
               ))}
-              <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
-                <td className="px-4 py-2.5 text-text-1">TOTAL</td>
-                <td className="px-4 py-2.5 tabular-nums text-text-1">{totalAllocated.toLocaleString()}</td>
-                <td />
-                <td className="px-4 py-2.5 tabular-nums text-text-1">{totalAfterRound.toLocaleString()}</td>
-                <td className="px-4 py-2.5 tabular-nums text-warning">+{totalSurplus.toLocaleString()}</td>
-                <td className="px-4 py-2.5 tabular-nums text-text-1">542,5M₫</td>
-                <td />
+            </tr>
+          </thead>
+          <tbody>
+            {bpos.map((b) => (
+              <tr key={b.id} className="border-b border-surface-3/50 hover:bg-surface-1/30">
+                <td className="px-4 py-2.5 font-medium text-text-1">{b.nm}</td>
+                <td className="px-4 py-2.5 text-text-2">{b.items.join(", ")}</td>
+                <td className="px-4 py-2.5 tabular-nums font-medium text-text-1">{b.qty.toLocaleString()}</td>
+                <td className="px-4 py-2.5 tabular-nums text-text-2">{fmtVnd(b.cost)}</td>
+                <td className={cn("px-4 py-2.5 font-mono text-caption", getPoTypeBadge("BPO").text)}>{b.id}</td>
               </tr>
-            </tbody>
-          </table>
-        </div>
-        <div className="px-5 py-3 border-t border-surface-3 bg-surface-1/20">
-          <p className="text-caption text-text-3">
-            Surplus {totalSurplus.toLocaleString()}m² = MOQ overhead. Tồn hub → trừ net req tháng sau. Cost 542,5M₫ = working capital cần chuẩn bị.
-          </p>
-        </div>
+            ))}
+            <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
+              <td className="px-4 py-2.5 text-text-1">TỔNG</td>
+              <td className="px-4 py-2.5 text-text-2">{bpos.length} BPO</td>
+              <td className="px-4 py-2.5 tabular-nums text-text-1">{totalQty.toLocaleString()}</td>
+              <td className="px-4 py-2.5 tabular-nums text-text-1">{fmtVnd(totalCost)}</td>
+              <td />
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <button
         onClick={() => setShowConfirm(true)}
-        className="w-full rounded-button bg-gradient-primary text-primary-foreground px-6 py-3 text-body font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+        disabled={bpos.length === 0}
+        className={cn(
+          "w-full rounded-button px-6 py-3 text-body font-semibold flex items-center justify-center gap-2 transition-opacity",
+          bpos.length === 0
+            ? "bg-surface-3 text-text-3 cursor-not-allowed"
+            : "bg-gradient-primary text-primary-foreground hover:opacity-90",
+        )}
       >
-        <Send className="h-4 w-4" /> Xác nhận & Tạo BPO
+        <Send className="h-4 w-4" /> Xác nhận cam kết & gửi {bpos.length} BPO
       </button>
 
       {showConfirm && (
@@ -639,15 +647,15 @@ function Step4({ allocations, scale, onCreateBpo }: {
           <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md rounded-card border border-surface-3 bg-surface-2 p-6 shadow-xl space-y-4">
             <h3 className="font-display text-body font-semibold text-text-1">Tạo {bpos.length} BPO</h3>
             <div className="space-y-2">
-              {bpos.map(b => (
+              {bpos.map((b) => (
                 <div key={b.id} className="flex items-center justify-between text-table-sm">
                   <span className={cn("font-mono text-caption", getPoTypeBadge("BPO").text)}>{b.id}</span>
-                  <span className="text-text-2">{b.nm} — {b.qty.toLocaleString()}m²</span>
+                  <span className="text-text-2">{b.nm} — {b.qty.toLocaleString()} m²</span>
                 </div>
               ))}
             </div>
             <div className="border-t border-surface-3 pt-3">
-              <p className="text-table-sm text-text-2">Tổng: {totalAfterRound.toLocaleString()}m² | 542,5M₫</p>
+              <p className="text-table-sm text-text-2">Tổng: {totalQty.toLocaleString()} m² | {fmtVnd(totalCost)}</p>
             </div>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setShowConfirm(false)} className="rounded-button border border-surface-3 px-4 py-1.5 text-table-sm text-text-2 hover:bg-surface-3">Sửa lại</button>
@@ -671,67 +679,44 @@ export function SourcingWorkbench({ scale, objective: externalObjective, onObjec
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [internalObjective, setInternalObjective] = useState<Objective>("hybrid");
   const objective = externalObjective ?? internalObjective;
-  const [selectedSku, setSelectedSku] = useState<{ item: string; variant: string } | null>(null);
-  const [allocations, setAllocations] = useState<Record<string, Allocation[]>>({ ...defaultAllocations });
-  const [showFormula, setShowFormula] = useState(false);
+  const [selectedSku, setSelectedSku] = useState<string | null>(null);
   const [bpoCreated, setBpoCreated] = useState(false);
 
-  const skus = useMemo(() => baseSkus.map(s => ({
+  const skus = useMemo(() => baseSkus.map((s) => ({
     ...s,
     netReq: Math.round(s.netReq * scale),
     ssBuffer: Math.round(s.ssBuffer * scale),
     fcMin: Math.round(s.fcMin * scale),
   })), [scale]);
 
-  const currentSku = selectedSku ? skus.find(s => s.item === selectedSku.item && s.variant === selectedSku.variant) : null;
-  const currentRankings = useMemo(() => selectedSku ? getRanking(selectedSku.item, selectedSku.variant, currentSku?.eligibleNms || [], objective) : [], [selectedSku, currentSku, objective]);
+  const [bookings, setBookings] = useState<Record<string, Booking>>(() => buildDefaultBookings(skus));
 
+  // Rebuild bookings if scale changes
+  useEffect(() => {
+    setBookings(buildDefaultBookings(skus));
+  }, [skus]);
+
+  const currentSku = selectedSku ? skus.find((s) => s.item === selectedSku) || null : null;
+  const currentCapability = useMemo(
+    () => (selectedSku ? getNmCapability(selectedSku) : null),
+    [selectedSku],
+  );
+
+  // Re-toast on objective change (kept for header dropdown UX continuity)
   const prevObjectiveRef = useRef(objective);
-
-  const recalcAllocations = (newObj: Objective) => {
-    const needSourcing = skus.filter(s => s.urgency !== "OK");
-    const newAllocations: Record<string, Allocation[]> = {};
-    for (const sk of needSourcing) {
-      const key = `${sk.item}|${sk.variant}`;
-      const rankings = getRanking(sk.item, sk.variant, sk.eligibleNms, newObj);
-      const available = rankings.filter(r => !r.offline);
-      if (available.length === 0) continue;
-      if (available.length === 1 || sk.netReq <= available[0].atp) {
-        newAllocations[key] = [{ nm: available[0].nm, qty: sk.netReq, role: "Single source" }];
-      } else {
-        const primaryQty = Math.round(sk.netReq * 0.7);
-        const backupQty = sk.netReq - primaryQty;
-        newAllocations[key] = [
-          { nm: available[0].nm, qty: primaryQty, role: "Primary" },
-          { nm: available[1].nm, qty: backupQty, role: "Backup" },
-        ];
-      }
-    }
-    setAllocations(newAllocations);
-  };
-
-  // React to external objective changes (header dropdown)
   useEffect(() => {
     if (objective !== prevObjectiveRef.current) {
       prevObjectiveRef.current = objective;
-      recalcAllocations(objective);
-      toast.info(`Ranking re-sorted theo ${OBJECTIVE_LABELS[objective]}`, { description: "Bước 2 & 3 đã tự động recalculate." });
+      toast.info(`Mục tiêu xếp hạng: ${OBJECTIVE_LABELS[objective]}`, {
+        description: "Phase 1 single-source — không thay đổi NM, chỉ ảnh hưởng prioritization.",
+      });
     }
   }, [objective]);
 
-  // Auto-recalculate allocations when objective changes (from Step2 dropdown)
-  const handleObjectiveChange = (newObj: Objective) => {
-    prevObjectiveRef.current = newObj;
-    setInternalObjective(newObj);
-    externalOnChange?.(newObj);
-    recalcAllocations(newObj);
-    toast.info(`Ranking re-sorted theo ${OBJECTIVE_LABELS[newObj]}`, { description: "Bước 2 & 3 đã tự động recalculate." });
-  };
+  const completeStep = (n: number) => setCompletedSteps((prev) => new Set(prev).add(n));
 
-  const completeStep = (n: number) => setCompletedSteps(prev => new Set(prev).add(n));
-
-  const handleSelectSku = (item: string, variant: string) => {
-    setSelectedSku({ item, variant });
+  const handleSelectSku = (item: string) => {
+    setSelectedSku(item);
     completeStep(1);
     setActiveStep(2);
   };
@@ -740,44 +725,26 @@ export function SourcingWorkbench({ scale, objective: externalObjective, onObjec
     completeStep(1);
     completeStep(2);
     setActiveStep(3);
-    toast.success("Auto-allocation hoàn tất", { description: `5 SKU đã phân bổ theo ${OBJECTIVE_LABELS[objective]}` });
+    toast.success("Tự động phân bổ hoàn tất", {
+      description: `${Object.keys(bookings).length} mã gốc → NM nguồn duy nhất`,
+    });
   };
 
-  const handleNmSelect = (nms: { nm: string; role: string }[]) => {
-    if (selectedSku) {
-      const key = `${selectedSku.item}|${selectedSku.variant}`;
-      const sk = skus.find(s => s.item === selectedSku.item && s.variant === selectedSku.variant);
-      if (sk && nms.length === 1) {
-        setAllocations(prev => ({ ...prev, [key]: [{ nm: nms[0].nm, qty: sk.netReq, role: "Single source" }] }));
-      } else if (sk && nms.length > 1) {
-        const primaryQty = Math.round(sk.netReq * 0.7);
-        const backupQty = sk.netReq - primaryQty;
-        setAllocations(prev => ({
-          ...prev,
-          [key]: [
-            { nm: nms[0].nm, qty: primaryQty, role: "Primary" },
-            { nm: nms[1].nm, qty: backupQty, role: "Backup" },
-          ],
-        }));
-      }
-    }
+  const handleStep2Confirm = () => {
     completeStep(2);
     setActiveStep(3);
   };
 
-  const handleAutoSelect = () => {
-    if (selectedSku) {
-      const key = `${selectedSku.item}|${selectedSku.variant}`;
-      const sk = skus.find(s => s.item === selectedSku.item && s.variant === selectedSku.variant);
-      const rankings = getRanking(selectedSku.item, selectedSku.variant, sk?.eligibleNms || [], objective);
-      const topNm = rankings.find(r => !r.offline);
-      if (topNm && sk) {
-        setAllocations(prev => ({ ...prev, [key]: [{ nm: topNm.nm, qty: sk.netReq, role: "Single source" }] }));
-      }
-    }
-    completeStep(2);
-    setActiveStep(3);
-    toast.success("Auto-select ★ hoàn tất");
+  const handleBookingUpdate = (item: string, qty: number) => {
+    setBookings((prev) => {
+      const b = prev[item];
+      if (!b) return prev;
+      const afterRound = qty > 0 && qty < b.moq ? b.moq : qty;
+      return {
+        ...prev,
+        [item]: { ...b, bookingQty: qty, afterRound, surplus: afterRound - qty },
+      };
+    });
   };
 
   const handleAllocConfirm = () => {
@@ -788,7 +755,10 @@ export function SourcingWorkbench({ scale, objective: externalObjective, onObjec
   const handleCreateBpo = () => {
     completeStep(4);
     setBpoCreated(true);
-    toast.success("3 BPO đã tạo và gửi NM", { description: "BPO-MKD-2605, BPO-DTM-2605, BPO-VGR-2605" });
+    const count = Object.values(bookings).filter((b) => b.afterRound > 0).length;
+    toast.success(`BPO đã tạo cho ${new Set(Object.values(bookings).filter((b) => b.afterRound > 0).map((b) => b.nm)).size} NM`, {
+      description: `${count} mã gốc · Theo dõi tại tab "Đối chiếu"`,
+    });
   };
 
   if (bpoCreated) {
@@ -797,8 +767,8 @@ export function SourcingWorkbench({ scale, objective: externalObjective, onObjec
         <div className="rounded-card border border-success/30 bg-success-bg/50 px-5 py-4 flex items-center gap-3">
           <Check className="h-5 w-5 text-success" />
           <div>
-            <p className="text-body font-semibold text-success">✅ BPO đã tạo</p>
-            <p className="text-table-sm text-text-2 mt-0.5">3 Blanket PO đã gửi NM. Theo dõi tại tab "Đối chiếu".</p>
+            <p className="text-body font-semibold text-success">✅ BPO đã tạo & gửi NM</p>
+            <p className="text-table-sm text-text-2 mt-0.5">Theo dõi tiến độ honoring tại tab "Đối chiếu".</p>
           </div>
         </div>
         <StepperBar active={4} completed={new Set([1, 2, 3, 4])} onStep={() => {}} />
@@ -814,33 +784,19 @@ export function SourcingWorkbench({ scale, objective: externalObjective, onObjec
         <Step1 skus={skus} onSelectSku={handleSelectSku} onAutoAll={handleAutoAll} />
       )}
       {activeStep === 2 && currentSku && (
-        <Step2
-          sku={currentSku}
-          rankings={currentRankings}
-          objective={objective}
-          onObjective={handleObjectiveChange}
-          onSelect={handleNmSelect}
-          onAutoSelect={handleAutoSelect}
-          showFormula={showFormula}
-          setShowFormula={setShowFormula}
-        />
+        <Step2 sku={currentSku} capability={currentCapability} onConfirm={handleStep2Confirm} />
       )}
       {activeStep === 2 && !currentSku && (
         <div className="text-center py-8 text-text-3">
-          <p>Chọn SKU từ Bước 1 trước.</p>
+          <p>Chọn mã gốc từ Bước 1 trước.</p>
           <button onClick={() => setActiveStep(1)} className="text-primary text-table-sm mt-2 hover:underline">← Quay lại Bước 1</button>
         </div>
       )}
       {activeStep === 3 && (
-        <Step3
-          skus={skus}
-          allocations={allocations}
-          onUpdate={(key, allocs) => setAllocations(prev => ({ ...prev, [key]: allocs }))}
-          onConfirm={handleAllocConfirm}
-        />
+        <Step3 skus={skus} bookings={bookings} onUpdate={handleBookingUpdate} onConfirm={handleAllocConfirm} />
       )}
       {activeStep === 4 && (
-        <Step4 allocations={allocations} scale={scale} onCreateBpo={handleCreateBpo} />
+        <Step4 bookings={bookings} onCreateBpo={handleCreateBpo} />
       )}
     </div>
   );
