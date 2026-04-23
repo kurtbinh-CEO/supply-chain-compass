@@ -1002,3 +1002,199 @@ export const DEMAND_VERSIONS: DemandVersionRow[] = [
   { cnCode: "CN-HCM", skuBaseCode: "GA-300", v0: 1800, v1: 1850, v2: 1820, v3: 1800, v4: 1800 },
   { cnCode: "CN-HN",  skuBaseCode: "GA-300", v0: 1650, v1: 1700, v2: 1680, v3: 1650, v4: 1650 },
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §26 NM PRICE LISTS (Bảng giá NM — có version + hiệu lực)
+// ─────────────────────────────────────────────────────────────────────────────
+export interface NmPriceList {
+  id: string;
+  nmId: NmId;
+  version: number;
+  status: "Nháp" | "Hiệu lực" | "Hết hạn";
+  effectiveDate: string;   // dd/mm/yyyy
+  expiryDate: string;      // dd/mm/yyyy
+  paymentTerms: string;
+  approvedBy: string;
+  approvedAt: string;
+  note: string;
+}
+
+export const NM_PRICE_LISTS: NmPriceList[] = [
+  // Toko — 3 versions, v3 hiệu lực
+  { id: "PL-TKO-01", nmId: "TOKO", version: 1, status: "Hết hạn",   effectiveDate: "01/10/2025", expiryDate: "31/12/2025", paymentTerms: "30% trước, 70% khi giao", approvedBy: "Chị Thùy", approvedAt: "28/09/2025", note: "Bảng giá Q4/2025" },
+  { id: "PL-TKO-02", nmId: "TOKO", version: 2, status: "Hết hạn",   effectiveDate: "01/01/2026", expiryDate: "31/03/2026", paymentTerms: "30% trước, 70% khi giao", approvedBy: "Chị Thùy", approvedAt: "26/12/2025", note: "Tăng 3% do gas Q1" },
+  { id: "PL-TKO-03", nmId: "TOKO", version: 3, status: "Hiệu lực", effectiveDate: "01/04/2026", expiryDate: "30/06/2026", paymentTerms: "30% trước, 70% khi giao", approvedBy: "Chị Thùy", approvedAt: "25/03/2026", note: "Tăng 5% do gas + nguyên liệu Q2" },
+
+  // Mikado — v2 hiệu lực, ổn định
+  { id: "PL-MKD-01", nmId: "MIKADO", version: 1, status: "Hết hạn",   effectiveDate: "01/01/2026", expiryDate: "31/03/2026", paymentTerms: "50% trước, 50% khi giao", approvedBy: "Chị Thùy", approvedAt: "28/12/2025", note: "Bảng giá Q1/2026" },
+  { id: "PL-MKD-02", nmId: "MIKADO", version: 2, status: "Hiệu lực", effectiveDate: "01/04/2026", expiryDate: "30/09/2026", paymentTerms: "50% trước, 50% khi giao", approvedBy: "Chị Thùy", approvedAt: "20/03/2026", note: "Giữ giá, gia hạn 6 tháng (hợp đồng năm)" },
+
+  // Đồng Tâm — v2 hiệu lực
+  { id: "PL-DTM-01", nmId: "DONGTAM", version: 1, status: "Hết hạn",   effectiveDate: "01/01/2026", expiryDate: "31/03/2026", paymentTerms: "20% trước, 80% Net 30", approvedBy: "Chị Thùy", approvedAt: "28/12/2025", note: "Bảng giá Q1" },
+  { id: "PL-DTM-02", nmId: "DONGTAM", version: 2, status: "Hiệu lực", effectiveDate: "01/04/2026", expiryDate: "30/06/2026", paymentTerms: "20% trước, 80% Net 30", approvedBy: "Chị Thùy", approvedAt: "22/03/2026", note: "Tăng 2% do nguyên liệu" },
+
+  // Vigracera — v1 hiệu lực
+  { id: "PL-VGC-01", nmId: "VIGRACERA", version: 1, status: "Hiệu lực", effectiveDate: "01/01/2026", expiryDate: "30/06/2026", paymentTerms: "30% trước, 70% khi giao", approvedBy: "Chị Thùy", approvedAt: "26/12/2025", note: "Hợp đồng 6 tháng" },
+
+  // Phú Mỹ — v2 SẮP HẾT HẠN (30/04)
+  { id: "PL-PMY-01", nmId: "PHUMY", version: 1, status: "Hết hạn",   effectiveDate: "01/10/2025", expiryDate: "31/12/2025", paymentTerms: "100% trước", approvedBy: "Chị Thùy", approvedAt: "25/09/2025", note: "Bảng giá Q4/2025" },
+  { id: "PL-PMY-02", nmId: "PHUMY", version: 2, status: "Hiệu lực", effectiveDate: "01/01/2026", expiryDate: "30/04/2026", paymentTerms: "100% trước", approvedBy: "Chị Thùy", approvedAt: "28/12/2025", note: "⚠️ Hết hạn 30/04 — chưa gia hạn" },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §27 NM PRICE LINES (Per SKU với MOQ breakpoints — 3-4 mức)
+// ─────────────────────────────────────────────────────────────────────────────
+export interface PriceBreak {
+  fromQty: number;
+  toQty: number | null;     // null = không giới hạn
+  pricePerM2: number;
+  label: string;            // "Giá lẻ" | "Giá sỉ" | "Giá container" | "Giá hợp đồng năm"
+}
+
+export interface NmPriceLine {
+  priceListId: string;
+  skuBaseCode: string;
+  breaks: PriceBreak[];
+}
+
+export const NM_PRICE_LINES: NmPriceLine[] = [
+  // Toko v3 (hiệu lực) — GA-600, GA-800
+  { priceListId: "PL-TKO-03", skuBaseCode: "GA-600", breaks: [
+    { fromQty: 0,     toQty: 999,   pricePerM2: 198000, label: "Giá lẻ" },
+    { fromQty: 1000,  toQty: 4999,  pricePerM2: 188000, label: "Giá sỉ" },
+    { fromQty: 5000,  toQty: 9999,  pricePerM2: 178000, label: "Giá container" },
+    { fromQty: 10000, toQty: null,  pricePerM2: 168000, label: "Giá hợp đồng năm" },
+  ]},
+  { priceListId: "PL-TKO-03", skuBaseCode: "GA-800", breaks: [
+    { fromQty: 0,    toQty: 999,  pricePerM2: 258000, label: "Giá lẻ" },
+    { fromQty: 1000, toQty: 4999, pricePerM2: 245000, label: "Giá sỉ" },
+    { fromQty: 5000, toQty: null, pricePerM2: 232000, label: "Giá container" },
+  ]},
+
+  // Toko v2 (hết hạn) — để so sánh version
+  { priceListId: "PL-TKO-02", skuBaseCode: "GA-600", breaks: [
+    { fromQty: 0,    toQty: 999,  pricePerM2: 190000, label: "Giá lẻ" },
+    { fromQty: 1000, toQty: 4999, pricePerM2: 180000, label: "Giá sỉ" },
+    { fromQty: 5000, toQty: null, pricePerM2: 170000, label: "Giá container" },
+  ]},
+  { priceListId: "PL-TKO-02", skuBaseCode: "GA-800", breaks: [
+    { fromQty: 0,    toQty: 999,  pricePerM2: 250000, label: "Giá lẻ" },
+    { fromQty: 1000, toQty: 4999, pricePerM2: 240000, label: "Giá sỉ" },
+    { fromQty: 5000, toQty: null, pricePerM2: 228000, label: "Giá container" },
+  ]},
+
+  // Mikado v2 (hiệu lực) — GA-300, GA-400
+  { priceListId: "PL-MKD-02", skuBaseCode: "GA-300", breaks: [
+    { fromQty: 0,     toQty: 1499,  pricePerM2: 152000, label: "Giá lẻ" },
+    { fromQty: 1500,  toQty: 4999,  pricePerM2: 142000, label: "Giá sỉ" },
+    { fromQty: 5000,  toQty: 9999,  pricePerM2: 135000, label: "Giá container" },
+    { fromQty: 10000, toQty: null,  pricePerM2: 128000, label: "Giá hợp đồng năm" },
+  ]},
+  { priceListId: "PL-MKD-02", skuBaseCode: "GA-400", breaks: [
+    { fromQty: 0,    toQty: 1499, pricePerM2: 178000, label: "Giá lẻ" },
+    { fromQty: 1500, toQty: 4999, pricePerM2: 168000, label: "Giá sỉ" },
+    { fromQty: 5000, toQty: null, pricePerM2: 158000, label: "Giá container" },
+  ]},
+
+  // Đồng Tâm v2 — GT-300
+  { priceListId: "PL-DTM-02", skuBaseCode: "GT-300", breaks: [
+    { fromQty: 0,    toQty: 1999, pricePerM2: 165000, label: "Giá lẻ" },
+    { fromQty: 2000, toQty: null, pricePerM2: 148000, label: "Giá sỉ" },
+  ]},
+
+  // Phú Mỹ v2 (SẮP HẾT HẠN) — PK-001
+  { priceListId: "PL-PMY-02", skuBaseCode: "PK-001", breaks: [
+    { fromQty: 0,    toQty: 999,  pricePerM2: 138000, label: "Giá lẻ" },
+    { fromQty: 1000, toQty: null, pricePerM2: 128000, label: "Giá sỉ" },
+  ]},
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §28 NM SURCHARGES (Phụ phí tách riêng — bật/tắt độc lập)
+// ─────────────────────────────────────────────────────────────────────────────
+export interface NmSurcharge {
+  priceListId: string;
+  type: "Năng lượng" | "Vận chuyển" | "Tỷ giá" | "Nguyên liệu";
+  calcMethod: "percent" | "fixed";
+  rate: number;     // percent hoặc VND/m²
+  active: boolean;
+  note: string;
+}
+
+export const NM_SURCHARGES: NmSurcharge[] = [
+  { priceListId: "PL-TKO-03", type: "Năng lượng",  calcMethod: "percent", rate: 3,    active: true,  note: "Gas tăng 15% từ 01/04" },
+  { priceListId: "PL-TKO-03", type: "Vận chuyển",  calcMethod: "fixed",   rate: 5000, active: false, note: "Chưa áp dụng" },
+  { priceListId: "PL-MKD-02", type: "Năng lượng",  calcMethod: "percent", rate: 0,    active: false, note: "Mikado tự chịu — hợp đồng năm" },
+  { priceListId: "PL-DTM-02", type: "Nguyên liệu", calcMethod: "percent", rate: 2,    active: true,  note: "Zircon tăng 8% từ Trung Quốc" },
+  { priceListId: "PL-PMY-02", type: "Năng lượng",  calcMethod: "percent", rate: 5,    active: true,  note: "Phú Mỹ phụ phí cao nhất" },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPER: lấy giá hiệu lực cho 1 NM × SKU × qty
+// ─────────────────────────────────────────────────────────────────────────────
+export function getEffectivePrice(nmId: NmId, skuBaseCode: string, qty: number): {
+  pricePerM2: number;
+  breakLabel: string;
+  surcharges: NmSurcharge[];
+  totalPerM2: number;
+  priceListId: string;
+  expiryDate: string;
+  daysUntilExpiry: number;
+  matchedBreak: PriceBreak;
+  allBreaks: PriceBreak[];
+} | null {
+  const activePL = NM_PRICE_LISTS.find((pl) => pl.nmId === nmId && pl.status === "Hiệu lực");
+  if (!activePL) return null;
+
+  const line = NM_PRICE_LINES.find((l) => l.priceListId === activePL.id && l.skuBaseCode === skuBaseCode);
+  if (!line) return null;
+
+  const matchBreak =
+    [...line.breaks].reverse().find((b) => qty >= b.fromQty) ?? line.breaks[0];
+
+  const surcharges = NM_SURCHARGES.filter((s) => s.priceListId === activePL.id && s.active);
+  const surchargeTotal = surcharges.reduce(
+    (sum, s) =>
+      sum + (s.calcMethod === "percent" ? (matchBreak.pricePerM2 * s.rate) / 100 : s.rate),
+    0
+  );
+
+  const now = new Date();
+  const [d, m, y] = activePL.expiryDate.split("/").map(Number);
+  const expiry = new Date(y, m - 1, d);
+  const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / 86_400_000);
+
+  return {
+    pricePerM2: matchBreak.pricePerM2,
+    breakLabel: matchBreak.label,
+    surcharges,
+    totalPerM2: matchBreak.pricePerM2 + Math.round(surchargeTotal),
+    priceListId: activePL.id,
+    expiryDate: activePL.expiryDate,
+    daysUntilExpiry,
+    matchedBreak: matchBreak,
+    allBreaks: line.breaks,
+  };
+}
+
+// HELPER: tìm bảng giá sắp hết hạn (< n ngày)
+export function getExpiringPriceLists(daysThreshold = 30): { pl: NmPriceList; days: number; nmName: string }[] {
+  const now = new Date();
+  return NM_PRICE_LISTS
+    .filter((pl) => pl.status === "Hiệu lực")
+    .map((pl) => {
+      const [d, m, y] = pl.expiryDate.split("/").map(Number);
+      const expiry = new Date(y, m - 1, d);
+      const days = Math.ceil((expiry.getTime() - now.getTime()) / 86_400_000);
+      const nmName = FACTORIES.find((f) => f.id === pl.nmId)?.name ?? pl.nmId;
+      return { pl, days, nmName };
+    })
+    .filter((x) => x.days < daysThreshold);
+}
+
+// HELPER: tìm NM không có bảng giá hiệu lực
+export function getNmWithoutActivePriceList(): { nmId: NmId; name: string }[] {
+  return FACTORIES
+    .filter((f) => !NM_PRICE_LISTS.some((pl) => pl.nmId === f.id && pl.status === "Hiệu lực"))
+    .map((f) => ({ nmId: f.id, name: f.name }));
+}
