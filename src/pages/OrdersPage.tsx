@@ -86,13 +86,13 @@ interface RpoChild {
   expected_date: string | null;
 }
 
-/* ─────────── tabs (workflow order: Đóng hàng → Duyệt → Theo dõi → Chuyển ngang → Nhà xe) ─────────── */
+/* ─────────── tabs (workflow order: Duyệt → Xác nhận vận chuyển → Theo dõi → Chuyển ngang → Nhà xe) ─────────── */
 const tabs = [
-  { key: "packing",  label: "Đóng hàng",          icon: Package },          // F2-B5
-  { key: "approval", label: "Duyệt PO/TO",        icon: ClipboardCheck },   // F2-B6
-  { key: "tracking", label: "Theo dõi giao hàng", icon: Truck },            // F2-B7
-  { key: "transfer", label: "Chuyển ngang",       icon: ArrowLeftRight },   // LCNB
-  { key: "carrier",  label: "Nhà xe",             icon: Users },            // Carrier mgmt
+  { key: "approval", label: "Duyệt PO/TO",           icon: ClipboardCheck },
+  { key: "packing",  label: "Xác nhận vận chuyển",    icon: Package },
+  { key: "tracking", label: "Theo dõi giao hàng",     icon: Truck },
+  { key: "transfer", label: "Chuyển ngang",           icon: ArrowLeftRight },
+  { key: "carrier",  label: "Nhà xe",                 icon: Users },
 ];
 
 const stageOrder = ["draft", "submitted", "confirmed", "shipped", "received"];
@@ -177,7 +177,7 @@ export default function OrdersPage() {
       const fromLs = localStorage.getItem("scp-orders-active-tab");
       if (fromLs && tabs.some((t) => t.key === fromLs)) return fromLs;
     }
-    return "packing";
+    return "approval";
   })();
   const [activeTab, setActiveTab] = useState<string>(initialTab);
 
@@ -942,6 +942,51 @@ export default function OrdersPage() {
         </div>
       )}
 
+      {/* ─── Flow tổng thể (PRD 4.0 Allocate → Execute) ─── */}
+      <div className="mb-3 rounded-card border border-surface-3 bg-surface-0 px-4 py-3">
+        <p className="text-caption uppercase text-text-3 tracking-[0.14em] font-medium mb-2">
+          Flow tổng thể · Allocate → Execute
+        </p>
+        <div className="flex items-center gap-1.5 flex-wrap text-caption">
+          {[
+            { key: "drp",      label: "DRP tự động",          count: null,                                      tab: null },
+            { key: "alloc",    label: "Phân bổ (gán container)", count: TRANSPORT_PLANS.length,                 tab: null,        suffix: "container" },
+            { key: "approval", label: "Duyệt PO/TO",          count: approvalQueue.length,                      tab: "approval",  suffix: "chờ duyệt" },
+            { key: "packing",  label: "Chọn nhà xe",          count: stageCounts.confirmed?.count ?? 0,         tab: "packing",   suffix: "chờ NX" },
+            { key: "ship",    label: "NM gửi hàng",           count: stageCounts.shipped?.count ?? 0,           tab: "tracking",  suffix: "đang giao" },
+            { key: "tracking", label: "Theo dõi",             count: stageCounts.shipped?.count ?? 0,           tab: "tracking",  suffix: "đang giao" },
+            { key: "received", label: "CN nhận",              count: stageCounts.received?.count ?? 0,          tab: "tracking",  suffix: "đã nhận" },
+          ].map((node, i, arr) => (
+            <div key={node.key} className="flex items-center gap-1.5">
+              <button
+                onClick={() => node.tab && setActiveTab(node.tab)}
+                disabled={!node.tab}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 transition-colors",
+                  node.tab
+                    ? "border-surface-3 bg-surface-1 text-text-2 hover:border-primary/40 hover:text-text-1 cursor-pointer"
+                    : "border-surface-3 bg-surface-2 text-text-3 cursor-default",
+                  activeTab === node.tab && "border-primary bg-primary/10 text-primary font-semibold"
+                )}
+              >
+                <span>{node.label}</span>
+                {node.count !== null && node.count > 0 && (
+                  <span className={cn(
+                    "tabular-nums rounded-full px-1.5 py-0 text-caption font-semibold",
+                    activeTab === node.tab
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-surface-3 text-text-2"
+                  )}>
+                    {node.count}
+                  </span>
+                )}
+              </button>
+              {i < arr.length - 1 && <ArrowRight className="h-3 w-3 text-text-3 shrink-0" />}
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* ─── Breadcrumb ─── */}
       <nav className="flex items-center gap-1.5 text-caption text-text-3 mb-3">
         <span>Vận hành hàng ngày</span>
@@ -973,7 +1018,7 @@ export default function OrdersPage() {
         })}
       </div>
 
-      {/* ═══════════════════ TAB: ĐÓNG HÀNG (gộp từ /transport) ═══════════════════ */}
+      {/* ═══════════════════ TAB: XÁC NHẬN VẬN CHUYỂN ═══════════════════ */}
       {activeTab === "packing" && (
         <div className="animate-fade-in space-y-5">
           <PackingTab />
@@ -984,17 +1029,17 @@ export default function OrdersPage() {
             <HoldOrShipPanel />
           </div>
           <button
-            onClick={() => setActiveTab("approval")}
+            onClick={() => setActiveTab("tracking")}
             className="w-full rounded-card border border-primary/30 bg-primary/5 px-5 py-3 flex items-center justify-between hover:bg-primary/10 transition-colors group"
           >
             <div className="text-left">
               <div className="text-caption text-text-3 uppercase tracking-wider">Bước tiếp</div>
               <div className="text-table font-semibold text-text-1 mt-0.5">
-                Đóng hàng xong → Duyệt PO/TO
+                Xác nhận vận chuyển xong → Theo dõi giao hàng
               </div>
             </div>
             <div className="flex items-center gap-1.5 text-primary font-medium text-table-sm">
-              Mở Duyệt PO <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              Mở Theo dõi <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </button>
         </div>
