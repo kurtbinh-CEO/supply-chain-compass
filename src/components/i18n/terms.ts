@@ -141,6 +141,12 @@ export const TERMS: Record<string, TermEntry> = {
     tooltip_vi: "Thời điểm khoá dữ liệu trong ngày. Sau cutoff, FC/PO/TO không còn nhận thay đổi không-khẩn-cấp.",
     tooltip_en: "Daily data lock time. After cutoff, FC/PO/TO no longer accept non-urgent changes.",
   },
+  Tolerance: {
+    vi: "Biên điều chỉnh",
+    en: "Adjustment Tolerance",
+    tooltip_vi: "Biên giới hạn |delta| khi CN điều chỉnh nhu cầu. Mặc định ±30%; trust < 60% giảm còn ±15%; trust > 85% tự duyệt.",
+    tooltip_en: "Limit on |delta| for branch demand adjustments. Default ±30%; trust < 60% drops to ±15%; trust > 85% auto-approves.",
+  },
   Sync: {
     vi: "Sync (Đồng bộ)",
     en: "Sync",
