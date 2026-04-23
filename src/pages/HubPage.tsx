@@ -5,6 +5,19 @@ import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/TenantContext";
 import { SourcingWorkbench } from "@/components/hub/SourcingWorkbench";
 import { ReconciliationTab } from "@/components/hub/ReconciliationTab";
+import { ClickableNumber } from "@/components/ClickableNumber";
+
+type Objective = "hybrid" | "lt" | "cost";
+
+// Hub-level mock totals (m²) — derived from S&OP locked + NM commitments
+function getHubTotals(scale: number) {
+  const sopLocked = Math.round(7650 * scale);
+  const nmConfirmed = Math.round(7200 * scale); // ~94% honoring
+  const released = Math.round(5400 * scale);    // ~75% of confirmed
+  const ssHub = Math.round(420 * scale);        // safety stock at hub
+  const available = sopLocked + ssHub - released; // formula: SOP + SS − released
+  return { sopLocked, nmConfirmed, released, ssHub, available };
+}
 
 type Objective = "hybrid" | "lt" | "cost";
 
