@@ -19,7 +19,6 @@ function getHubTotals(scale: number) {
   return { sopLocked, nmConfirmed, released, ssHub, available };
 }
 
-type Objective = "hybrid" | "lt" | "cost";
 
 const tabs = [
   { key: "sourcing", label: "Sourcing Workbench" },
