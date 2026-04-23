@@ -558,6 +558,9 @@ export default function MonitoringPage() {
             </div>
           </div>
 
+          {/* Section B2: Trust Score per CN — 12 chi nhánh + sparkline 12 tuần */}
+          <TrustScoreCnPanel />
+
           {/* Section C: Top Exceptions */}
           <div>
             <h3 className="font-display text-body font-semibold text-text-1 mb-3">Top Exceptions</h3>
