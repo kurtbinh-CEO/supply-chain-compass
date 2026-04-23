@@ -270,7 +270,7 @@ export function SafetyStockTab() {
             <Legend wrapperStyle={{ fontSize: 11 }} />
             <Bar dataKey="fc" fill="#2563EB" name="Forecast" radius={[4, 4, 0, 0]} />
             <Bar dataKey="ss" fill="var(--color-surface-3)" name="Safety Stock" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="wc" fill="var(--color-success-text)" name="Working Capital" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="wc" fill="var(--color-success-text)" name="Vốn lưu động" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
         <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-surface-3">

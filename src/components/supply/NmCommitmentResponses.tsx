@@ -13,10 +13,10 @@ import {
 type ResponseStatus = "confirmed" | "counter" | "pending" | "rejected";
 
 const TIER_LABEL: Record<CommitmentTier, string> = {
-  Hard: "Hard",
-  Firm: "Firm",
-  Soft: "Soft",
-  Counter: "Counter",
+  Hard: "Cứng",
+  Firm: "Chắc chắn",
+  Soft: "Linh hoạt",
+  Counter: "Đề xuất khác",
 };
 
 const STATUS_META: Record<ResponseStatus, { label: string; tone: string; icon: typeof CheckCircle2 }> = {

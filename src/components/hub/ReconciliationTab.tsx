@@ -173,6 +173,11 @@ export function ReconciliationTab({ scale }: Props) {
                           const asnBadge = getPoTypeBadge("ASN");
                           const statusColor = rpo.status === "RECEIVED" ? "bg-success-bg text-success" :
                             rpo.status === "SHIPPED" ? "bg-info-bg text-info" : "bg-warning-bg text-warning";
+                          const statusLabel =
+                            rpo.status === "RECEIVED" ? "ĐÃ NHẬN" :
+                            rpo.status === "SHIPPED" ? "ĐÃ GỬI" :
+                            rpo.status === "CONFIRMED" ? "ĐÃ XÁC NHẬN" :
+                            rpo.status === "DRAFT" ? "NHÁP" : rpo.status;
                           return (
                             <tr key={`${r.bpo}-rpo-${ri}`} className="border-b border-surface-3/30 bg-surface-0 animate-fade-in">
                               <td />
@@ -189,7 +194,7 @@ export function ReconciliationTab({ scale }: Props) {
                               </td>
                               <td className="px-4 py-2">
                                 <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium", statusColor)}>
-                                  ● {rpo.status}
+                                  ● {statusLabel}
                                 </span>
                               </td>
                               <td className={cn("px-4 py-2 text-text-3", poNumClasses)}>{rpo.shipDate} → {rpo.eta}</td>

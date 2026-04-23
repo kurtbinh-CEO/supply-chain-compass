@@ -218,7 +218,7 @@ export function ExpandedSkuBreakdown({ title, skus }: { title: string; skus: Sku
                 <td className="px-3 py-2">
                   <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
                     sk.status === "OK" ? "bg-success-bg text-success" : sk.status === "SHORTAGE" ? "bg-danger-bg text-danger" : "bg-warning-bg text-warning"
-                  )}>{sk.status}</span>
+                  )}>{sk.status === "OK" ? "ĐẠT" : sk.status === "SHORTAGE" ? "THIẾU HÀNG" : "THEO DÕI"}</span>
                 </td>
                 <td className="px-3 py-2"><AllocSourceBar sources={sk.sources} demand={sk.demand} allocated={sk.allocated} /></td>
               </tr>
@@ -251,7 +251,7 @@ export function ExpandedCnBreakdown({ title, cnRows }: { title: string; cnRows: 
         <table className="w-full">
           <thead>
             <tr className="bg-surface-1/40 border-b border-surface-3/50">
-              {["CN", "Demand", "Allocated", "Fill%", "Gap", "Status", "Nguồn phân bổ"].map((h, i) => (
+              {["CN", "Nhu cầu", "Phân bổ", "Lấp đầy %", "Thiếu", "Trạng thái", "Nguồn phân bổ"].map((h, i) => (
                 <th key={i} className="px-3 py-2 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -272,7 +272,7 @@ export function ExpandedCnBreakdown({ title, cnRows }: { title: string; cnRows: 
                 <td className="px-3 py-2">
                   <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
                     cr.status === "OK" ? "bg-success-bg text-success" : cr.status === "SHORTAGE" ? "bg-danger-bg text-danger" : "bg-warning-bg text-warning"
-                  )}>{cr.status}</span>
+                  )}>{cr.status === "OK" ? "ĐẠT" : cr.status === "SHORTAGE" ? "THIẾU HÀNG" : "THEO DÕI"}</span>
                 </td>
                 <td className="px-3 py-2"><AllocSourceBar sources={cr.sources} demand={cr.demand} allocated={cr.allocated} /></td>
               </tr>

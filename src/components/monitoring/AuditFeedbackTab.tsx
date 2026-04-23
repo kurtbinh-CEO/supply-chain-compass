@@ -348,7 +348,7 @@ export function AuditFeedbackTab() {
                 <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} tickFormatter={(v) => `$${v}K`} />
                 <Tooltip contentStyle={{ borderRadius: 8, borderColor: "var(--color-surface-3)", fontSize: 12 }} />
                 <Bar dataKey="positive" fill="#2563EB" name="Cost" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="negative" fill="var(--color-success-text)" name="Savings" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="negative" fill="var(--color-success-text)" name="Tiết kiệm" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
             <div className="grid grid-cols-4 gap-3 mt-4 pt-4 border-t border-surface-3">

@@ -5,10 +5,10 @@ import { TO_DRAFT, BRANCHES, SKU_BASES, type ToDraftRow } from "@/data/unis-ente
 import { PoLifecycleStepper, stageFromStatus } from "./PoLifecycleStepper";
 
 const STATUS_META: Record<ToDraftRow["status"], { label: string; tone: string }> = {
-  draft:     { label: "DRAFT",     tone: "bg-surface-2 text-text-2 border-surface-3" },
-  confirmed: { label: "CONFIRMED", tone: "bg-info-bg text-primary border-primary/30" },
-  shipped:   { label: "SHIPPED",   tone: "bg-warning-bg text-warning border-warning/30" },
-  received:  { label: "RECEIVED",  tone: "bg-success-bg text-success border-success/30" },
+  draft:     { label: "NHÁP",         tone: "bg-surface-2 text-text-2 border-surface-3" },
+  confirmed: { label: "ĐÃ XÁC NHẬN", tone: "bg-info-bg text-primary border-primary/30" },
+  shipped:   { label: "ĐÃ GỬI",      tone: "bg-warning-bg text-warning border-warning/30" },
+  received:  { label: "ĐÃ NHẬN",     tone: "bg-success-bg text-success border-success/30" },
 };
 
 const fmt = (n: number) => `${n.toLocaleString("vi-VN")} m²`;

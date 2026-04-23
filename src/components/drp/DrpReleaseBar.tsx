@@ -347,18 +347,18 @@ export function DrpReleaseBar({
                       <AlertTriangle className="h-4 w-4 text-danger shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-table-sm font-semibold text-text-1">{e.cn} · {e.item} {e.variant}</p>
-                        <p className="text-caption text-text-3">Gap {e.gap.toLocaleString()} m² · {e.type}</p>
+                        <p className="text-caption text-text-3">Thiếu {e.gap.toLocaleString()} m² · {e.type === "SHORTAGE" ? "THIẾU HÀNG" : "THEO DÕI"}</p>
                       </div>
                       <span className={cn(
                         "rounded-full px-2 py-0.5 text-caption font-semibold",
                         e.type === "SHORTAGE" ? "bg-danger/15 text-danger" : "bg-warning/15 text-warning"
                       )}>
-                        {e.type}
+                        {e.type === "SHORTAGE" ? "THIẾU HÀNG" : "THEO DÕI"}
                       </span>
                     </div>
                   ))}
                   <p className="text-caption text-text-3 mt-2">
-                    💡 Có thể vẫn release batch — exceptions sẽ chuyển sang Workspace để xử lý sau.
+                    💡 Có thể vẫn release lô — ngoại lệ sẽ chuyển sang Workspace để xử lý sau.
                   </p>
                 </div>
               )

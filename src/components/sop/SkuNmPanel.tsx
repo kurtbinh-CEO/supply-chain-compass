@@ -171,7 +171,7 @@ export function SkuNmPanel({ item, variant, netReq, primaryNm, primaryAtp, scale
         <table className="w-full text-table-sm">
           <thead>
             <tr className="border-b border-surface-3 bg-surface-1/50">
-              {["NM", "On-hand", "ATP (UNIS)", "KHSX (ETA)", "Pipeline", "Freshness", "LT", "Cost/m²", "Action"].map(h => (
+              {["NM", "Tồn hiện có", "ATP (UNIS)", "KHSX (ETA)", "Đang về", "Độ tươi", "LT", "Giá/m²", "Hành động"].map(h => (
                 <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
               ))}
             </tr>

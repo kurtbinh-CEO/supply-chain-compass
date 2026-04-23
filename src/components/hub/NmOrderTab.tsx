@@ -482,7 +482,7 @@ export function NmOrderTab({ scale }: Props) {
           <table className="w-full text-table-sm">
             <thead>
               <tr className="border-b border-surface-3 bg-surface-1/50">
-                {["RPO#", "Tuần", "Item", "Qty", "Status", "ETA", "Link"].map(h => (
+                {["RPO#", "Tuần", "SKU", "SL", "Trạng thái", "ETA", "Liên kết"].map(h => (
                   <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
                 ))}
               </tr>
@@ -493,6 +493,13 @@ export function NmOrderTab({ scale }: Props) {
                 const statusColor = rpo.status === "SHIPPED" ? "bg-success-bg text-success" :
                   rpo.status === "CONFIRMED" || rpo.status === "APPROVED" ? "bg-info-bg text-info" :
                   rpo.status === "ATP_FAIL" ? "bg-danger-bg text-danger" : "bg-surface-1 text-text-2";
+                const statusLabel =
+                  rpo.status === "SHIPPED" ? "ĐÃ GỬI" :
+                  rpo.status === "CONFIRMED" ? "ĐÃ XÁC NHẬN" :
+                  rpo.status === "APPROVED" ? "ĐÃ DUYỆT" :
+                  rpo.status === "DRAFT" ? "NHÁP" :
+                  rpo.status === "RECEIVED" ? "ĐÃ NHẬN" :
+                  rpo.status === "ATP_FAIL" ? "ATP LỖI" : rpo.status;
                 return (
                   <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", i % 2 === 0 ? "bg-surface-2" : "bg-surface-0")}>
                     <td className={cn("px-4 py-2.5", poNumClasses, badge.text)}>{rpo.rpo}</td>
@@ -500,7 +507,7 @@ export function NmOrderTab({ scale }: Props) {
                     <td className="px-4 py-2.5 text-text-1">{rpo.item}</td>
                     <td className="px-4 py-2.5 tabular-nums text-text-1">{rpo.qty.toLocaleString()}</td>
                     <td className="px-4 py-2.5">
-                      <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium", statusColor)}>● {rpo.status}</span>
+                      <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium", statusColor)}>● {statusLabel}</span>
                     </td>
                     <td className="px-4 py-2.5 text-text-3">{rpo.eta}</td>
                     <td className="px-4 py-2.5">
