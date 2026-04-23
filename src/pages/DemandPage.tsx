@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { cn } from "@/lib/utils";
@@ -6,41 +6,51 @@ import { DemandTotalTab } from "@/components/demand/DemandTotalTab";
 import { B2BInputTab } from "@/components/demand/B2BInputTab";
 import { useTenant } from "@/components/TenantContext";
 import { useDemandForecasts } from "@/hooks/useDemandForecasts";
-import { Loader2, PackageOpen } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
+import { B2B_DEALS, B2B_STAGE_PROB, type B2bStage, type B2bDeal } from "@/data/unis-enterprise-dataset";
 
 const tabs = [
   { key: "total", label: "Demand tổng" },
   { key: "b2b", label: "B2B nhập liệu" },
 ];
 
+const TENANT_SCALE: Record<string, number> = {
+  "UNIS Group": 1,
+  "TTC Agris": 0.7,
+  "Mondelez": 1.35,
+};
+
 export default function DemandPage() {
   const [activeTab, setActiveTab] = useState("total");
   const { tenant } = useTenant();
-  const navigate = useNavigate();
   const { cnSummaries, loading: forecastLoading } = useDemandForecasts();
 
-  // B2B deals state lives here so Tab1 can read aggregated B2B per CN
-  const [b2bDeals, setB2bDeals] = useState(() => getInitialDeals(tenant));
+  const scale = TENANT_SCALE[tenant] ?? 1;
+
+  // Seed B2B deals from dataset, scaled per tenant
+  const [b2bDeals, setB2bDeals] = useState<B2bDeal[]>(() =>
+    B2B_DEALS.map((d) => ({ ...d, qtyM2: Math.round(d.qtyM2 * scale) })),
+  );
 
   // Re-seed deals when tenant changes
   const [prevTenant, setPrevTenant] = useState(tenant);
   if (tenant !== prevTenant) {
     setPrevTenant(tenant);
-    setB2bDeals(getInitialDeals(tenant));
+    setB2bDeals(B2B_DEALS.map((d) => ({ ...d, qtyM2: Math.round(d.qtyM2 * scale) })));
   }
 
-  // Aggregate B2B weighted qty per CN for current month (Th5)
-  const b2bPerCn: Record<string, number> = {};
-  b2bDeals.forEach(d => {
-    if (d.deliveryMonths.includes("Th5")) {
-      d.cnList.forEach(cn => {
-        b2bPerCn[cn] = (b2bPerCn[cn] || 0) + Math.round(d.qty * (d.probability / 100) / d.cnList.length);
-      });
-    }
-  });
-
-  const isEmpty = !forecastLoading && cnSummaries.length === 0;
+  // Aggregate B2B weighted qty per CN for current month (probability-weighted)
+  const b2bPerCn = useMemo(() => {
+    const out: Record<string, number> = {};
+    b2bDeals.forEach((d) => {
+      if (d.stage === "Đã ký" || d.stage === "Cam kết" || d.stage === "Đàm phán" ||
+          d.stage === "Báo giá" || d.stage === "Tiếp xúc" || d.stage === "Tiềm năng") {
+        const weighted = Math.round(d.qtyM2 * B2B_STAGE_PROB[d.stage]);
+        out[d.cnCode] = (out[d.cnCode] ?? 0) + weighted;
+      }
+    });
+    return out;
+  }, [b2bDeals]);
 
   return (
     <AppLayout>
@@ -51,8 +61,8 @@ export default function DemandPage() {
           subtitle=""
           badges={
             <>
-              <span className="rounded-full bg-info-bg text-info px-3 py-1 text-table-sm font-medium">AOP 2026: 60.000 m²</span>
-              <span className="rounded-full bg-success-bg text-success px-3 py-1 text-table-sm font-medium">YTD: 19.380 (32%)</span>
+              <span className="rounded-full bg-info-bg text-info px-3 py-1 text-table-sm font-medium">AOP 2026: 560.000 m²</span>
+              <span className="rounded-full bg-success-bg text-success px-3 py-1 text-table-sm font-medium">YTD: 187.600 (34%)</span>
             </>
           }
         />
@@ -73,7 +83,7 @@ export default function DemandPage() {
               "px-5 py-3 text-body font-medium transition-colors relative",
               activeTab === tab.key
                 ? "text-primary"
-                : "text-text-2 hover:text-text-1"
+                : "text-text-2 hover:text-text-1",
             )}
           >
             {tab.label}
@@ -84,56 +94,20 @@ export default function DemandPage() {
         ))}
       </div>
 
-      {/* Empty state */}
-      {isEmpty && activeTab === "total" && (
-        <div className="rounded-card border border-surface-3 bg-surface-2 py-16 flex flex-col items-center gap-4 animate-fade-in">
-          <div className="rounded-full bg-surface-1 p-4">
-            <PackageOpen className="h-10 w-10 text-text-3" />
-          </div>
-          <div className="text-center space-y-1">
-            <p className="text-body font-semibold text-text-1">Chưa có dữ liệu forecast</p>
-            <p className="text-table text-text-3 max-w-md">
-              Nhập dữ liệu forecast từ hệ thống hoặc tạo thủ công qua tab B2B nhập liệu để bắt đầu review demand.
-            </p>
-          </div>
-          <button
-            onClick={() => setActiveTab("b2b")}
-            className="rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table-sm font-medium mt-2"
-          >
-            Nhập B2B ngay
-          </button>
-        </div>
-      )}
-
-      {!isEmpty && (
-        <div data-tour="demand-total-table">{activeTab === "total" && <DemandTotalTab tenant={tenant} b2bPerCn={b2bPerCn} cnSummaries={cnSummaries} />}</div>
-      )}
-      <div data-tour="demand-b2b-table">{activeTab === "b2b" && <B2BInputTab deals={b2bDeals} setDeals={setB2bDeals} tenant={tenant} />}</div>
+      <div data-tour="demand-total-table">
+        {activeTab === "total" && (
+          <DemandTotalTab tenant={tenant} b2bPerCn={b2bPerCn} cnSummaries={cnSummaries} />
+        )}
+      </div>
+      <div data-tour="demand-b2b-table">
+        {activeTab === "b2b" && (
+          <B2BInputTab deals={b2bDeals} setDeals={setB2bDeals} tenant={tenant} />
+        )}
+      </div>
       <ScreenFooter actionCount={8} />
     </AppLayout>
   );
 }
 
-// ── Initial B2B deals per tenant ──
-export interface B2BDealInput {
-  id: string;
-  customer: string;
-  project: string;
-  cnList: string[];
-  skuMain: string;
-  qty: number;
-  probability: number;
-  deliveryMonths: string[];
-  poStatus: string | null;
-}
-
-function getInitialDeals(tenant: string): B2BDealInput[] {
-  const s = tenant === "TTC Agris" ? 0.7 : tenant === "Mondelez" ? 1.3 : 1;
-  return [
-    { id: "B2B-001", customer: "Vingroup", project: "Grand Park Ph.3", cnList: ["BD","HN"], skuMain: "GA-600 A4", qty: Math.round(12000*s), probability: 85, deliveryMonths: ["Th5","Th6"], poStatus: `PO ${Math.round(8500*s).toLocaleString()}` },
-    { id: "B2B-002", customer: "Novaland", project: "Aqua City", cnList: ["BD"], skuMain: "GA-300 A4", qty: Math.round(5000*s), probability: 70, deliveryMonths: ["Th6","Th7"], poStatus: null },
-    { id: "B2B-003", customer: "Hưng Thịnh", project: "Moonlight", cnList: ["ĐN"], skuMain: "GA-600 B2", qty: Math.round(3000*s), probability: 90, deliveryMonths: ["Th5"], poStatus: `PO ${Math.round(2700*s).toLocaleString()}` },
-    { id: "B2B-004", customer: "Phú Đông", project: "SkyOne", cnList: ["CT"], skuMain: "GA-400 A4", qty: Math.round(2000*s), probability: 45, deliveryMonths: ["Th6","Th7"], poStatus: null },
-    { id: "B2B-005", customer: "Khang Điền", project: "Lovera Vista", cnList: ["HN"], skuMain: "GA-300 C1", qty: Math.round(1500*s), probability: 65, deliveryMonths: ["Th5","Th6"], poStatus: null },
-  ];
-}
+// Re-export the deal type for convenience (legacy callers)
+export type { B2bDeal as B2BDealInput } from "@/data/unis-enterprise-dataset";
