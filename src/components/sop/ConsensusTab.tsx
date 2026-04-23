@@ -589,7 +589,8 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
               </tbody>
             </table>
           </div>
-        </div>
+          )}
+        </SmartTableShell>
       )}
 
       {/* AOP gap summary strip */}
