@@ -1200,39 +1200,155 @@ export default function OrdersPage() {
                             <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", stColor)}>{stageLabels[st]}</span>
                           </td>
                         </tr>
-                        {isExpanded && (
-                          <tr key={`${po.po_number}-lineage`} className="border-b border-surface-3/50 bg-info-bg/20">
-                            <td colSpan={9} className="px-4 py-4">
-                              <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-table-sm font-semibold text-text-1">
-                                    PO Lineage — Demand → Netting → Allocation → PO
-                                  </p>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); navigate("/drp"); }}
-                                    className="inline-flex items-center gap-1 text-caption font-medium text-primary hover:underline"
-                                  >
-                                    Xem DRP run <ChevronRight className="h-3 w-3" />
-                                  </button>
+                        {isExpanded && (() => {
+                          // Tìm transport plan có chứa PO này
+                          const tp = TRANSPORT_PLANS.find((t) => t.poRefs.includes(po.po_number));
+                          const carrier = tp?.carrierId ? CARRIERS.find((c) => c.id === tp.carrierId) ?? null : null;
+                          const hasShipInfo = st === "shipped" || st === "received";
+                          const flowSteps = [
+                            { label: "DRP tạo PO", done: true },
+                            { label: "Planner duyệt", done: st !== "draft" },
+                            { label: "Gán nhà xe", done: !!carrier, pending: !carrier && st === "confirmed" },
+                            { label: "NM nhận PO", done: ["confirmed", "shipped", "received"].includes(st) },
+                            { label: "NM cập nhật xe/tài xế", done: hasShipInfo, pending: st === "confirmed" && !!carrier },
+                            { label: "CN nhận hàng", done: st === "received", overdue: severity === "overdue" },
+                          ];
+                          return (
+                            <tr key={`${po.po_number}-lineage`} className="border-b border-surface-3/50 bg-info-bg/20">
+                              <td colSpan={9} className="px-4 py-4">
+                                <div className="space-y-4">
+                                  {/* ── Flow summary 6 bước ── */}
+                                  <div>
+                                    <p className="text-table-sm font-semibold text-text-1 mb-2">
+                                      Hành trình PO — 6 bước từ DRP đến giao hàng
+                                    </p>
+                                    <div className="flex items-stretch gap-1 flex-wrap">
+                                      {flowSteps.map((s, i) => (
+                                        <div
+                                          key={i}
+                                          className={cn(
+                                            "rounded-button border px-2.5 py-1.5 text-caption flex items-center gap-1.5 flex-1 min-w-[140px]",
+                                            s.done
+                                              ? "bg-success-bg border-success/30 text-success"
+                                              : s.overdue
+                                              ? "bg-danger-bg border-danger/30 text-danger"
+                                              : s.pending
+                                              ? "bg-warning-bg border-warning/30 text-warning"
+                                              : "bg-surface-1 border-surface-3 text-text-3",
+                                          )}
+                                        >
+                                          <span className="font-mono shrink-0">B{i + 1}</span>
+                                          <span className="font-medium truncate">{s.label}</span>
+                                          <span className="ml-auto shrink-0">
+                                            {s.done ? "✅" : s.overdue ? "⚠️" : s.pending ? "⏳" : "○"}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  {/* ── ShipDetails ── */}
+                                  <div className="rounded-card border border-surface-3 bg-surface-1 p-3">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Truck className="h-4 w-4 text-primary" />
+                                      <span className="text-table-sm font-semibold text-text-1">
+                                        🚛 <TermTooltip term="SHIPDETAILS">Thông tin vận chuyển</TermTooltip>
+                                      </span>
+                                      {hasShipInfo && tp?.driverName && (
+                                        <span className="text-caption text-text-3 italic">
+                                          NM cập nhật khi xe rời nhà máy
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {hasShipInfo && tp?.driverName ? (
+                                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                                        <div>
+                                          <div className="text-caption text-text-3">Số xe</div>
+                                          <div className="font-mono font-semibold text-text-1">{tp.vehiclePlate}</div>
+                                        </div>
+                                        <div>
+                                          <div className="text-caption text-text-3">Nhà xe</div>
+                                          <div className="font-medium text-text-1">{carrier?.name ?? "—"}</div>
+                                        </div>
+                                        <div>
+                                          <div className="text-caption text-text-3"><TermTooltip term="CONTAINER">Container</TermTooltip></div>
+                                          <div className="font-mono font-semibold text-text-1">{tp.containerNo}</div>
+                                        </div>
+                                        <div>
+                                          <div className="text-caption text-text-3">Tài xế</div>
+                                          <div className="font-medium text-text-1">{tp.driverName}</div>
+                                          <a
+                                            href={`tel:${tp.driverPhone?.replace(/\s/g, "")}`}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="mt-1 inline-flex items-center gap-1 rounded-button bg-primary/10 px-2 py-0.5 text-caption font-medium text-primary hover:bg-primary/20"
+                                          >
+                                            <Phone className="h-3 w-3" />
+                                            {tp.driverPhone}
+                                          </a>
+                                        </div>
+                                      </div>
+                                    ) : st === "confirmed" ? (
+                                      <div className="flex items-center justify-between gap-3 rounded-button border border-warning/30 bg-warning-bg/40 px-3 py-2">
+                                        <div className="flex items-center gap-2 text-table-sm text-warning">
+                                          <Clock className="h-4 w-4" />
+                                          ⏳ Chờ NM cập nhật thông tin vận chuyển.
+                                          {carrier && (
+                                            <span className="text-text-2"> Nhà xe đã gán: <strong>{carrier.name}</strong></span>
+                                          )}
+                                        </div>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            toast.success(`Đã nhắc ${nmName}`, {
+                                              description: `PO ${po.po_number} — chờ cập nhật xe & tài xế`,
+                                            });
+                                          }}
+                                          className="rounded-button bg-warning text-white px-3 py-1 text-caption font-medium hover:opacity-90"
+                                        >
+                                          Nhắc NM →
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="text-caption text-text-3 italic">
+                                        Chưa khởi tạo vận chuyển — PO ở trạng thái {st}.
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* ── Bridge ── */}
+                                  <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="text-table-sm font-semibold text-text-1">
+                                        Truy nguyên PO — Demand → Netting → Phân bổ → PO
+                                      </p>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); navigate("/drp"); }}
+                                        className="inline-flex items-center gap-1 text-caption font-medium text-primary hover:underline"
+                                      >
+                                        Xem lượt chạy DRP <ChevronRight className="h-3 w-3" />
+                                      </button>
+                                    </div>
+                                    <DemandToOrderBridge
+                                      item={po.sku}
+                                      variant=""
+                                      cn={"CN giao hàng"}
+                                      steps={bridgeSteps}
+                                      footer={{
+                                        demandQty: demand,
+                                        orderQty: orderQty,
+                                        reasons: [
+                                          { label: "Tồn kho an toàn", value: `+${ssTarget.toLocaleString("vi-VN")}m²` },
+                                          { label: "MOQ làm tròn", value: `${moq.toLocaleString("vi-VN")}m² (${nmName})` },
+                                        ],
+                                      }}
+                                    />
+                                  </div>
                                 </div>
-                                <DemandToOrderBridge
-                                  item={po.sku}
-                                  variant=""
-                                  cn={"CN giao hàng"}
-                                  steps={bridgeSteps}
-                                  footer={{
-                                    demandQty: demand,
-                                    orderQty: orderQty,
-                                    reasons: [
-                                      { label: "Safety Stock", value: `+${ssTarget.toLocaleString()}m²` },
-                                      { label: "MOQ round", value: `${moq.toLocaleString()}m² (${nmName})` },
-                                    ],
-                                  }}
-                                />
-                              </div>
-                            </td>
-                          </tr>
-                        )}
+                              </td>
+                            </tr>
+                          );
+                        })()}
                       </>
                     );
                   })}
