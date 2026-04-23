@@ -106,7 +106,7 @@ export function ReconciliationTab({ scale }: Props) {
           <table className="w-full text-table-sm">
             <thead>
               <tr className="border-b border-surface-3 bg-surface-1/50">
-                {["", "BPO#", "NM", "Committed", "Released (RPOs)", "Delivered (ASNs)", "Honoring%", "Status"].map(h => (
+                {["", "BPO#", "NM", "Đã đặt", "Đã phát (RPO)", "Đã giao (ASN)", "Tỷ lệ giữ %", "Trạng thái"].map(h => (
                   <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -142,7 +142,7 @@ export function ReconciliationTab({ scale }: Props) {
                       <td className="px-4 py-2.5">
                         <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium",
                           r.state === "closed" ? "bg-surface-1 text-text-3" : "bg-info-bg text-info")}>
-                          {r.state === "closed" ? "🔒 Closed" : "● Active"}
+                          {r.state === "closed" ? "🔒 Đã đóng" : "● Đang hoạt động"}
                         </span>
                       </td>
                     </tr>
@@ -154,10 +154,10 @@ export function ReconciliationTab({ scale }: Props) {
                           <td colSpan={7} className="px-4 py-3">
                             <div className="grid grid-cols-4 gap-3">
                               {[
-                                { label: "Committed", value: r.committed.toLocaleString(), color: "text-text-1" },
-                                { label: "Released", value: `${r.released.toLocaleString()} (${r.releasedRpos} RPOs)`, color: "text-info" },
-                                { label: "Delivered", value: `${r.delivered.toLocaleString()} (${r.deliveredAsns} ASNs)`, color: "text-success" },
-                                { label: "Honoring%", value: `${honoringPct}%`, color: honoringPct >= 80 ? "text-success" : "text-danger" },
+                                { label: "Đã đặt", value: r.committed.toLocaleString(), color: "text-text-1" },
+                                { label: "Đã phát", value: `${r.released.toLocaleString()} (${r.releasedRpos} RPO)`, color: "text-info" },
+                                { label: "Đã giao", value: `${r.delivered.toLocaleString()} (${r.deliveredAsns} ASN)`, color: "text-success" },
+                                { label: "Tỷ lệ giữ %", value: `${honoringPct}%`, color: honoringPct >= 80 ? "text-success" : "text-danger" },
                               ].map(k => (
                                 <div key={k.label} className="rounded-lg border border-surface-3 bg-surface-1 p-2.5">
                                   <div className="text-caption text-text-3 uppercase">{k.label}</div>

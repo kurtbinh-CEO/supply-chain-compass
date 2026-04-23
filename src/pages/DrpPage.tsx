@@ -397,7 +397,7 @@ export default function DrpPage() {
   const drpBatch = useBatchLock({
     batchType: "DRP",
     status: "info",
-    resultSummary: "DRP đêm qua 23:18. 142 lines, 3 exceptions, 5 RPOs.",
+    resultSummary: "DRP đêm qua 23:18. 142 dòng, 3 ngoại lệ, 5 đơn mua.",
     startedAt: "23:00",
     queuedActions: [
       { id: "q1", description: "Manual allocation GA-300 A4 CN-BD → 272m²", queuedAt: "23:05", queuedBy: "Planner A" },

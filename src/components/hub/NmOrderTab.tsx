@@ -676,7 +676,7 @@ export function NmOrderTab({ scale }: Props) {
           <table className="w-full text-table-sm">
             <thead>
               <tr className="border-b border-surface-3 bg-surface-1/50">
-                {["NM", ...(bposSent ? ["BPO#"] : []), "Committed", "NM confirmed", ...(bposSent ? ["Released (RPOs)", "Còn lại"] : ["Chưa confirm"]), "Status", "Action"].map(h => (
+                {["NM", ...(bposSent ? ["BPO#"] : []), "Đã đặt", "NM xác nhận", ...(bposSent ? ["Đã phát (RPO)", "Còn lại"] : ["Chưa xác nhận"]), "Trạng thái", "Hành động"].map(h => (
                   <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
