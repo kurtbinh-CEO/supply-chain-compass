@@ -1025,8 +1025,26 @@ export default function OrdersPage() {
                       st === "confirmed" ? "bg-primary/10 text-primary" :
                       st === "cancelled" ? "bg-danger-bg text-danger" :
                       "bg-warning-bg text-warning";
+                    // Rule 13 — row severity
+                    const eta = po.expected_date ? new Date(po.expected_date) : null;
+                    const isPastEta = !!eta && eta.getTime() < Date.now();
+                    const notDelivered = st !== "received" && st !== "cancelled";
+                    const severity: "overdue" | "shortage" | "watch" | "ok" =
+                      isPastEta && notDelivered
+                        ? "overdue"
+                        : st === "draft"
+                          ? "watch"
+                          : st === "cancelled"
+                            ? "shortage"
+                            : "ok";
                     return (
-                      <tr key={po.po_number} className="border-b border-surface-3/50 hover:bg-surface-1/30">
+                      <tr
+                        key={po.po_number}
+                        data-severity={severity}
+                        data-keyboard-row={`po-${po.po_number}`}
+                        tabIndex={0}
+                        className="border-b border-surface-3/50 hover:bg-surface-1/30 outline-none"
+                      >
                         <td className={cn("px-3 py-2.5", poNumClasses, tb.text)}>{po.po_number}</td>
                         <td className="px-3 py-2.5">
                           <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", tb.bg, tb.text)}>{type}</span>

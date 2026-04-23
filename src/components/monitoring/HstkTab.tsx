@@ -148,52 +148,79 @@ export function HstkTab() {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((row, i) => (
-                <tr key={row.id} className={cn("border-b border-surface-3/50 hover:bg-surface-3 transition-colors", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
-                  <td className="px-4 py-3">
-                    <div>
-                      <span className="text-table font-medium text-text-1 block">{row.name}</span>
-                      <span className="text-caption text-text-3 font-mono">{row.sku}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-table text-text-1 text-right tabular-nums font-medium">{row.onHand.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-table text-text-2 text-right tabular-nums">{row.reserved.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-table text-text-2 text-right tabular-nums">{row.committed.toLocaleString()}</td>
-                  <td className={cn("px-4 py-3 text-table text-right tabular-nums font-medium", row.inTransit > 0 ? "text-primary" : "text-text-2")}>
-                    {row.inTransit.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-table text-text-1 text-right tabular-nums font-bold">{row.available.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="tabular-nums">
-                      <span className="text-table text-text-1">{row.ssGap.toLocaleString()}</span>
-                      <span className={cn("text-table-sm font-medium block", row.ssGapDelta >= 0 ? "text-success" : "text-danger")}>
-                        {row.ssGapDelta >= 0 ? "+" : ""}{row.ssGapDelta.toLocaleString()}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-table text-text-1 text-right tabular-nums">{row.hstk}</td>
-                  <td className="px-4 py-3">
-                    <StatusChip
-                      status={row.aging === "Critical" ? "danger" : row.aging === "Warning" ? "warning" : "success"}
-                      label={row.aging}
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {row.synced ? (
-                      <Cloud className="h-4 w-4 text-success mx-auto" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4 text-warning mx-auto animate-spin" />
+              {sorted.map((row, i) => {
+                // Rule 13 — row severity from aging + HSTK staleness
+                const hstkDays = parseFloat(row.hstk);
+                const severity: "shortage" | "watch" | "stale" | "ok" =
+                  row.aging === "Critical"
+                    ? "shortage"
+                    : row.aging === "Warning"
+                      ? "watch"
+                      : !isNaN(hstkDays) && hstkDays > 15
+                        ? "stale"
+                        : "ok";
+                return (
+                  <tr
+                    key={row.id}
+                    data-severity={severity}
+                    data-keyboard-row={`hstk-${row.id}`}
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && row.aging !== "Healthy") {
+                        e.preventDefault();
+                        setCorrectionRow(row);
+                      }
+                    }}
+                    className={cn(
+                      "border-b border-surface-3/50 hover:bg-surface-3 transition-colors outline-none",
+                      i % 2 === 0 ? "bg-surface-0" : "bg-surface-2",
                     )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {row.aging !== "Healthy" && (
-                      <Button size="sm" variant="default" className="text-caption bg-text-1 text-surface-0 hover:bg-text-2" onClick={() => setCorrectionRow(row)}>
-                        Planning correction
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                  >
+                    <td className="px-4 py-3">
+                      <div>
+                        <span className="text-table font-medium text-text-1 block">{row.name}</span>
+                        <span className="text-caption text-text-3 font-mono">{row.sku}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-table text-text-1 text-right tabular-nums font-medium">{row.onHand.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-table text-text-2 text-right tabular-nums">{row.reserved.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-table text-text-2 text-right tabular-nums">{row.committed.toLocaleString()}</td>
+                    <td className={cn("px-4 py-3 text-table text-right tabular-nums font-medium", row.inTransit > 0 ? "text-primary" : "text-text-2")}>
+                      {row.inTransit.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-table text-text-1 text-right tabular-nums font-bold">{row.available.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="tabular-nums">
+                        <span className="text-table text-text-1">{row.ssGap.toLocaleString()}</span>
+                        <span className={cn("text-table-sm font-medium block", row.ssGapDelta >= 0 ? "text-success" : "text-danger")}>
+                          {row.ssGapDelta >= 0 ? "+" : ""}{row.ssGapDelta.toLocaleString()}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-table text-text-1 text-right tabular-nums">{row.hstk}</td>
+                    <td className="px-4 py-3">
+                      <StatusChip
+                        status={row.aging === "Critical" ? "danger" : row.aging === "Warning" ? "warning" : "success"}
+                        label={row.aging}
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {row.synced ? (
+                        <Cloud className="h-4 w-4 text-success mx-auto" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 text-warning mx-auto animate-spin" />
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {row.aging !== "Healthy" && (
+                        <Button size="sm" variant="default" className="text-caption bg-text-1 text-surface-0 hover:bg-text-2" onClick={() => setCorrectionRow(row)}>
+                          Planning correction
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
