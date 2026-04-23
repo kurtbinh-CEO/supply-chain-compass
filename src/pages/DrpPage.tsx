@@ -1276,45 +1276,110 @@ export default function DrpPage() {
                   );
                 })}
 
-                {pivotMode === "sku" && skuAggDrp.filter(sk => matchesSourceFilter(sk.sources)).map((sk) => {
-                  const rowKey = `sku-${sk.item}-${sk.variant}`;
+                {/* FIX 1 (ADR-SCP-008) — Netting at SKU base; variants as expandable sub-rows */}
+                {pivotMode === "sku" && skuBaseAggDrp.filter(b => matchesSourceFilter(b.sources)).map((b) => {
+                  const rowKey = `skubase-${b.base}`;
                   const isOpen = expandedRows.has(rowKey);
+                  const netReq = b.totalDemand - (b.sources.onHand + b.sources.pipeline);
+                  const severity: "shortage" | "watch" | "ok" =
+                    b.totalGap > 0 ? "shortage" : b.fillPct < 95 ? "watch" : "ok";
                   return (
                     <Fragment key={rowKey}>
-                      <tr className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", sk.totalGap > 0 && "bg-danger-bg/20", isOpen && "bg-surface-1/40")}>
+                      <tr
+                        data-severity={severity}
+                        data-keyboard-row={`drp-skubase-${b.base}`}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === " " || e.key === "Enter") {
+                            e.preventDefault();
+                            toggleRow(rowKey);
+                          }
+                        }}
+                        className={cn("border-b border-surface-3/50 hover:bg-surface-1/30 outline-none", isOpen && "bg-surface-1/40")}
+                      >
                         <td className="px-3 py-3 text-text-3 cursor-pointer" onClick={() => toggleRow(rowKey)}>
                           {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                         </td>
-                        <td className="px-4 py-3 text-table font-medium text-text-1 cursor-pointer" onClick={() => toggleRow(rowKey)}>
-                          {sk.item} <span className="text-text-3 font-normal">{sk.variant}</span>
+                        <td className="px-4 py-3 text-table font-semibold text-text-1 cursor-pointer" onClick={() => toggleRow(rowKey)}>
+                          <span className="inline-flex items-center gap-1.5">
+                            {b.base}
+                            <span className="text-caption text-text-3 font-normal">({b.variants.length} biến thể)</span>
+                          </span>
                         </td>
-                        <td className="px-4 py-3 text-table tabular-nums text-text-1">{sk.totalDemand.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-table tabular-nums text-text-2">{sk.totalAllocated.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-table tabular-nums text-text-1">
+                          <ClickableNumber
+                            value={Math.max(0, netReq).toLocaleString()}
+                            label={`${b.base} net req`}
+                            color="text-text-1 font-medium"
+                            formula={`Net Req = Demand − (On-hand + Pipeline)\n= ${b.totalDemand.toLocaleString()} − (${b.sources.onHand.toLocaleString()} + ${b.sources.pipeline.toLocaleString()})\n= ${Math.max(0, netReq).toLocaleString()} m²`}
+                            note="ℹ️ Netting tại mã gốc. Phân rã đuôi tự động theo tồn kho."
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-table tabular-nums text-text-2">{b.totalAllocated.toLocaleString()}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <div className="w-16 h-2 rounded-full bg-surface-3 overflow-hidden">
-                              <div className={cn("h-full rounded-full", sk.fillPct >= 95 ? "bg-success" : sk.fillPct >= 85 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(sk.fillPct, 100)}%` }} />
+                              <div className={cn("h-full rounded-full", b.fillPct >= 95 ? "bg-success" : b.fillPct >= 85 ? "bg-warning" : "bg-danger")} style={{ width: `${Math.min(b.fillPct, 100)}%` }} />
                             </div>
-                            <span className={cn("text-table-sm font-medium", sk.fillPct >= 95 ? "text-success" : sk.fillPct >= 85 ? "text-warning" : "text-danger")}>{sk.fillPct}%</span>
+                            <span className={cn("text-table-sm font-medium", b.fillPct >= 95 ? "text-success" : b.fillPct >= 85 ? "text-warning" : "text-danger")}>{b.fillPct}%</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-table tabular-nums">
-                          {sk.totalGap > 0 ? <span className="text-danger font-medium">{sk.totalGap.toLocaleString()}</span> : <span className="text-text-3">0</span>}
+                          {b.totalGap > 0 ? <span className="text-danger font-medium">{b.totalGap.toLocaleString()}</span> : <span className="text-text-3">0</span>}
                         </td>
                         <td className="px-4 py-3 text-table">
-                          <CnGapBadge count={sk.cnGapCount} />
-                          {sk.lcnb && <span className="ml-1"><LcnbBadge text={sk.lcnb} /></span>}
+                          <CnGapBadge count={b.cnGapCount} />
                         </td>
-                        <td className="px-4 py-3"><AllocSourceBar sources={sk.sources} compact demand={sk.totalDemand} allocated={sk.totalAllocated} /></td>
+                        <td className="px-4 py-3"><AllocSourceBar sources={b.sources} compact demand={b.totalDemand} allocated={b.totalAllocated} /></td>
                         <td></td>
                       </tr>
                       {isOpen && (
-                        <tr className="bg-surface-1/20">
-                          <td></td>
-                          <td colSpan={8} className="px-4 py-3">
-                            <ExpandedCnBreakdown title={`CN breakdown — ${sk.item} ${sk.variant}`} cnRows={sk.cnRows.filter(cr => matchesSourceFilter(cr.sources))} />
-                          </td>
-                        </tr>
+                        <>
+                          <tr className="bg-info-bg/20">
+                            <td></td>
+                            <td colSpan={8} className="px-4 py-2 text-caption text-text-2 italic">
+                              ℹ️ Netting tại mã gốc <span className="font-semibold text-text-1">{b.base}</span>. Phân rã đuôi tự động theo tồn kho — biến thể bên dưới chỉ để theo dõi:
+                            </td>
+                          </tr>
+                          {b.variants.map((v) => {
+                            const vKey = `${rowKey}-${v.variant}`;
+                            const vOpen = expandedRows.has(vKey);
+                            return (
+                              <Fragment key={vKey}>
+                                <tr className="bg-surface-1/40 border-b border-surface-3/30 text-table-sm">
+                                  <td className="px-3 py-2 text-text-3 cursor-pointer pl-8" onClick={() => toggleRow(vKey)}>
+                                    {vOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                  </td>
+                                  <td className="px-4 py-2 pl-8 text-text-2 cursor-pointer" onClick={() => toggleRow(vKey)}>
+                                    <span className="text-text-3">└</span> {v.variant}
+                                  </td>
+                                  <td className="px-4 py-2 tabular-nums text-text-2">{v.totalDemand.toLocaleString()}</td>
+                                  <td className="px-4 py-2 tabular-nums text-text-2">{v.totalAllocated.toLocaleString()}</td>
+                                  <td className="px-4 py-2">
+                                    <span className={cn("text-table-sm font-medium", v.fillPct >= 95 ? "text-success" : v.fillPct >= 85 ? "text-warning" : "text-danger")}>{v.fillPct}%</span>
+                                  </td>
+                                  <td className="px-4 py-2 tabular-nums">
+                                    {v.totalGap > 0 ? <span className="text-danger">{v.totalGap.toLocaleString()}</span> : <span className="text-text-3">0</span>}
+                                  </td>
+                                  <td className="px-4 py-2 text-table-sm">
+                                    <CnGapBadge count={v.cnGapCount} />
+                                    {v.lcnb && <span className="ml-1"><LcnbBadge text={v.lcnb} /></span>}
+                                  </td>
+                                  <td className="px-4 py-2"><AllocSourceBar sources={v.sources} compact demand={v.totalDemand} allocated={v.totalAllocated} /></td>
+                                  <td></td>
+                                </tr>
+                                {vOpen && (
+                                  <tr className="bg-surface-1/20">
+                                    <td></td>
+                                    <td colSpan={8} className="px-4 py-3 pl-12">
+                                      <ExpandedCnBreakdown title={`CN breakdown — ${v.item} ${v.variant}`} cnRows={v.cnRows.filter(cr => matchesSourceFilter(cr.sources))} />
+                                    </td>
+                                  </tr>
+                                )}
+                              </Fragment>
+                            );
+                          })}
+                        </>
                       )}
                     </Fragment>
                   );
