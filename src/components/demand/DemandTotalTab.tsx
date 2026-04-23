@@ -815,7 +815,20 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
       {/* Section 1: Demand Summary */}
       <div className="space-y-3">
         <SectionHeader title="Demand theo nguồn" subtitle="Phân tích cơ cấu FC · B2B · PO tháng hiện tại">
-          <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setExpandedCns(new Set()); setExpandedSkus(new Set()); }} />
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="text-caption text-text-3 uppercase tracking-wide">Version FC</label>
+            <select
+              value={fcVersion}
+              onChange={(e) => setFcVersion(e.target.value as FcVersion)}
+              className="h-8 rounded-button border border-surface-3 bg-surface-0 px-2 pr-7 text-table-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary"
+              title={FC_VERSIONS.find((v) => v.key === fcVersion)?.desc}
+            >
+              {FC_VERSIONS.map((v) => (
+                <option key={v.key} value={v.key}>{v.label}</option>
+              ))}
+            </select>
+            <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setExpandedCns(new Set()); setExpandedSkus(new Set()); }} />
+          </div>
         </SectionHeader>
         {pivotMode === "sku" ? renderSkuTable() : renderCnTable()}
       </div>
