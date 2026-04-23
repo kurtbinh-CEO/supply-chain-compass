@@ -899,7 +899,22 @@ export default function CnPortalPage() {
                     <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", r.hstk < 5 && "bg-danger-bg/10")}>
                       <td className="px-3 py-2.5 text-table font-medium text-text-1">{r.item}</td>
                       <td className="px-3 py-2.5 text-table text-text-2">{r.variant}</td>
-                      <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{r.ton.toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-table tabular-nums text-text-1">
+                        <ClickableNumber
+                          value={r.ton.toLocaleString()}
+                          label={`${r.item} ${r.variant} on-hand`}
+                          color="text-text-1 font-medium"
+                          breakdown={[
+                            { label: "Đang về (pipeline)", value: `${r.dangVe ?? "—"}` },
+                            { label: "Available", value: `${r.available.toLocaleString()} m²` },
+                            { label: "SS target", value: `${r.ssTarget.toLocaleString()} m²` },
+                            { label: "SS gap", value: `${r.ssGap >= 0 ? "+" : ""}${r.ssGap.toLocaleString()} m²`, color: r.ssGap < 0 ? "text-danger" : "text-success" },
+                            { label: "HSTK", value: `${r.hstk}d`, color: r.hstk < 5 ? "text-danger" : r.hstk > 15 ? "text-warning" : "text-success" },
+                          ]}
+                          formula={`Available = on-hand + pipeline − orders pending\nSS gap = on-hand − SS target = ${r.ton.toLocaleString()} − ${r.ssTarget.toLocaleString()} = ${r.ssGap >= 0 ? "+" : ""}${r.ssGap.toLocaleString()} m²`}
+                          note={r.hstk < 5 ? `⚠ HSTK chỉ ${r.hstk}d vì on-hand thấp + pipeline mỏng` : undefined}
+                        />
+                      </td>
                       <td className="px-3 py-2.5 text-table text-text-2">{r.dangVe}</td>
                       <td className="px-3 py-2.5 text-table tabular-nums text-text-2">{r.available.toLocaleString()}</td>
                       <td className="px-3 py-2.5 text-table tabular-nums text-text-3">{r.ssTarget.toLocaleString()}</td>
