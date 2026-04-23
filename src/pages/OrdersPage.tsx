@@ -7,8 +7,11 @@ import { toast } from "sonner";
 import {
   ChevronRight, Send, Upload, Loader2, PackageOpen, CheckCircle2, Truck, MapPin, Phone, User,
   Package, PackageCheck, ClipboardCheck, Clock, AlertTriangle, FileText, ArrowRight, Building2, X,
-  Download, Filter as FilterIcon,
+  Download, Filter as FilterIcon, ArrowLeftRight,
 } from "lucide-react";
+import { TransferOrdersTab } from "@/components/orders/TransferOrdersTab";
+import { HoldOrShipPanel } from "@/components/orders/HoldOrShipPanel";
+import { PO_DRAFT } from "@/data/unis-enterprise-dataset";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
 import { useNavigate } from "react-router-dom";
 import { LogicLink } from "@/components/LogicLink";
@@ -83,6 +86,7 @@ const tabs = [
   { key: "approval", label: "PO Approval", icon: ClipboardCheck },
   { key: "burndown", label: "BPO Burn-down", icon: Package },
   { key: "tracking", label: "Shipment Tracking", icon: Truck },
+  { key: "to", label: "Chuyển ngang (TO)", icon: ArrowLeftRight },
 ];
 
 const stageOrder = ["draft", "submitted", "confirmed", "shipped", "received"];
@@ -1936,6 +1940,25 @@ export default function OrdersPage() {
               </div>
             </>
           )}
+
+          {/* ─── Hold / Ship decision panel (container-level) ─── */}
+          <HoldOrShipPanel />
+        </div>
+      )}
+
+      {/* ═══════════════════ TAB 4: TRANSFER ORDERS (LCNB) ═══════════════════ */}
+      {activeTab === "to" && (
+        <div className="animate-fade-in space-y-3">
+          <div className="rounded-card border border-info/30 bg-info-bg px-3 py-2 text-table-sm text-text-2 flex items-center gap-2">
+            <ArrowLeftRight className="h-4 w-4 text-primary shrink-0" />
+            <span>
+              <span className="font-semibold text-text-1">Chuyển ngang giữa CN (LCNB)</span> —
+              ưu tiên L0 trong DRP. Bộ dữ liệu mẫu hiện hệ thống đang quản lý{" "}
+              <span className="font-semibold text-text-1">{PO_DRAFT.length} PO</span> và{" "}
+              <span className="font-semibold text-text-1">10 TO</span> cho tháng 5/2026.
+            </span>
+          </div>
+          <TransferOrdersTab />
         </div>
       )}
 
