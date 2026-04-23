@@ -948,6 +948,41 @@ export default function DrpPage() {
         />
       )}
 
+      {/* FIX 2 — What changed since last DRP run (08:00 morning brief) */}
+      {!whatsNewDismissed && (
+        <div className="mb-4 rounded-card border border-info/30 bg-info-bg/40 px-4 py-3" role="status" aria-label="Thay đổi từ đêm qua">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2 flex-1 min-w-0">
+              <span className="text-table">📋</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                  <span className="text-table font-semibold text-text-1">Thay đổi từ đêm qua:</span>
+                  <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full bg-info text-primary-foreground text-caption font-bold">
+                    {overnightChanges.length}
+                  </span>
+                  <span className="text-caption text-text-3">cập nhật từ 23:00 hôm qua đến 08:00 sáng nay</span>
+                </div>
+                <ul className="space-y-1">
+                  {overnightChanges.map((c, i) => (
+                    <li key={i} className="text-table-sm text-text-2 flex items-start gap-2">
+                      <span className="shrink-0">{c.icon}</span>
+                      <span>{c.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <button
+              onClick={dismissWhatsNew}
+              className="shrink-0 text-caption text-text-3 hover:text-text-1 px-2 py-1 rounded-button hover:bg-surface-1"
+              aria-label="Đã xem, ẩn banner"
+            >
+              ✕ Đã xem
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Header ── */}
       <div className="flex items-center justify-between mb-1" data-tour="drp-header">
         <div className="flex items-center gap-3">
