@@ -17,6 +17,7 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
+import { VersionComparePanel } from "@/components/sop/VersionComparePanel";
 
 const tabs = [
   { key: "consensus", label: "Consensus" },
