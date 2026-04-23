@@ -714,7 +714,13 @@ export default function MonitoringPage() {
                     ].map((col, i) => (
                       <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
                         <span className="inline-flex items-center gap-1">
-                          {col.h}
+                          {col.term ? (
+                            <TermTooltip term={col.term}>
+                              <span>{col.h}</span>
+                            </TermTooltip>
+                          ) : (
+                            col.h
+                          )}
                           {col.tooltip && <LogicTooltip title={col.h} content={col.tooltip} />}
                         </span>
                       </th>
