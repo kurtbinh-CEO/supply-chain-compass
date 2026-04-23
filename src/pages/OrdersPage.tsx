@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import {
   ChevronRight, Send, Upload, Loader2, PackageOpen, CheckCircle2, Truck, MapPin, Phone, User,
   Package, PackageCheck, ClipboardCheck, Clock, AlertTriangle, FileText, ArrowRight, Building2, X,
-  Download, Filter as FilterIcon, ArrowLeftRight,
+  Download, Filter as FilterIcon, ArrowLeftRight, Users,
 } from "lucide-react";
 import { TransferOrdersTab } from "@/components/orders/TransferOrdersTab";
 import { HoldOrShipPanel } from "@/components/orders/HoldOrShipPanel";
@@ -16,7 +16,8 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { DemandToOrderBridge, buildFullBridgeSteps } from "@/components/DemandToOrderBridge";
 import { ChevronDown } from "lucide-react";
 import { getPoTypeBadge, poNumClasses } from "@/lib/po-numbers";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { PackingTab, CarriersTab } from "@/pages/TransportPage";
 import { LogicLink } from "@/components/LogicLink";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
