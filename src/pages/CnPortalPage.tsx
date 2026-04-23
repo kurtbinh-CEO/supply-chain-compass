@@ -545,7 +545,21 @@ export default function CnPortalPage() {
             content={"Trust score = bao nhiêu % lần adjust của bạn gần đúng thực tế.\n12 tuần gần nhất:\nTuần 10: adjust +44 → actual +38 → sai 14% ✅ (< threshold 20%)\nTuần 11: adjust −30 → actual −25 → sai 17% ✅\nTuần 12: adjust +80 → actual +95 → sai 16% ✅\n10/12 tuần < threshold → trust = 10/12 = 83%\n\nTrust > 85%: adjust tự duyệt + tolerance ±40%\nTrust 60-85%: SC Manager duyệt + tolerance ±30% ← Bạn đang đây\nTrust < 60%: tolerance thu hẹp ±15% + cần giải trình tất cả\nCải thiện: nhập lý do rõ + data support (PO, hợp đồng)."}
           >
             <span className="inline-flex items-center gap-1 rounded-button bg-success-bg text-success text-table-sm font-medium px-2.5 py-1 cursor-pointer hover:opacity-80">
-              Trust: 82% 🟢
+              Trust:&nbsp;
+              <ClickableNumber
+                value="82%"
+                label="Trust Score CN"
+                color="text-success font-semibold"
+                breakdown={[
+                  { label: "Tuần 10 (adjust +44 vs actual +38)", value: "sai 14%", color: "text-success" },
+                  { label: "Tuần 11 (adjust −30 vs actual −25)", value: "sai 17%", color: "text-success" },
+                  { label: "Tuần 12 (adjust +80 vs actual +95)", value: "sai 16%", color: "text-success" },
+                  { label: "10/12 tuần < threshold 20%", value: "→ trust 83%" },
+                ]}
+                formula={"trust = (số tuần |adjust − actual|/actual < 20%) / 12 tuần\n= 10 / 12 = 83%"}
+                note="Trust > 85% → adjust auto-approve · 60-85% → cần SC duyệt · <60% → siết ±15%"
+              />
+              &nbsp;🟢
             </span>
           </LogicTooltip>
           <span className={cn("rounded-full px-3 py-1 text-table-sm font-medium flex items-center gap-1.5",
