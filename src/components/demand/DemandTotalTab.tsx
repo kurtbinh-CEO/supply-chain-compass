@@ -1,11 +1,40 @@
 import React, { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronDown, Info, TrendingUp, TrendingDown, Minus, ArrowRight } from "lucide-react";
+import { ChevronRight, ChevronDown, Info, TrendingUp, TrendingDown, Minus, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { toast } from "sonner";
 import { ViewPivotToggle, usePivotMode, CnGapBadge } from "@/components/ViewPivotToggle";
 import type { DemandCnSummary } from "@/hooks/useDemandForecasts";
+import { BRANCHES, DEMAND_FC, SKU_BASES } from "@/data/unis-enterprise-dataset";
+
+/* ────────────────────────────────────────────────────────────────────── */
+/* FC version selector — v3 = SC Manager-adjusted (canonical)            */
+/* ────────────────────────────────────────────────────────────────────── */
+type FcVersion = "v0" | "v1" | "v2" | "v3";
+const FC_VERSIONS: { key: FcVersion; label: string; desc: string }[] = [
+  { key: "v0", label: "v0 — Statistical baseline", desc: "AI baseline (XGB / Holt-Winters)" },
+  { key: "v1", label: "v1 — CN adjusted",          desc: "Sau khi CN điều chỉnh tuần" },
+  { key: "v2", label: "v2 — Sales reviewed",       desc: "Sales review B2B + thị trường" },
+  { key: "v3", label: "v3 — SC Manager đã điều chỉnh", desc: "Bản chốt sau S&OP / SC Manager" },
+];
+
+/* Deterministic per-CN accuracy (%) for v0 baseline vs v3 adjusted.    */
+/* FVA = accuracy(v3) − accuracy(v0). Positive → adjustment improved.   */
+const CN_FVA_TABLE: Record<string, { accV0: number; accV3: number }> = {
+  "CN-HN":  { accV0: 78, accV3: 86 },  "CN-HP":  { accV0: 80, accV3: 84 },
+  "CN-NA":  { accV0: 72, accV3: 75 },  "CN-DN":  { accV0: 81, accV3: 88 },
+  "CN-QN":  { accV0: 76, accV3: 79 },  "CN-NT":  { accV0: 70, accV3: 68 }, // FVA<0
+  "CN-BMT": { accV0: 74, accV3: 77 },  "CN-PK":  { accV0: 68, accV3: 65 }, // FVA<0
+  "CN-BD":  { accV0: 82, accV3: 90 },  "CN-HCM": { accV0: 84, accV3: 91 },
+  "CN-CT":  { accV0: 77, accV3: 81 },  "CN-LA":  { accV0: 75, accV3: 78 },
+};
+
+function cnFva(cn: string): { fva: number; accV0: number; accV3: number } | null {
+  const row = CN_FVA_TABLE[cn];
+  if (!row) return null;
+  return { fva: row.accV3 - row.accV0, accV0: row.accV0, accV3: row.accV3 };
+}
 
 interface Props {
   tenant: string;
@@ -164,8 +193,14 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
   const [expandedSkus, setExpandedSkus] = useState<Set<string>>(new Set());
   const [overrideModal, setOverrideModal] = useState<{ sku: string; value: number } | null>(null);
   const [pivotMode, setPivotMode] = usePivotMode("demand");
+  const [fcVersion, setFcVersion] = useState<FcVersion>("v3");
 
   const s = tenantScale[tenant] || 1;
+
+  // Per-version multiplier on top of v0 baseline (FC numbers).
+  // Versions reflect successive review passes; v3 is the SC Manager-locked plan.
+  const versionMult: Record<FcVersion, number> = { v0: 0.96, v1: 0.99, v2: 1.02, v3: 1.0 };
+  const vMult = versionMult[fcVersion];
 
   const toggleCn = (cnKey: string) => {
     setExpandedCns(prev => {
@@ -183,29 +218,27 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
     });
   };
 
-  // Use DB data if available, otherwise fall back to mock
-  const useDbData = cnSummaries.length > 0;
-
+  /* ── Single source of truth: DEMAND_FC (12 CN × 15 SKU bases ≈ 47 000 m²) ── */
   const cnData = useMemo(() => {
-    if (useDbData) {
-      return cnSummaries.map(c => {
-        const b2b = b2bPerCn[c.cn.replace("CN-", "")] || c.b2b;
-        const total = c.fc + b2b + c.po;
-        const stock = Math.round(total * 0.15); // estimated
-        const cover = total > 0 ? Math.round((stock / (total / 30)) * 10) / 10 : 0;
-        return { cn: c.cn, fc: c.fc, b2b, po: c.po, total, stock, cover, vsLm: 0, skus: c.skus };
-      });
-    }
-    return baseCnDataMock.map(c => {
-      const fc = Math.round(c.fc * s);
-      const b2b = b2bPerCn[c.cn.replace("CN-", "")] || Math.round(c.b2b * s);
-      const po = Math.round(c.po * s);
+    return BRANCHES.map((br) => {
+      const fcRows = DEMAND_FC.filter((r) => r.cnCode === br.code);
+      const fcRaw = fcRows.reduce((a, r) => a + r.fcM2, 0);
+      const fc = Math.round(fcRaw * s * vMult);
+      const b2b = b2bPerCn[br.code] ?? 0;
+      // PO confirmed ≈ 22 % of FC (deterministic estimate per branch)
+      const po = Math.round(fc * 0.22);
       const total = fc + b2b + po;
-      const stock = Math.round(c.stock * s);
+      const stock = Math.round(total * 0.45);
       const cover = total > 0 ? Math.round((stock / (total / 30)) * 10) / 10 : 0;
-      return { ...c, fc, b2b, po, total, stock, cover, skus: [] as any[] };
+      // vsLM derived deterministically from CN trust hash → −8 .. +14
+      const seed = br.code.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+      const vsLm = (seed % 23) - 8;
+      return { cn: br.code, fc, b2b, po, total, stock, cover, vsLm, skus: [] as DemandCnSummary["skus"] };
     });
-  }, [s, b2bPerCn, cnSummaries, useDbData]);
+  }, [s, vMult, b2bPerCn]);
+
+  // DB summaries (when present) are merged in only as overlay info — totals stay canonical.
+  const useDbData = cnSummaries.length > 0;
 
   const totals = useMemo(() => ({
     fc: cnData.reduce((a, c) => a + c.fc, 0),
@@ -216,26 +249,34 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
     cover: 8.5,
   }), [cnData]);
 
-  // Build skuPerCn from DB data or mock
+  /* ── skuPerCn built from DEMAND_FC ── */
   const skuPerCn = useMemo(() => {
-    if (useDbData) {
-      const result: Record<string, { item: string; variant: string; fc: number; b2b: number; po: number; vsLm: number; source: string; mape: number }[]> = {};
-      cnSummaries.forEach(cs => {
-        result[cs.cn] = cs.skus.map(sk => ({
-          item: sk.item,
-          variant: sk.variant,
-          fc: sk.fc,
-          b2b: Math.round(sk.fc * 0.3), // estimated B2B split
-          po: Math.round(sk.fc * 0.15), // estimated PO split
-          vsLm: Math.round((sk.adjustment / Math.max(sk.fc, 1)) * 100),
-          source: sk.source === "system" ? "XGBoost" : sk.source === "manual" ? "Holt-Winters" : "B2B-Input",
-          mape: Math.round((1 - sk.confidence) * 100 * 10) / 10,
-        }));
-      });
-      return result;
-    }
-    return skuPerCnMock;
-  }, [cnSummaries, useDbData]);
+    const result: Record<string, { item: string; variant: string; fc: number; b2b: number; po: number; vsLm: number; source: string; mape: number }[]> = {};
+    BRANCHES.forEach((br) => {
+      const rows = DEMAND_FC.filter((r) => r.cnCode === br.code);
+      result[br.code] = rows
+        .map((r) => {
+          const base = SKU_BASES.find((b) => b.code === r.skuBaseCode);
+          const fc = Math.round(r.fcM2 * s * vMult);
+          const seed = (br.code + r.skuBaseCode).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+          const mape = 9 + (seed % 14); // 9–22 %
+          const vsLm = ((seed % 19) - 7);
+          return {
+            item: r.skuBaseCode,
+            variant: base?.name?.split(" ")[0] ?? "—",
+            fc,
+            b2b: Math.round(fc * 0.18),
+            po: Math.round(fc * 0.22),
+            vsLm,
+            source: mape <= 14 ? "XGBoost" : "Holt-Winters",
+            mape,
+          };
+        })
+        .sort((a, b) => b.fc - a.fc)
+        .slice(0, 6); // keep table compact
+    });
+    return result;
+  }, [s, vMult]);
 
   // SKU-first aggregation
   const skuAggregated = useMemo(() => {
@@ -245,9 +286,10 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
     Object.entries(skuPerCn).forEach(([cnKey, skus]) => {
       skus.forEach(sk => {
         const key = `${sk.item}-${sk.variant}`;
-        const fc = useDbData ? sk.fc : Math.round(sk.fc * s);
-        const b2b = useDbData ? sk.b2b : Math.round(sk.b2b * s);
-        const po = useDbData ? sk.po : Math.round(sk.po * s);
+        // skuPerCn already scaled by tenant `s` × FC version `vMult`.
+        const fc = sk.fc;
+        const b2b = sk.b2b;
+        const po = sk.po;
         if (!skuMap[key]) {
           skuMap[key] = { item: sk.item, variant: sk.variant, totalFc: 0, totalB2b: 0, totalPo: 0, totalDemand: 0, cnDetails: [] };
         }
@@ -321,16 +363,15 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Cơ cấu</th>
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">vs LM</th>
             <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Cover</th>
+            <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3" title="FVA = accuracy(điều chỉnh) − accuracy(v0)">FVA</th>
           </tr>
         </thead>
         <tbody>
           {cnData.map((c, i) => {
             const isExpanded = expandedCns.has(c.cn);
             const skus = (skuPerCn[c.cn] || []).map(sk => {
-              const fc = useDbData ? sk.fc : Math.round(sk.fc * s);
-              const b2b = useDbData ? sk.b2b : Math.round(sk.b2b * s);
-              const po = useDbData ? sk.po : Math.round(sk.po * s);
-              return { ...sk, fc, b2b, po, total: fc + b2b + po };
+              // Already scaled by tenant + FC version inside skuPerCn useMemo.
+              return { ...sk, total: sk.fc + sk.b2b + sk.po };
             });
             const shareOfTotal = totals.total > 0 ? Math.round((c.total / totals.total) * 100) : 0;
             return (
@@ -376,6 +417,32 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
                     )}>
                       {c.cover}d
                     </span>
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    {(() => {
+                      const f = cnFva(c.cn);
+                      if (!f) return <span className="text-text-3 text-caption">—</span>;
+                      const positive = f.fva > 0;
+                      const zero = f.fva === 0;
+                      return (
+                        <LogicTooltip
+                          title={`FVA — ${c.cn}`}
+                          content={`Accuracy v0 (baseline): ${f.accV0}%\nAccuracy ${fcVersion}: ${f.accV3}%\nFVA = ${f.accV3} − ${f.accV0} = ${f.fva > 0 ? "+" : ""}${f.fva} pp\n${positive ? "Điều chỉnh cải thiện độ chính xác." : zero ? "Điều chỉnh không thay đổi accuracy." : "Điều chỉnh làm tệ hơn — review lại."}`}
+                        >
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-semibold cursor-help tabular-nums",
+                              positive ? "bg-success/10 text-success border-success/30"
+                                : zero ? "bg-surface-3 text-text-2 border-surface-3"
+                                : "bg-danger/10 text-danger border-danger/30",
+                            )}
+                          >
+                            {positive ? <CheckCircle2 className="h-3 w-3" /> : zero ? null : <AlertTriangle className="h-3 w-3" />}
+                            {f.fva > 0 ? "+" : ""}{f.fva} pp
+                          </span>
+                        </LogicTooltip>
+                      );
+                    })()}
                   </td>
                 </tr>
 
@@ -423,6 +490,7 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
                       <button onClick={(e) => { e.stopPropagation(); setOverrideModal({ sku: `${sk.item} ${sk.variant}`, value: sk.total }); }}
                         className="text-[11px] text-primary hover:underline font-medium">Override</button>
                     </td>
+                    <td />
                   </tr>
                 ))}
               </React.Fragment>
@@ -443,6 +511,7 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
             </td>
             <td className="px-3 py-3 text-center tabular-nums text-success">+{totals.vsLm}%</td>
             <td className="px-3 py-3 text-center tabular-nums text-text-1">{totals.cover}d</td>
+            <td className="px-3 py-3 text-center text-text-3 text-caption">—</td>
           </tr>
         </tbody>
       </table>
@@ -745,7 +814,20 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
       {/* Section 1: Demand Summary */}
       <div className="space-y-3">
         <SectionHeader title="Demand theo nguồn" subtitle="Phân tích cơ cấu FC · B2B · PO tháng hiện tại">
-          <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setExpandedCns(new Set()); setExpandedSkus(new Set()); }} />
+          <div className="flex items-center gap-2 flex-wrap">
+            <label className="text-caption text-text-3 uppercase tracking-wide">Version FC</label>
+            <select
+              value={fcVersion}
+              onChange={(e) => setFcVersion(e.target.value as FcVersion)}
+              className="h-8 rounded-button border border-surface-3 bg-surface-0 px-2 pr-7 text-table-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary"
+              title={FC_VERSIONS.find((v) => v.key === fcVersion)?.desc}
+            >
+              {FC_VERSIONS.map((v) => (
+                <option key={v.key} value={v.key}>{v.label}</option>
+              ))}
+            </select>
+            <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setExpandedCns(new Set()); setExpandedSkus(new Set()); }} />
+          </div>
         </SectionHeader>
         {pivotMode === "sku" ? renderSkuTable() : renderCnTable()}
       </div>
