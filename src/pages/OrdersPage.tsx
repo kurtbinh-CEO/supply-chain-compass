@@ -1076,7 +1076,14 @@ export default function OrdersPage() {
                         tabIndex={0}
                         className="border-b border-surface-3/50 hover:bg-surface-1/30 outline-none"
                       >
-                        <td className={cn("px-3 py-2.5", poNumClasses, tb.text)}>{po.po_number}</td>
+                        <td className={cn("px-3 py-2.5", poNumClasses, tb.text)}>
+                          {po.po_number}
+                          {severity === "overdue" && eta && (
+                            <div className="text-caption text-danger mt-0.5 font-normal" title="Lý do trễ ETA">
+                              ⚠ Trễ {Math.ceil((Date.now() - eta.getTime()) / 86400000)} ngày vì NM {supplierToNm[po.supplier] || po.supplier} LT thực tế dài hơn config (status: {stageLabels[st]})
+                            </div>
+                          )}
+                        </td>
                         <td className="px-3 py-2.5">
                           <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", tb.bg, tb.text)}>{type}</span>
                         </td>
