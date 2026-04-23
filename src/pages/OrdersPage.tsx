@@ -171,6 +171,8 @@ export default function OrdersPage() {
   const [pendingApproval, setPendingApproval] = useState<null | { kind: "approve" | "reject" | "bulk"; pos: PurchaseOrderRow[] }>(null);
   const [approvalNote, setApprovalNote] = useState("");
   const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
+  const [expandedPo, setExpandedPo] = useState<string | null>(null);
+  const [cascadeDismissed, setCascadeDismissed] = useState(false);
 
   // Burn-down tab state
   const [drillBpo, setDrillBpo] = useState<string | null>(null);
