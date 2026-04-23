@@ -6,6 +6,7 @@ import {
   CheckCircle2, Loader2, FileSpreadsheet, ChevronRight, Clock, Factory,
 } from "lucide-react";
 import { TermTooltip } from "@/components/TermTooltip";
+import { ClickableNumber } from "@/components/ClickableNumber";
 import { VoiceInput } from "@/components/VoiceInput";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
