@@ -57,7 +57,7 @@ function getMockEntries(entityType: string): ChangeLogEntry[] {
     },
     {
       id: "c5", field: "Mikado GA-300 commit", oldValue: "—", newValue: "+2,000 m²",
-      who: "Mikado", when: "09/05 14:42", reason: "Confirm",
+      who: "Mikado", when: "09/05 14:42", reason: "Xác nhận",
       source: "nm_counter",
     },
   ];

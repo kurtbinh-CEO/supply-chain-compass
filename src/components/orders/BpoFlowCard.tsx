@@ -50,7 +50,7 @@ const stageLabels: Record<string, string> = {
 type StageKey = "created" | "approved" | "released" | "shipped" | "received";
 
 const stageDefs: { key: StageKey; label: string; icon: typeof FileText; tone: string }[] = [
-  { key: "created",  label: "Created",  icon: FileText,       tone: "text-text-2" },
+  { key: "created",  label: "Đã tạo",  icon: FileText,       tone: "text-text-2" },
   { key: "approved", label: "Approved", icon: ClipboardCheck, tone: "text-primary" },
   { key: "released", label: "Released", icon: PackageCheck,   tone: "text-primary" },
   { key: "shipped",  label: "Shipped",  icon: Truck,          tone: "text-info" },

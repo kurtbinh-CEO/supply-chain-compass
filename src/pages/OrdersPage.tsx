@@ -1042,7 +1042,7 @@ export default function OrdersPage() {
                       const st = effectiveStatus(po);
                       const type = po.po_number.startsWith("TO-") ? "TO" : "RPO";
                       const tb = getPoTypeBadge(type as any);
-                      const nextLabel = st === "draft" ? "Submit" : "Confirm";
+                      const nextLabel = st === "draft" ? "Gửi đi" : "Xác nhận";
                       return (
                         <tr key={po.po_number} className="border-b border-warning/10 hover:bg-warning-bg/20">
                           <td className="px-3 py-2.5">

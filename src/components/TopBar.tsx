@@ -179,7 +179,7 @@ export function TopBar() {
       {/* Role + Avatar + Sign out */}
       <div className="flex items-center gap-2 pl-1 border-l border-surface-3 ml-1">
         <div className="flex flex-col items-end">
-          <span className="text-table-sm font-medium text-text-1 leading-tight">{profile?.display_name || "User"}</span>
+          <span className="text-table-sm font-medium text-text-1 leading-tight">{profile?.display_name || "Người dùng"}</span>
           <span className="text-caption text-primary font-medium leading-tight">{t("role.planner")}</span>
         </div>
         <button

@@ -229,7 +229,7 @@ export function SafetyStockTab() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-surface-3">
-              {["Date", "SKU", "Shift", "Trigger", "Approved By"].map((h) => (
+              {["Ngày", "SKU", "Thay đổi", "Nguyên nhân", "Người duyệt"].map((h) => (
                 <th key={h} className="text-left text-table-header uppercase text-text-3 px-5 py-3">{h}</th>
               ))}
             </tr>
