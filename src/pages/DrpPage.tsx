@@ -440,6 +440,24 @@ export default function DrpPage() {
   const totalFill = totalDemand > 0 ? Math.round(((totalDemand - totalGap) / totalDemand) * 1000) / 10 : 100;
   const activeCn = drillCn ? data.find((r) => r.cn === drillCn) : null;
 
+  /* FIX 3 — Compare "vs đêm qua" derived rows + hub snapshot deltas */
+  const compareRows = useMemo(() => {
+    const rows: Array<{ cn: string; base: string; prev: number; now: number; deltaPct: number }> = [];
+    data.slice(0, 4).forEach((cn) => {
+      cn.allSkus.slice(0, 2).forEach((sk) => {
+        const now = sk.demand;
+        const seed = (cn.cn + sk.item + sk.variant).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+        const pctShift = ((seed % 60) - 25) / 100; // -25%..+35%
+        const prev = Math.max(0, Math.round(now / (1 + pctShift)));
+        const deltaPct = prev > 0 ? ((now - prev) / prev) * 100 : 0;
+        rows.push({ cn: cn.cn, base: `${sk.item} ${sk.variant}`, prev, now, deltaPct });
+      });
+    });
+    return rows.sort((a, b) => Math.abs(b.deltaPct) - Math.abs(a.deltaPct));
+  }, [data]);
+  const hubAtRunM2 = Math.round(5681 * s);
+  const hubDeltaSinceRun = Math.round(2000 * s);
+
   // SKU-first aggregation for DRP
   const skuAggDrp = useMemo(() => {
     const map: Record<string, { item: string; variant: string; totalDemand: number; totalAllocated: number; totalGap: number; fillPct: number;
