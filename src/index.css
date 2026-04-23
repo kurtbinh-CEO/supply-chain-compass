@@ -31,6 +31,31 @@
   .rounded-card:hover {
     box-shadow: var(--shadow-card-hover);
   }
+
+  /* ===== Rule 13 — Row Severity ===== */
+  [data-severity="shortage"] {
+    border-left: 3px solid var(--color-danger-text);
+  }
+  [data-severity="watch"] {
+    border-left: 3px solid var(--color-warning-text);
+  }
+  [data-severity="overdue"] {
+    background-color: color-mix(in srgb, var(--color-warning-text) 10%, transparent);
+  }
+  [data-severity="stale"] {
+    background-color: color-mix(in srgb, var(--color-danger-text) 5%, transparent);
+  }
+  [data-severity="ok"] {
+    border-left: 3px solid transparent;
+  }
+
+  /* ===== Rule 14 — Keyboard Navigation Focus Ring ===== */
+  [data-keyboard-row]:focus,
+  [data-keyboard-row]:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+    background-color: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  }
 }
 
 @layer utilities {
