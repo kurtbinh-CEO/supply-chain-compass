@@ -438,7 +438,82 @@ export function B2BInputTab({ deals, setDeals }: Props) {
             </div>
           </>
         );
-      })()}
+      {/* B2B cascade confirmation — Δ > 20% triggers downstream rerun */}
+      {cascadeConfirm && (
+        <>
+          <div
+            className="fixed inset-0 bg-text-1/30 z-50"
+            onClick={() => setCascadeConfirm(null)}
+          />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[460px] max-w-[92vw] bg-surface-2 border border-warning/40 rounded-card shadow-xl z-50 p-6 space-y-4 animate-fade-in">
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-warning-bg p-2 shrink-0">
+                <span className="text-xl leading-none">⚠️</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-display text-section-header text-text-1">
+                  Cascade xác nhận
+                </h3>
+                <p className="text-table-sm text-text-2 mt-1">
+                  Deal{" "}
+                  <span className="font-semibold text-text-1">
+                    {cascadeConfirm.form.customer}
+                  </span>{" "}
+                  thay đổi{" "}
+                  <span
+                    className={cn(
+                      "font-bold tabular-nums",
+                      cascadeConfirm.deltaPct > 0 ? "text-success" : "text-danger",
+                    )}
+                  >
+                    {cascadeConfirm.deltaPct > 0 ? "+" : ""}
+                    {cascadeConfirm.deltaPct}%
+                  </span>{" "}
+                  ({cascadeConfirm.prev.qtyM2.toLocaleString()} →{" "}
+                  {cascadeConfirm.form.qtyM2.toLocaleString()} m²).
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-card border border-warning/30 bg-warning-bg/40 p-3">
+              <p className="text-table-sm font-semibold text-warning mb-2">
+                Cascade chain:
+              </p>
+              <div className="flex items-center gap-2 text-table-sm text-text-1 flex-wrap">
+                <span className="rounded-button bg-surface-2 border border-surface-3 px-2 py-1 font-medium">
+                  S&OP v3
+                </span>
+                <span className="text-text-3">→</span>
+                <span className="rounded-button bg-surface-2 border border-surface-3 px-2 py-1 font-medium">
+                  DRP rerun
+                </span>
+                <span className="text-text-3">→</span>
+                <span className="rounded-button bg-surface-2 border border-surface-3 px-2 py-1 font-medium">
+                  NM commitment
+                </span>
+              </div>
+              <p className="text-caption text-text-2 mt-2 italic">
+                Rerun có thể ảnh hưởng PO đã release. Cần thông báo CN-{cascadeConfirm.form.cnCode}.
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setCascadeConfirm(null)}
+                className="flex-1 rounded-button border border-surface-3 py-2.5 text-table text-text-2 hover:bg-surface-3"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={confirmCascade}
+                className="flex-1 rounded-button bg-warning text-warning-foreground py-2.5 text-table font-semibold hover:bg-warning/90"
+              >
+                Xác nhận cascade
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
