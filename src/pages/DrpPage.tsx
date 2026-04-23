@@ -25,6 +25,8 @@ import { useRbac } from "@/components/RbacContext";
 import { CheckCircle2, Truck, Link2, ShieldAlert, Lock as LockIcon, AlertOctagon } from "lucide-react";
 import { DrpReleaseBar, type DrpBatch, type DrpBatchStatus } from "@/components/drp/DrpReleaseBar";
 import { supabase } from "@/integrations/supabase/client";
+import { TermTooltip } from "@/components/TermTooltip";
+import { DRP_RESULTS, BRANCHES, SKU_BASES, getSkuNm } from "@/data/unis-enterprise-dataset";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -32,7 +34,11 @@ const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7
 interface AllocLayer { name: string; qty: number; pass: boolean; delta?: number; explain: string }
 
 interface SkuException {
-  item: string; variant: string; demand: number; allocated: number; gap: number;
+  /** SKU BASE code (rule #2 — netting at base level, not variant) */
+  item: string;
+  /** Kept for table layout compatibility — always "" or a tag like "(tổng)" for base-level rows */
+  variant: string;
+  demand: number; allocated: number; gap: number;
   type: "SHORTAGE" | "WATCH"; suggestion: string;
   netting: { fcPhased: number; onHand: number; pipeline: number; ssTarget: number; netReq: number };
   allocLayers: AllocLayer[];
@@ -40,11 +46,11 @@ interface SkuException {
 }
 
 interface AllocSources {
-  onHand: number;          // Tồn kho có sẵn tại CN
+  onHand: number;          // Tồn kho có sẵn tại CN (Σ tất cả đuôi màu)
   pipeline: number;        // RPO/PO đang về (Hub đã đặt trước)
   hubPo: number;           // PO mới từ Hub (NM ngoài) – sourcing fresh
-  lcnbIn: number;          // Lateral nhận từ CN khác (LCNB)
-  internalTransfer: number;// Luân chuyển nội bộ (TO giữa kho cùng CN hoặc tái phân bổ DC)
+  lcnbIn: number;          // Lateral nhận từ CN khác (LCNB) — Layer 0
+  internalTransfer: number;// Luân chuyển nội bộ (TO giữa kho cùng CN hoặc cho LCNB out)
 }
 
 interface SkuFull {
@@ -59,93 +65,256 @@ interface CnRow {
 }
 
 /* ═══ SS DATA — now from shared SafetyStockContext ═══ */
-// SsCnRow and SsSkuRow types kept for Layer 3 params table only
 type SsCnRow = { cn: string; ssTotal: number; adequate: number; breaches: number; wc: string; rec: string };
 
-// Change log now comes from shared SafetyStockContext
+/* ───────────────────────────────────────────────────────────────────────── */
+/* §  6-LAYER ALLOCATION ORDER (UNIS — LCNB FIRST)                           */
+/*   L0 Chuyển ngang (LCNB)     — scan CN sibling trước                       */
+/*   L1 Hub Pool (PO mới NM)    — chỉ phần LCNB chưa cover                    */
+/*   L2 Đuôi màu (Variant)      — phân rã base → variant theo tỷ trọng tồn    */
+/*   L3 FIFO                     — lot cũ trước                              */
+/*   L4 Chia công bằng (Fair)    — multi-CN tranh cùng nguồn                  */
+/*   L5 Bảo vệ SS (SS Guard)     — không hạ tồn dưới SS                       */
+/* ───────────────────────────────────────────────────────────────────────── */
+function buildLayers(args: {
+  netReq: number; lcnbCover: number; hubCover: number;
+  variantOk?: boolean; fifoOk?: boolean; fairOk?: boolean;
+  ssDelta?: number; // negative if SS Guard cap reduced allocation
+}): AllocLayer[] {
+  const { netReq, lcnbCover, hubCover, variantOk = true, fifoOk = true, fairOk = true, ssDelta = 0 } = args;
+  const finalAlloc = Math.max(0, netReq + ssDelta);
+  return [
+    {
+      name: "L0 Chuyển ngang (LCNB)",
+      qty: lcnbCover,
+      pass: lcnbCover > 0,
+      explain:
+        lcnbCover > 0
+          ? `Scan CN sibling trong 500km có excess → cover ${lcnbCover.toLocaleString()}m². LT ~ 1–2 ngày, rẻ hơn PO mới.`
+          : "Không có CN sibling thừa hàng (gap ≤ 0 ở mọi donor cùng SKU base).",
+    },
+    {
+      name: "L1 Hub Pool (PO mới NM)",
+      qty: hubCover,
+      pass: true,
+      explain:
+        hubCover > 0
+          ? `Phần LCNB chưa cover = ${hubCover.toLocaleString()}m² → đặt PO mới từ NM nguồn (single-source).`
+          : "LCNB đã cover 100%, không cần PO mới.",
+    },
+    {
+      name: "L2 Đuôi màu (Variant)",
+      qty: netReq,
+      pass: variantOk,
+      explain:
+        "Phân rã mã gốc → variant theo tỷ trọng tồn kho hiện tại (A4 50% / B2 30% / C1 20%).",
+    },
+    {
+      name: "L3 FIFO",
+      qty: netReq,
+      pass: fifoOk,
+      explain: "Allocate lot cũ trước theo ngày nhập kho.",
+    },
+    {
+      name: "L4 Chia công bằng",
+      qty: netReq,
+      pass: fairOk,
+      explain: "Khi nhiều CN tranh cùng nguồn → fair-share theo trọng số demand.",
+    },
+    {
+      name: "L5 Bảo vệ SS",
+      qty: finalAlloc,
+      pass: ssDelta >= 0,
+      delta: ssDelta < 0 ? ssDelta : undefined,
+      explain:
+        ssDelta < 0
+          ? `On-hand không đủ duy trì SS → cắt ${Math.abs(ssDelta).toLocaleString()}m² để bảo vệ tồn kho an toàn.`
+          : "Tồn còn lại sau allocate ≥ SS — pass.",
+    },
+  ];
+}
 
-/* ═══ LAYER 1 DATA ═══ */
-const baseData: CnRow[] = [
+/* ───────────────────────────────────────────────────────────────────────── */
+/* §  LAYER 1 DATA — 12 CN × SKU BASE level (rule #2)                         */
+/*   Built from DRP_RESULTS (SSOT) — UI-friendly per-CN aggregation           */
+/* ───────────────────────────────────────────────────────────────────────── */
+
+/** Top SKU BASE codes shown per CN row (5 most-traded bases) */
+const VISIBLE_BASES = ["GA-300", "GA-400", "GA-600", "GT-300", "GT-600", "GM-300"] as const;
+
+/** Hand-curated exception detail per (cnCode, skuBaseCode). Numbers reflect
+ *  the demo storyline: 3 SHORTAGE + 2 WATCH across 12 CN. */
+type ExcSeed = {
+  cn: string; sku: string; type: "SHORTAGE" | "WATCH";
+  demand: number; allocated: number; gap: number;
+  fcPhased: number; onHand: number; pipeline: number; ssTarget: number;
+  suggestion: string;
+  lcnbCover: number; hubCover: number; ssDelta: number;
+  options: SkuException["options"];
+};
+
+const EXCEPTION_SEEDS: ExcSeed[] = [
+  // CN-BMT (đại diện CN-ĐL — Tây Nguyên xa, tồn ít) GA-300 SHORTAGE 291
   {
-    cn: "CN-BD", demand: 2550, available: 1007, fillRate: 86, gap: 345, exceptions: 2, rpos: 3,
-    exceptionList: [
-      {
-        item: "GA-300", variant: "A4", demand: 617, allocated: 272, gap: 345, type: "SHORTAGE",
-        suggestion: "LCNB: CN-ĐN thừa 220. Tiết kiệm 32M₫",
-        netting: { fcPhased: 524, onHand: 450, pipeline: 557, ssTarget: 900, netReq: 345 },
-        allocLayers: [
-          { name: "L1 Source", qty: 617, pass: true, explain: "Demand từ FC phased 524 + B2B 93 = 617" },
-          { name: "L2 Variant", qty: 617, pass: true, explain: "Variant A4 match 100%" },
-          { name: "L3 FIFO", qty: 500, pass: true, explain: "FIFO sắp xếp theo ngày nhập kho" },
-          { name: "L4 Fair", qty: 500, pass: true, explain: "Fair share 100% (CN-BD only requestor)" },
-          { name: "L5 SS Guard", qty: 272, pass: false, delta: -228, explain: "On-hand 450 − SS 900 = −450. Chỉ allocate 272 (phần trên SS). SS guard không cho phép allocate dưới safety stock." },
-          { name: "L6 Lateral", qty: 0, pass: true, explain: "Chưa có lateral approved" },
-        ],
-        options: [
-          { label: "A. Lateral", source: "CN-ĐN excess 220m²", qty: 220, cost: "8,8M₫", time: "1 ngày", savingVsB: "−55M₫ (86%)" },
-          { label: "B. PO mới", source: "Mikado", qty: 345, cost: "63,8M₫", time: "14 ngày", savingVsB: "baseline" },
-          { label: "C. Kết hợp", source: "Lateral 220 + PO 125", qty: 345, cost: "31,9M₫", time: "1+14 ngày", savingVsB: "−31,9M₫ (50%)", recommended: true },
-        ],
-      },
-      {
-        item: "GA-400", variant: "A4", demand: 347, allocated: 297, gap: 50, type: "WATCH",
-        suggestion: "ETA Mikado 17/05 sẽ cover",
-        netting: { fcPhased: 310, onHand: 800, pipeline: 0, ssTarget: 600, netReq: 50 },
-        allocLayers: [
-          { name: "L1 Source", qty: 347, pass: true, explain: "Demand từ FC phased 310 + adj 37" },
-          { name: "L2 Variant", qty: 347, pass: true, explain: "Variant A4 match" },
-          { name: "L3 FIFO", qty: 347, pass: true, explain: "FIFO OK" },
-          { name: "L4 Fair", qty: 347, pass: true, explain: "Fair share 100%" },
-          { name: "L5 SS Guard", qty: 297, pass: false, delta: -50, explain: "On-hand 800 − SS 600 = 200. Allocate 297 (giới hạn available)." },
-          { name: "L6 Lateral", qty: 0, pass: true, explain: "Không cần — watch only" },
-        ],
-        options: [],
-      },
-    ],
-    allSkus: [
-      // GA-300 A4: shortage covered by combo (LCNB 220 + Hub PO 125) + on-hand 272 net = 617
-      { item: "GA-300", variant: "A4", demand: 617, allocated: 272, fillPct: 44, status: "SHORTAGE",
-        sources: { onHand: 272, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
-      { item: "GA-300", variant: "B2", demand: 178, allocated: 178, fillPct: 100, status: "OK",
-        sources: { onHand: 128, pipeline: 50, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
-      { item: "GA-400", variant: "A4", demand: 347, allocated: 297, fillPct: 86, status: "WATCH",
-        sources: { onHand: 297, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
-      { item: "GA-600", variant: "A4", demand: 881, allocated: 881, fillPct: 100, status: "OK",
-        sources: { onHand: 600, pipeline: 281, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
-      // GA-600 B2: covered by Hub PO + internal transfer between BD warehouses
-      { item: "GA-600", variant: "B2", demand: 527, allocated: 527, fillPct: 100, status: "OK",
-        sources: { onHand: 200, pipeline: 0, hubPo: 250, lcnbIn: 0, internalTransfer: 77 } },
+    cn: "CN-BMT", sku: "GA-300", type: "SHORTAGE",
+    demand: 480, allocated: 189, gap: 291,
+    fcPhased: 412, onHand: 80, pipeline: 60, ssTarget: 240,
+    suggestion: "LCNB từ CN-BD (excess 3.408m², 350km, 2 ngày) — tiết kiệm 48M₫ vs PO mới",
+    lcnbCover: 291, hubCover: 0, ssDelta: 0,
+    options: [
+      { label: "A. Chuyển ngang", source: "CN-BD excess 3.408m² (350km, 2 ngày)", qty: 291, cost: "5,8M₫", time: "2 ngày", savingVsB: "−48M₫ (89%)" },
+      { label: "B. PO mới", source: "Mikado (single-source GA-300)", qty: 291, cost: "53,8M₫", time: "14 ngày", savingVsB: "baseline" },
+      { label: "C. Kết hợp LCNB 100%", source: "CN-BD lateral 291m² (cover 100%)", qty: 291, cost: "5,8M₫", time: "2 ngày", savingVsB: "−48M₫ (89%)", recommended: true },
     ],
   },
-  { cn: "CN-ĐN", demand: 1800, available: 1600, fillRate: 100, gap: 0, exceptions: 0, rpos: 1, exceptionList: [],
-    allSkus: [
-      { item: "GA-300", variant: "A4", demand: 500, allocated: 500, fillPct: 100, status: "OK",
-        sources: { onHand: 720, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: -220 } }, // give 220 lateral to BD
-      { item: "GA-600", variant: "A4", demand: 800, allocated: 800, fillPct: 100, status: "OK",
-        sources: { onHand: 400, pipeline: 400, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
-      { item: "GA-400", variant: "A4", demand: 500, allocated: 500, fillPct: 100, status: "OK",
-        sources: { onHand: 350, pipeline: 0, hubPo: 150, lcnbIn: 0, internalTransfer: 0 } },
+  // CN-PK (đại diện CN-GL — Pleiku/Gia Lai, nhỏ, demand spike) GT-600 SHORTAGE 180
+  {
+    cn: "CN-PK", sku: "GT-600", type: "SHORTAGE",
+    demand: 320, allocated: 140, gap: 180,
+    fcPhased: 280, onHand: 50, pipeline: 40, ssTarget: 130,
+    suggestion: "LCNB từ CN-QN (excess 480m², 215km, 1 ngày) + buffer Đồng Tâm",
+    lcnbCover: 180, hubCover: 0, ssDelta: 0,
+    options: [
+      { label: "A. Chuyển ngang", source: "CN-QN excess 480m² (215km, 1 ngày)", qty: 180, cost: "3,6M₫", time: "1 ngày", savingVsB: "−30M₫ (89%)" },
+      { label: "B. PO mới", source: "Đồng Tâm (single-source GT-600)", qty: 180, cost: "33,8M₫", time: "10 ngày", savingVsB: "baseline" },
+      { label: "C. Kết hợp LCNB 100%", source: "CN-QN lateral 180m² (cover 100%)", qty: 180, cost: "3,6M₫", time: "1 ngày", savingVsB: "−30M₫ (89%)", recommended: true },
     ],
   },
-  { cn: "CN-HN", demand: 2100, available: 1300, fillRate: 100, gap: 0, exceptions: 0, rpos: 2, exceptionList: [],
-    allSkus: [
-      { item: "GA-300", variant: "A4", demand: 800, allocated: 800, fillPct: 100, status: "OK",
-        sources: { onHand: 200, pipeline: 0, hubPo: 600, lcnbIn: 0, internalTransfer: 0 } },
-      { item: "GA-400", variant: "A4", demand: 700, allocated: 700, fillPct: 100, status: "OK",
-        sources: { onHand: 200, pipeline: 500, hubPo: 0, lcnbIn: 0, internalTransfer: 0 } },
-      { item: "GA-600", variant: "B2", demand: 600, allocated: 600, fillPct: 100, status: "OK",
-        sources: { onHand: 480, pipeline: 0, hubPo: 0, lcnbIn: 120, internalTransfer: 0 } }, // received lateral from CT
+  // CN-NA (Nghệ An, NM Vigracera LT dài) GM-300 SHORTAGE 95
+  {
+    cn: "CN-NA", sku: "GM-300", type: "SHORTAGE",
+    demand: 220, allocated: 125, gap: 95,
+    fcPhased: 200, onHand: 70, pipeline: 35, ssTarget: 120,
+    suggestion: "LCNB từ CN-HN (excess 1.250m², 290km, 2 ngày) — Vigracera LT 11 ngày quá dài",
+    lcnbCover: 95, hubCover: 0, ssDelta: 0,
+    options: [
+      { label: "A. Chuyển ngang", source: "CN-HN excess 1.250m² (290km, 2 ngày)", qty: 95, cost: "1,9M₫", time: "2 ngày", savingVsB: "−14M₫ (88%)" },
+      { label: "B. PO mới", source: "Vigracera (single-source GM-300, LT 11 ngày)", qty: 95, cost: "16M₫", time: "11 ngày", savingVsB: "baseline" },
+      { label: "C. Kết hợp LCNB 100%", source: "CN-HN lateral 95m² (cover 100%)", qty: 95, cost: "1,9M₫", time: "2 ngày", savingVsB: "−14M₫ (88%)", recommended: true },
     ],
   },
-  { cn: "CN-CT", demand: 1200, available: 1050, fillRate: 100, gap: 0, exceptions: 0, rpos: 1, exceptionList: [],
-    allSkus: [
-      { item: "GA-600", variant: "B2", demand: 600, allocated: 600, fillPct: 100, status: "OK",
-        sources: { onHand: 750, pipeline: 0, hubPo: 0, lcnbIn: 0, internalTransfer: -120 } }, // give 120 to HN
-      { item: "GA-300", variant: "A4", demand: 600, allocated: 600, fillPct: 100, status: "OK",
-        sources: { onHand: 150, pipeline: 0, hubPo: 450, lcnbIn: 0, internalTransfer: 0 } },
-    ],
+  // CN-BD GA-400 WATCH 50 (ETA Mikado 17/05 sẽ cover)
+  {
+    cn: "CN-BD", sku: "GA-400", type: "WATCH",
+    demand: 585, allocated: 535, gap: 50,
+    fcPhased: 520, onHand: 360, pipeline: 175, ssTarget: 220,
+    suggestion: "ETA Mikado 17/05 (RPO-MKD-2605-W17-002, 1.000m²) sẽ cover dư",
+    lcnbCover: 0, hubCover: 0, ssDelta: -50,
+    options: [],
+  },
+  // CN-HN GT-300 WATCH 30 (seasonal spike)
+  {
+    cn: "CN-HN", sku: "GT-300", type: "WATCH",
+    demand: 546, allocated: 516, gap: 30,
+    fcPhased: 480, onHand: 320, pipeline: 196, ssTarget: 180,
+    suggestion: "Seasonal spike +12% vs cùng kỳ năm trước. Theo dõi nhập kho ETA 16/05.",
+    lcnbCover: 0, hubCover: 0, ssDelta: -30,
+    options: [],
   },
 ];
+
+/** Build a synthetic per-CN allocation profile for one SKU base
+ *  (pure UI scaffolding — production reads from the DRP engine output). */
+function buildSkuRow(cnCode: string, baseCode: string): SkuFull | null {
+  const drp = DRP_RESULTS.find((r) => r.cnCode === cnCode && r.skuBaseCode === baseCode);
+  if (!drp) return null;
+  const exc = EXCEPTION_SEEDS.find((e) => e.cn === cnCode && e.sku === baseCode);
+  const demand = drp.fcM2;
+  if (demand === 0) return null;
+
+  if (exc) {
+    return {
+      item: baseCode,
+      variant: "Σ tổng",
+      demand: exc.demand,
+      allocated: exc.allocated,
+      fillPct: exc.demand > 0 ? Math.round((exc.allocated / exc.demand) * 100) : 100,
+      status: exc.type,
+      sources: {
+        onHand: exc.onHand,
+        pipeline: exc.pipeline,
+        hubPo: exc.hubCover,
+        lcnbIn: exc.lcnbCover,
+        internalTransfer: 0,
+      },
+    };
+  }
+
+  // OK rows — naive allocation: on-hand first, pipeline cover the rest
+  const onHand = Math.min(drp.onHandM2, demand);
+  const pipeline = Math.min(drp.inTransitM2, Math.max(0, demand - onHand));
+  const hubPo = Math.max(0, demand - onHand - pipeline);
+  return {
+    item: baseCode,
+    variant: "Σ tổng",
+    demand,
+    allocated: demand,
+    fillPct: 100,
+    status: "OK",
+    sources: { onHand, pipeline, hubPo, lcnbIn: 0, internalTransfer: 0 },
+  };
+}
+
+const baseData: CnRow[] = BRANCHES.map((cn) => {
+  const skus: SkuFull[] = VISIBLE_BASES
+    .map((b) => buildSkuRow(cn.code, b))
+    .filter((r): r is SkuFull => r !== null);
+
+  const exceptionList: SkuException[] = EXCEPTION_SEEDS
+    .filter((e) => e.cn === cn.code)
+    .map((e) => ({
+      item: e.sku,
+      variant: "Σ tổng",
+      demand: e.demand,
+      allocated: e.allocated,
+      gap: e.gap,
+      type: e.type,
+      suggestion: e.suggestion,
+      netting: {
+        fcPhased: e.fcPhased,
+        onHand: e.onHand,
+        pipeline: e.pipeline,
+        ssTarget: e.ssTarget,
+        netReq: e.demand - e.onHand - e.pipeline + e.ssTarget,
+      },
+      allocLayers: buildLayers({
+        netReq: e.gap,
+        lcnbCover: e.lcnbCover,
+        hubCover: e.hubCover,
+        ssDelta: e.ssDelta,
+      }),
+      options: e.options,
+    }));
+
+  // Scan donor flag — donor CN should show outbound LCNB on visible SKUs
+  const donorBoost: Record<string, number> = {
+    "CN-BD": 220,   // donor for CN-BMT GA-300
+    "CN-QN": 180,   // donor for CN-PK GT-600
+    "CN-HN": 95,    // donor for CN-NA GM-300
+  };
+  const out = donorBoost[cn.code] ?? 0;
+  if (out > 0 && skus.length > 0) {
+    // record outbound on the first visible SKU as "internalTransfer" negative (UI convention)
+    skus[0] = { ...skus[0], sources: { ...skus[0].sources, internalTransfer: -out } };
+  }
+
+  const demand = skus.reduce((a, s) => a + s.demand, 0);
+  const allocated = skus.reduce((a, s) => a + s.allocated, 0);
+  const gap = Math.max(0, demand - allocated);
+  const fillRate = demand > 0 ? Math.round(((demand - gap) / demand) * 1000) / 10 : 100;
+
+  return {
+    cn: cn.code,
+    demand,
+    available: skus.reduce((a, s) => a + s.sources.onHand + s.sources.pipeline, 0),
+    fillRate: Math.round(fillRate),
+    gap,
+    exceptions: exceptionList.length,
+    rpos: exceptionList.filter((e) => e.type === "SHORTAGE").length + (cn.region === "Bắc" ? 1 : 0),
+    exceptionList,
+    allSkus: skus,
+  };
+});
 
 export default function DrpPage() {
   const { tenant } = useTenant();
@@ -806,6 +975,16 @@ export default function DrpPage() {
       {/* ═══ LỚP 1: Per CN (default) ═══ */}
       {!activeCn && !showLayer3 && (
         <div className="space-y-5 animate-slide-in-left" data-tour="drp-results-table">
+          {/* Netting formula explainer (rule #2 — base-level) */}
+          <div className="rounded-card border border-info/30 bg-info-bg/30 px-4 py-3 text-table-sm space-y-1">
+            <div className="font-mono text-text-1">
+              <TermTooltip term="NhuCauRong">Nhu cầu ròng</TermTooltip> = Nhu cầu gộp − Tồn kho (Σ đuôi) − Hàng đang về + <TermTooltip term="SsCn">Tồn kho an toàn CN</TermTooltip>
+            </div>
+            <div className="text-caption text-text-3">
+              Tính theo <span className="font-medium text-text-2">mã gốc</span> (VD: GA-300 = A4 + B2 + C1 + D5). Variant chỉ phân rã ở Layer 2 sau khi netting xong.
+            </div>
+          </div>
+
           <div className="flex items-center gap-2">
             <div className="flex-1">
               <FormulaBar
