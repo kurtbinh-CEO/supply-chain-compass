@@ -1,6 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronLeft, AlertTriangle } from "lucide-react";
+import { ChevronRight, ChevronLeft, ChevronDown, AlertTriangle } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
 import { LogicTooltip } from "@/components/LogicTooltip";
@@ -117,6 +117,53 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
   const [pivotMode, setPivotMode] = usePivotMode("sop-consensus");
   const [drillCn, setDrillCn] = useState<number | null>(null);
   const [drillSku, setDrillSku] = useState<string | null>(null);
+
+  /* P19 — Auto-expand SHORTAGE rows (variance >10%); OK rows collapsed by default.
+     ⌘E toggles all rows. */
+  const cnRowSeverity = useMemo(() => {
+    return data.map((row) => {
+      const bottomUpV3 = row.skus.reduce((a, s) => a + s.v3, 0);
+      const variancePct = row.v0 > 0 ? Math.abs((bottomUpV3 - row.v0) / row.v0) * 100 : 0;
+      return { cn: row.cn, severity: variancePct > 10 ? "shortage" : "ok" } as const;
+    });
+  }, [data]);
+
+  const [expandedCn, setExpandedCn] = useState<Set<string>>(() => {
+    return new Set(cnRowSeverity.filter((r) => r.severity === "shortage").map((r) => r.cn));
+  });
+
+  // Re-seed when severity composition changes; never auto-collapse user picks.
+  useEffect(() => {
+    setExpandedCn((prev) => {
+      let changed = false;
+      const next = new Set(prev);
+      cnRowSeverity.forEach((r) => {
+        if (r.severity === "shortage" && !next.has(r.cn)) { next.add(r.cn); changed = true; }
+      });
+      return changed ? next : prev;
+    });
+  }, [cnRowSeverity]);
+
+  // ⌘E global toggle
+  useEffect(() => {
+    const onEvt = () => {
+      setExpandedCn((prev) => {
+        const allKeys = data.map((r) => r.cn);
+        const allOpen = allKeys.length > 0 && allKeys.every((k) => prev.has(k));
+        return allOpen ? new Set() : new Set(allKeys);
+      });
+    };
+    window.addEventListener("lov:expand-all-rows", onEvt);
+    return () => window.removeEventListener("lov:expand-all-rows", onEvt);
+  }, [data]);
+
+  const toggleCn = (cn: string) => {
+    setExpandedCn((prev) => {
+      const next = new Set(prev);
+      next.has(cn) ? next.delete(cn) : next.add(cn);
+      return next;
+    });
+  };
 
   const totals = {
     v0: data.reduce((a, r) => a + r.v0, 0),
