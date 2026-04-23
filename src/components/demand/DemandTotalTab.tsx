@@ -1,11 +1,40 @@
 import React, { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronDown, Info, TrendingUp, TrendingDown, Minus, ArrowRight } from "lucide-react";
+import { ChevronRight, ChevronDown, Info, TrendingUp, TrendingDown, Minus, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { toast } from "sonner";
 import { ViewPivotToggle, usePivotMode, CnGapBadge } from "@/components/ViewPivotToggle";
 import type { DemandCnSummary } from "@/hooks/useDemandForecasts";
+import { BRANCHES, DEMAND_FC, SKU_BASES } from "@/data/unis-enterprise-dataset";
+
+/* ────────────────────────────────────────────────────────────────────── */
+/* FC version selector — v3 = SC Manager-adjusted (canonical)            */
+/* ────────────────────────────────────────────────────────────────────── */
+type FcVersion = "v0" | "v1" | "v2" | "v3";
+const FC_VERSIONS: { key: FcVersion; label: string; desc: string }[] = [
+  { key: "v0", label: "v0 — Statistical baseline", desc: "AI baseline (XGB / Holt-Winters)" },
+  { key: "v1", label: "v1 — CN adjusted",          desc: "Sau khi CN điều chỉnh tuần" },
+  { key: "v2", label: "v2 — Sales reviewed",       desc: "Sales review B2B + thị trường" },
+  { key: "v3", label: "v3 — SC Manager đã điều chỉnh", desc: "Bản chốt sau S&OP / SC Manager" },
+];
+
+/* Deterministic per-CN accuracy (%) for v0 baseline vs v3 adjusted.    */
+/* FVA = accuracy(v3) − accuracy(v0). Positive → adjustment improved.   */
+const CN_FVA_TABLE: Record<string, { accV0: number; accV3: number }> = {
+  "CN-HN":  { accV0: 78, accV3: 86 },  "CN-HP":  { accV0: 80, accV3: 84 },
+  "CN-NA":  { accV0: 72, accV3: 75 },  "CN-DN":  { accV0: 81, accV3: 88 },
+  "CN-QN":  { accV0: 76, accV3: 79 },  "CN-NT":  { accV0: 70, accV3: 68 }, // FVA<0
+  "CN-BMT": { accV0: 74, accV3: 77 },  "CN-PK":  { accV0: 68, accV3: 65 }, // FVA<0
+  "CN-BD":  { accV0: 82, accV3: 90 },  "CN-HCM": { accV0: 84, accV3: 91 },
+  "CN-CT":  { accV0: 77, accV3: 81 },  "CN-LA":  { accV0: 75, accV3: 78 },
+};
+
+function cnFva(cn: string): { fva: number; accV0: number; accV3: number } | null {
+  const row = CN_FVA_TABLE[cn];
+  if (!row) return null;
+  return { fva: row.accV3 - row.accV0, accV0: row.accV0, accV3: row.accV3 };
+}
 
 interface Props {
   tenant: string;
