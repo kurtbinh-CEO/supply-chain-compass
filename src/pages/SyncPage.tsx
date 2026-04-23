@@ -1,16 +1,10 @@
-import { ScreenShell } from "@/components/ScreenShell";
-import PlaceholderPage from "@/components/PlaceholderPage";
+import { PlaceholderPage } from "@/components/PlaceholderPage";
 
 export default function SyncPage() {
   return (
-    <ScreenShell
+    <PlaceholderPage
       title="Đồng bộ dữ liệu"
-      breadcrumbs={[{ label: "Vận hành ngày" }, { label: "Đồng bộ dữ liệu" }]}
-    >
-      <PlaceholderPage
-        title="Đồng bộ dữ liệu (F2-B1)"
-        description="Bravo + NM upload — màn hình sẽ được xây dựng ở P08."
-      />
-    </ScreenShell>
+      subtitle="F2-B1: Bravo + NM upload — màn hình sẽ được xây dựng ở P08."
+    />
   );
 }

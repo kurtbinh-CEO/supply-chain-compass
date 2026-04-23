@@ -29,6 +29,8 @@ import DemandWeeklyPage from "./pages/DemandWeeklyPage";
 import DrpPage from "./pages/DrpPage";
 import AllocationPage from "./pages/AllocationPage";
 import OrdersPage from "./pages/OrdersPage";
+import SyncPage from "./pages/SyncPage";
+import TransportPage from "./pages/TransportPage";
 import SupplierPortalPage from "./pages/SupplierPortalPage";
 import MasterDataPage from "./pages/MasterDataPage";
 import ReportsPage from "./pages/ReportsPage";
@@ -81,6 +83,8 @@ function ProtectedRoutes() {
           <Route path="/drp" element={<DrpPage />} />
           <Route path="/allocation" element={<AllocationPage />} />
           <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/sync" element={<SyncPage />} />
+          <Route path="/transport" element={<TransportPage />} />
           <Route path="/supplier-portal" element={<SupplierPortalPage />} />
           <Route path="/master-data" element={<MasterDataPage />} />
           <Route path="/reports" element={<ReportsPage />} />

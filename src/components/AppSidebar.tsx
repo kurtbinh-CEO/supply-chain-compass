@@ -4,7 +4,7 @@ import {
   Package, CalendarDays, GitBranch,
   Truck, Users, Database, FileBarChart, Settings,
   ChevronLeft, Play, BookOpen, Building, GraduationCap, LayoutDashboard,
-  AlertTriangle,
+  AlertTriangle, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/components/SidebarContext";
@@ -62,6 +62,8 @@ const navGroups: NavGroup[] = [
       { titleKey: "nav.demandWeekly", icon: CalendarDays, url: "/demand-weekly" },
       { titleKey: "nav.drpAllocation", icon: GitBranch, url: "/drp" },
       { titleKey: "nav.orders", icon: Truck, url: "/orders" },
+      { titleKey: "nav.transport", icon: Truck, url: "/transport" },
+      { titleKey: "nav.sync", icon: RefreshCw, url: "/sync" },
     ],
   },
   {
