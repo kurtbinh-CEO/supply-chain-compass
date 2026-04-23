@@ -438,6 +438,8 @@ export function B2BInputTab({ deals, setDeals }: Props) {
             </div>
           </>
         );
+      })()}
+
       {/* B2B cascade confirmation — Δ > 20% triggers downstream rerun */}
       {cascadeConfirm && (
         <>
