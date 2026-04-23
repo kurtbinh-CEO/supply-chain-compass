@@ -37,6 +37,7 @@ const fmtVnd = (v: number) =>
 type TabKey =
   | "items"
   | "suppliers"
+  | "pricelists"
   | "branches"
   | "routes"
   | "distances"
@@ -46,6 +47,7 @@ type TabKey =
 const tabDefs: { key: TabKey; label: string }[] = [
   { key: "items",      label: "Mã hàng" },
   { key: "suppliers",  label: "NM" },
+  { key: "pricelists", label: "Bảng giá" },
   { key: "branches",   label: "CN" },
   { key: "routes",     label: "Tuyến" },
   { key: "distances",  label: "Khoảng cách" },
