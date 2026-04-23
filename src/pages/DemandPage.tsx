@@ -7,7 +7,8 @@ import { B2BInputTab } from "@/components/demand/B2BInputTab";
 import { useTenant } from "@/components/TenantContext";
 import { useDemandForecasts } from "@/hooks/useDemandForecasts";
 import { Loader2 } from "lucide-react";
-import { B2B_DEALS, B2B_STAGE_PROB, type B2bStage, type B2bDeal } from "@/data/unis-enterprise-dataset";
+import { B2B_DEALS, B2B_STAGE_PROB, DEMAND_FC, type B2bStage, type B2bDeal } from "@/data/unis-enterprise-dataset";
+import { ClickableNumber } from "@/components/ClickableNumber";
 
 const tabs = [
   { key: "total", label: "Demand tổng" },
@@ -52,6 +53,30 @@ export default function DemandPage() {
     return out;
   }, [b2bDeals]);
 
+  // Σ FC totals from dataset (scaled per tenant)
+  const fcTotals = useMemo(() => {
+    const total = Math.round(DEMAND_FC.reduce((s, r) => s + r.fcM2, 0) * scale);
+    const perSku: Record<string, number> = {};
+    DEMAND_FC.forEach((r) => {
+      perSku[r.skuBaseCode] = (perSku[r.skuBaseCode] ?? 0) + Math.round(r.fcM2 * scale);
+    });
+    const totalB2bWeighted = Object.values(b2bPerCn).reduce((s, v) => s + v, 0);
+    return { total, perSku, totalB2bWeighted };
+  }, [scale, b2bPerCn]);
+
+  const topSkuRows = useMemo(
+    () =>
+      Object.entries(fcTotals.perSku)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 6)
+        .map(([sku, qty]) => ({
+          label: sku,
+          value: `${qty.toLocaleString()} m²`,
+          pct: `${((qty / fcTotals.total) * 100).toFixed(1)}%`,
+        })),
+    [fcTotals],
+  );
+
   return (
     <AppLayout>
       {/* Header */}
@@ -73,6 +98,43 @@ export default function DemandPage() {
           <Loader2 className="h-4 w-4 animate-spin" /> Đang tải dữ liệu forecast...
         </div>
       )}
+
+      {/* KPI strip — clickable Σ FC + per-SKU + B2B weighted */}
+      <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-surface-3 bg-surface-1 px-4 py-3">
+        <div className="flex flex-col">
+          <span className="text-caption uppercase text-text-3 tracking-wider">Tổng FC tháng</span>
+          <ClickableNumber
+            value={`${fcTotals.total.toLocaleString()} m²`}
+            label="Tổng FC"
+            color="text-text-1 font-display text-section-header"
+            breakdown={topSkuRows}
+            formula={`Σ FC = ΣΣ DEMAND_FC.fcM2 × tenantScale (${scale})\n= ${fcTotals.total.toLocaleString()} m²`}
+            note="Tổng FC bottom-up từ DEMAND_FC dataset, có scale theo tenant"
+          />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-caption uppercase text-text-3 tracking-wider">B2B weighted</span>
+          <ClickableNumber
+            value={`${fcTotals.totalB2bWeighted.toLocaleString()} m²`}
+            label="Σ B2B weighted (xác suất)"
+            color="text-info font-display text-section-header"
+            formula={`Σ (deal.qty × stage_prob)\nstage prob: Đã ký 100% · Cam kết 90% · Đàm phán 70% · Báo giá 50% · Tiếp xúc 30% · Tiềm năng 10%`}
+            note="B2B weighted = pipeline có xác suất, nhập riêng vào v3 consensus"
+          />
+        </div>
+        {topSkuRows[0] && (
+          <div className="flex flex-col">
+            <span className="text-caption uppercase text-text-3 tracking-wider">Top SKU</span>
+            <ClickableNumber
+              value={topSkuRows[0].label}
+              label={`${topSkuRows[0].label}: ${topSkuRows[0].value}`}
+              color="text-text-2 font-display text-section-header"
+              breakdown={topSkuRows}
+              note="Top SKU theo Σ FC trong tháng"
+            />
+          </div>
+        )}
+      </div>
 
       <div data-tour="demand-tabs" className="flex items-center gap-0 border-b border-surface-3 mb-6">
         {tabs.map((tab) => (

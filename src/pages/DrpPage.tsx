@@ -1268,8 +1268,24 @@ export default function DrpPage() {
                               )}>{ex.type}</span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-caption text-text-2 max-w-[200px]">
-                            {isResolved ? <span className="text-info">{resolvedLabel}</span> : ex.suggestion}
+                          <td className="px-4 py-3 text-caption text-text-2 max-w-[260px]">
+                            {isResolved ? (
+                              <span className="text-info">{resolvedLabel}</span>
+                            ) : (
+                              <>
+                                <div>{ex.suggestion}</div>
+                                {ex.type === "SHORTAGE" && (
+                                  <div className="mt-1 text-danger font-medium">
+                                    ⚠ Thiếu {ex.gap.toLocaleString()}m² {ex.item} tại {activeCn.cn} vì chỉ còn {ex.netting.onHand.toLocaleString()}m² nhưng cần {ex.netting.fcPhased.toLocaleString()}m²/tuần + {ex.netting.ssTarget.toLocaleString()}m² dự phòng
+                                  </div>
+                                )}
+                                {ex.type === "WATCH" && (
+                                  <div className="mt-1 text-warning font-medium">
+                                    🟡 Watch {ex.gap.toLocaleString()}m² {ex.item} tại {activeCn.cn} vì on-hand {ex.netting.onHand.toLocaleString()} + pipeline {ex.netting.pipeline.toLocaleString()} chưa đủ buffer SS {ex.netting.ssTarget.toLocaleString()}
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex gap-1.5">

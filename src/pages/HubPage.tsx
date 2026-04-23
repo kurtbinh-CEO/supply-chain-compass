@@ -5,8 +5,20 @@ import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/TenantContext";
 import { SourcingWorkbench } from "@/components/hub/SourcingWorkbench";
 import { ReconciliationTab } from "@/components/hub/ReconciliationTab";
+import { ClickableNumber } from "@/components/ClickableNumber";
 
 type Objective = "hybrid" | "lt" | "cost";
+
+// Hub-level mock totals (m²) — derived from S&OP locked + NM commitments
+function getHubTotals(scale: number) {
+  const sopLocked = Math.round(7650 * scale);
+  const nmConfirmed = Math.round(7200 * scale); // ~94% honoring
+  const released = Math.round(5400 * scale);    // ~75% of confirmed
+  const ssHub = Math.round(420 * scale);        // safety stock at hub
+  const available = sopLocked + ssHub - released; // formula: SOP + SS − released
+  return { sopLocked, nmConfirmed, released, ssHub, available };
+}
+
 
 const tabs = [
   { key: "sourcing", label: "Sourcing Workbench" },
@@ -18,6 +30,7 @@ export default function HubPage() {
   const [objective, setObjective] = useState<Objective>("hybrid");
   const { tenant } = useTenant();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
+  const totals = getHubTotals(scale);
 
   return (
     <AppLayout>
@@ -38,6 +51,50 @@ export default function HubPage() {
           ) : undefined
         }
       />
+
+      {/* Hub KPI strip — clickable totals */}
+      <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-surface-3 bg-surface-1 px-4 py-3">
+        <div className="flex flex-col">
+          <span className="text-caption uppercase text-text-3 tracking-wider">Hub Available</span>
+          <ClickableNumber
+            value={`${totals.available.toLocaleString()} m²`}
+            label="Hub Available"
+            color={cn("font-display text-section-header", totals.available < 0 ? "text-danger" : "text-success")}
+            formula={`Available = SOP locked + SS Hub − Released\n= ${totals.sopLocked.toLocaleString()} + ${totals.ssHub.toLocaleString()} − ${totals.released.toLocaleString()}\n= ${totals.available.toLocaleString()} m²`}
+            note="Available = số m² còn có thể release từ Hub mà không vi phạm SS"
+          />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-caption uppercase text-text-3 tracking-wider">Σ NM Confirmed</span>
+          <ClickableNumber
+            value={`${totals.nmConfirmed.toLocaleString()} m²`}
+            label="Σ NM đã confirm"
+            color="text-text-1 font-display text-section-header"
+            formula={`Σ NM Confirmed = Σ commit_response.committedM2 (status=confirmed)\nHonoring = ${((totals.nmConfirmed / totals.sopLocked) * 100).toFixed(1)}% vs SOP locked`}
+            note="Cam kết của các NM cho tháng — so với SOP locked để tính honoring"
+          />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-caption uppercase text-text-3 tracking-wider">Σ Released</span>
+          <ClickableNumber
+            value={`${totals.released.toLocaleString()} m²`}
+            label="Σ Released (BPO + RPO)"
+            color="text-info font-display text-section-header"
+            formula={`Σ Released = Σ purchase_orders.quantity (status ∈ {confirmed, shipped, received})\n= ${totals.released.toLocaleString()} m²`}
+            note="Số m² đã release thành PO (drp_runs.released_qty)"
+          />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-caption uppercase text-text-3 tracking-wider">SS Hub</span>
+          <ClickableNumber
+            value={`${totals.ssHub.toLocaleString()} m²`}
+            label="Safety Stock Hub"
+            color="text-text-2 font-display text-section-header"
+            formula={`SS Hub = z × σ_LT × √(LT_hub_days/7)\nz=1.65 (service 95%)\nLT trung bình NM = 14 ngày`}
+            note="Buffer Hub bù sai số FC + lead-time NM"
+          />
+        </div>
+      </div>
 
       <div data-tour="hub-tabs" className="flex items-center gap-0 border-b border-surface-3 mb-6">
         {tabs.map((tab) => (

@@ -20,6 +20,7 @@ import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { usePurchaseOrders, type PurchaseOrderRow } from "@/hooks/usePurchaseOrders";
 import { useRbac } from "@/components/RbacContext";
+import { ClickableNumber } from "@/components/ClickableNumber";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -698,13 +699,43 @@ export default function OrdersPage() {
           <div className="flex items-start justify-between mb-4 gap-3 flex-wrap">
             <div>
               <p className="text-caption uppercase text-text-3 tracking-[0.14em] font-medium">Pipeline tổng quan · {tenant}</p>
-              <p className="text-table text-text-1 mt-1">
-                <span className="text-section-header font-bold tabular-nums text-text-1">{allOrders.length}</span>
-                <span className="text-text-3 ml-1 mr-3">PO</span>
-                <span className="tabular-nums font-semibold text-text-2">{totalQty.toLocaleString()}</span>
-                <span className="text-text-3 ml-1 mr-3">m²</span>
-                <span className="tabular-nums font-semibold text-text-2">{totalVnd}</span>
-                <span className="text-text-3 ml-1">₫</span>
+              <p className="text-table text-text-1 mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                <span className="inline-flex items-baseline gap-1.5">
+                  <ClickableNumber
+                    value={allOrders.length}
+                    label="Tổng số PO"
+                    color="text-section-header font-bold text-text-1"
+                    breakdown={Object.entries(
+                      allOrders.reduce<Record<string, number>>((acc, o) => {
+                        const k = String(o.status);
+                        acc[k] = (acc[k] ?? 0) + 1;
+                        return acc;
+                      }, {}),
+                    ).map(([status, count]) => ({ label: status, value: count }))}
+                    note="Số lượng PO tách theo trạng thái lifecycle"
+                  />
+                  <span className="text-text-3">PO</span>
+                </span>
+                <span className="inline-flex items-baseline gap-1.5">
+                  <ClickableNumber
+                    value={totalQty.toLocaleString()}
+                    label="Σ qty PO"
+                    color="text-text-2 font-semibold"
+                    formula={`Σ qty = Σ purchase_orders.quantity = ${totalQty.toLocaleString()} m²`}
+                    note="Tổng m² đã release qua các PO trong tenant"
+                  />
+                  <span className="text-text-3">m²</span>
+                </span>
+                <span className="inline-flex items-baseline gap-1.5">
+                  <ClickableNumber
+                    value={totalVnd}
+                    label="Σ giá trị PO"
+                    color="text-text-2 font-semibold"
+                    formula={"Σ value = Σ qty × unit_price (VND, theo currency từng PO)"}
+                    note="Tổng giá trị danh nghĩa các PO"
+                  />
+                  <span className="text-text-3">₫</span>
+                </span>
               </p>
               {pipelineFilter && (
                 <button
@@ -1045,7 +1076,14 @@ export default function OrdersPage() {
                         tabIndex={0}
                         className="border-b border-surface-3/50 hover:bg-surface-1/30 outline-none"
                       >
-                        <td className={cn("px-3 py-2.5", poNumClasses, tb.text)}>{po.po_number}</td>
+                        <td className={cn("px-3 py-2.5", poNumClasses, tb.text)}>
+                          {po.po_number}
+                          {severity === "overdue" && eta && (
+                            <div className="text-caption text-danger mt-0.5 font-normal" title="Lý do trễ ETA">
+                              ⚠ Trễ {Math.ceil((Date.now() - eta.getTime()) / 86400000)} ngày vì NM {supplierToNm[po.supplier] || po.supplier} LT thực tế dài hơn config (status: {stageLabels[st]})
+                            </div>
+                          )}
+                        </td>
                         <td className="px-3 py-2.5">
                           <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium", tb.bg, tb.text)}>{type}</span>
                         </td>

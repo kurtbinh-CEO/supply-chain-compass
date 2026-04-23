@@ -6,6 +6,7 @@ import {
   CheckCircle2, Loader2, FileSpreadsheet, ChevronRight, Clock, Factory,
 } from "lucide-react";
 import { TermTooltip } from "@/components/TermTooltip";
+import { ClickableNumber } from "@/components/ClickableNumber";
 import { VoiceInput } from "@/components/VoiceInput";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -505,13 +506,28 @@ export default function SupplierPortalPage() {
                       </div>
                       <p className="text-table text-text-2">
                         Yêu cầu:{" "}
-                        <span className="font-medium text-text-1 tabular-nums">
-                          {c.requestedM2.toLocaleString()} m²
-                        </span>
+                        <ClickableNumber
+                          value={`${c.requestedM2.toLocaleString()} m²`}
+                          label={`${c.skuBaseCode} requested`}
+                          color="text-text-1 font-medium"
+                          formula={`Requested = Hub gửi xuống = ${c.requestedM2.toLocaleString()} m²\nTier ${meta.vnLabel} (${meta.windowLabel})`}
+                          note="Số m² Hub yêu cầu NM cam kết — phản hồi trước SLA"
+                        />
                         {" · "}Cam kết hiện tại:{" "}
-                        <span className="font-medium text-text-1 tabular-nums">
-                          {c.committedM2.toLocaleString()} m²
-                        </span>
+                        <ClickableNumber
+                          value={`${c.committedM2.toLocaleString()} m²`}
+                          label={`${c.skuBaseCode} committed`}
+                          color={cn(
+                            "font-medium",
+                            c.committedM2 >= c.requestedM2 ? "text-success" : "text-warning",
+                          )}
+                          formula={`Committed = ${c.committedM2.toLocaleString()} m²\nHonoring = committed/requested = ${((c.committedM2 / Math.max(1, c.requestedM2)) * 100).toFixed(0)}%`}
+                          note={
+                            c.committedM2 < c.requestedM2
+                              ? `Honoring ${((c.committedM2 / c.requestedM2) * 100).toFixed(0)}% vì capacity NM thiếu — counter ${(c.requestedM2 - c.committedM2).toLocaleString()} m²`
+                              : "Honoring 100% — cam kết đầy đủ"
+                          }
+                        />
                       </p>
                       <p className="text-table-sm text-text-3">
                         Hiệu lực đến {formatVnDate(c.validUntil)}

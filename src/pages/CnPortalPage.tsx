@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { LogicLink } from "@/components/LogicLink";
 import { AvatarBar, AutoSaveIndicator, useCellPresence } from "@/components/CellPresence";
 import { CnOwnershipBanner } from "@/components/BatchLockBanner";
+import { ClickableNumber } from "@/components/ClickableNumber";
 
 /* ═══ DATA ═══ */
 const allCns = ["CN-BD", "CN-ĐN", "CN-HN", "CN-CT"];
@@ -544,7 +545,21 @@ export default function CnPortalPage() {
             content={"Trust score = bao nhiêu % lần adjust của bạn gần đúng thực tế.\n12 tuần gần nhất:\nTuần 10: adjust +44 → actual +38 → sai 14% ✅ (< threshold 20%)\nTuần 11: adjust −30 → actual −25 → sai 17% ✅\nTuần 12: adjust +80 → actual +95 → sai 16% ✅\n10/12 tuần < threshold → trust = 10/12 = 83%\n\nTrust > 85%: adjust tự duyệt + tolerance ±40%\nTrust 60-85%: SC Manager duyệt + tolerance ±30% ← Bạn đang đây\nTrust < 60%: tolerance thu hẹp ±15% + cần giải trình tất cả\nCải thiện: nhập lý do rõ + data support (PO, hợp đồng)."}
           >
             <span className="inline-flex items-center gap-1 rounded-button bg-success-bg text-success text-table-sm font-medium px-2.5 py-1 cursor-pointer hover:opacity-80">
-              Trust: 82% 🟢
+              Trust:&nbsp;
+              <ClickableNumber
+                value="82%"
+                label="Trust Score CN"
+                color="text-success font-semibold"
+                breakdown={[
+                  { label: "Tuần 10 (adjust +44 vs actual +38)", value: "sai 14%", color: "text-success" },
+                  { label: "Tuần 11 (adjust −30 vs actual −25)", value: "sai 17%", color: "text-success" },
+                  { label: "Tuần 12 (adjust +80 vs actual +95)", value: "sai 16%", color: "text-success" },
+                  { label: "10/12 tuần < threshold 20%", value: "→ trust 83%" },
+                ]}
+                formula={"trust = (số tuần |adjust − actual|/actual < 20%) / 12 tuần\n= 10 / 12 = 83%"}
+                note="Trust > 85% → adjust auto-approve · 60-85% → cần SC duyệt · <60% → siết ±15%"
+              />
+              &nbsp;🟢
             </span>
           </LogicTooltip>
           <span className={cn("rounded-full px-3 py-1 text-table-sm font-medium flex items-center gap-1.5",
@@ -884,7 +899,22 @@ export default function CnPortalPage() {
                     <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-surface-1/30", r.hstk < 5 && "bg-danger-bg/10")}>
                       <td className="px-3 py-2.5 text-table font-medium text-text-1">{r.item}</td>
                       <td className="px-3 py-2.5 text-table text-text-2">{r.variant}</td>
-                      <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{r.ton.toLocaleString()}</td>
+                      <td className="px-3 py-2.5 text-table tabular-nums text-text-1">
+                        <ClickableNumber
+                          value={r.ton.toLocaleString()}
+                          label={`${r.item} ${r.variant} on-hand`}
+                          color="text-text-1 font-medium"
+                          breakdown={[
+                            { label: "Đang về (pipeline)", value: `${r.dangVe ?? "—"}` },
+                            { label: "Available", value: `${r.available.toLocaleString()} m²` },
+                            { label: "SS target", value: `${r.ssTarget.toLocaleString()} m²` },
+                            { label: "SS gap", value: `${r.ssGap >= 0 ? "+" : ""}${r.ssGap.toLocaleString()} m²`, color: r.ssGap < 0 ? "text-danger" : "text-success" },
+                            { label: "HSTK", value: `${r.hstk}d`, color: r.hstk < 5 ? "text-danger" : r.hstk > 15 ? "text-warning" : "text-success" },
+                          ]}
+                          formula={`Available = on-hand + pipeline − orders pending\nSS gap = on-hand − SS target = ${r.ton.toLocaleString()} − ${r.ssTarget.toLocaleString()} = ${r.ssGap >= 0 ? "+" : ""}${r.ssGap.toLocaleString()} m²`}
+                          note={r.hstk < 5 ? `⚠ HSTK chỉ ${r.hstk}d vì on-hand thấp + pipeline mỏng` : undefined}
+                        />
+                      </td>
                       <td className="px-3 py-2.5 text-table text-text-2">{r.dangVe}</td>
                       <td className="px-3 py-2.5 text-table tabular-nums text-text-2">{r.available.toLocaleString()}</td>
                       <td className="px-3 py-2.5 text-table tabular-nums text-text-3">{r.ssTarget.toLocaleString()}</td>
