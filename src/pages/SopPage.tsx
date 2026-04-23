@@ -13,6 +13,7 @@ import { useVersionConflict, VersionConflictDialog } from "@/components/VersionC
 import { PreLockDialog } from "@/components/BatchLockBanner";
 import { useSopConsensus } from "@/hooks/useSopConsensus";
 import { BRANCHES, DEMAND_FC, SKU_BASES, SKU_VARIANTS } from "@/data/unis-enterprise-dataset";
+import { ClickableNumber } from "@/components/ClickableNumber";
 
 const tabs = [
   { key: "consensus", label: "Consensus" },
