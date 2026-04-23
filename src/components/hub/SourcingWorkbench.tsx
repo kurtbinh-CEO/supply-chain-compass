@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Check, ChevronRight, AlertTriangle, HelpCircle, Send, Zap, Lock } from "lucide-react";
 import { toast } from "sonner";
-import { generatePONumber, getNmCode, poNumClasses, getPoTypeBadge } from "@/lib/po-numbers";
+import { getNmCode, getPoTypeBadge } from "@/lib/po-numbers";
 import {
   SKU_BASES,
   FACTORIES,
