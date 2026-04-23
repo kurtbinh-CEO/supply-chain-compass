@@ -86,18 +86,19 @@ interface RpoChild {
   expected_date: string | null;
 }
 
-/* ─────────── tabs ─────────── */
+/* ─────────── tabs (workflow order: Đóng hàng → Duyệt → Theo dõi → Chuyển ngang → Nhà xe) ─────────── */
 const tabs = [
-  { key: "approval", label: "PO Approval", icon: ClipboardCheck },
-  { key: "burndown", label: "BPO Burn-down", icon: Package },
-  { key: "tracking", label: "Shipment Tracking", icon: Truck },
-  { key: "to", label: "Chuyển ngang (TO)", icon: ArrowLeftRight },
+  { key: "packing",  label: "Đóng hàng",          icon: Package },          // F2-B5
+  { key: "approval", label: "Duyệt PO/TO",        icon: ClipboardCheck },   // F2-B6
+  { key: "tracking", label: "Theo dõi giao hàng", icon: Truck },            // F2-B7
+  { key: "transfer", label: "Chuyển ngang",       icon: ArrowLeftRight },   // LCNB
+  { key: "carrier",  label: "Nhà xe",             icon: Users },            // Carrier mgmt
 ];
 
 const stageOrder = ["draft", "submitted", "confirmed", "shipped", "received"];
 const stageLabels: Record<string, string> = {
-  draft: "Draft", submitted: "Submitted", confirmed: "Confirmed",
-  shipped: "Shipped", received: "Received", cancelled: "Cancelled",
+  draft: "Nháp", submitted: "Đã gửi", confirmed: "Đã xác nhận",
+  shipped: "Đã giao", received: "Đã nhận", cancelled: "Đã hủy",
 };
 
 /* Stage visual theming — vivid status colors per pipeline stage */
