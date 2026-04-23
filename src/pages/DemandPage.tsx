@@ -99,6 +99,43 @@ export default function DemandPage() {
         </div>
       )}
 
+      {/* KPI strip — clickable Σ FC + per-SKU + B2B weighted */}
+      <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-surface-3 bg-surface-1 px-4 py-3">
+        <div className="flex flex-col">
+          <span className="text-caption uppercase text-text-3 tracking-wider">Tổng FC tháng</span>
+          <ClickableNumber
+            value={`${fcTotals.total.toLocaleString()} m²`}
+            label="Tổng FC"
+            color="text-text-1 font-display text-section-header"
+            breakdown={topSkuRows}
+            formula={`Σ FC = ΣΣ DEMAND_FC.fcM2 × tenantScale (${scale})\n= ${fcTotals.total.toLocaleString()} m²`}
+            note="Tổng FC bottom-up từ DEMAND_FC dataset, có scale theo tenant"
+          />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-caption uppercase text-text-3 tracking-wider">B2B weighted</span>
+          <ClickableNumber
+            value={`${fcTotals.totalB2bWeighted.toLocaleString()} m²`}
+            label="Σ B2B weighted (xác suất)"
+            color="text-info font-display text-section-header"
+            formula={`Σ (deal.qty × stage_prob)\nstage prob: Đã ký 100% · Cam kết 90% · Đàm phán 70% · Báo giá 50% · Tiếp xúc 30% · Tiềm năng 10%`}
+            note="B2B weighted = pipeline có xác suất, nhập riêng vào v3 consensus"
+          />
+        </div>
+        {topSkuRows[0] && (
+          <div className="flex flex-col">
+            <span className="text-caption uppercase text-text-3 tracking-wider">Top SKU</span>
+            <ClickableNumber
+              value={topSkuRows[0].label}
+              label={`${topSkuRows[0].label}: ${topSkuRows[0].value}`}
+              color="text-text-2 font-display text-section-header"
+              breakdown={topSkuRows}
+              note="Top SKU theo Σ FC trong tháng"
+            />
+          </div>
+        )}
+      </div>
+
       <div data-tour="demand-tabs" className="flex items-center gap-0 border-b border-surface-3 mb-6">
         {tabs.map((tab) => (
           <button
