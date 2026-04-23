@@ -161,6 +161,47 @@ function SkuTable({ nm, skus, share, onUpdate }: { nm: string; skus: NMSkuRow[];
   );
 }
 
+/** Map UI NM display name → dataset NmId for cross-referencing freshness/commitments. */
+const NM_NAME_TO_ID: Record<string, NmId> = {
+  "Mikado": "MIKADO",
+  "Toko": "TOKO",
+  "Đồng Tâm": "DONGTAM",
+  "Vigracera": "VIGRACERA",
+  "Phú Mỹ": "PHUMY",
+};
+
+function resolveNmId(nm: NMSummary): NmId | null {
+  return NM_NAME_TO_ID[nm.nm] ?? null;
+}
+
+/** Returns true when the worst staleness across that NM's inventory rows is "stale". */
+function isNmStale(nmId: NmId | null): boolean {
+  if (!nmId) return false;
+  const rows = NM_INVENTORY.filter((r) => r.nmId === nmId);
+  return rows.length > 0 && rows.every((r) => r.staleness === "stale");
+}
+
+/** Triggers a download of a synthetic per-NM Excel template via Blob. */
+function downloadNmTemplate(nmId: NmId, nmName: string) {
+  const allowed = FACTORIES.find((f) => f.id === nmId);
+  if (!allowed) return;
+  const skus = NM_INVENTORY.filter((r) => r.nmId === nmId);
+  const header = "Mã hàng,Tên,Tồn kho (m²),Đang SX (m²),Ghi chú\n";
+  const body = skus
+    .map((s) => `${s.skuBaseCode},,${s.onHandM2},${s.inProductionM2},`)
+    .join("\n");
+  const blob = new Blob([header + body], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `template-${nmId.toLowerCase()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast.success(`Đã tải mẫu cho ${nmName}`, {
+    description: `${skus.length} mã hàng sẵn có để cập nhật tồn kho.`,
+  });
+}
+
 /* ─── Main View ─── */
 export function NMSupplyView() {
   const { tenant } = useTenant();
@@ -170,8 +211,29 @@ export function NMSupplyView() {
   const [reminded, setReminded] = useState<Set<string>>(new Set());
   const { conflict: supplyConflict, triggerConflict: triggerSupplyConflict, clearConflict: clearSupplyConflict } = useVersionConflict();
 
+  // Per-NM dialog state for the 7-step Excel preview workflow.
+  const [previewState, setPreviewState] = useState<{ nmId: NmId; nmName: string; fileName: string } | null>(null);
+
   // Merge DB data with local edits
   const nmData = inventoryData.map(nm => localEdits[nm.id] || nm);
+
+  // Identify NMs blocked by freshness gate (stale ≥ 72h).
+  const staleNmIds = useMemo(() => {
+    const set = new Set<NmId>();
+    nmData.forEach((nm) => {
+      const id = resolveNmId(nm);
+      if (id && isNmStale(id)) set.add(id);
+    });
+    return set;
+  }, [nmData]);
+
+  const staleNames = useMemo(
+    () =>
+      [...staleNmIds]
+        .map((id) => FACTORIES.find((f) => f.id === id)?.name ?? id)
+        .filter(Boolean) as string[],
+    [staleNmIds]
+  );
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
@@ -196,6 +258,17 @@ export function NMSupplyView() {
       ...prev,
       [nmId]: { ...edited, tongTon: newTongTon, unisDung: newUnisDung, skus: newSkus, updatedAt: `Hôm nay ${new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}`, updatedAgo: "today" as const },
     }));
+  };
+
+  const openUploadFor = (nmId: NmId, nmName: string) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".xlsx,.xls,.csv";
+    input.onchange = (ev) => {
+      const file = (ev.target as HTMLInputElement).files?.[0];
+      if (file) setPreviewState({ nmId, nmName, fileName: file.name });
+    };
+    input.click();
   };
 
   const totalTon = nmData.reduce((s, n) => s + (n.tongTon || 0), 0);
