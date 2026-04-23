@@ -321,6 +321,7 @@ export default function SyncPage() {
           onConfirm={handleUploadConfirm}
         />
       )}
-    </div>
+      </div>
+    </AppLayout>
   );
 }
