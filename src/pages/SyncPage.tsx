@@ -14,6 +14,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
+import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useWorkspace } from "@/components/WorkspaceContext";
@@ -189,7 +190,8 @@ export default function SyncPage() {
   const uploadNm = FACTORIES[0];
 
   return (
-    <div className="p-8 max-w-screen-2xl mx-auto">
+    <AppLayout>
+      <div className="p-8 max-w-screen-2xl mx-auto">
       <ScreenHeader
         title="Đồng bộ dữ liệu"
         subtitle="F2-B1 · Bravo ERP + NM Upload + Hub ảo — sync trước cutoff CN 09:00"
