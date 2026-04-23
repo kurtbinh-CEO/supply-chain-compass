@@ -259,7 +259,13 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
 
       {pivotMode === "cn" ? (
         /* ═══ CN-FIRST Layer 1 ═══ */
-        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+        <SmartTableShell
+          title="Consensus — CN-first"
+          storageKey="sop-consensus-cn"
+          columns={["", "CN", "v0", "v1", "v2", "v3 ★", "AOP", "vs AOP", "FVA best", ""]}
+          defaultWidths={[40, 140, 130, 130, 130, 140, 130, 140, 200, 100]}
+        >
+          {() => (
           <div className="overflow-x-auto">
             <table className="w-full text-table-sm">
               <thead>
