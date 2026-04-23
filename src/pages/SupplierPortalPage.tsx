@@ -2,13 +2,12 @@ import { useMemo, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { toast } from "sonner";
 import {
-  Check, X, Upload, Truck, Plus, Download, AlertTriangle,
+  Check, Upload, Truck, Download, AlertTriangle,
   CheckCircle2, Loader2, FileSpreadsheet, ChevronRight, Clock, Factory,
 } from "lucide-react";
 import { TermTooltip } from "@/components/TermTooltip";
 import { VoiceInput } from "@/components/VoiceInput";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { poNumClasses } from "@/lib/po-numbers";
 import {
