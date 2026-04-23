@@ -1159,7 +1159,7 @@ export default function OrdersPage() {
                   <thead>
                     <tr className="border-b border-warning/20 bg-warning-bg/30">
                       <th className="w-10 px-3 py-2"></th>
-                      {["PO#", "Type", "NM", "Item", "Qty m²", "Trạng thái", "Action"].map((h) => (
+                      {["PO#", "Type", "NM", "Item", "Qty m²", "Container", "Lấp đầy", "Trạng thái", "Action"].map((h) => (
                         <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
                       ))}
                     </tr>
@@ -1170,6 +1170,7 @@ export default function OrdersPage() {
                       const type = po.po_number.startsWith("TO-") ? "TO" : "RPO";
                       const tb = getPoTypeBadge(type as any);
                       const nextLabel = st === "draft" ? "Gửi đi" : "Xác nhận";
+                      const tp = TRANSPORT_PLANS.find((t) => t.poRefs.includes(po.po_number));
                       return (
                         <tr key={po.po_number} className="border-b border-warning/10 hover:bg-warning-bg/20">
                           <td className="px-3 py-2.5">
@@ -1186,6 +1187,35 @@ export default function OrdersPage() {
                           <td className="px-3 py-2.5 text-table text-text-2">{supplierToNm[po.supplier] || po.supplier}</td>
                           <td className="px-3 py-2.5 text-table text-text-2">{po.sku}</td>
                           <td className="px-3 py-2.5 text-table tabular-nums text-text-1">{Number(po.quantity).toLocaleString()}</td>
+                          <td className="px-3 py-2.5">
+                            {tp ? (
+                              <span className="inline-flex items-center gap-1 rounded-full border border-info/30 bg-info-bg/40 px-2 py-0.5 text-caption font-mono text-info">
+                                <Package className="h-3 w-3" />
+                                {tp.containerType}
+                              </span>
+                            ) : (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); navigate("/allocation"); }}
+                                className="text-caption text-warning hover:underline inline-flex items-center gap-1"
+                                title="Chưa gán container — xem màn Phân bổ"
+                              >
+                                ⚠️ Chưa gán
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-table tabular-nums">
+                            {tp ? (
+                              <span className={cn(
+                                "font-medium",
+                                tp.fillPct >= 95 ? "text-success" :
+                                tp.fillPct >= 80 ? "text-info" : "text-warning"
+                              )}>
+                                {tp.fillPct}% {tp.fillPct >= 95 && "✅"}
+                              </span>
+                            ) : (
+                              <span className="text-text-3">—</span>
+                            )}
+                          </td>
                           <td className="px-3 py-2.5">
                             <span className="rounded-full px-2 py-0.5 text-caption font-medium bg-warning-bg text-warning">{stageLabels[st]}</span>
                           </td>
