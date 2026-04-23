@@ -297,13 +297,67 @@ export function NMSupplyView() {
           onClose={clearSupplyConflict}
         />
       )}
+      {/* Bravo sync header */}
+      <NmSupplyHeader />
+
+      {/* Freshness gate banner — blocks Phú Mỹ when ≥72h stale */}
+      {staleNames.length > 0 && (
+        <div className="rounded-card border border-danger/40 bg-danger-bg px-4 py-3 flex items-start gap-2.5">
+          <ShieldAlert className="h-5 w-5 text-danger shrink-0 mt-0.5" />
+          <div className="space-y-0.5 min-w-0">
+            <p className="text-table-sm font-semibold text-danger">
+              Dữ liệu NM quá cũ (≥ 72h) — CHẶN phát hành PO cho{" "}
+              {staleNames.join(", ")}
+            </p>
+            <p className="text-caption text-text-2">
+              Vui lòng đồng bộ Bravo hoặc upload file mới trước khi tạo PO. Mọi thao tác
+              "Phát hành" cho NM này đã bị vô hiệu hóa để tránh đặt hàng trên dữ liệu sai.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header actions */}
       <div className="flex items-center gap-3" data-tour="supply-upload">
-        <button className="rounded-button bg-gradient-primary text-primary-foreground px-4 py-2 text-table-sm font-medium flex items-center gap-2">
+        <button
+          onClick={() => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".xlsx,.xls,.csv";
+            input.onchange = (ev) => {
+              const file = (ev.target as HTMLInputElement).files?.[0];
+              if (file) {
+                // Default to first NM in the list when uploading from the global header.
+                const first = nmData[0];
+                const id = first ? resolveNmId(first) : null;
+                if (id && first) {
+                  setPreviewState({ nmId: id, nmName: first.nm, fileName: file.name });
+                } else {
+                  toast.success(`Đã nhận file "${file.name}"`, {
+                    description: "Hãy mở từng NM để preview & validate.",
+                  });
+                }
+              }
+            };
+            input.click();
+          }}
+          className="rounded-button bg-gradient-primary text-primary-foreground px-4 py-2 text-table-sm font-medium flex items-center gap-2"
+        >
           <Upload className="h-4 w-4" /> Upload Excel
         </button>
-        <button className="rounded-button border border-surface-3 bg-surface-2 text-text-1 px-4 py-2 text-table-sm font-medium flex items-center gap-2 hover:bg-surface-1">
-          <Download className="h-4 w-4" /> Download template
+        <button
+          onClick={() => {
+            const first = nmData[0];
+            const id = first ? resolveNmId(first) : null;
+            if (id && first) {
+              downloadNmTemplate(id, first.nm);
+            } else {
+              toast("Hãy chọn 1 NM cụ thể để tải mẫu chính xác.");
+            }
+          }}
+          className="rounded-button border border-surface-3 bg-surface-2 text-text-1 px-4 py-2 text-table-sm font-medium flex items-center gap-2 hover:bg-surface-1"
+        >
+          <Download className="h-4 w-4" /> Tải mẫu
         </button>
       </div>
 
