@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
+import { NextStepBanner } from "@/components/NextStepBanner";
+import { useNextStep } from "@/components/NextStepContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
