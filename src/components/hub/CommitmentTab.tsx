@@ -603,13 +603,25 @@ export function CommitmentTab({ scale, onTotalsChange }: {
                   <tr className="bg-surface-1/60 border-b border-surface-3">
                     <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">NM</th>
                     <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Mã hàng</th>
-                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">FC gửi NM</th>
+                    {columnPreset === "full" && (
+                      <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">FC gửi NM</th>
+                    )}
                     <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Cam kết NM ✏️</th>
-                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Δ</th>
-                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30" title="Tổng PO đã release tính đến hiện tại">Đã release</th>
-                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30" title="Cam kết − Đã release">Còn lại</th>
-                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30">% Release</th>
-                    <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Tier</th>
+                    {columnPreset === "full" && (
+                      <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Δ</th>
+                    )}
+                    {columnPreset === "full" && (
+                      <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30" title="Tổng PO đã release tính đến hiện tại">Đã release</th>
+                    )}
+                    {columnPreset === "full" && (
+                      <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30" title="Cam kết − Đã release">Còn lại</th>
+                    )}
+                    {columnPreset === "full" && (
+                      <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30">% Release</th>
+                    )}
+                    {columnPreset === "full" && (
+                      <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Tier</th>
+                    )}
                     <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden md:table-cell">Nguồn</th>
                     <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden lg:table-cell">Ngày liên hệ</th>
                     <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Minh chứng</th>
@@ -619,7 +631,7 @@ export function CommitmentTab({ scale, onTotalsChange }: {
                 </thead>
                 <tbody>
                   {filteredRows.length === 0 && (
-                    <tr><td colSpan={14} className="text-center py-8 text-text-3 text-table-sm">
+                    <tr><td colSpan={columnPreset === "full" ? 14 : 8} className="text-center py-8 text-text-3 text-table-sm">
                       Không có cam kết nào khớp bộ lọc.
                     </td></tr>
                   )}
@@ -627,6 +639,8 @@ export function CommitmentTab({ scale, onTotalsChange }: {
                     <CommitmentRow
                       key={row.id}
                       row={row}
+                      preset={columnPreset}
+                      highlight={highlightId === row.id}
                       onUpdate={(patch) => updateRow(row.id, patch)}
                       onOpenEvidence={() => setEvidenceModal({ rowId: row.id, files: row.evidence })}
                       onConfirm={() => setConfirmDialog(row.id)}
