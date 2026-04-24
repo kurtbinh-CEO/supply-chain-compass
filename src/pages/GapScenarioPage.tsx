@@ -18,6 +18,8 @@ import {
   COMMITMENT_GAPS,
   FACTORIES,
   NM_COMMITMENTS,
+  HONORING_BY_NM,
+  CONFIG_KEYS,
   getEffectivePrice,
   type CommitmentGapRow,
   type Factory,
@@ -26,6 +28,7 @@ import {
 } from "@/data/unis-enterprise-dataset";
 import { Button } from "@/components/ui/button";
 import { TermTooltip } from "@/components/TermTooltip";
+import { ClickableNumber } from "@/components/ClickableNumber";
 
 // Map mỗi NM → SKU base chính (dùng để tra giá thực)
 const NM_TOP_SKU: Record<NmId, string> = {
