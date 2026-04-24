@@ -406,18 +406,88 @@ function StepDetail({ stepId, scale }: { stepId: number; scale: number }) {
     );
   }
 
-  if (stepId === 7) return (
-    <div className="space-y-2 text-table-sm">
-      <div className="flex justify-between"><span className="text-text-2">Hub ảo khả dụng</span>
-        <ClickableNumber value={sc(12400)} color="text-text-1" /></div>
-      <div className="flex justify-between"><span>CN-BD ← Mikado</span><span className="tabular-nums">{sc(600).toLocaleString()}</span></div>
-      <div className="flex justify-between"><span>CN-NA ← Đồng Tâm</span><span className="tabular-nums">{sc(100).toLocaleString()}</span></div>
-      <div className="flex justify-between"><span>CN-CT ← Toko</span><span className="tabular-nums">{sc(80).toLocaleString()}</span></div>
-      <div className="flex justify-between border-t border-surface-3 pt-2 font-semibold">
-        <span>→ Hub phân bổ {sc(780)}m². CN-BD vẫn thiếu</span>
-        <ClickableNumber value={`${sc(400).toLocaleString()}m²`} color="text-danger" /></div>
-    </div>
-  );
+  if (stepId === 7) {
+    // Pull 4 representative tracker rows; phân bổ W20 = qty của tuần 20 trong weeklyBreakdown
+    const rows = [
+      BPO_TRACKER.find(t => t.nmName === "Mikado"   && t.skuBaseCode === "GA-300"),
+      BPO_TRACKER.find(t => t.nmName === "Toko"     && t.skuBaseCode === "GA-600"),
+      BPO_TRACKER.find(t => t.nmName === "Đồng Tâm" && t.skuBaseCode === "GT-300"),
+      BPO_TRACKER.find(t => t.nmName === "Vigracera"&& t.skuBaseCode === "GM-300"),
+    ].filter(Boolean) as typeof BPO_TRACKER;
+
+    const computed = rows.map(t => {
+      const w20 = t.weeklyBreakdown.find(w => w.week === 20)?.qty ?? 0;
+      const available = Math.max(0, t.committedQty - t.releasedQty);
+      const after = Math.max(0, available - w20);
+      return { t, w20, available, after };
+    });
+    const tot = computed.reduce((s, r) => ({
+      committed: s.committed + r.t.committedQty,
+      released:  s.released  + r.t.releasedQty,
+      available: s.available + r.available,
+      w20:       s.w20       + r.w20,
+      after:     s.after     + r.after,
+    }), { committed: 0, released: 0, available: 0, w20: 0, after: 0 });
+
+    return (
+      <div className="space-y-2 text-table-sm">
+        <div className="flex justify-between">
+          <span className="text-text-2">Hub ảo khả dụng</span>
+          <ClickableNumber value={sc(tot.available)} color="text-text-1" />
+        </div>
+        <div className="rounded border border-surface-3 bg-surface-1 overflow-hidden">
+          <table className="w-full text-[12px]">
+            <thead className="bg-surface-2/60">
+              <tr className="border-b border-surface-3">
+                <th className="px-2 py-1.5 text-left text-[10px] uppercase tracking-wide text-text-3">NM</th>
+                <th className="px-2 py-1.5 text-left text-[10px] uppercase tracking-wide text-text-3">SKU</th>
+                <th className="px-2 py-1.5 text-right text-[10px] uppercase tracking-wide text-text-3">Cam kết</th>
+                <th className="px-2 py-1.5 text-right text-[10px] uppercase tracking-wide text-text-3">Đã release</th>
+                <th className="px-2 py-1.5 text-right text-[10px] uppercase tracking-wide text-text-3">Available</th>
+                <th className="px-2 py-1.5 text-right text-[10px] uppercase tracking-wide text-text-3">Phân bổ W20</th>
+                <th className="px-2 py-1.5 text-right text-[10px] uppercase tracking-wide text-text-3">Còn sau</th>
+              </tr>
+            </thead>
+            <tbody>
+              {computed.map(({ t, w20, available, after }) => (
+                <tr key={`${t.nmId}-${t.skuBaseCode}`} className="border-b border-surface-3">
+                  <td className="px-2 py-1 text-text-1 font-medium">{t.nmName}</td>
+                  <td className="px-2 py-1 font-mono text-text-2">{t.skuBaseCode}</td>
+                  <td className="px-2 py-1 text-right tabular-nums text-text-2">{sc(t.committedQty).toLocaleString()}</td>
+                  <td className="px-2 py-1 text-right tabular-nums text-text-1 font-medium">{sc(t.releasedQty).toLocaleString()}</td>
+                  <td className={cn("px-2 py-1 text-right tabular-nums font-medium", available === 0 ? "text-text-3" : "text-text-1")}>
+                    {sc(available).toLocaleString()}
+                  </td>
+                  <td className={cn("px-2 py-1 text-right tabular-nums", w20 === 0 ? "text-text-3" : "text-info font-medium")}>
+                    {w20 === 0 ? "0 (skip)" : sc(w20).toLocaleString()}
+                  </td>
+                  <td className={cn("px-2 py-1 text-right tabular-nums",
+                    available === 0 ? "text-success" : after > 0 ? "text-warning font-medium" : "text-success")}>
+                    {available === 0 ? "0 ← hết" : sc(after).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+              <tr className="bg-surface-2/40 font-semibold border-t-2 border-surface-3">
+                <td colSpan={2} className="px-2 py-1.5 text-text-1">TỔNG</td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{sc(tot.committed).toLocaleString()}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{sc(tot.released).toLocaleString()}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{sc(tot.available).toLocaleString()}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums text-info">{sc(tot.w20).toLocaleString()}</td>
+                <td className="px-2 py-1.5 text-right tabular-nums text-warning">{sc(tot.after).toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="flex justify-between border-t border-surface-3 pt-2 font-semibold">
+          <span>→ Hub phân bổ {sc(tot.w20)}m². CN-BD vẫn thiếu</span>
+          <ClickableNumber value={`${sc(400).toLocaleString()}m²`} color="text-danger" />
+        </div>
+        <div className="text-caption text-text-3">
+          Mikado cam kết {sc(4200).toLocaleString()}, đã release {sc(2200).toLocaleString()}, DRP tuần này lấy thêm {sc(600).toLocaleString()}. Còn {sc(1200).toLocaleString()} cho W21–W22.
+        </div>
+      </div>
+    );
+  }
 
   if (stepId === 8) return (
     <div className="space-y-2 text-table-sm">
