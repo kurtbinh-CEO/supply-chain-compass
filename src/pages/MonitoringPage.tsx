@@ -945,6 +945,9 @@ export default function MonitoringPage() {
       {/* ═══ TAB: ROI & Flywheel ═══ */}
       {activeTab === "roi" && <RoiFlywheelTab />}
 
+      {/* ═══ TAB: Dự báo (FC accuracy) ═══ */}
+      {activeTab === "fc" && <FcAccuracyTab />}
+
       {/* ═══ TAB: Activity Log ═══ */}
       {activeTab === "activity" && <ActivityLogTab />}
 
