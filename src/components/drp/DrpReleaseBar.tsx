@@ -369,49 +369,62 @@ export function DrpReleaseBar({
               </div>
             ) : (
               <>
-                {/* Bulk action bar */}
-                {selected.size > 0 && status !== "released" && (
-                  <div className="mb-3 rounded-card border border-primary/40 bg-primary/5 px-3 py-2 flex items-center gap-2 text-table-sm flex-wrap">
-                    <span className="font-semibold text-text-1">
-                      {selected.size} {tab === "rpo" ? "RPO" : "TO"} đã chọn
+                {/* Select-all + bulk action bar */}
+                {status !== "released" && selectableCodes.length > 0 && (
+                  <div className="mb-3 rounded-card border border-surface-3 bg-surface-1/40 px-3 py-2 flex items-center gap-2 text-table-sm flex-wrap">
+                    <Checkbox
+                      checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                      onCheckedChange={togglePage}
+                      aria-label="Chọn tất cả"
+                    />
+                    <span className="text-text-2">
+                      {selected.size > 0 ? (
+                        <>
+                          <span className="font-semibold text-text-1">{selected.size}</span> / {selectableCodes.length} {tab === "rpo" ? "RPO" : "TO"} đã chọn
+                          {selected.size > 0 && <span className="text-caption text-text-3 tabular-nums ml-2">· {fmtVnd(selectedValue)}</span>}
+                        </>
+                      ) : (
+                        <span className="text-text-3">Chọn để duyệt / từ chối nhiều mục</span>
+                      )}
                     </span>
-                    <span className="text-caption text-text-3 tabular-nums">· {fmtVnd(selectedValue)}</span>
-                    <div className="ml-auto flex items-center gap-2">
-                      <button
-                        onClick={() => { setNote(""); setPending({ kind: "approveSelected", codes: Array.from(selected) }); }}
-                        disabled={!canApprove || status === "approved"}
-                        className={cn(
-                          "inline-flex items-center gap-1 rounded-button px-2.5 py-1 text-caption font-semibold transition-colors",
-                          !canApprove || status === "approved"
-                            ? "bg-surface-2 text-text-3 cursor-not-allowed"
-                            : "bg-success text-success-foreground hover:opacity-90"
-                        )}
-                        title={
-                          !canApprove ? "Cần quyền SC Manager" :
-                          status === "approved" ? "Lô đã được duyệt" :
-                          "Duyệt các mục đã chọn (kèm ghi chú audit)"
-                        }
-                      >
-                        <CheckCircle2 className="h-3 w-3" /> Duyệt mục đã chọn
-                      </button>
-                      <button
-                        onClick={() => { setNote(""); setPending({ kind: "reject", codes: Array.from(selected) }); }}
-                        disabled={!canApprove}
-                        className={cn(
-                          "inline-flex items-center gap-1 rounded-button px-2.5 py-1 text-caption font-semibold transition-colors",
-                          canApprove ? "border border-danger/40 text-danger hover:bg-danger/10" : "bg-surface-2 text-text-3 cursor-not-allowed"
-                        )}
-                        title={!canApprove ? "Cần quyền SC Manager" : "Loại khỏi lô (sẽ không phát hành)"}
-                      >
-                        <X className="h-3 w-3" /> Từ chối
-                      </button>
-                      <button
-                        onClick={() => setSelected(new Set())}
-                        className="text-caption text-text-3 hover:text-text-1 underline"
-                      >
-                        Bỏ chọn
-                      </button>
-                    </div>
+                    {selected.size > 0 && (
+                      <div className="ml-auto flex items-center gap-2">
+                        <button
+                          onClick={() => { setNote(""); setPending({ kind: "approveSelected", codes: Array.from(selected) }); }}
+                          disabled={!canApprove || status === "approved"}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-button px-2.5 py-1 text-caption font-semibold transition-colors",
+                            !canApprove || status === "approved"
+                              ? "bg-surface-2 text-text-3 cursor-not-allowed"
+                              : "bg-success text-success-foreground hover:opacity-90"
+                          )}
+                          title={
+                            !canApprove ? "Cần quyền SC Manager" :
+                            status === "approved" ? "Lô đã được duyệt" :
+                            "Duyệt các mục đã chọn (kèm ghi chú audit)"
+                          }
+                        >
+                          <CheckCircle2 className="h-3 w-3" /> Duyệt mục đã chọn
+                        </button>
+                        <button
+                          onClick={() => { setNote(""); setPending({ kind: "reject", codes: Array.from(selected) }); }}
+                          disabled={!canApprove}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-button px-2.5 py-1 text-caption font-semibold transition-colors",
+                            canApprove ? "border border-danger/40 text-danger hover:bg-danger/10" : "bg-surface-2 text-text-3 cursor-not-allowed"
+                          )}
+                          title={!canApprove ? "Cần quyền SC Manager" : "Loại khỏi lô (sẽ không phát hành)"}
+                        >
+                          <X className="h-3 w-3" /> Từ chối
+                        </button>
+                        <button
+                          onClick={() => setSelected(new Set())}
+                          className="text-caption text-text-3 hover:text-text-1 underline"
+                        >
+                          Bỏ chọn
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
