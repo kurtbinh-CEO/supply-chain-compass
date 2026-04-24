@@ -605,7 +605,7 @@ export default function ExecutivePage() {
               </div>
               <Sparkline values={k.trend12w} tone={k.tone} />
               <div className="mt-2 flex items-center justify-between gap-2">
-                <span className="text-caption text-text-3 truncate">{k.target}</span>
+                <span className="text-caption text-text-3 truncate">{kpiTargetLabel(k.key, k.target)}</span>
                 <DeltaBadge delta={k.delta} />
               </div>
             </button>
@@ -725,7 +725,7 @@ export default function ExecutivePage() {
               <>
                 <SheetHeader>
                   <SheetTitle>{k.label} · {k.value}{k.unit}</SheetTitle>
-                  <SheetDescription>{k.target} · {k.delta.dir === "up" ? "↑" : k.delta.dir === "down" ? "↓" : "→"} {k.delta.value} vs tháng trước</SheetDescription>
+                  <SheetDescription>{kpiTargetLabel(k.key, k.target)} · {k.delta.dir === "up" ? "↑" : k.delta.dir === "down" ? "↓" : "→"} {k.delta.value} vs tháng trước</SheetDescription>
                 </SheetHeader>
 
                 {/* Tab bar */}
