@@ -133,12 +133,6 @@ export default function SopPage() {
   const [locked, setLocked] = useState(false);
   const [showPreLock, setShowPreLock] = useState(false);
 
-  // Mark "S&OP locked" → trigger banner pointing to /supply.
-  const lockAndMark = useCallback(() => {
-    setLocked(true);
-    markDone("sop.locked");
-  }, [markDone]);
-
   // Mock current S&OP day-of-cycle (Day 5/30 — Cân đối phase)
   const [currentDay] = useState(5);
 
@@ -193,6 +187,40 @@ export default function SopPage() {
 
   const totalAop = consensusData.reduce((a, r) => a + r.aop, 0);
   const totalV3 = consensusData.reduce((a, r) => a + r.v3, 0);
+
+  // G5 — S&OP Lock trigger chain: Booking v1 + NM commitment notification + advance step
+  const lockAndMark = useCallback(() => {
+    setLocked(true);
+    markDone("sop.locked");
+
+    import("sonner").then(m => {
+      // 1) Toast: lock success
+      m.toast.success("✅ S&OP T5/2026 đã được khóa", {
+        description: `${consensusData.length} CN · v3 = ${totalV3.toLocaleString("vi-VN")} m². Chuyển sang giai đoạn cam kết NM.`,
+        duration: 5000,
+      });
+
+      // 2) Tạo Booking T5 v1
+      const totalBooking = Math.round(totalV3 * 0.78);
+      const nmCount = 5;
+      setTimeout(() => {
+        m.toast.info(`📦 Đã tạo Booking T5 v1: ${totalBooking.toLocaleString("vi-VN")} m² từ ${nmCount} NM`, {
+          description: "Net Booking = FC 3M − Hub − Pipeline đã sẵn sàng tại Hub & Cam kết",
+          duration: 6000,
+          action: { label: "Mở Hub →", onClick: () => { window.location.href = "/hub?tab=booking"; } },
+        });
+      }, 800);
+
+      // 3) Notification: NM cần cam kết
+      setTimeout(() => {
+        m.toast.warning(`🔔 ${nmCount} NM cần cam kết Net Booking`, {
+          description: "Mikado, Tân Việt, Hà Anh, Phương Nam, An Lộc — pre-fill qty per SKU",
+          duration: 8000,
+          action: { label: "Mở Cam kết NM →", onClick: () => { window.location.href = "/hub?tab=commit"; } },
+        });
+      }, 1600);
+    });
+  }, [markDone, consensusData.length, totalV3]);
 
   // Compute unresolved variance: |Σ(SKU v3) − v0_topdown| / v0_topdown > 10%
   // and explanation < 6 chars
