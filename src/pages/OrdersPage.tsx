@@ -25,6 +25,7 @@ import {
 } from "@/data/unis-enterprise-dataset";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import {
   ClipboardCheck, Truck, MapPin, ChevronRight, ChevronDown,
   Send, CheckCircle2, AlertTriangle, Phone, ArrowRight, Package,
