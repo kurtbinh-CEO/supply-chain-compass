@@ -357,6 +357,6 @@ export default function AuditPage() {
       <p className="text-caption text-text-3 mt-3 text-center">
         Hiển thị {filtered.length} / {entries.length} sự kiện · Audit trail bao gồm các thao tác trên DRP, S&OP, đơn hàng, cấu hình & dữ liệu gốc.
       </p>
-    </main>
+    </AppLayout>
   );
 }
