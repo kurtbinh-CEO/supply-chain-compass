@@ -3,12 +3,41 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { StatusChip } from "@/components/StatusChip";
-import { Shield, TrendingDown, TrendingUp, ArrowRight, Brain } from "lucide-react";
+import { Shield, TrendingDown, TrendingUp, ArrowRight, Brain, Inbox, Zap, FileSpreadsheet, PenLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useFcAccuracy } from "@/hooks/useMonitoringData";
 import { TermTooltip } from "@/components/TermTooltip";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
+
+const ACTUAL_SOURCES: DataSource[] = [
+  {
+    key: "api_sync",
+    icon: <Zap />,
+    title: "Tích hợp Bravo ERP",
+    description: "Đồng bộ doanh thu thực tế từ Bravo hằng ngày. Cần thiết lập connector.",
+    badge: "Sắp có",
+    badgeColor: "gray",
+    disabled: true,
+    configurable: true,
+    configRoute: "/config?tab=integration",
+  },
+  {
+    key: "excel_upload",
+    icon: <FileSpreadsheet />,
+    title: "Upload Excel thực tế",
+    description: "Upload file thực tế bán per CN × SKU × tháng. MAPE sẽ tính lại tự động.",
+    badge: "Khuyến nghị",
+    badgeColor: "green",
+  },
+  {
+    key: "manual_input",
+    icon: <PenLine />,
+    title: "Nhập tay",
+    description: "Nhập từng CN × SKU trực tiếp. Phù hợp khi cần điều chỉnh nhanh.",
+  },
+];
 
 type ModelRow = {
   name: string;
