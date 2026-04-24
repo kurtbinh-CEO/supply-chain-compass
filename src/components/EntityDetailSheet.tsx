@@ -69,13 +69,13 @@ export function EntityDetailSheet({ open, onClose, entity }: Props) {
     return { total, avgHstk, danger };
   }, [lines]);
 
-  if (!entity) return null;
-
-  const isCn = entity.kind === "cn";
-  const branchMeta = isCn ? BRANCHES.find((b) => b.code === entity.code) : undefined;
-  const title = isCn
-    ? `${branchMeta?.name ?? entity.code} (${entity.code})`
-    : `Nhà máy ${entity.code}`;
+  // KHÔNG early-return — luôn render <Sheet> để Radix có thể chạy exit-animation
+  // mà không bị unmount đột ngột (nguyên nhân gây "Rendered fewer hooks than expected").
+  const isCn = entity?.kind === "cn";
+  const branchMeta = isCn && entity ? BRANCHES.find((b) => b.code === entity.code) : undefined;
+  const title = entity
+    ? (isCn ? `${branchMeta?.name ?? entity.code} (${entity.code})` : `Nhà máy ${entity.code}`)
+    : "";
   const subtitle = isCn ? "Chi nhánh — tồn kho theo SKU" : "Nhà máy — sản lượng & cam kết";
   const Icon = isCn ? Building2 : Factory;
 
