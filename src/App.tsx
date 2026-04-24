@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,8 +17,9 @@ import { AuthProvider, useAuth } from "@/components/AuthContext";
 import { ZoomProvider } from "@/components/ZoomControls";
 import { CommandPaletteProvider } from "@/components/CommandPalette";
 import { NextStepProvider } from "@/components/NextStepContext";
-import { OnboardingProvider } from "@/components/onboarding/OnboardingContext";
+import { OnboardingProvider, useOnboarding } from "@/components/onboarding/OnboardingContext";
 import { OnboardingOverlay } from "@/components/onboarding/OnboardingOverlay";
+import { getTourForRoute } from "@/components/onboarding/tours";
 import { PlanningPeriodProvider } from "@/components/PlanningPeriodContext";
 import { useEffect, useCallback } from "react";
 import { dispatchExpandAll } from "@/hooks/useExpandableRows";
@@ -158,6 +159,28 @@ function IdleNudgeMount() {
   const { pendingCount, exceptions } = useWorkspace();
   const getPendingCount = useCallback(() => pendingCount + exceptions.length, [pendingCount, exceptions.length]);
   useIdleNudge({ getPendingCount });
+  return null;
+}
+
+/** Tự động khởi động onboarding tour cho route hiện tại nếu user chưa xem. */
+function OnboardingAutoStart() {
+  const location = useLocation();
+  const { isTourCompleted, startTour, activeTour } = useOnboarding();
+
+  useEffect(() => {
+    const tour = getTourForRoute(location.pathname);
+    if (!tour) return;
+    if (activeTour) return;
+    if (isTourCompleted(tour.id)) return;
+    try {
+      const enabled = localStorage.getItem("scp:onboarding:enabled");
+      if (enabled === "false") return;
+    } catch {}
+    const timer = setTimeout(() => startTour(tour), 800);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
   return null;
 }
 
