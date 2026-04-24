@@ -369,8 +369,11 @@ export function InventorySSTab({ scale: s }: Props) {
                               <td />
                               <td className="px-3 py-2 text-table text-text-2 pl-6">
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); setSkuSheet(`${sk.item} ${sk.variant}`); }}
-                                  className="font-mono text-primary hover:underline"
+                                  type="button"
+                                  data-testid={`ss-sku-${sk.item}-${sk.variant}`}
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                  onClick={(e) => { e.stopPropagation(); e.preventDefault(); setSkuSheet(`${sk.item} ${sk.variant}`); }}
+                                  className="font-mono text-primary hover:underline cursor-pointer"
                                 >
                                   ↳ {sk.item} {sk.variant}
                                 </button>
