@@ -1216,6 +1216,13 @@ export default function DrpPage() {
       </div>
 
       {/* ═══ MAIN TABLE ═══ */}
+      {pivot === "sku" ? (
+        <SkuFirstPivotTable
+          data={filteredRows}
+          onLcnbClick={(t) => setLcnbToDetail(t)}
+          onNavigateOrders={() => navigate("/orders?tab=approval&filter=TO")}
+        />
+      ) : (
       <div data-tour-id="drp-table" className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
