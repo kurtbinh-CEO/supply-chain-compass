@@ -45,11 +45,12 @@ import {
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Filter pills definition
+   Filter model — multi-select pills
    ═══════════════════════════════════════════════════════════════════════════ */
-type FilterKey = "all" | "todo" | "in_transit" | "completed" | "overdue";
-
 const ACTION_STAGES: LifecycleStage[] = ["approved", "sent_nm", "nm_confirmed", "delivering"];
+
+/** Drill-down popup focus, set when a summary card is clicked. */
+type DrillFocus = "todo" | "transit" | "overdue" | "done" | null;
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MAIN PAGE
@@ -64,9 +65,14 @@ export default function OrdersPage() {
   const [rows, setRows] = useState<PoLifecycleRow[]>(() =>
     SEED_PO_LIFECYCLE.map(r => ({ ...r, qty: Math.round(r.qty * scale) }))
   );
-  const [filter, setFilter] = useState<FilterKey>("todo");
-  const [kindFilter, setKindFilter] = useState<"all" | "RPO" | "TO">("all");
+  // LỚP 2 — multi-select status pills (empty Set = "Tất cả")
+  const [statusFilter, setStatusFilter] = useState<Set<LifecycleStage>>(new Set());
+  const [kindFilter, setKindFilter] = useState<Set<"RPO" | "TO">>(new Set());
+  const [overdueOnly, setOverdueOnly] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Drill-down popup từ summary cards
+  const [drillFocus, setDrillFocus] = useState<DrillFocus>(null);
 
   // Dialog state — only one dialog open at a time
   const [actionRow, setActionRow] = useState<PoLifecycleRow | null>(null);
@@ -91,18 +97,34 @@ export default function OrdersPage() {
     return { stage, todo, transit, done, overdue, total: rows.length, po, to };
   }, [rows]);
 
-  /* ── Filtered list ── */
+  /* ── Filtered list — multi-select pills ── */
   const visibleRows = useMemo(() => {
     return rows.filter(r => {
-      if (kindFilter !== "all" && r.kind !== kindFilter) return false;
-      if (filter === "all")        return true;
-      if (filter === "todo")       return ACTION_STAGES.includes(r.stage);
-      if (filter === "in_transit") return r.stage === "pickup" || r.stage === "in_transit";
-      if (filter === "completed")  return r.stage === "completed";
-      if (filter === "overdue")    return isOverdue(r);
+      if (kindFilter.size > 0 && !kindFilter.has(r.kind as "RPO" | "TO")) return false;
+      if (overdueOnly && !isOverdue(r)) return false;
+      if (statusFilter.size > 0 && !statusFilter.has(r.stage)) return false;
       return true;
     });
-  }, [rows, filter, kindFilter]);
+  }, [rows, statusFilter, kindFilter, overdueOnly]);
+
+  // Toggle helpers
+  const toggleStatus = (s: LifecycleStage) =>
+    setStatusFilter(prev => {
+      const n = new Set(prev);
+      if (n.has(s)) n.delete(s); else n.add(s);
+      return n;
+    });
+  const toggleKind = (k: "RPO" | "TO") =>
+    setKindFilter(prev => {
+      const n = new Set(prev);
+      if (n.has(k)) n.delete(k); else n.add(k);
+      return n;
+    });
+  const clearAllFilters = () => {
+    setStatusFilter(new Set());
+    setKindFilter(new Set());
+    setOverdueOnly(false);
+  };
 
   /* ── Mutations from dialogs ── */
   const advance = (id: string, patch: Partial<PoLifecycleRow>) => {
@@ -113,7 +135,6 @@ export default function OrdersPage() {
       const row = rows.find(r => r.id === id);
       const docNo = row?.id || id;
       const erpDoc = `MIGO-${Date.now().toString().slice(-6)}`;
-      // Mock async post — 1s delay then success
       const t = toast.loading(`Đang đăng ERP cho ${docNo}...`, { description: "Tạo MIGO/Goods Receipt → SAP/Odoo" });
       setTimeout(() => {
         toast.success(`✅ Đã đăng ERP: ${erpDoc}`, {
@@ -134,6 +155,8 @@ export default function OrdersPage() {
       : r));
     toast.success("Đã hủy đơn", { description: reason });
   };
+
+  const noFilters = statusFilter.size === 0 && kindFilter.size === 0 && !overdueOnly;
 
   return (
     <AppLayout>
@@ -174,66 +197,116 @@ export default function OrdersPage() {
         </p>
       </div>
 
-      {/* ═══ SUMMARY CARDS — tóm tắt đơn hàng tuần ═══ */}
+      {/* ═══ LỚP 1: SUMMARY CARDS — chỉ để nhìn, click = drill-down popup ═══ */}
       {(() => {
+        // Severity rules (M5-UX-PATCH):
+        //   CẦN XỬ LÝ: 0 → ok, 1-5 → warn, >5 → critical
+        //   ĐANG VẬN CHUYỂN: luôn ok
+        //   TRỄ HẠN: 0 → ok, >0 → critical
+        //   HOÀN TẤT: luôn ok
+        const todoSeverity: SummaryCard["severity"] =
+          counts.todo === 0 ? "ok" : counts.todo <= 5 ? "warn" : "critical";
+        const overdueSeverity: SummaryCard["severity"] =
+          counts.overdue > 0 ? "critical" : "ok";
+        const urgentTodo = rows.filter(r => ACTION_STAGES.includes(r.stage) && isOverdue(r)).length;
+
         const cards: SummaryCard[] = [
           {
             key: "todo", label: "Cần xử lý", value: counts.todo, unit: "đơn",
-            severity: counts.todo > 5 ? "warn" : "ok",
-            tooltip: "Đơn ở stage approved/sent_nm/nm_confirmed/delivering — chờ tác vụ kế",
-            onClick: () => setFilter("todo"),
+            severity: todoSeverity,
+            trend: urgentTodo > 0
+              ? { delta: `${urgentTodo} khẩn`, direction: "up", color: "red" }
+              : { delta: "ổn định", direction: "flat", color: "gray" },
+            tooltip: "Đơn ở stage Đã duyệt / Đặt NM / Đặt xe / Giao hàng — chờ tác vụ kế. Click để xem phân rã.",
+            onClick: () => setDrillFocus("todo"),
           },
           {
             key: "transit", label: "Đang vận chuyển", value: counts.transit, unit: "xe",
             severity: "ok",
             trend: { delta: counts.transit > 0 ? "🚛 trên đường" : "→ rỗng", direction: "flat", color: "gray" },
-            tooltip: "Đơn pickup hoặc in_transit. Click để xem realtime ETA.",
-            onClick: () => setFilter("in_transit"),
+            tooltip: "Đơn đang lấy hàng hoặc trên đường. Click để xem ETA.",
+            onClick: () => setDrillFocus("transit"),
           },
           {
-            key: "overdue", label: "Trễ hạn SLA", value: counts.overdue, unit: "đơn",
-            severity: counts.overdue > 0 ? "critical" : "ok",
-            trend: counts.overdue > 0 ? { delta: "cần escalate", direction: "up", color: "red" } : undefined,
-            tooltip: "Vượt SLA cho stage hiện tại — báo manager + carrier gấp",
-            onClick: () => setFilter("overdue"),
+            key: "overdue", label: "Trễ hạn", value: counts.overdue, unit: "đơn",
+            severity: overdueSeverity,
+            trend: counts.overdue > 0
+              ? { delta: "⚠️ cần escalate", direction: "up", color: "red" }
+              : { delta: "đúng SLA", direction: "flat", color: "green" },
+            tooltip: "Vượt SLA cho stage hiện tại — cần xử lý ngay. Click để xem danh sách.",
+            onClick: () => setDrillFocus("overdue"),
           },
           {
             key: "done", label: "Hoàn tất", value: counts.done, unit: "đơn",
             severity: "ok",
-            trend: { delta: `${Math.round(counts.done / Math.max(1, counts.total) * 100)}%`, direction: "up", color: "green" },
-            tooltip: "Đã POD xong + đăng ERP",
-            onClick: () => setFilter("completed"),
-          },
-          {
-            key: "kind", label: "PO / TO", value: `${counts.po}/${counts.to}`, unit: "đơn",
-            severity: "ok",
-            tooltip: "PO = mua từ NM, TO = chuyển kho liên CN",
+            trend: { delta: "↑ 27% vs T4", direction: "up", color: "green" },
+            tooltip: "Đã POD xong + đăng ERP. Click để xem chi tiết.",
+            onClick: () => setDrillFocus("done"),
           },
         ];
         return <SummaryCards cards={cards} screenId="orders-lifecycle" editable />;
       })()}
 
-      {/* ═══ LIFECYCLE SUMMARY BAR (7 nodes) ═══ */}
-      <LifecycleSummaryBar counts={counts.stage} onJumpStage={(s) => {
-        // Map stage to filter pill where possible.
-        if (s === "approved" || s === "sent_nm" || s === "nm_confirmed" || s === "delivering") setFilter("todo");
-        else if (s === "pickup" || s === "in_transit") setFilter("in_transit");
-        else if (s === "completed") setFilter("completed");
-      }} />
+      {/* ═══ LỚP 2: FILTER PILLS — gộp status + type + alert ═══ */}
+      <div className="flex flex-wrap items-center gap-1.5 mt-4 mb-2">
+        {/* "Tất cả" — clear all */}
+        <FilterPill
+          active={noFilters}
+          onClick={clearAllFilters}
+          count={counts.total}
+          label="Tất cả"
+        />
 
-      {/* ═══ FILTER PILLS (replaces tabs) ═══ */}
-      <div className="flex flex-wrap items-center gap-2 mt-4 mb-3">
-        <FilterPill active={filter === "all"}        onClick={() => setFilter("all")}        count={counts.total}    label="Tất cả" />
-        <FilterPill active={filter === "todo"}       onClick={() => setFilter("todo")}       count={counts.todo}     label="Cần xử lý" icon="⏳" tone="warning" />
-        <FilterPill active={filter === "in_transit"} onClick={() => setFilter("in_transit")} count={counts.transit}  label="Đang vận chuyển" icon="🚛" tone="info" />
-        <FilterPill active={filter === "completed"}  onClick={() => setFilter("completed")}  count={counts.done}     label="Hoàn tất" icon="✅" tone="success" />
-        <FilterPill active={filter === "overdue"}    onClick={() => setFilter("overdue")}    count={counts.overdue}  label="Trễ hạn" icon="⚠️" tone="danger" disabled={counts.overdue === 0} />
+        {/* Nhóm 1: Status pills (multi-select) */}
+        {STAGE_ORDER.map(s => (
+          <FilterPill
+            key={s}
+            active={statusFilter.has(s)}
+            onClick={() => toggleStatus(s)}
+            count={counts.stage[s]}
+            label={STAGE_META[s].short}
+            disabled={counts.stage[s] === 0}
+          />
+        ))}
 
-        <div className="ml-auto flex items-center gap-1.5 text-table-sm">
-          <span className="text-text-3">Loại:</span>
-          <KindToggle value={kindFilter} onChange={setKindFilter} po={counts.po} to={counts.to} />
-        </div>
+        <Separator />
+
+        {/* Nhóm 2: Type pills */}
+        <FilterPill
+          active={kindFilter.has("RPO")}
+          onClick={() => toggleKind("RPO")}
+          count={counts.po}
+          label="PO"
+          disabled={counts.po === 0}
+        />
+        <FilterPill
+          active={kindFilter.has("TO")}
+          onClick={() => toggleKind("TO")}
+          count={counts.to}
+          label="TO"
+          disabled={counts.to === 0}
+        />
+
+        <Separator />
+
+        {/* Nhóm 3: Alert pill (cross-cutting) */}
+        <FilterPill
+          active={overdueOnly}
+          onClick={() => setOverdueOnly(v => !v)}
+          count={counts.overdue}
+          label="Trễ"
+          icon="⚠️"
+          tone="danger"
+          disabled={counts.overdue === 0}
+        />
       </div>
+
+      {/* ═══ LIFECYCLE FLOW — 1 dòng text nhỏ trong header bảng ═══ */}
+      <LifecycleFlowMini
+        counts={counts.stage}
+        active={statusFilter}
+        onToggle={toggleStatus}
+      />
 
       {/* ═══ MAIN TABLE ═══ */}
       <SmartTable<PoLifecycleRow>
@@ -244,11 +317,11 @@ export default function OrdersPage() {
         rowSeverity={(r) => isOverdue(r) ? "shortage" : isNearSla(r) ? "watch" : undefined}
         autoExpandWhen={(r) => expanded.has(r.id)}
         emptyState={{
-          icon: filter === "overdue" ? <CheckCircle2 /> : <ClipboardCheck />,
-          title: filter === "overdue" ? "Không có đơn trễ hạn" : "Không có đơn nào",
-          description: filter === "todo"
-            ? "Mọi đơn đã được xử lý. Quay lại sau hoặc xem tab khác."
-            : "Thử đổi filter hoặc tải đơn mới từ DRP batch.",
+          icon: overdueOnly ? <CheckCircle2 /> : <ClipboardCheck />,
+          title: overdueOnly ? "Không có đơn trễ hạn" : "Không có đơn nào",
+          description: noFilters
+            ? "Chưa có đơn trong tuần. Tải đơn mới từ DRP batch."
+            : "Thử bỏ bớt bộ lọc hoặc bấm \"Tất cả\" để xem toàn bộ.",
         }}
         drillDown={(r) => <ExpandedRow row={r} />}
         columns={[
@@ -394,114 +467,231 @@ export default function OrdersPage() {
           onConfirm={(reason, note) => { cancelPo(cancelRow.id, reason, note); setCancelRow(null); }}
         />
       )}
+
+      {drillFocus && (
+        <CardDrillDownDialog
+          focus={drillFocus}
+          rows={rows}
+          counts={counts}
+          onClose={() => setDrillFocus(null)}
+          onApplyFilter={(s) => {
+            // map drill action to pill filter
+            if (s === "todo") setStatusFilter(new Set(ACTION_STAGES));
+            else if (s === "transit") setStatusFilter(new Set<LifecycleStage>(["pickup", "in_transit"]));
+            else if (s === "overdue") { setOverdueOnly(true); setStatusFilter(new Set()); }
+            else if (s === "done") setStatusFilter(new Set<LifecycleStage>(["completed"]));
+            else if (typeof s === "object") setStatusFilter(new Set([s.stage]));
+            setDrillFocus(null);
+          }}
+          onOpenRow={(r) => { setDrillFocus(null); setExpanded(prev => new Set(prev).add(r.id)); }}
+        />
+      )}
     </AppLayout>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Lifecycle summary bar — 7 nodes
+   Lifecycle flow — 1 dòng nhỏ trong header bảng (M5-UX-PATCH)
+   "Tiến trình: Duyệt(1) → NM(1) → Xe(2) → Lấy(2) → Chở(3) → Giao(2) → Xong(4)"
    ═══════════════════════════════════════════════════════════════════════════ */
-function LifecycleSummaryBar({
-  counts, onJumpStage,
+function LifecycleFlowMini({
+  counts, active, onToggle,
 }: {
   counts: Record<LifecycleStage, number>;
-  onJumpStage: (s: LifecycleStage) => void;
+  active: Set<LifecycleStage>;
+  onToggle: (s: LifecycleStage) => void;
 }) {
-  const ICONS: Record<LifecycleStage, React.ComponentType<{ className?: string }>> = {
-    approved: ClipboardCheck, sent_nm: Send, nm_confirmed: CheckCircle2,
-    pickup: Package, in_transit: Truck, delivering: Flag, completed: CheckCircle2,
-    cancelled: X,
-  };
   return (
-    <div className="rounded-card border border-surface-3 bg-surface-2 p-2 mt-2 overflow-x-auto">
-      <div className="flex items-center gap-0 min-w-max">
-        {STAGE_ORDER.map((s, i) => {
-          const Icon = ICONS[s];
-          const count = counts[s];
-          const active = count > 0;
-          return (
-            <div key={s} className="flex items-center">
-              <button
-                onClick={() => onJumpStage(s)}
-                disabled={!active}
-                className={cn(
-                  "flex flex-col items-center gap-1 px-2 py-1.5 rounded-button transition-all min-w-[78px]",
-                  active ? "hover:bg-surface-3 cursor-pointer" : "opacity-40 cursor-not-allowed",
-                )}
-              >
-                <div className={cn(
-                  "h-7 w-7 rounded-full flex items-center justify-center border",
-                  active ? STAGE_META[s].tone : "bg-surface-1 border-surface-3 text-text-3",
-                )}>
-                  <Icon className="h-3.5 w-3.5" />
-                </div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-text-3">{STAGE_META[s].short}</div>
-                <div className={cn("text-table-sm tabular-nums font-bold", active ? "text-text-1" : "text-text-3")}>
-                  ({count})
-                </div>
-              </button>
-              {i < STAGE_ORDER.length - 1 && (
-                <div className={cn("h-[2px] w-6 rounded-full mt-[-22px]", count > 0 ? "bg-primary/40" : "bg-surface-3")} />
+    <div className="flex items-center gap-1 text-[11px] text-text-3 mb-2 overflow-x-auto pb-1">
+      <span className="font-medium text-text-2 shrink-0">Tiến trình:</span>
+      {STAGE_ORDER.map((s, i) => {
+        const n = counts[s];
+        const isActive = active.has(s);
+        const enabled = n > 0;
+        return (
+          <span key={s} className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              disabled={!enabled}
+              onClick={() => onToggle(s)}
+              className={cn(
+                "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded transition-colors",
+                isActive
+                  ? "text-primary font-semibold bg-primary/10"
+                  : enabled ? "hover:text-text-1 hover:bg-surface-2" : "opacity-40 cursor-not-allowed",
               )}
-            </div>
-          );
-        })}
-      </div>
+              title={`${STAGE_META[s].label} — ${n} đơn`}
+            >
+              <span className={cn("h-1.5 w-1.5 rounded-full", enabled ? "bg-primary/60" : "bg-surface-3")} />
+              <span>{STAGE_META[s].short}</span>
+              <span className="tabular-nums font-semibold">({n})</span>
+            </button>
+            {i < STAGE_ORDER.length - 1 && (
+              <span className="text-text-3/50">→</span>
+            )}
+          </span>
+        );
+      })}
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Filter pill + kind toggle
+   Filter pill + separator
    ═══════════════════════════════════════════════════════════════════════════ */
 function FilterPill({ active, onClick, count, label, icon, tone, disabled }: {
   active: boolean; onClick: () => void; count: number; label: string;
   icon?: string; tone?: "warning" | "info" | "success" | "danger"; disabled?: boolean;
 }) {
-  const toneActive = tone === "warning" ? "bg-warning text-warning-foreground border-warning"
+  const toneActive = tone === "danger"
+    ? "bg-danger text-primary-foreground border-danger"
+    : tone === "warning" ? "bg-warning text-warning-foreground border-warning"
     : tone === "info" ? "bg-info text-info-foreground border-info"
     : tone === "success" ? "bg-success text-success-foreground border-success"
-    : tone === "danger" ? "bg-danger text-primary-foreground border-danger"
     : "bg-primary text-primary-foreground border-primary";
+  // Special: Trễ pill stays danger-tinted even when inactive (if has count)
+  const dangerInactive = tone === "danger" && !active && !disabled
+    ? "bg-danger-bg text-danger border-danger/40 hover:bg-danger/15"
+    : "";
   return (
     <button
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-table-sm font-medium transition-colors",
+        "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors",
         active
           ? toneActive
-          : "bg-surface-1 border-surface-3 text-text-2 hover:bg-surface-3",
+          : dangerInactive || "bg-surface-1 border-surface-3 text-text-2 hover:bg-surface-3",
         disabled && "opacity-50 cursor-not-allowed",
       )}
     >
       {icon && <span>{icon}</span>}
       <span>{label}</span>
-      <span className="tabular-nums font-bold">({count})</span>
+      <span className="tabular-nums font-bold">{count}</span>
     </button>
   );
 }
 
-function KindToggle({ value, onChange, po, to }: {
-  value: "all" | "RPO" | "TO"; onChange: (v: "all" | "RPO" | "TO") => void;
-  po: number; to: number;
+function Separator() {
+  return <span className="mx-1 h-4 w-px bg-surface-3" aria-hidden />;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Card drill-down popup (M5-UX-PATCH — cards CHỈ NHÌN, click → popup)
+   ═══════════════════════════════════════════════════════════════════════════ */
+function CardDrillDownDialog({
+  focus, rows, counts, onClose, onApplyFilter, onOpenRow,
+}: {
+  focus: NonNullable<DrillFocus>;
+  rows: PoLifecycleRow[];
+  counts: { stage: Record<LifecycleStage, number>; todo: number; transit: number; overdue: number; done: number };
+  onClose: () => void;
+  onApplyFilter: (s: "todo" | "transit" | "overdue" | "done" | { stage: LifecycleStage }) => void;
+  onOpenRow: (r: PoLifecycleRow) => void;
 }) {
-  const opt = (v: "all" | "RPO" | "TO", label: string, n: number) => (
-    <button
-      key={v}
-      onClick={() => onChange(v)}
-      className={cn(
-        "px-2.5 py-0.5 rounded-button text-[11px] font-medium transition-colors",
-        value === v ? "bg-primary text-primary-foreground" : "text-text-3 hover:text-text-1",
-      )}
-    >{label} ({n})</button>
-  );
+  const titleMap = {
+    todo: "Cần xử lý — phân rã theo trạng thái",
+    transit: "Đang vận chuyển — danh sách xe",
+    overdue: "Trễ hạn SLA — cần xử lý ngay",
+    done: "Hoàn tất tuần này",
+  } as const;
+
+  // Build content per focus
+  const renderBody = () => {
+    if (focus === "todo") {
+      const breakdown: Array<{ s: LifecycleStage; label: string; n: number }> = ACTION_STAGES.map(s => ({
+        s, label: STAGE_META[s].label, n: counts.stage[s],
+      })).filter(x => x.n > 0);
+      return (
+        <div className="space-y-2">
+          <div className="text-table-sm text-text-3">Tổng <b className="text-text-1">{counts.todo}</b> đơn cần thao tác.</div>
+          <div className="grid grid-cols-2 gap-2">
+            {breakdown.map(b => (
+              <button
+                key={b.s}
+                onClick={() => onApplyFilter({ stage: b.s })}
+                className="flex items-center justify-between rounded-card border border-surface-3 bg-surface-1 hover:bg-surface-2 px-3 py-2 transition-colors text-left"
+              >
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-text-3 font-semibold">{STAGE_META[b.s].short}</div>
+                  <div className="text-table-sm text-text-1">{b.label}</div>
+                </div>
+                <div className="text-h3 font-bold tabular-nums text-primary">{b.n}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    const list = focus === "transit"
+      ? rows.filter(r => r.stage === "pickup" || r.stage === "in_transit")
+      : focus === "overdue"
+      ? rows.filter(r => isOverdue(r))
+      : rows.filter(r => r.stage === "completed");
+
+    return (
+      <div className="space-y-2">
+        <div className="text-table-sm text-text-3">
+          {focus === "overdue" && <>Có <b className="text-danger">{list.length}</b> đơn vượt SLA. Bấm vào dòng để mở chi tiết.</>}
+          {focus === "transit" && <>Có <b className="text-text-1">{list.length}</b> xe đang trên đường.</>}
+          {focus === "done" && <>Đã hoàn tất <b className="text-success">{list.length}</b> đơn trong kỳ.</>}
+        </div>
+        <div className="max-h-[50vh] overflow-y-auto divide-y divide-surface-3 rounded-card border border-surface-3">
+          {list.length === 0 ? (
+            <div className="p-4 text-center text-table-sm text-text-3">Không có đơn nào.</div>
+          ) : list.map(r => {
+            const overdue = isOverdue(r);
+            return (
+              <button
+                key={r.id}
+                onClick={() => onOpenRow(r)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
+              >
+                <Badge variant="outline" className={cn("text-[10px] font-mono shrink-0", STAGE_META[r.stage].tone)}>
+                  {STAGE_META[r.stage].short}
+                </Badge>
+                <div className="flex-1 min-w-0">
+                  <div className="text-table-sm font-mono font-semibold text-text-1 truncate">{r.poNumber}</div>
+                  <div className="text-[11px] text-text-3 truncate">{r.fromName} → {r.toName}</div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className={cn("text-table-sm font-medium tabular-nums", overdue ? "text-danger" : "text-text-2")}>
+                    {fmtTimeInStage(r.hoursInStage)} {overdue && "⚠️"}
+                  </div>
+                  {overdue && <div className="text-[10px] text-danger">SLA {STAGE_SLA_HOURS[r.stage]}h</div>}
+                  {r.stage === "in_transit" && r.etaRemainingH !== undefined && (
+                    <div className="text-[10px] text-text-3">{fmtEta(r.etaRemainingH).label}</div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-button bg-surface-1 border border-surface-3 p-0.5">
-      {opt("all", "Tất cả", po + to)}
-      {opt("RPO", "PO", po)}
-      {opt("TO", "TO", to)}
-    </div>
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{titleMap[focus]}</DialogTitle>
+          <DialogDescription>
+            {focus === "overdue"
+              ? "Mỗi đơn đã quá SLA. Bấm để mở dòng tương ứng trong bảng."
+              : "Bấm 1 mục để áp filter vào bảng và đóng popup."}
+          </DialogDescription>
+        </DialogHeader>
+        {renderBody()}
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose}>Đóng</Button>
+          <Button onClick={() => onApplyFilter(focus)}>
+            Lọc bảng theo "{titleMap[focus].split(" — ")[0]}"
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -521,9 +711,16 @@ function RowActionButton({
     }
     // pickup / in_transit — has primary advance + cancel
   }
+  const overdue = isOverdue(row);
   return (
     <div className="flex items-center justify-center gap-1">
-      <Button size="sm" onClick={(e) => { e.stopPropagation(); onClick(); }} className="h-7 text-[11px] px-2.5 gap-1">
+      <Button
+        size="sm"
+        variant={overdue ? "destructive" : "default"}
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
+        className="h-7 text-[11px] px-2.5 gap-1"
+        title={overdue ? `Quá SLA ${STAGE_SLA_HOURS[row.stage]}h. Cần xử lý ngay.` : undefined}
+      >
         {cfg?.icon && <cfg.icon className="h-3.5 w-3.5" />}
         {cfg?.label || ACTION_CONFIG_FALLBACK[row.stage]?.label || "Cập nhật"}
       </Button>
