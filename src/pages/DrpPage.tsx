@@ -13,6 +13,7 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { DrpReleaseBar, type DrpBatch, type DrpBatchStatus } from "@/components/drp/DrpReleaseBar";
 import { useRbac } from "@/components/RbacContext";
+import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
 import { supabase } from "@/integrations/supabase/client";
 import { BRANCHES, DRP_RESULTS } from "@/data/unis-enterprise-dataset";
 
