@@ -1174,7 +1174,12 @@ function ContainersTab() {
         mode="edit"
         entityName="loại container"
         fields={CONTAINER_FIELDS}
-        initialValues={editing ?? undefined}
+        initialValues={editing ? {
+          code: editing.code, name: editing.name,
+          capacityM2: editing.capacityM2, palletLimit: editing.palletLimit,
+          weightLimitKg: editing.weightLimitKg, costPerKm: editing.costPerKm,
+          note: editing.note,
+        } : undefined}
         onClose={() => setEditing(null)}
         onSave={async (v) => {
           const payload = {
