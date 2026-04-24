@@ -262,14 +262,21 @@ function ItemsTab() {
           <tbody>
             {rows.map((b, i) => (
               <tr
-                key={b.code}
+                key={`${b.code}-${b.source}`}
                 className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}
               >
-                <td className="px-4 py-2.5 font-mono font-medium text-text-1">{b.code}</td>
+                <td className="px-4 py-2.5 font-mono font-medium text-text-1">
+                  <div className="flex items-center gap-1.5">
+                    {b.code}
+                    {b.source === "cloud" && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-4 py-2.5 text-text-2">{b.name}</td>
                 <td className="px-4 py-2.5">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-info-bg text-info text-table-sm font-medium">
-                    {NM_BY_ID[b.nmId]}
+                    {NM_BY_ID[b.nmId as NmId] ?? b.nmId}
                   </span>
                 </td>
                 <td className="px-4 py-2.5 text-text-2">{b.category}</td>
@@ -288,7 +295,9 @@ function ItemsTab() {
           </tbody>
         </table>
       </div>
-      <p className="text-table-sm text-text-3">{rows.length} / {SKU_BASES.length} mã gốc</p>
+      <p className="text-table-sm text-text-3">
+        {rows.length} mã gốc · <span className="text-success">{cloudItems.length} từ cloud</span> + {SKU_BASES.length} từ dataset mẫu
+      </p>
 
       <EntityFormDialog
         open={adding}
