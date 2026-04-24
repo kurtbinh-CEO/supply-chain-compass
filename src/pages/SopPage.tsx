@@ -244,6 +244,7 @@ export default function SopPage() {
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <PlanningPeriodSelector />
+            <VersionHistoryButton entityType="SOP" entityId="SOP-T5" />
             <LogicLink tab="monthly" node={1} tooltip="Logic S&OP Consensus → Lock" />
             <button
               disabled={planLocked}

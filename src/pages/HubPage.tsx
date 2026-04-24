@@ -114,7 +114,12 @@ export default function HubPage() {
       <ScreenHeader
         title="Hub & Cam kết NM"
         subtitle={planLocked ? `Chế độ chỉ xem — ${planCycle.label} đã khóa` : `S&OP locked v${planCycle.version} · Planner gõ cam kết NM trực tiếp`}
-        actions={<PlanningPeriodSelector />}
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <PlanningPeriodSelector />
+            <VersionHistoryButton entityType="BOOKING" entityId="COMMIT-T5" />
+          </div>
+        }
       />
 
       {/* Hub KPI strip — clickable totals */}

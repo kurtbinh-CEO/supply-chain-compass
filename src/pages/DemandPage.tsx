@@ -239,6 +239,7 @@ export default function DemandPage() {
           actions={
             <div className="flex items-center gap-2 flex-wrap">
               <PlanningPeriodSelector />
+              <VersionHistoryButton entityType="FC" entityId="FC-T5" />
               <Button
                 size="sm"
                 variant="outline"
