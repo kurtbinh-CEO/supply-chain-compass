@@ -62,6 +62,7 @@ export default function WorkspacePage() {
   const [showAll, setShowAll] = useState(false);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Auto-check bảng giá NM (chỉ chạy 1 lần / mount)
   const priceCheckRan = useRef(false);
