@@ -1370,6 +1370,40 @@ export default function DrpPage() {
         </span>
       </div>
 
+      {/* ═══ APPROVE & HAND-OFF CTA — cuối Bước 3 ═══ */}
+      <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
+        {(() => {
+          const exceptionCount = data.reduce((a, r) => a + r.exceptionList.length, 0);
+          const disabled = actionsDisabled;
+          return (
+            <button
+              onClick={() => handleApproveAndHandoff(false)}
+              disabled={disabled}
+              className={cn(
+                "inline-flex items-center justify-center gap-2 rounded-button px-6 py-3 text-table font-semibold shadow-sm transition-all",
+                disabled
+                  ? "bg-surface-3 text-text-3 cursor-not-allowed"
+                  : exceptionCount > 0
+                  ? "bg-warning text-primary-foreground hover:opacity-90"
+                  : "bg-success text-primary-foreground hover:opacity-90"
+              )}
+              title={
+                isViewingOldVersion ? "Đang xem phiên cũ — không duyệt được"
+                  : drpLocked ? "Phiên đã khóa — không duyệt được"
+                  : exceptionCount > 0 ? `Còn ${exceptionCount} ngoại lệ chưa xử lý`
+                  : "Duyệt kết quả & chuyển sang Đơn hàng"
+              }
+            >
+              {exceptionCount > 0
+                ? <>⚠️ Duyệt với {exceptionCount} ngoại lệ & Chuyển sang Đơn hàng <ArrowRight className="h-4 w-4" /></>
+                : <>✅ Duyệt kết quả & Chuyển sang Đơn hàng <ArrowRight className="h-4 w-4" /></>}
+            </button>
+          );
+        })()}
+      </div>
+      </>)}
+
+
       {/* ── VERSION HISTORY PANEL (Sheet 420px slide-from-right) ── */}
       <VersionHistoryPanel
         entityType="DRP"
