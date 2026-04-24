@@ -8,6 +8,18 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useFcAccuracy } from "@/hooks/useMonitoringData";
 import { TermTooltip } from "@/components/TermTooltip";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+
+type ModelRow = {
+  name: string;
+  mape: string;
+  mapeNum: number;
+  trend: "up" | "down";
+  stdev: string;
+  ssImpact: string;
+  wcImpact: string;
+  optimal: boolean;
+};
 
 const fallbackMapeData = [
   { week: "W01", hw: 28, ai: 22 }, { week: "W02", hw: 26, ai: 24 }, { week: "W03", hw: 30, ai: 25 },
@@ -16,15 +28,67 @@ const fallbackMapeData = [
   { week: "W10", hw: 22, ai: 20 }, { week: "W11", hw: 20, ai: 18 }, { week: "W12", hw: 24.8, ai: 16.2 },
 ];
 
-const models = [
-  { name: "HW (Hiện tại)", mape: "24.8%", trend: "up", stdev: "±4.2", ssImpact: "1.2k m²", wcImpact: "182Mđ", optimal: false },
-  { name: "XGBoost (AI)", mape: "16.2%", trend: "down", stdev: "±1.8", ssImpact: "-300m²", wcImpact: "-56Mđ", optimal: true },
+
+const models: ModelRow[] = [
+  { name: "HW (Hiện tại)", mape: "24.8%", mapeNum: 24.8, trend: "up", stdev: "±4.2", ssImpact: "1.2k m²", wcImpact: "182Mđ", optimal: false },
+  { name: "XGBoost (AI)", mape: "16.2%", mapeNum: 16.2, trend: "down", stdev: "±1.8", ssImpact: "-300m²", wcImpact: "-56Mđ", optimal: true },
 ];
 
 export function FcAccuracyTab() {
   const [showSwitchModal, setShowSwitchModal] = useState(false);
   const { weeklyData } = useFcAccuracy();
   const mapeData = weeklyData.length > 0 ? weeklyData : fallbackMapeData;
+
+  const modelColumns: SmartTableColumn<ModelRow>[] = [
+    {
+      key: "name", label: "Mô hình", sortable: true, hideable: false, priority: "high", width: 200,
+      filter: "text", accessor: (r) => r.name,
+      render: (r) => (
+        <span className="inline-flex items-center gap-2">
+          <span className="text-table font-medium text-text-1">{r.name}</span>
+          {r.optimal && <StatusChip status="success" label="Tối ưu" />}
+        </span>
+      ),
+    },
+    {
+      key: "mape", label: "MAPE", sortable: true, hideable: false, priority: "high",
+      numeric: true, align: "right", width: 100, accessor: (r) => r.mapeNum,
+      render: (r) => (
+        <span className={cn("font-mono font-bold tabular-nums", r.optimal ? "text-success" : "text-text-1")}>{r.mape}</span>
+      ),
+    },
+    {
+      key: "trend", label: "Xu hướng", sortable: true, hideable: true, priority: "medium",
+      align: "center", width: 100, accessor: (r) => r.trend,
+      filter: "enum",
+      filterOptions: [
+        { value: "up", label: "Tăng" },
+        { value: "down", label: "Giảm" },
+      ],
+      render: (r) => r.trend === "up"
+        ? <TrendingUp className="inline h-4 w-4 text-danger" />
+        : <TrendingDown className="inline h-4 w-4 text-success" />,
+    },
+    {
+      key: "stdev", label: "σ (Độ lệch)", sortable: false, hideable: true, priority: "low",
+      align: "right", width: 110,
+      render: (r) => <span className="tabular-nums text-text-2">{r.stdev}</span>,
+    },
+    {
+      key: "ssImpact", label: "Ảnh hưởng SS", sortable: false, hideable: true, priority: "medium",
+      align: "right", width: 130,
+      render: (r) => (
+        <span className={cn("font-medium tabular-nums", r.optimal ? "text-success" : "text-text-2")}>{r.ssImpact}</span>
+      ),
+    },
+    {
+      key: "wcImpact", label: "Ảnh hưởng vốn", sortable: false, hideable: true, priority: "medium",
+      align: "right", width: 130,
+      render: (r) => (
+        <span className={cn("font-medium tabular-nums", r.optimal ? "text-success" : "text-text-2")}>{r.wcImpact}</span>
+      ),
+    },
+  ];
 
   const handleSwitchConfirm = () => {
     setShowSwitchModal(false);
@@ -59,46 +123,16 @@ export function FcAccuracyTab() {
         </div>
 
         {/* Bảng so sánh mô hình */}
-        <div className="rounded-card border border-surface-3 bg-surface-2">
-          <div className="px-5 py-4 border-b border-surface-3">
-            <h2 className="font-display text-section-header text-text-1 uppercase">So sánh mô hình</h2>
-          </div>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-surface-3">
-                {[
-                  { label: "Mô hình", term: null },
-                  { label: "MAPE", term: "MAPE" },
-                  { label: "Xu hướng", term: null },
-                  { label: "σ (Độ lệch)", term: null },
-                  { label: "Ảnh hưởng SS", term: "SS" },
-                  { label: "Ảnh hưởng vốn", term: null },
-                ].map((h) => (
-                  <th key={h.label} className="text-left text-table-header uppercase text-text-3 px-5 py-3">
-                    {h.term ? <TermTooltip term={h.term}>{h.label}</TermTooltip> : h.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {models.map((m, i) => (
-                <tr key={m.name} className={cn("border-b border-surface-3/50", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
-                  <td className="px-5 py-3">
-                    <span className="text-table font-medium text-text-1">{m.name}</span>
-                    {m.optimal && <StatusChip status="success" label="Tối ưu" className="ml-2" />}
-                  </td>
-                  <td className={cn("px-5 py-3 text-table font-mono font-bold tabular-nums", m.optimal ? "text-success" : "text-text-1")}>{m.mape}</td>
-                  <td className="px-5 py-3">
-                    {m.trend === "up" ? <TrendingUp className="h-4 w-4 text-danger" /> : <TrendingDown className="h-4 w-4 text-success" />}
-                  </td>
-                  <td className="px-5 py-3 text-table text-text-2 tabular-nums">{m.stdev}</td>
-                  <td className={cn("px-5 py-3 text-table font-medium tabular-nums", m.optimal ? "text-success" : "text-text-2")}>{m.ssImpact}</td>
-                  <td className={cn("px-5 py-3 text-table font-medium tabular-nums", m.optimal ? "text-success" : "text-text-2")}>{m.wcImpact}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <SmartTable<ModelRow>
+          screenId="monitoring-fc-models"
+          title="So sánh mô hình"
+          exportFilename="so-sanh-mo-hinh-fc"
+          columns={modelColumns}
+          data={models}
+          defaultDensity="normal"
+          getRowId={(r) => r.name}
+          rowSeverity={(r) => (r.optimal ? "ok" : "watch")}
+        />
       </div>
 
       {/* Phải: AI Trust Block — 2 cột */}
