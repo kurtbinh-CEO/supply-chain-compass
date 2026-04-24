@@ -12,13 +12,14 @@
  *   M+2 = FIRM ±15% (cam) — kế hoạch chắc, còn điều chỉnh
  *   M+3 = SOFT ±30% (xám) — định hướng, chưa cam kết cứng
  */
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import {
   Phone, Clock, CheckCircle2, AlertTriangle, Camera, Upload,
-  X, Image as ImageIcon, Lock, Filter,
+  X, Image as ImageIcon, Lock, Filter, Play, ArrowRight, EyeOff, Eye,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
 import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
