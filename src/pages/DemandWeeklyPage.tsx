@@ -499,6 +499,7 @@ function CnManagerTab({
         }}
         summaryRow={{
           item: <span className="font-semibold text-text-1">TỔNG</span>,
+          actualPrev: <span className="tabular-nums font-semibold text-text-2">{totals.actualPrev.toLocaleString("vi-VN")}</span>,
           duKien: <span className="tabular-nums font-semibold">{totals.duKien.toLocaleString("vi-VN")}</span>,
           adjust: (
             <span className={cn(
