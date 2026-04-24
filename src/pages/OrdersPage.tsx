@@ -75,7 +75,7 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<Set<LifecycleStage>>(new Set());
   const [kindFilter, setKindFilter] = useState<Set<"RPO" | "TO">>(new Set());
   const [overdueOnly, setOverdueOnly] = useState(false);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // (removed legacy `expanded` state — SmartTable now owns drill-down chevron.)
   const [bpoOpen, setBpoOpen] = useState(true);
 
   // Drill-down popup từ summary cards
