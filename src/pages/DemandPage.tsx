@@ -120,6 +120,7 @@ export default function DemandPage() {
   const { cnSummaries, loading: forecastLoading } = useDemandForecasts();
   const { markDone } = useNextStep();
   const [importerOpen, setImporterOpen] = useState(false);
+  const [actualOpen, setActualOpen] = useState(false);
   const [aopOpen, setAopOpen] = useState(false);
   const [aopPlan, setAopPlan] = useState<AopPlan>(AOP_PLAN);
 
@@ -135,6 +136,18 @@ export default function DemandPage() {
       description: activeTab === "b2b"
         ? "Áp dụng cho B2B Pipeline."
         : "Áp dụng cho FC tháng.",
+    });
+  };
+
+  const handleActualSelect = (key: string) => {
+    setActualOpen(false);
+    const labels: Record<string, string> = {
+      api_sync: "Tích hợp Bravo (sắp có)",
+      excel_upload: "Upload Excel thực tế — mở wizard",
+      manual_input: "Nhập thực tế tay",
+    };
+    toast.success(labels[key] ?? key, {
+      description: "Áp dụng cho FC vs Actual. MAPE sẽ tính lại tự động.",
     });
   };
 
