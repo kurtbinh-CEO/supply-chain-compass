@@ -107,12 +107,12 @@ export function FormulaBar({
   };
 
   const cards: { key: CardKey; label: string; value: number; bg: string; text: string; prefix?: string }[] = [
-    { key: "demand", label: "DEMAND", value: demand, bg: "bg-info-bg", text: "text-info" },
-    { key: "stock", label: "STOCK", value: stock, bg: "bg-success-bg", text: "text-success", prefix: "−" },
-    { key: "pipeline", label: "PIPELINE", value: pipeline, bg: "bg-success-bg", text: "text-success", prefix: "−" },
-    { key: "net", label: "NET", value: net, bg: "bg-warning-bg", text: "text-warning", prefix: "=" },
-    { key: "ss", label: "SS BUFFER", value: ssBuffer, bg: "bg-warning-bg", text: "text-warning", prefix: "+" },
-    { key: "fcmin", label: "FC MIN", value: fcMin, bg: "bg-danger-bg", text: "text-danger", prefix: "=" },
+    { key: "demand", label: "NHU CẦU", value: demand, bg: "bg-info-bg", text: "text-info" },
+    { key: "stock", label: "TỒN KHO", value: stock, bg: "bg-success-bg", text: "text-success", prefix: "−" },
+    { key: "pipeline", label: "ĐANG VỀ", value: pipeline, bg: "bg-success-bg", text: "text-success", prefix: "−" },
+    { key: "net", label: "RÒNG", value: net, bg: "bg-warning-bg", text: "text-warning", prefix: "=" },
+    { key: "ss", label: "TỒN AN TOÀN", value: ssBuffer, bg: "bg-warning-bg", text: "text-warning", prefix: "+" },
+    { key: "fcmin", label: "ĐẶT TỐI THIỂU", value: fcMin, bg: "bg-danger-bg", text: "text-danger", prefix: "=" },
   ];
 
   const totalDemand = demandDetail.rows.reduce((a, r) => a + r.qty, 0);
@@ -141,7 +141,7 @@ export function FormulaBar({
                 {c.value.toLocaleString()}
               </div>
               {!hasClicked && (
-                <div className="text-[7px] text-text-3 mt-0.5">click xem nguồn</div>
+                <div className="text-[7px] text-text-3 mt-0.5">nhấn xem nguồn</div>
               )}
             </button>
           </div>
@@ -154,7 +154,7 @@ export function FormulaBar({
           {/* DEMAND */}
           {activeCard === "demand" && (
             <div className="p-4 space-y-3">
-              <h4 className="font-display text-table font-semibold text-text-1">DEMAND {demand.toLocaleString()}</h4>
+              <h4 className="font-display text-table font-semibold text-text-1">NHU CẦU {demand.toLocaleString()}</h4>
               {/* Stacked bar */}
               <div className="flex h-5 rounded-full overflow-hidden">
                 {demandDetail.rows.filter(r => r.qty > 0).map((r) => (
@@ -191,7 +191,7 @@ export function FormulaBar({
                     </tr>
                   ))}
                   <tr className="bg-surface-1/50 font-semibold">
-                    <td className="px-3 py-2 text-text-1">TOTAL</td>
+                    <td className="px-3 py-2 text-text-1">TỔNG</td>
                     <td className="px-3 py-2 tabular-nums text-text-1">{demand.toLocaleString()}</td>
                     <td className="px-3 py-2 tabular-nums text-text-1">100%</td>
                     <td className="px-3 py-2">
@@ -209,7 +209,7 @@ export function FormulaBar({
           {/* STOCK */}
           {activeCard === "stock" && (
             <div className="p-4 space-y-3">
-              <h4 className="font-display text-table font-semibold text-text-1">STOCK {stock.toLocaleString()}</h4>
+              <h4 className="font-display text-table font-semibold text-text-1">TỒN KHO {stock.toLocaleString()}</h4>
               <table className="w-full text-table-sm">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
@@ -234,7 +234,7 @@ export function FormulaBar({
                     </tr>
                   ))}
                   <tr className="bg-surface-1/50 font-semibold">
-                    <td className="px-3 py-2 text-text-1">TOTAL</td>
+                    <td className="px-3 py-2 text-text-1">TỔNG</td>
                     <td className="px-3 py-2 tabular-nums text-text-1">{stockDetail.reduce((a, r) => a + r.onHand, 0).toLocaleString()}</td>
                     <td className="px-3 py-2 tabular-nums text-text-1">{stockDetail.reduce((a, r) => a + r.reserved, 0).toLocaleString()}</td>
                     <td className="px-3 py-2 tabular-nums text-text-1">{stock.toLocaleString()}</td>
@@ -248,7 +248,7 @@ export function FormulaBar({
                 </tbody>
               </table>
               <div className="rounded bg-surface-0 border border-surface-3 p-3 font-mono text-[12px] text-text-2 leading-relaxed">
-                Stock = Σ(on_hand − reserved) per CN = {stock.toLocaleString()}
+                Tồn kho = Σ(tồn hiện có − đã giữ) per CN = {stock.toLocaleString()}
               </div>
             </div>
           )}
@@ -256,11 +256,11 @@ export function FormulaBar({
           {/* PIPELINE */}
           {activeCard === "pipeline" && (
             <div className="p-4 space-y-3">
-              <h4 className="font-display text-table font-semibold text-text-1">PIPELINE {pipeline.toLocaleString()}</h4>
+              <h4 className="font-display text-table font-semibold text-text-1">ĐANG VỀ {pipeline.toLocaleString()}</h4>
               <table className="w-full text-table-sm">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
-                    {["RPO#", "NM", "Item", "Qty", "Ship date", "ETA", "Status"].map(h => (
+                    {["Mã RPO", "NM", "Mã hàng", "SL (m²)", "Ngày giao", "Dự kiến đến", "Trạng thái"].map(h => (
                       <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
                     ))}
                   </tr>
@@ -278,7 +278,7 @@ export function FormulaBar({
                     </tr>
                   ))}
                   <tr className="bg-surface-1/50 font-semibold">
-                    <td className="px-3 py-2 text-text-1">TOTAL</td>
+                    <td className="px-3 py-2 text-text-1">TỔNG</td>
                     <td colSpan={2}></td>
                     <td className="px-3 py-2 tabular-nums text-text-1">{pipeline.toLocaleString()}</td>
                     <td colSpan={2}></td>
@@ -291,7 +291,7 @@ export function FormulaBar({
                 </tbody>
               </table>
               <div className="rounded bg-surface-0 border border-surface-3 p-3 font-mono text-[12px] text-text-2 leading-relaxed">
-                Pipeline = Σ(RPO shipped, chưa received) = {pipeline.toLocaleString()}
+                Đang về = Σ(RPO đã giao, chưa nhận) = {pipeline.toLocaleString()}
               </div>
             </div>
           )}
@@ -299,15 +299,15 @@ export function FormulaBar({
           {/* NET */}
           {activeCard === "net" && (
             <div className="p-4 space-y-3">
-              <h4 className="font-display text-table font-semibold text-text-1">NET {net.toLocaleString()}</h4>
+              <h4 className="font-display text-table font-semibold text-text-1">RÒNG {net.toLocaleString()}</h4>
               <div className="rounded bg-surface-0 border border-surface-3 p-4 font-mono text-[12px] text-text-2 leading-loose whitespace-pre">
-{`Net = Demand − Stock − Pipeline
+{`Ròng = Nhu cầu − Tồn kho − Đang về
     = ${demand.toLocaleString()} − ${stock.toLocaleString()} − ${pipeline.toLocaleString()}
     = ${net.toLocaleString()} m²
 
-Per CN:
+Theo CN:
 ${netPerCn.map(r => `  ${r.cn}: ${r.demand.toLocaleString()} − ${r.stock.toLocaleString()} − ${r.pipeline.toLocaleString()} = ${r.net.toLocaleString()}`).join("\n")}
-  Total = ${net.toLocaleString()}`}
+  Tổng = ${net.toLocaleString()}`}
               </div>
             </div>
           )}
@@ -315,19 +315,19 @@ ${netPerCn.map(r => `  ${r.cn}: ${r.demand.toLocaleString()} − ${r.stock.toLoc
           {/* SS BUFFER */}
           {activeCard === "ss" && (
             <div className="p-4 space-y-3">
-              <h4 className="font-display text-table font-semibold text-text-1">SS BUFFER {ssBuffer.toLocaleString()}</h4>
+              <h4 className="font-display text-table font-semibold text-text-1">TỒN AN TOÀN {ssBuffer.toLocaleString()}</h4>
               <div className="rounded bg-surface-0 border border-surface-3 p-4 font-mono text-[12px] text-text-2 leading-loose whitespace-pre">
-{`SS = z × σ_fc_error × √LT
+{`SS = z × σ_sai_lệch_FC × √LT
    = 1.65 × 28.5 × √14
    = 1.65 × 28.5 × 3.74
-   = 176 m²/SKU avg
+   = 176 m²/SKU trung bình
 
-Total SS buffer needed ≈ ${ssBuffer.toLocaleString()} m²`}
+Tổng tồn an toàn cần ≈ ${ssBuffer.toLocaleString()} m²`}
               </div>
               <table className="w-full text-table-sm">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
-                    {["Param", "Value", "Nguồn", "Điều chỉnh"].map(h => (
+                    {["Tham số", "Giá trị", "Nguồn", "Điều chỉnh"].map(h => (
                       <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
                     ))}
                   </tr>
@@ -355,14 +355,14 @@ Total SS buffer needed ≈ ${ssBuffer.toLocaleString()} m²`}
           {/* FC MIN */}
           {activeCard === "fcmin" && (
             <div className="p-4 space-y-3">
-              <h4 className="font-display text-table font-semibold text-text-1">FC MIN {fcMin.toLocaleString()}</h4>
+              <h4 className="font-display text-table font-semibold text-text-1">ĐẶT TỐI THIỂU {fcMin.toLocaleString()}</h4>
               <div className="rounded bg-surface-0 border border-surface-3 p-3 font-mono text-[12px] text-text-2 leading-relaxed">
-                FC Min = Net + SS Buffer = {net.toLocaleString()} + {ssBuffer.toLocaleString()} = {fcMin.toLocaleString()}
+                Đặt tối thiểu = Ròng + Tồn an toàn = {net.toLocaleString()} + {ssBuffer.toLocaleString()} = {fcMin.toLocaleString()}
               </div>
               <table className="w-full text-table-sm">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
-                    {["NM", "FC Min", "MOQ", "Sau round", "Share%", "Committed"].map(h => (
+                    {["NM", "Đặt tối thiểu", "MOQ", "Sau làm tròn", "Tỷ trọng %", "Đã cam kết"].map(h => (
                       <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
                     ))}
                   </tr>
@@ -379,7 +379,7 @@ Total SS buffer needed ≈ ${ssBuffer.toLocaleString()} m²`}
                     </tr>
                   ))}
                   <tr className="bg-surface-1/50 font-semibold">
-                    <td className="px-3 py-2 text-text-1">TOTAL</td>
+                    <td className="px-3 py-2 text-text-1">TỔNG</td>
                     <td className="px-3 py-2 tabular-nums text-text-1">{fcMinNm.reduce((a, r) => a + r.fcMin, 0).toLocaleString()}</td>
                     <td></td>
                     <td className="px-3 py-2 tabular-nums text-text-1">{fcMinNm.reduce((a, r) => a + r.afterRound, 0).toLocaleString()}</td>

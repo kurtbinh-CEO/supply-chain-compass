@@ -70,11 +70,11 @@ const fmtVnd = (n: number) => {
 };
 
 const statusMeta: Record<DrpBatchStatus, { label: string; tone: string; chip: string; ring: string }> = {
-  idle:     { label: "Chưa có batch", tone: "text-text-3",       chip: "bg-surface-2 text-text-3",        ring: "" },
-  draft:    { label: "Draft",         tone: "text-warning",      chip: "bg-warning/15 text-warning",      ring: "ring-warning/30" },
-  reviewed: { label: "Đã review",     tone: "text-info",         chip: "bg-info/15 text-info",            ring: "ring-info/30" },
+  idle:     { label: "Chưa có lô",    tone: "text-text-3",       chip: "bg-surface-2 text-text-3",        ring: "" },
+  draft:    { label: "Nháp",          tone: "text-warning",      chip: "bg-warning/15 text-warning",      ring: "ring-warning/30" },
+  reviewed: { label: "Đã xem xét",    tone: "text-info",         chip: "bg-info/15 text-info",            ring: "ring-info/30" },
   approved: { label: "Đã duyệt",      tone: "text-success",      chip: "bg-success-bg text-success",      ring: "ring-success/30" },
-  released: { label: "Đã release",    tone: "text-primary",      chip: "bg-primary/15 text-primary",      ring: "ring-primary/30" },
+  released: { label: "Đã phát hành",  tone: "text-primary",      chip: "bg-primary/15 text-primary",      ring: "ring-primary/30" },
 };
 
 /* ─────────────────────────────────────────────────────────────
@@ -179,8 +179,8 @@ export function DrpReleaseBar({
                   {meta.label}
                 </span>
                 {isHighValue && status !== "released" && (
-                  <span className="rounded-full bg-warning/15 text-warning px-2 py-0.5 text-caption font-semibold inline-flex items-center gap-1" title="Giá trị > 500M₫ — cần xác nhận maker-checker">
-                    <ShieldAlert className="h-3 w-3" /> High-value
+                  <span className="rounded-full bg-warning/15 text-warning px-2 py-0.5 text-caption font-semibold inline-flex items-center gap-1" title="Giá trị > 500M₫ — cần xác nhận hai cấp">
+                    <ShieldAlert className="h-3 w-3" /> Giá trị cao
                   </span>
                 )}
               </div>
@@ -191,7 +191,7 @@ export function DrpReleaseBar({
                 <span className="text-text-2 font-medium tabular-nums">{totalQty.toLocaleString()} m²</span> ·{" "}
                 <span className="text-text-2 font-semibold tabular-nums">{fmtVnd(totalValue)}</span>
                 {batch.unresolved.length > 0 && (
-                  <span className="ml-2 text-danger font-medium">· {batch.unresolved.length} exception chưa giải quyết</span>
+                  <span className="ml-2 text-danger font-medium">· {batch.unresolved.length} ngoại lệ chưa xử lý</span>
                 )}
               </p>
             </div>
@@ -203,7 +203,7 @@ export function DrpReleaseBar({
               onClick={() => { setReviewOpen(true); setTab("rpo"); setSelected(new Set()); }}
               className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-table-sm font-semibold text-text-1 hover:bg-surface-1 transition-colors"
             >
-              <Eye className="h-3.5 w-3.5" /> Review
+              <Eye className="h-3.5 w-3.5" /> Xem xét
               <ChevronRight className="h-3 w-3 text-text-3" />
             </button>
 
@@ -217,10 +217,10 @@ export function DrpReleaseBar({
                     ? "bg-surface-2 text-text-3 cursor-not-allowed"
                     : "bg-success text-success-foreground hover:opacity-90"
                 )}
-                title={!canApprove ? "Cần quyền SC Manager" : status === "approved" ? "Batch đã được duyệt" : "Approve toàn bộ RPO + TO"}
+                title={!canApprove ? "Cần quyền SC Manager" : status === "approved" ? "Lô đã được duyệt" : "Duyệt toàn bộ RPO + TO"}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Approve all
+                Duyệt tất cả
               </button>
             )}
 
@@ -233,18 +233,18 @@ export function DrpReleaseBar({
                   ? "bg-surface-2 text-text-3 cursor-not-allowed"
                   : "bg-gradient-primary text-primary-foreground hover:shadow-md"
               )}
-              title={status !== "approved" ? "Cần Approve trước khi Release" : "Đẩy sang Orders, lock batch"}
+              title={status !== "approved" ? "Cần Duyệt trước khi Phát hành" : "Đẩy sang Đơn hàng, khoá lô"}
             >
               <Send className="h-3.5 w-3.5" />
-              {status === "released" ? "Đã release" : "Release"}
+              {status === "released" ? "Đã phát hành" : "Phát hành"}
             </button>
 
             {status !== "released" && (
               <button
                 onClick={onCancelBatch}
                 className="inline-flex items-center justify-center h-7 w-7 rounded-full text-text-3 hover:bg-surface-2 hover:text-danger transition-colors"
-                title="Hủy batch"
-                aria-label="Hủy batch"
+                title="Hủy lô"
+                aria-label="Hủy lô"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -275,7 +275,7 @@ export function DrpReleaseBar({
               onClick={() => navigate("/orders")}
               className="ml-auto inline-flex items-center gap-1 text-primary font-medium hover:underline"
             >
-              <FileCheck2 className="h-3 w-3" /> Xem ở /orders
+              <FileCheck2 className="h-3 w-3" /> Xem ở Đơn hàng
             </button>
           )}
         </div>
@@ -285,9 +285,9 @@ export function DrpReleaseBar({
       <Sheet open={reviewOpen} onOpenChange={setReviewOpen}>
         <SheetContent className="w-full sm:max-w-[720px] overflow-y-auto p-0">
           <SheetHeader className="px-6 py-4 border-b border-surface-3 sticky top-0 bg-surface-0 z-10">
-            <SheetTitle className="font-display text-text-1">Review DRP batch · {batch.id}</SheetTitle>
+            <SheetTitle className="font-display text-text-1">Xem xét lô DRP · {batch.id}</SheetTitle>
             <SheetDescription className="text-text-3">
-              Kiểm tra RPO/TO & exceptions trước khi Approve và Release sang Orders.
+              Kiểm tra RPO/TO & ngoại lệ trước khi Duyệt và Phát hành sang Đơn hàng.
             </SheetDescription>
           </SheetHeader>
 
@@ -295,10 +295,10 @@ export function DrpReleaseBar({
           <div className="px-6 py-4 grid grid-cols-5 gap-3 border-b border-surface-3">
             {[
               { label: "RPO", value: rpoItems.length, icon: Package, tone: "text-primary", sub: undefined as string | undefined },
-              { label: "Internal TO", value: toItems.length, icon: ArrowLeftRight, tone: "text-accent-foreground", sub: undefined },
-              { label: "Pending", value: activeItems.length, icon: ClipboardList, tone: "text-info", sub: `${totalQty.toLocaleString()} m²` },
-              { label: "Rejected", value: rejectedItems.length, icon: X, tone: rejectedItems.length > 0 ? "text-danger" : "text-text-3", sub: rejectedItems.length > 0 ? fmtVnd(rejectedValue) : undefined },
-              { label: "Tổng giá trị", value: fmtVnd(totalValue), icon: FileCheck2, tone: isHighValue ? "text-warning" : "text-text-1", sub: batch.unresolved.length > 0 ? `${batch.unresolved.length} exc` : undefined },
+              { label: "TO nội bộ", value: toItems.length, icon: ArrowLeftRight, tone: "text-accent-foreground", sub: undefined },
+              { label: "Chờ xử lý", value: activeItems.length, icon: ClipboardList, tone: "text-info", sub: `${totalQty.toLocaleString()} m²` },
+              { label: "Từ chối", value: rejectedItems.length, icon: X, tone: rejectedItems.length > 0 ? "text-danger" : "text-text-3", sub: rejectedItems.length > 0 ? fmtVnd(rejectedValue) : undefined },
+              { label: "Tổng giá trị", value: fmtVnd(totalValue), icon: FileCheck2, tone: isHighValue ? "text-warning" : "text-text-1", sub: batch.unresolved.length > 0 ? `${batch.unresolved.length} ngoại lệ` : undefined },
             ].map((k) => {
               const Icon = k.icon;
               return (
@@ -317,8 +317,8 @@ export function DrpReleaseBar({
           <div className="px-6 pt-4 flex items-center gap-1 border-b border-surface-3">
             {([
               { k: "rpo", l: `RPO (${rpoItems.length})` },
-              { k: "to",  l: `Internal TO (${toItems.length})` },
-              { k: "exc", l: `Exceptions (${batch.unresolved.length})` },
+              { k: "to",  l: `TO nội bộ (${toItems.length})` },
+              { k: "exc", l: `Ngoại lệ (${batch.unresolved.length})` },
             ] as const).map((t) => (
               <button
                 key={t.k}
@@ -338,7 +338,7 @@ export function DrpReleaseBar({
             {tab === "exc" ? (
               batch.unresolved.length === 0 ? (
                 <div className="rounded-card border border-success/30 bg-success-bg/30 p-4 text-table-sm text-success flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" /> Không còn exception chưa giải quyết.
+                  <CheckCircle2 className="h-4 w-4" /> Không còn ngoại lệ chưa xử lý.
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -358,7 +358,7 @@ export function DrpReleaseBar({
                     </div>
                   ))}
                   <p className="text-caption text-text-3 mt-2">
-                    💡 Có thể vẫn release lô — ngoại lệ sẽ chuyển sang Workspace để xử lý sau.
+                    💡 Có thể vẫn phát hành lô — ngoại lệ sẽ chuyển sang Workspace để xử lý sau.
                   </p>
                 </div>
               )
@@ -387,11 +387,11 @@ export function DrpReleaseBar({
                         )}
                         title={
                           !canApprove ? "Cần quyền SC Manager" :
-                          status === "approved" ? "Batch đã approve" :
-                          "Approve các mục đã chọn (kèm note audit)"
+                          status === "approved" ? "Lô đã được duyệt" :
+                          "Duyệt các mục đã chọn (kèm ghi chú audit)"
                         }
                       >
-                        <CheckCircle2 className="h-3 w-3" /> Approve selected
+                        <CheckCircle2 className="h-3 w-3" /> Duyệt mục đã chọn
                       </button>
                       <button
                         onClick={() => { setNote(""); setPending({ kind: "reject", codes: Array.from(selected) }); }}
@@ -400,9 +400,9 @@ export function DrpReleaseBar({
                           "inline-flex items-center gap-1 rounded-button px-2.5 py-1 text-caption font-semibold transition-colors",
                           canApprove ? "border border-danger/40 text-danger hover:bg-danger/10" : "bg-surface-2 text-text-3 cursor-not-allowed"
                         )}
-                        title={!canApprove ? "Cần quyền SC Manager" : "Loại khỏi batch (sẽ không release)"}
+                        title={!canApprove ? "Cần quyền SC Manager" : "Loại khỏi lô (sẽ không phát hành)"}
                       >
-                        <X className="h-3 w-3" /> Reject
+                        <X className="h-3 w-3" /> Từ chối
                       </button>
                       <button
                         onClick={() => setSelected(new Set())}
@@ -427,11 +427,11 @@ export function DrpReleaseBar({
                           />
                         </th>
                         <th className="px-3 py-2 text-left text-caption uppercase font-semibold tracking-wide">Mã</th>
-                        <th className="px-3 py-2 text-left text-caption uppercase font-semibold tracking-wide">{tab === "rpo" ? "NM" : "From → To"}</th>
+                        <th className="px-3 py-2 text-left text-caption uppercase font-semibold tracking-wide">{tab === "rpo" ? "NM" : "Từ → Đến"}</th>
                         <th className="px-3 py-2 text-left text-caption uppercase font-semibold tracking-wide">SKU</th>
-                        <th className="px-3 py-2 text-right text-caption uppercase font-semibold tracking-wide">Qty</th>
+                        <th className="px-3 py-2 text-right text-caption uppercase font-semibold tracking-wide">SL (m²)</th>
                         <th className="px-3 py-2 text-right text-caption uppercase font-semibold tracking-wide">Giá trị</th>
-                        <th className="px-3 py-2 text-left text-caption uppercase font-semibold tracking-wide">ETA</th>
+                        <th className="px-3 py-2 text-left text-caption uppercase font-semibold tracking-wide">Dự kiến đến</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -476,16 +476,16 @@ export function DrpReleaseBar({
           <div className="sticky bottom-0 bg-surface-0/95 backdrop-blur border-t border-surface-3 px-6 py-3 flex items-center gap-2">
             {!canApprove && status !== "released" && (
               <span className="inline-flex items-center gap-1.5 text-caption text-text-3">
-                <ShieldAlert className="h-3.5 w-3.5" /> Cần quyền SC Manager để approve
+                <ShieldAlert className="h-3.5 w-3.5" /> Cần quyền SC Manager để duyệt
               </span>
             )}
             <div className="ml-auto flex items-center gap-2">
               {status === "draft" && (
                 <button
-                  onClick={() => { onMarkReviewed(); toast.success("Đã đánh dấu reviewed"); }}
+                  onClick={() => { onMarkReviewed(); toast.success("Đã đánh dấu Đã xem xét"); }}
                   className="inline-flex items-center gap-1.5 rounded-button border border-info/40 bg-info/10 text-info px-3 py-1.5 text-table-sm font-semibold hover:bg-info/20"
                 >
-                  <Eye className="h-3.5 w-3.5" /> Đánh dấu Reviewed
+                  <Eye className="h-3.5 w-3.5" /> Đánh dấu Đã xem xét
                 </button>
               )}
               {status !== "released" && (
@@ -499,7 +499,7 @@ export function DrpReleaseBar({
                       : "bg-success text-success-foreground hover:opacity-90"
                   )}
                 >
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Approve all
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Duyệt tất cả
                 </button>
               )}
               <button
@@ -512,7 +512,7 @@ export function DrpReleaseBar({
                     : "bg-gradient-primary text-primary-foreground hover:shadow-md"
                 )}
               >
-                <Send className="h-3.5 w-3.5" /> Release
+                <Send className="h-3.5 w-3.5" /> Phát hành
               </button>
             </div>
           </div>
@@ -524,10 +524,10 @@ export function DrpReleaseBar({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {pending?.kind === "approve" && "Approve toàn bộ batch?"}
-              {pending?.kind === "approveSelected" && `Approve ${pending.codes?.length} mục đã chọn?`}
-              {pending?.kind === "release" && "Release batch sang Orders?"}
-              {pending?.kind === "reject" && `Loại ${pending.codes?.length} mục khỏi batch?`}
+              {pending?.kind === "approve" && "Duyệt toàn bộ lô?"}
+              {pending?.kind === "approveSelected" && `Duyệt ${pending.codes?.length} mục đã chọn?`}
+              {pending?.kind === "release" && "Phát hành lô sang Đơn hàng?"}
+              {pending?.kind === "reject" && `Loại ${pending.codes?.length} mục khỏi lô?`}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-text-2">
@@ -537,25 +537,25 @@ export function DrpReleaseBar({
                     {isHighValue && (
                       <p className="rounded-card bg-warning/10 border border-warning/40 px-3 py-2 text-caption text-warning flex items-start gap-2">
                         <ShieldAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                        <span><strong>High-value batch (≥500M₫):</strong> ghi note bắt buộc để audit (maker-checker).</span>
+                        <span><strong>Lô giá trị cao (≥500M₫):</strong> bắt buộc ghi chú để audit (xác nhận hai cấp).</span>
                       </p>
                     )}
                   </>
                 )}
                 {pending?.kind === "approveSelected" && (
                   <>
-                    <p>Duyệt <span className="font-semibold text-text-1">{pending.codes?.length} mục</span> ({fmtVnd(selectedValue)}). Các mục còn lại trong batch sẽ vẫn ở trạng thái chờ.</p>
+                    <p>Duyệt <span className="font-semibold text-text-1">{pending.codes?.length} mục</span> ({fmtVnd(selectedValue)}). Các mục còn lại trong lô sẽ vẫn ở trạng thái chờ.</p>
                     <p className="rounded-card bg-info/10 border border-info/30 px-3 py-2 text-caption text-info flex items-start gap-2">
                       <ShieldAlert className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                      <span>Note bắt buộc — partial approval cần lý do audit.</span>
+                      <span>Bắt buộc ghi chú — duyệt một phần cần lý do audit.</span>
                     </p>
                   </>
                 )}
                 {pending?.kind === "release" && (
-                  <p>Đẩy <span className="font-semibold text-text-1">{activeItems.length} mục</span> sang <span className="text-primary font-medium">/orders</span>. Batch sẽ bị <span className="text-text-1 font-semibold">khoá</span>, không sửa được nữa.</p>
+                  <p>Đẩy <span className="font-semibold text-text-1">{activeItems.length} mục</span> sang <span className="text-primary font-medium">Đơn hàng</span>. Lô sẽ bị <span className="text-text-1 font-semibold">khoá</span>, không sửa được nữa.</p>
                 )}
                 {pending?.kind === "reject" && (
-                  <p>Các mục bị loại sẽ <span className="text-danger font-medium">không được release</span> nhưng vẫn lưu trong batch để truy vết.</p>
+                  <p>Các mục bị loại sẽ <span className="text-danger font-medium">không được phát hành</span> nhưng vẫn lưu trong lô để truy vết.</p>
                 )}
               </div>
             </AlertDialogDescription>
@@ -563,7 +563,7 @@ export function DrpReleaseBar({
 
           <div className="space-y-1.5">
             <label className="text-caption text-text-3 uppercase tracking-wide font-semibold">
-              Note {
+              Ghi chú {
                 pending?.kind === "reject" ? "(bắt buộc)" :
                 pending?.kind === "approveSelected" ? "(bắt buộc)" :
                 isHighValue && pending?.kind === "approve" ? "(bắt buộc)" :
