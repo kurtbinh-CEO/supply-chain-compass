@@ -157,16 +157,12 @@ export default function OrdersPage() {
 
       {/* ═══ MAIN TABLE ═══ */}
       <SmartTable<PoLifecycleRow>
-        rows={visibleRows}
-        rowKey={(r) => r.id}
+        data={visibleRows}
+        getRowId={(r) => r.id}
         screenId="orders-lifecycle"
         defaultDensity="compact"
         rowSeverity={(r) => isOverdue(r) ? "shortage" : isNearSla(r) ? "watch" : undefined}
-        onRowClick={(r) => setExpanded(prev => {
-          const next = new Set(prev);
-          if (next.has(r.id)) next.delete(r.id); else next.add(r.id);
-          return next;
-        })}
+        autoExpandWhen={(r) => expanded.has(r.id)}
         emptyState={{
           icon: filter === "overdue" ? <CheckCircle2 /> : <ClipboardCheck />,
           title: filter === "overdue" ? "Không có đơn trễ hạn" : "Không có đơn nào",
@@ -174,7 +170,7 @@ export default function OrdersPage() {
             ? "Mọi đơn đã được xử lý. Quay lại sau hoặc xem tab khác."
             : "Thử đổi filter hoặc tải đơn mới từ DRP batch.",
         }}
-        renderExpanded={(r) => expanded.has(r.id) ? <ExpandedRow row={r} /> : null}
+        drillDown={(r) => <ExpandedRow row={r} />}
         columns={[
           {
             key: "expand", label: "", width: 32, hideable: false,
