@@ -16,6 +16,7 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { TERMS } from "@/components/i18n/terms";
 import { toast } from "sonner";
 import { CONFIG_KEYS, type ConfigGroup, type ConfigKey as DsConfigKey } from "@/data/unis-enterprise-dataset";
+import { KpiTargetsTab } from "@/components/config/KpiTargetsTab";
 
 /* ── Tab structure (8 functional groupings) ── */
 type TabDef = {
@@ -30,6 +31,11 @@ const TABS: TabDef[] = [
   {
     v: "integration",
     l: "Tích hợp",
+    groups: [],
+  },
+  {
+    v: "kpi_targets",
+    l: "Mục tiêu KPI",
     groups: [],
   },
   {
