@@ -242,6 +242,46 @@ export function CommitmentTab({ scale, onTotalsChange }: {
     return c;
   }, [rows]);
 
+  /* SKU-first pivot — aggregate commitment per SKU across NMs */
+  interface SkuCommitRow {
+    sku: string;
+    totalFc: number;
+    totalCommitted: number;
+    nmCount: number;
+    confirmedCount: number;
+    nmBreakdown: PivotChildRow[];
+  }
+  const skuPivotRows: SkuCommitRow[] = useMemo(() => {
+    const map = new Map<string, SkuCommitRow>();
+    rows.forEach(r => {
+      if (!map.has(r.sku)) {
+        map.set(r.sku, { sku: r.sku, totalFc: 0, totalCommitted: 0, nmCount: 0, confirmedCount: 0, nmBreakdown: [] });
+      }
+      const p = map.get(r.sku)!;
+      p.totalFc += r.fcSent;
+      p.totalCommitted += r.committed;
+      p.nmCount++;
+      if (r.status === "confirmed" || r.status === "counter") p.confirmedCount++;
+      // hstk synthesized = 14d if confirmed/locked, 5d if waiting, 1d if not_called
+      const hstk = r.locked || r.status === "confirmed" ? 14 : r.status === "counter" ? 8 : r.status === "waiting" ? 5 : 1;
+      const status =
+        r.status === "confirmed" ? "Đã xác nhận" :
+        r.status === "counter" ? "Counter" :
+        r.status === "waiting" ? "Chờ NM" : "Chưa gọi";
+      p.nmBreakdown.push({
+        key: `${r.sku}-${r.id}`,
+        label: r.nmName,
+        qty: r.committed,
+        hstk,
+        ssTarget: r.fcSent,
+        statusOverride: status,
+        navKind: "nm",
+        navValue: r.nmName,
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => (a.confirmedCount / Math.max(1, a.nmCount)) - (b.confirmedCount / Math.max(1, b.nmCount)));
+  }, [rows]);
+
   return (
     <div className="space-y-4">
       {/* ═══ HEADER ═══ */}
