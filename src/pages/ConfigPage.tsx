@@ -39,6 +39,11 @@ const TABS: TabDef[] = [
     groups: [],
   },
   {
+    v: "aop",
+    l: "Kế hoạch năm (AOP)",
+    groups: [],
+  },
+  {
     v: "demand_sop",
     l: "A. Nhu cầu & S&OP",
     groups: ["Demand", "S&OP"],
