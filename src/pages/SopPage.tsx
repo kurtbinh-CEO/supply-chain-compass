@@ -21,6 +21,7 @@ import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
 import { VersionComparePanel } from "@/components/sop/VersionComparePanel";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
+import { toast } from "sonner";
 
 const tabs = [
   { key: "consensus", label: "Consensus" },
