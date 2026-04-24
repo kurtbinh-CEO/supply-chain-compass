@@ -1105,9 +1105,9 @@ export default function CnPortalPage() {
                 <SelectItem value="adjust">Điều chỉnh</SelectItem>
                 <SelectItem value="approve">Duyệt</SelectItem>
                 <SelectItem value="reject">Từ chối</SelectItem>
-                <SelectItem value="auto_approve">Auto-approve</SelectItem>
+                <SelectItem value="auto_approve">Tự động duyệt</SelectItem>
                 <SelectItem value="submit">Gửi batch</SelectItem>
-                <SelectItem value="revert">Revert</SelectItem>
+                <SelectItem value="revert">Hoàn tác</SelectItem>
               </SelectContent>
             </Select>
             <span className="text-caption text-text-3 ml-auto">{filteredAudit.length} bản ghi</span>
