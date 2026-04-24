@@ -433,6 +433,7 @@ function SuppliersTab() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<MergedFactory | null>(null);
   const [deleting, setDeleting] = useState<MergedFactory | null>(null);
+  const [historyCode, setHistoryCode] = useState<string | null>(null);
 
   const { data: cloudFactories = [] } = useMasterFactories();
   const createFactory = useCreateMasterFactory();
