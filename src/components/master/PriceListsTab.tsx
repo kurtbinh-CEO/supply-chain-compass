@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, FileText } from "lucide-react";
+import { ChevronDown, ChevronRight, AlertTriangle, CheckCircle2, FileText, Receipt, GitCompare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -200,7 +200,11 @@ export function PriceListsTab() {
                   onToggleSurcharge={toggleSurcharge}
                 />
               )}
-              emptyMessage="Chưa có bảng giá nào."
+              emptyState={{
+                icon: <Receipt />,
+                title: "Chưa có bảng giá NM",
+                description: "Bảng giá nhà máy sẽ được nhập từ Master Data hoặc upload Excel khi NM mới được kích hoạt.",
+              }}
             />
           );
         })()}
@@ -282,7 +286,11 @@ export function PriceListsTab() {
                   data={versionDiff}
                   getRowId={(r) => r.sku}
                   rowSeverity={(r) => (r.deltaPct >= 4 ? "watch" : undefined)}
-                  emptyMessage="Không có dữ liệu so sánh."
+                  emptyState={{
+                    icon: <GitCompare />,
+                    title: "Chưa có dữ liệu so sánh version",
+                    description: "Cần ít nhất 2 version của cùng một bảng giá NM để so sánh chênh lệch giá theo SKU.",
+                  }}
                 />
               );
             })()}
