@@ -557,6 +557,7 @@ export default function DrpPage() {
 
   /* ── Pivot ── */
   const [pivot, setPivot] = useState<"cn" | "sku">("cn");
+  const [lcnbToDetail, setLcnbToDetail] = useState<ToLcnbRow | null>(null);
 
   /* ── Filter pills ── */
   const [filter, setFilter] = useState<"watch+short" | "ok" | "watch" | "short" | "all">("watch+short");
