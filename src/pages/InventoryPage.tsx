@@ -281,45 +281,106 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
     },
   ];
 
+  const skuColumns: SmartTableColumn<SkuPivotNmRow>[] = [
+    {
+      key: "base", label: "Mã hàng", sortable: true, hideable: false, filter: "text", width: 140,
+      render: (r) => (
+        <button
+          className="text-info hover:underline font-medium text-table-sm"
+          onClick={(e) => { e.stopPropagation(); navigate(`/drp?sku=${encodeURIComponent(r.base)}`); }}
+        >
+          {r.base}
+        </button>
+      ),
+    },
+    {
+      key: "totalOnHand", label: "Tồn tổng (m²)", numeric: true, align: "right", sortable: true, width: 130,
+      render: (r) => <span className="tabular-nums font-medium">{r.totalOnHand.toLocaleString("vi-VN")}</span>,
+    },
+    {
+      key: "nmCount", label: "# NM", numeric: true, align: "right", sortable: true, width: 70,
+      render: (r) => <span className="tabular-nums text-text-2">{r.nmCount}</span>,
+    },
+    {
+      key: "worstNm", label: "NM yếu nhất", sortable: false,
+      render: (r) => <span className="text-warning text-table-sm">{r.worstNm} ({r.worstHstk.toFixed(1)}d)</span>,
+    },
+  ];
+
   return (
-    <SmartTable<FactoryRow>
-      screenId="inventory-factories"
-      title="Nhà máy"
-      exportFilename="ton-kho-nha-may"
-      columns={columns}
-      data={rows}
-      defaultDensity="compact"
-      rowSeverity={(r) => r.tone === "block" ? "shortage" : r.tone === "watch" ? "watch" : "ok"}
-      getRowId={(r) => r.nmId}
-      drillDown={(r) => (
-        <div className="text-table-sm text-text-2 leading-relaxed">
-          <span className="text-text-3 mr-2">SKU bases:</span>
-          {r.skus.length === 0 ? (
-            <span className="italic text-text-3">— chưa có dữ liệu</span>
-          ) : (
-            r.skus.map((s, i) => (
-              <span key={s.code}>
-                <span className="text-text-1 font-medium">{s.code}</span>{" "}
-                <span className="tabular-nums">{s.onHand.toLocaleString("vi-VN")}</span>
-                {i < r.skus.length - 1 && <span className="text-text-3 mx-1.5">·</span>}
-              </span>
-            ))
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <PivotToggle mode={pivot} onChange={setPivot} cnLabel="Nhà máy" skuLabel="Mã hàng" />
+        <span className="text-caption text-text-3">
+          {pivot === "cn" ? "Click 1 NM → xem chi tiết SKU" : "Click 1 SKU → xem phân bố NM"}
+        </span>
+      </div>
+
+      {pivot === "cn" ? (
+        <SmartTable<FactoryRow>
+          screenId="inventory-factories"
+          title="Nhà máy"
+          exportFilename="ton-kho-nha-may"
+          columns={columns}
+          data={rows}
+          defaultDensity="compact"
+          rowSeverity={(r) => r.tone === "block" ? "shortage" : r.tone === "watch" ? "watch" : "ok"}
+          getRowId={(r) => r.nmId}
+          drillDown={(r) => {
+            const childRows: PivotChildRow[] = r.skus.map((s) => ({
+              key: `${r.nmId}-${s.code}`,
+              label: s.code,
+              qty: s.onHand,
+              hstk: r.tone === "block" ? 1.5 : r.tone === "watch" ? 5.5 : 14,
+              ssTarget: Math.round(s.onHand * 0.4),
+              navKind: "sku",
+              navValue: s.code,
+            }));
+            if (childRows.length === 0) {
+              return <div className="text-table-sm italic text-text-3">— chưa có dữ liệu SKU —</div>;
+            }
+            return (
+              <PivotChildTable
+                rows={childRows}
+                firstColLabel="Mã hàng"
+                screenId={`inv-nm-child-${r.nmId}`}
+              />
+            );
+          }}
+          summaryRow={{
+            name: "Tổng",
+            totalOnHand: <span className="tabular-nums font-semibold">{totals.t.toLocaleString("vi-VN")}</span>,
+            capacity:    <span className="tabular-nums font-semibold">{totals.c.toLocaleString("vi-VN")}</span>,
+            utilizationPct: <span className="tabular-nums font-semibold">{totals.pct}%</span>,
+          }}
+          emptyState={{
+            icon: <Package />,
+            title: "Chưa có dữ liệu nhà máy",
+            description: "Upload tồn kho NM hoặc chờ Bravo sync.",
+            action: { label: "Upload tồn kho →", onClick: () => document.getElementById("inventory-upload-zone")?.scrollIntoView({ behavior: "smooth" }) },
+          }}
+        />
+      ) : (
+        <SmartTable<SkuPivotNmRow>
+          screenId="inventory-factories-sku"
+          title="Mã hàng → Nhà máy"
+          exportFilename="ton-kho-nm-sku-pivot"
+          columns={skuColumns}
+          data={skuPivotRows}
+          defaultDensity="compact"
+          getRowId={(r) => r.key}
+          rowSeverity={(r) => r.worstHstk < 3 ? "shortage" : r.worstHstk < 7 ? "watch" : "ok"}
+          autoExpandWhen={(r) => r.nmBreakdown.some((c) => c.hstk < 3)}
+          drillDown={(r) => (
+            <PivotChildTable
+              rows={r.nmBreakdown}
+              firstColLabel="Nhà máy"
+              screenId={`inv-nm-sku-child-${r.key}`}
+            />
           )}
-        </div>
+        />
       )}
-      summaryRow={{
-        name: "Tổng",
-        totalOnHand: <span className="tabular-nums font-semibold">{totals.t.toLocaleString("vi-VN")}</span>,
-        capacity:    <span className="tabular-nums font-semibold">{totals.c.toLocaleString("vi-VN")}</span>,
-        utilizationPct: <span className="tabular-nums font-semibold">{totals.pct}%</span>,
-      }}
-      emptyState={{
-        icon: <Package />,
-        title: "Chưa có dữ liệu nhà máy",
-        description: "Upload tồn kho NM hoặc chờ Bravo sync.",
-        action: { label: "Upload tồn kho →", onClick: () => document.getElementById("inventory-upload-zone")?.scrollIntoView({ behavior: "smooth" }) },
-      }}
-    />
+    </div>
   );
 }
 
