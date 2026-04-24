@@ -17,6 +17,7 @@ import {
   exportToCsv,
   type FormField,
 } from "@/components/master/CrudPrimitives";
+import type { ImportField } from "@/components/master/ExcelImportWizard";
 import { Button } from "@/components/ui/button";
 import {
   SKU_BASES,
