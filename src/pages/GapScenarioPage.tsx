@@ -172,6 +172,10 @@ function buildScenarios(row: GapRow): Scenario[] {
     ? eff.allBreaks.find((b) => b.fromQty > eff.matchedBreak.fromQty)?.pricePerM2 ?? Math.round(basePrice * 1.15)
     : row.nm.priceTier2;
 
+  // Config keys (M9): negotiation cost + hybrid split %
+  const negoPerM2 = (CONFIG_KEYS.find((c) => c.key === "scenario.negotiation_cost_per_m2")?.defaultValue as number) ?? 9500;
+  const hybridPct = ((CONFIG_KEYS.find((c) => c.key === "scenario.hybrid_split_pct")?.defaultValue as number) ?? 50) / 100;
+
   // Format phụ phí text (cho card display)
   const surchargeText = eff && eff.surcharges.length > 0
     ? eff.surcharges
@@ -197,10 +201,22 @@ function buildScenarios(row: GapRow): Scenario[] {
   // ─── Chi phí từng kịch bản ─────────────────────────────────────
   const costA = gapQty * totalPrice;                                  // dùng totalPrice (gồm phụ phí)
   const costB = committed * (nextBreakPrice - basePrice);             // chênh giữa break hiện tại & break tiếp
-  const costC = Math.max(5_000_000, Math.round(gapQty * 9_500));      // negotiation overhead
-  const costD = Math.round(costA * 0.5 + costC * 0.5);
+  const costC = Math.max(5_000_000, Math.round(gapQty * negoPerM2));  // negotiation overhead theo config
+  const costD = Math.round(costA * hybridPct + costC * (1 - hybridPct));
 
-  const recommendC = row.relationshipPct >= 80 && !row.stale;
+  // ─── AI rule nâng cấp (3 yếu tố thay 1) ────────────────────────
+  // Quan hệ tổng = honoring × 0.6 + ontime × 0.4
+  const honoring = HONORING_BY_NM.find((h) => h.nmId === row.nm.id);
+  const relationship = honoring
+    ? Math.round(honoring.honoringPct * 0.6 + honoring.ontimePct * 0.4)
+    : row.relationshipPct;
+  // Counter rate proxy: NM nào không có cam kết Hard → coi như hay counter
+  const counterRate = row.gapPct >= 15 ? 0.6 : 0.2;
+  const recommendC = relationship >= 75 && !row.stale && counterRate < 0.5;
+
+  const aiRationale = recommendC
+    ? `✨ AI khuyến nghị C vì NM ${row.nm.name} quan hệ ${relationship}% (honoring ${honoring?.honoringPct ?? "—"}% + ontime ${honoring?.ontimePct ?? "—"}%), ít counter (${Math.round(counterRate * 100)}%).`
+    : `✨ AI khuyến nghị D vì NM ${row.nm.name} cần phương án dự phòng (quan hệ ${relationship}%${row.stale ? ", dữ liệu cũ" : ""}, counter ${Math.round(counterRate * 100)}%).`;
 
   const formulaA = surchargeText
     ? `${gapQty.toLocaleString("vi-VN")} × ${totalPrice.toLocaleString("vi-VN")}₫ (gốc ${basePrice.toLocaleString("vi-VN")} + phụ phí ${surchargeAmount.toLocaleString("vi-VN")})`
@@ -218,6 +234,7 @@ function buildScenarios(row: GapRow): Scenario[] {
       cons: ["Tốn vốn lớn", "Rủi ro slow-mover"],
       recommended: false,
       priceInfo,
+      aiRationale,
     },
     {
       key: "B",
@@ -230,30 +247,33 @@ function buildScenarios(row: GapRow): Scenario[] {
       cons: ["Áp ngược toàn bộ committed", "Mất lợi thế giá break thấp"],
       recommended: false,
       priceInfo,
+      aiRationale,
     },
     {
       key: "C",
       title: "Đàm phán chuyển kỳ",
       subtitle: `Dời gap sang tháng kế, giữ ${eff?.breakLabel ?? "giá hiện tại"}`,
       cost: costC,
-      costFormula: "Chi phí xử lý + bù pipeline (~10 triệu ₫)",
+      costFormula: `Gap ${gapQty.toLocaleString("vi-VN")} × ${negoPerM2.toLocaleString("vi-VN")}₫ (config scenario.negotiation_cost_per_m2)`,
       risk: "NM phải đồng ý — phụ thuộc relationship",
       pros: ["Tiết kiệm vốn nhất", "Giữ giá thỏa thuận"],
       cons: ["Cần NM chấp thuận", "Có thể trễ DRP tuần"],
       recommended: recommendC,
       priceInfo,
+      aiRationale,
     },
     {
       key: "D",
-      title: "Kết hợp 50 / 50",
-      subtitle: "Nửa mua bù, nửa đàm phán dời",
+      title: `Kết hợp ${Math.round(hybridPct * 100)} / ${Math.round((1 - hybridPct) * 100)}`,
+      subtitle: `${Math.round(hybridPct * 100)}% mua bù, ${Math.round((1 - hybridPct) * 100)}% đàm phán dời`,
       cost: costD,
-      costFormula: `50% × A + 50% × C`,
+      costFormula: `${Math.round(hybridPct * 100)}% × A + ${Math.round((1 - hybridPct) * 100)}% × C (config scenario.hybrid_split_pct)`,
       risk: "Phức tạp logistics, cần 2 luồng phê duyệt",
       pros: ["Cân bằng rủi ro", "Linh hoạt theo NM"],
       cons: ["Quản lý 2 lệnh song song"],
       recommended: !recommendC,
       priceInfo,
+      aiRationale,
     },
   ];
 }
