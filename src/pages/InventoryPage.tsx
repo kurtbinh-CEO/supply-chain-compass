@@ -511,7 +511,7 @@ function UploadZone() {
   };
 
   return (
-    <section className="space-y-3">
+    <section id="inventory-upload-zone" className="space-y-3 scroll-mt-24">
       <h3 className="text-section-header font-semibold text-text-1">Cập nhật tồn kho</h3>
       <div
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
