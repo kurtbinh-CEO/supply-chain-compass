@@ -16,6 +16,7 @@ import { useRbac } from "@/components/RbacContext";
 import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
 import { supabase } from "@/integrations/supabase/client";
 import { BRANCHES, DRP_RESULTS } from "@/data/unis-enterprise-dataset";
+import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -814,6 +815,46 @@ export default function DrpPage() {
           <StepDetail stepId={activeStep} scale={s} />
         </div>
       </div>
+
+      {/* ═══ SUMMARY CARDS — tóm tắt DRP một lần nhìn ═══ */}
+      {(() => {
+        const totalDemand = data.reduce((a, r) => a + r.demand, 0);
+        const totalAvail = data.reduce((a, r) => a + r.available, 0);
+        const totalGap = Math.max(0, totalDemand - totalAvail);
+        const fillRate = totalDemand > 0 ? Math.round((totalAvail / totalDemand) * 100) : 100;
+        const cards: SummaryCard[] = [
+          {
+            key: "fill", label: "Fill rate tổng", value: `${fillRate}%`,
+            severity: fillRate >= 95 ? "ok" : fillRate >= 80 ? "warn" : "critical",
+            trend: { delta: "+2% vs W19", direction: "up", color: "green" },
+            tooltip: "Tỷ lệ đáp ứng nhu cầu trên toàn bộ CN trong tuần này",
+          },
+          {
+            key: "short", label: "CN thiếu hàng", value: counts.short, unit: "CN",
+            severity: counts.short > 0 ? "critical" : "ok",
+            tooltip: "Số chi nhánh có fill rate < 80%. Click để filter bảng.",
+            onClick: () => setFilter("short"),
+          },
+          {
+            key: "watch", label: "CN theo dõi", value: counts.watch, unit: "CN",
+            severity: counts.watch > 2 ? "warn" : "ok",
+            tooltip: "Fill rate 80-95%. Cần giám sát chặt 24h tới.",
+            onClick: () => setFilter("watch"),
+          },
+          {
+            key: "gap", label: "Gap m²", value: totalGap.toLocaleString("vi-VN"), unit: "m²",
+            severity: totalGap > 5000 ? "critical" : totalGap > 0 ? "warn" : "ok",
+            trend: { delta: totalGap > 0 ? "↑ cần bổ sung" : "→ đủ", direction: totalGap > 0 ? "up" : "flat", color: totalGap > 0 ? "red" : "gray" },
+            tooltip: "Tổng nhu cầu chưa được đáp ứng — cần PO/TO bổ sung",
+          },
+          {
+            key: "po", label: "PO/TO nháp", value: drpBatchData?.items.length ?? 0, unit: "đơn",
+            severity: "ok",
+            tooltip: "Số đơn DRP đã tạo, chờ duyệt → Phát hành",
+          },
+        ];
+        return <SummaryCards cards={cards} screenId="drp-results" editable />;
+      })()}
 
       {/* ═══ SUMMARY PILLS ═══ */}
       <div className="flex flex-wrap items-center gap-2 mb-4">

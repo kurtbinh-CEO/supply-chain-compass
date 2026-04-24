@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
 import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    §  Types
@@ -282,8 +283,47 @@ export function CommitmentTab({ scale, onTotalsChange }: {
     return Array.from(map.values()).sort((a, b) => (a.confirmedCount / Math.max(1, a.nmCount)) - (b.confirmedCount / Math.max(1, b.nmCount)));
   }, [rows]);
 
+  const hubCards: SummaryCard[] = (() => {
+    const notCalledCount = rows.filter(r => r.status === "not_called").length;
+    const waitingCount = rows.filter(r => r.status === "waiting").length;
+    const counterCount = rows.filter(r => r.status === "counter").length;
+    const coverPct = totals.fcM2 > 0 ? Math.round((totals.confirmedM2 / totals.fcM2) * 100) : 0;
+    return [
+      {
+        key: "progress", label: "Tiến độ cam kết", value: `${totals.confirmedCount}/${totals.total}`, unit: "SKU",
+        severity: totals.progress >= 80 ? "ok" : totals.progress >= 50 ? "warn" : "critical",
+        trend: { delta: `${totals.progress.toFixed(0)}%`, direction: "up", color: totals.progress >= 80 ? "green" : "gray" },
+        tooltip: "Số SKU đã được NM xác nhận và lock — cần ≥ 80% trước Day 12",
+      },
+      {
+        key: "cover", label: "Cover FC", value: `${coverPct}%`,
+        severity: coverPct >= 95 ? "ok" : coverPct >= 80 ? "warn" : "critical",
+        tooltip: `${totals.confirmedM2.toLocaleString()} m² / ${totals.fcM2.toLocaleString()} m² FC tháng`,
+      },
+      {
+        key: "notcalled", label: "Chưa gọi NM", value: notCalledCount, unit: "SKU",
+        severity: notCalledCount > 0 ? "critical" : "ok",
+        tooltip: "Cần ưu tiên gọi/Zalo trong 24h",
+        onClick: () => setFilterStatus("not_called"),
+      },
+      {
+        key: "waiting", label: "Đang chờ NM", value: waitingCount, unit: "SKU",
+        severity: waitingCount > 3 ? "warn" : "ok",
+        tooltip: "Đã liên hệ — chờ NM phản hồi",
+        onClick: () => setFilterStatus("waiting"),
+      },
+      {
+        key: "counter", label: "NM đề xuất khác", value: counterCount, unit: "SKU",
+        severity: counterCount > 0 ? "warn" : "ok",
+        tooltip: "NM cam kết khác FC — cần thương lượng",
+        onClick: () => setFilterStatus("counter"),
+      },
+    ];
+  })();
+
   return (
     <div className="space-y-4">
+      <SummaryCards cards={hubCards} screenId="hub-commit" editable />
       {/* ═══ HEADER ═══ */}
       <div className="rounded-card border border-surface-3 bg-surface-1 p-5 space-y-3">
         <div className="flex items-start justify-between flex-wrap gap-3">

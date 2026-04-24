@@ -35,6 +35,7 @@ import {
   nextStage, isOverdue, isNearSla, fmtTimeInStage, fmtEta,
 } from "@/lib/po-lifecycle-data";
 import { CARRIERS, CN_REGION } from "@/data/unis-enterprise-dataset";
+import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 import {
   Send, CheckCircle2, Truck, Package, Flag, ClipboardCheck,
   Phone, AlertTriangle, ChevronDown, ChevronRight,
@@ -172,6 +173,45 @@ export default function OrdersPage() {
           )}
         </p>
       </div>
+
+      {/* ═══ SUMMARY CARDS — tóm tắt đơn hàng tuần ═══ */}
+      {(() => {
+        const cards: SummaryCard[] = [
+          {
+            key: "todo", label: "Cần xử lý", value: counts.todo, unit: "đơn",
+            severity: counts.todo > 5 ? "warn" : "ok",
+            tooltip: "Đơn ở stage approved/sent_nm/nm_confirmed/delivering — chờ tác vụ kế",
+            onClick: () => setFilter("todo"),
+          },
+          {
+            key: "transit", label: "Đang vận chuyển", value: counts.transit, unit: "xe",
+            severity: "ok",
+            trend: { delta: counts.transit > 0 ? "🚛 trên đường" : "→ rỗng", direction: "flat", color: "gray" },
+            tooltip: "Đơn pickup hoặc in_transit. Click để xem realtime ETA.",
+            onClick: () => setFilter("in_transit"),
+          },
+          {
+            key: "overdue", label: "Trễ hạn SLA", value: counts.overdue, unit: "đơn",
+            severity: counts.overdue > 0 ? "critical" : "ok",
+            trend: counts.overdue > 0 ? { delta: "cần escalate", direction: "up", color: "red" } : undefined,
+            tooltip: "Vượt SLA cho stage hiện tại — báo manager + carrier gấp",
+            onClick: () => setFilter("overdue"),
+          },
+          {
+            key: "done", label: "Hoàn tất", value: counts.done, unit: "đơn",
+            severity: "ok",
+            trend: { delta: `${Math.round(counts.done / Math.max(1, counts.total) * 100)}%`, direction: "up", color: "green" },
+            tooltip: "Đã POD xong + đăng ERP",
+            onClick: () => setFilter("completed"),
+          },
+          {
+            key: "kind", label: "PO / TO", value: `${counts.po}/${counts.to}`, unit: "đơn",
+            severity: "ok",
+            tooltip: "PO = mua từ NM, TO = chuyển kho liên CN",
+          },
+        ];
+        return <SummaryCards cards={cards} screenId="orders-lifecycle" editable />;
+      })()}
 
       {/* ═══ LIFECYCLE SUMMARY BAR (7 nodes) ═══ */}
       <LifecycleSummaryBar counts={counts.stage} onJumpStage={(s) => {
