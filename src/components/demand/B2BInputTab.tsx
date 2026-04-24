@@ -301,112 +301,159 @@ export function B2BInputTab({ deals, setDeals }: Props) {
         </div>
       </div>
 
-      {/* Deals table — scrollable */}
-      <div className="rounded-card border border-surface-3 bg-surface-2">
-        <div className="max-h-[560px] overflow-y-auto">
-          <table className="w-full text-table-sm">
-            <thead className="sticky top-0 z-10 bg-surface-2">
-              <tr className="border-b border-surface-3">
-                <th className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">Mã Deal</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Khách hàng</th>
-                <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">CN</th>
-                <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">SKU gốc</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">SL (m²)</th>
-                <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Giai đoạn</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-1 font-semibold">Trọng số</th>
-                <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Dự kiến chốt</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Phụ trách</th>
-                <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={10} className="px-4 py-8 text-center text-text-3 text-table-sm">
-                    Không có deal phù hợp với bộ lọc.
-                  </td>
-                </tr>
-              )}
-              {filtered.map((d, i) => {
-                const style = STAGE_STYLE[d.stage];
-                const weighted = Math.round(d.qtyM2 * B2B_STAGE_PROB[d.stage]);
-                return (
-                  <tr
-                    key={d.id}
-                    className={cn(
-                      "border-b border-surface-3/50 hover:bg-primary/5 transition-colors",
-                      i % 2 === 0 ? "bg-surface-0" : "bg-surface-2",
-                    )}
-                  >
-                    <td className="px-4 py-3 font-mono text-text-3 text-caption">{d.id}</td>
-                    <td className="px-3 py-3 font-semibold text-text-1">{d.customer}</td>
-                    <td className="px-3 py-3 text-center text-text-2">{d.cnCode}</td>
-                    <td className="px-3 py-3 text-center font-mono text-text-1">{d.skuBaseCode}</td>
-                    <td className="px-3 py-3 text-right tabular-nums font-medium text-text-1">{d.qtyM2.toLocaleString()}</td>
-                    <td className="px-3 py-3 text-center">
-                      <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-caption font-semibold", style.chip)}>
-                        <span className={cn("h-1.5 w-1.5 rounded-full", style.dot)} />
-                        {style.label}
-                        <span className="opacity-70">({Math.round(B2B_STAGE_PROB[d.stage] * 100)}%)</span>
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums font-bold text-primary">{weighted.toLocaleString()}</td>
-                    <td className="px-3 py-3 text-center text-text-2 tabular-nums">{d.expectedClose}</td>
-                    <td className="px-3 py-3 text-text-2">{d.owner}</td>
-                    <td className="px-3 py-3 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() =>
-                            setModalDeal({
-                              deal: {
-                                customer: d.customer,
-                                cnCode: d.cnCode,
-                                skuBaseCode: d.skuBaseCode,
-                                qtyM2: d.qtyM2,
-                                stage: d.stage,
-                                expectedClose: d.expectedClose,
-                                owner: d.owner,
-                              },
-                              editId: d.id,
-                            })
-                          }
-                          className="text-primary hover:opacity-80 transition-colors"
-                          title="Sửa"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(d.id)}
-                          className="text-danger hover:opacity-80 transition-colors"
-                          title="Xóa"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot className="sticky bottom-0 bg-surface-1/90 backdrop-blur">
-              <tr className="border-t border-surface-3">
-                <td colSpan={4} className="px-4 py-2.5 text-table-sm font-semibold text-text-1">
-                  TỔNG · {filtered.length}/{deals.length} deals
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-text-1">
-                  {filtered.reduce((a, d) => a + d.qtyM2, 0).toLocaleString()}
-                </td>
-                <td />
-                <td className="px-3 py-2.5 text-right tabular-nums font-bold text-primary">
-                  {filtered.reduce((a, d) => a + Math.round(d.qtyM2 * B2B_STAGE_PROB[d.stage]), 0).toLocaleString()}
-                </td>
-                <td colSpan={3} />
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-
+      {/* Deals table — SmartTable */}
+      {(() => {
+        const cols: SmartTableColumn<B2bDeal>[] = [
+          {
+            key: "id",
+            label: "Mã Deal",
+            sortable: true,
+            accessor: (r) => r.id,
+            render: (r) => <span className="font-mono text-text-3 text-caption">{r.id}</span>,
+            priority: "medium",
+          },
+          {
+            key: "customer",
+            label: "Khách hàng",
+            sortable: true,
+            accessor: (r) => r.customer,
+            render: (r) => <span className="font-semibold text-text-1">{r.customer}</span>,
+            priority: "high",
+          },
+          {
+            key: "cnCode",
+            label: "CN",
+            sortable: true,
+            filter: "enum",
+            filterOptions: BRANCHES.map((b) => ({ value: b.code, label: b.code })),
+            accessor: (r) => r.cnCode,
+            align: "center",
+          },
+          {
+            key: "skuBaseCode",
+            label: "SKU gốc",
+            sortable: true,
+            filter: "enum",
+            filterOptions: SKU_BASES.map((s) => ({ value: s.code, label: s.code })),
+            accessor: (r) => r.skuBaseCode,
+            render: (r) => <span className="font-mono text-text-1">{r.skuBaseCode}</span>,
+            align: "center",
+          },
+          {
+            key: "qtyM2",
+            label: "SL (m²)",
+            numeric: true,
+            sortable: true,
+            accessor: (r) => r.qtyM2,
+            render: (r) => <span className="tabular-nums font-medium text-text-1">{r.qtyM2.toLocaleString()}</span>,
+          },
+          {
+            key: "stage",
+            label: "Giai đoạn",
+            sortable: true,
+            filter: "enum",
+            filterOptions: STAGES.map((s) => ({ value: s, label: s })),
+            accessor: (r) => r.stage,
+            render: (r) => {
+              const style = STAGE_STYLE[r.stage];
+              return (
+                <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-caption font-semibold", style.chip)}>
+                  <span className={cn("h-1.5 w-1.5 rounded-full", style.dot)} />
+                  {style.label}
+                  <span className="opacity-70">({Math.round(B2B_STAGE_PROB[r.stage] * 100)}%)</span>
+                </span>
+              );
+            },
+            align: "center",
+          },
+          {
+            key: "weighted",
+            label: "Trọng số",
+            numeric: true,
+            sortable: true,
+            accessor: (r) => Math.round(r.qtyM2 * B2B_STAGE_PROB[r.stage]),
+            render: (r) => (
+              <span className="tabular-nums font-bold text-primary">
+                {Math.round(r.qtyM2 * B2B_STAGE_PROB[r.stage]).toLocaleString()}
+              </span>
+            ),
+          },
+          {
+            key: "expectedClose",
+            label: "Dự kiến chốt",
+            sortable: true,
+            accessor: (r) => r.expectedClose,
+            render: (r) => <span className="tabular-nums text-text-2">{r.expectedClose}</span>,
+            align: "center",
+            priority: "low",
+          },
+          {
+            key: "owner",
+            label: "Phụ trách",
+            sortable: true,
+            accessor: (r) => r.owner,
+            priority: "low",
+          },
+          {
+            key: "action",
+            label: "Hành động",
+            align: "center",
+            render: (r) => (
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setModalDeal({
+                      deal: {
+                        customer: r.customer,
+                        cnCode: r.cnCode,
+                        skuBaseCode: r.skuBaseCode,
+                        qtyM2: r.qtyM2,
+                        stage: r.stage,
+                        expectedClose: r.expectedClose,
+                        owner: r.owner,
+                      },
+                      editId: r.id,
+                    });
+                  }}
+                  className="text-primary hover:opacity-80 transition-colors"
+                  title="Sửa"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteConfirm(r.id);
+                  }}
+                  className="text-danger hover:opacity-80 transition-colors"
+                  title="Xóa"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ),
+          },
+        ];
+        const totalQty = filtered.reduce((a, d) => a + d.qtyM2, 0);
+        const totalWeighted = filtered.reduce((a, d) => a + Math.round(d.qtyM2 * B2B_STAGE_PROB[d.stage]), 0);
+        return (
+          <SmartTable<B2bDeal>
+            screenId="b2b-deals"
+            title={`Deals · ${filtered.length}/${deals.length}`}
+            exportFilename="b2b-deals"
+            columns={cols}
+            data={filtered}
+            getRowId={(r) => r.id}
+            emptyMessage="Không có deal phù hợp với bộ lọc."
+            summaryRow={{
+              customer: <span className="font-semibold text-text-1">TỔNG · {filtered.length}/{deals.length}</span>,
+              qtyM2: <span className="tabular-nums font-semibold text-text-1">{totalQty.toLocaleString()}</span>,
+              weighted: <span className="tabular-nums font-bold text-primary">{totalWeighted.toLocaleString()}</span>,
+            }}
+          />
+        );
+      })()}
       {/* Deal modal */}
       {modalDeal && (
         <DealModal
