@@ -29,6 +29,16 @@ Phase 3b — FC Actual import + MAPE thật (DONE):
 - Card "Mô hình dùng nhiều nhất" → "Nguồn thực tế" (`realCount/4` tháng + `FC_ACTUAL.length` dòng)
 - Bảng tháng có cột "Nguồn" (Thực tế/Lịch sử) với enum filter
 
-Còn lại — out of scope M17:
-- Master Data CRUD universal (Add/Edit/Delete dialog cho mọi tab) — defer Phase 4
+Phase 4 — Master Data CRUD universal (DONE):
+- **`src/components/master/CrudPrimitives.tsx`**: 4 building blocks dùng chung
+  - `CrudToolbar`: Search + [Thêm] + [Nhập] (DataSourceSelector 3 nguồn) + [Xuất] CSV
+  - `EntityFormDialog`: form tự sinh từ `FormField[]` config — text/number/select/textarea, validation required, mode create/edit, readOnlyOnEdit cho code field
+  - `DeleteConfirmDialog`: warning destructive với entityLabel + description impact
+  - `RowActions`: icon ✏️🗑️ inline cuối row
+  - `exportToCsv`: BOM UTF-8, escape quotes, auto-download
+- Wired vào 4 tab: **Mã hàng** (ItemsTab), **NM** (SuppliersTab), **CN** (BranchesTab), **Container** (ContainersTab)
+- Pattern đồng nhất: hover row → [✏️Sửa] [🗑️Xóa]; header có [+Thêm] [↑Nhập] [↓Xuất]
+- CSV export tiếng Việt: cột name VN, BOM UTF-8 cho Excel mở đúng
+
+Còn lại — out of scope:
 - Wizard 5 bước upload Excel thực — đang dùng toast demo
