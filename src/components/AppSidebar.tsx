@@ -311,35 +311,48 @@ export function AppSidebar() {
         })}
       </nav>
 
-      {/* Footer: Workflow trigger + Tour */}
-      <div className="border-t border-surface-3 p-3 space-y-1 shrink-0">
+      {/* Footer: Guide (screen tour) + Workflow triggers */}
+      <div className="border-t border-surface-3 p-3 shrink-0 space-y-3">
         {!collapsed ? (
-          <div className="space-y-1">
+          <>
+            {/* Group 1: Hướng dẫn theo màn hình hiện tại */}
             {tourForRoute && (
-              <button
-                onClick={() => startTour(tourForRoute)}
-                className="flex w-full items-center gap-2 rounded-button px-3 py-2 text-body text-text-2 font-medium hover:bg-surface-3 hover:text-text-1 transition-colors"
-                title="Bắt đầu hướng dẫn cho màn hình này"
-              >
-                <GradCap className="h-4 w-4" />
-                <span>Hướng dẫn màn này</span>
-              </button>
+              <div className="space-y-1">
+                <div className="px-3 text-[10px] font-semibold uppercase tracking-wider text-text-3">
+                  Hướng dẫn
+                </div>
+                <button
+                  onClick={() => startTour(tourForRoute)}
+                  className="flex w-full items-center gap-2 rounded-button border border-dashed border-surface-3 px-3 py-2 text-body text-text-2 font-medium hover:bg-surface-2 hover:text-text-1 hover:border-surface-3 transition-colors"
+                  title="Bắt đầu hướng dẫn cho màn hình này"
+                >
+                  <GradCap className="h-4 w-4 shrink-0" />
+                  <span>Hướng dẫn màn này</span>
+                </button>
+              </div>
             )}
-            <button
-              onClick={() => handleStartWorkflow("daily")}
-              className="flex w-full items-center gap-2 rounded-button px-3 py-2 text-body text-primary font-medium hover:bg-info-bg transition-colors"
-            >
-              <Play className="h-4 w-4" />
-              <span>{t("workflow.daily")}</span>
-            </button>
-            <button
-              onClick={() => handleStartWorkflow("monthly")}
-              className="flex w-full items-center gap-2 rounded-button px-3 py-2 text-body text-primary font-medium hover:bg-info-bg transition-colors"
-            >
-              <Play className="h-4 w-4" />
-              <span>{t("workflow.monthly")}</span>
-            </button>
-          </div>
+
+            {/* Group 2: Quy trình end-to-end */}
+            <div className="space-y-1">
+              <div className="px-3 text-[10px] font-semibold uppercase tracking-wider text-text-3">
+                Quy trình
+              </div>
+              <button
+                onClick={() => handleStartWorkflow("daily")}
+                className="flex w-full items-center gap-2 rounded-button px-3 py-2 text-body text-primary font-medium hover:bg-info-bg transition-colors"
+              >
+                <Play className="h-4 w-4 shrink-0" />
+                <span>{t("workflow.daily")}</span>
+              </button>
+              <button
+                onClick={() => handleStartWorkflow("monthly")}
+                className="flex w-full items-center gap-2 rounded-button px-3 py-2 text-body text-primary font-medium hover:bg-info-bg transition-colors"
+              >
+                <Play className="h-4 w-4 shrink-0" />
+                <span>{t("workflow.monthly")}</span>
+              </button>
+            </div>
+          </>
         ) : (
           <button
             onClick={() => handleStartWorkflow("daily")}
