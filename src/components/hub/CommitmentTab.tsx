@@ -473,12 +473,96 @@ export function CommitmentTab({ scale, onTotalsChange }: {
         </div>
       </div>
 
-      {/* ═══ PIVOT TOGGLE ═══ */}
+      {/* ═══ "SẴN SÀNG CHO DRP" — khi ≥80% nhưng chưa lock ═══ */}
+      {totals.progress >= 80 && !monthLocked && (
+        <div className="rounded-card border border-success/40 bg-success-bg p-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-success">
+            <CheckCircle2 className="h-5 w-5 shrink-0" />
+            <div>
+              <div className="font-semibold text-table-sm">Sẵn sàng cho DRP ✅</div>
+              <div className="text-caption text-text-2">
+                Hub Available <span className="font-semibold text-text-1 tabular-nums">{totals.confirmedM2.toLocaleString()} m²</span>
+                {" "}· DRP chạy 23:00 đêm nay
+              </div>
+            </div>
+          </div>
+          <button onClick={lockMonth}
+            className="inline-flex items-center gap-1.5 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1.5 text-table-sm font-semibold hover:shadow-md transition-shadow">
+            <Lock className="h-4 w-4" /> Khóa & sẵn sàng DRP
+          </button>
+        </div>
+      )}
+
+      {/* ═══ NEXT-STEP BANNER — sau khi LOCK ═══ */}
+      {monthLocked && (
+        <div className="rounded-card border border-success/40 bg-gradient-to-br from-success-bg to-info-bg/40 p-4">
+          <div className="flex items-start gap-3">
+            <div className="h-9 w-9 rounded-full bg-success text-success-foreground flex items-center justify-center shrink-0">
+              <CheckCircle2 className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-display font-semibold text-text-1">
+                Cam kết T5 đã khóa · <span className="tabular-nums">{totals.confirmedM2.toLocaleString()} m²</span> Hub Available
+              </div>
+              <div className="mt-2 text-table-sm text-text-2 space-y-1">
+                <div className="font-medium text-text-1">Bước tiếp:</div>
+                <ol className="list-decimal pl-5 space-y-0.5">
+                  <li>DRP chạy <span className="font-semibold text-text-1">23:00 đêm nay</span> → tạo PO nháp từ cam kết</li>
+                  <li>Sáng mai mở <button onClick={() => navigate("/drp")} className="text-primary font-medium hover:underline">Kết quả DRP →</button> xem phân bổ</li>
+                  <li>Duyệt PO trong <button onClick={() => navigate("/orders")} className="text-primary font-medium hover:underline">Đơn hàng →</button></li>
+                </ol>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button onClick={runDrpNow}
+                  className="inline-flex items-center gap-1.5 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1.5 text-table-sm font-semibold hover:shadow-md transition-shadow">
+                  <Play className="h-4 w-4" /> Chạy DRP ngay
+                </button>
+                <button onClick={() => navigate("/orders")}
+                  className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 hover:border-primary/40 px-3 py-1.5 text-table-sm font-medium text-text-2">
+                  Mở Đơn hàng <ArrowRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ PIVOT TOGGLE + COLUMN PRESET ═══ */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <PivotToggle mode={pivot} onChange={setPivot} cnLabel="Nhà máy" skuLabel="Mã hàng" />
-        <span className="text-caption text-text-3">
-          {pivot === "cn" ? "Quản lý cam kết per NM × SKU" : "Tổng hợp cam kết per Mã hàng → từng NM"}
-        </span>
+        <div className="flex items-center gap-3">
+          {pivot === "cn" && (
+            <div className="inline-flex items-center rounded-button border border-surface-3 bg-surface-1 p-0.5 text-caption">
+              <button
+                onClick={() => setColumnPreset("simple")}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded px-2 py-0.5 transition-colors",
+                  columnPreset === "simple"
+                    ? "bg-primary/10 text-primary font-semibold"
+                    : "text-text-3 hover:text-text-1",
+                )}
+                title="Ẩn FC/Δ/Tier/Đã release/Còn lại/% — chỉ hiện cột cốt lõi"
+              >
+                <EyeOff className="h-3 w-3" /> Đơn giản
+              </button>
+              <button
+                onClick={() => setColumnPreset("full")}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded px-2 py-0.5 transition-colors",
+                  columnPreset === "full"
+                    ? "bg-primary/10 text-primary font-semibold"
+                    : "text-text-3 hover:text-text-1",
+                )}
+                title="Hiện toàn bộ — bao gồm Đã release / Còn lại / %"
+              >
+                <Eye className="h-3 w-3" /> Đầy đủ
+              </button>
+            </div>
+          )}
+          <span className="text-caption text-text-3">
+            {pivot === "cn" ? "Quản lý cam kết per NM × SKU" : "Tổng hợp cam kết per Mã hàng → từng NM"}
+          </span>
+        </div>
       </div>
 
       {pivot === "cn" ? (
