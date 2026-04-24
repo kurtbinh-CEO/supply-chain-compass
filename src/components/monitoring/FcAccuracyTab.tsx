@@ -3,12 +3,41 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { StatusChip } from "@/components/StatusChip";
-import { Shield, TrendingDown, TrendingUp, ArrowRight, Brain } from "lucide-react";
+import { Shield, TrendingDown, TrendingUp, ArrowRight, Brain, Inbox, Zap, FileSpreadsheet, PenLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useFcAccuracy } from "@/hooks/useMonitoringData";
 import { TermTooltip } from "@/components/TermTooltip";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
+
+const ACTUAL_SOURCES: DataSource[] = [
+  {
+    key: "api_sync",
+    icon: <Zap />,
+    title: "Tích hợp Bravo ERP",
+    description: "Đồng bộ doanh thu thực tế từ Bravo hằng ngày. Cần thiết lập connector.",
+    badge: "Sắp có",
+    badgeColor: "gray",
+    disabled: true,
+    configurable: true,
+    configRoute: "/config?tab=integration",
+  },
+  {
+    key: "excel_upload",
+    icon: <FileSpreadsheet />,
+    title: "Upload Excel thực tế",
+    description: "Upload file thực tế bán per CN × SKU × tháng. MAPE sẽ tính lại tự động.",
+    badge: "Khuyến nghị",
+    badgeColor: "green",
+  },
+  {
+    key: "manual_input",
+    icon: <PenLine />,
+    title: "Nhập tay",
+    description: "Nhập từng CN × SKU trực tiếp. Phù hợp khi cần điều chỉnh nhanh.",
+  },
+];
 
 type ModelRow = {
   name: string;
@@ -36,8 +65,21 @@ const models: ModelRow[] = [
 
 export function FcAccuracyTab() {
   const [showSwitchModal, setShowSwitchModal] = useState(false);
+  const [actualOpen, setActualOpen] = useState(false);
   const { weeklyData } = useFcAccuracy();
   const mapeData = weeklyData.length > 0 ? weeklyData : fallbackMapeData;
+
+  const handleActualSelect = (key: string) => {
+    setActualOpen(false);
+    const labels: Record<string, string> = {
+      api_sync: "Tích hợp Bravo (sắp có)",
+      excel_upload: "Upload Excel thực tế — mở wizard",
+      manual_input: "Nhập thực tế tay",
+    };
+    toast.success(labels[key] ?? key, {
+      description: "MAPE và FC vs Actual sẽ tính lại tự động.",
+    });
+  };
 
   const modelColumns: SmartTableColumn<ModelRow>[] = [
     {
@@ -105,9 +147,21 @@ export function FcAccuracyTab() {
             <h2 className="font-display text-section-header text-text-1">
               Hiệu suất <TermTooltip term="MAPE">MAPE</TermTooltip> 12 tuần
             </h2>
-            <div className="flex items-center gap-4 text-table-sm text-text-2">
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-text-3" /> HW (Hiện tại)</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> XGBoost (AI)</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4 text-table-sm text-text-2">
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-text-3" /> HW (Hiện tại)</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> XGBoost (AI)</span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setActualOpen(true)}
+                className="h-8 gap-1.5"
+                title="Cập nhật doanh thu thực tế để tính lại MAPE"
+              >
+                <Inbox className="h-3.5 w-3.5" />
+                Cập nhật thực tế
+              </Button>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={280}>
@@ -201,6 +255,15 @@ export function FcAccuracyTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DataSourceSelector
+        open={actualOpen}
+        onClose={() => setActualOpen(false)}
+        title="Cập nhật doanh thu thực tế"
+        description="Chọn nguồn cập nhật. MAPE 12 tuần và FC vs Actual sẽ tính lại tự động."
+        sources={ACTUAL_SOURCES}
+        onSelect={handleActualSelect}
+      />
     </div>
   );
 }

@@ -86,12 +86,41 @@ const B2B_SOURCES: DataSource[] = [
   },
 ];
 
+const ACTUAL_SOURCES: DataSource[] = [
+  {
+    key: "api_sync",
+    icon: <Zap />,
+    title: "Tích hợp Bravo ERP",
+    description: "Đồng bộ doanh thu thực tế từ Bravo hằng ngày. Cần thiết lập connector.",
+    badge: "Sắp có",
+    badgeColor: "gray",
+    disabled: true,
+    configurable: true,
+    configRoute: "/config?tab=integration",
+  },
+  {
+    key: "excel_upload",
+    icon: <FileSpreadsheet />,
+    title: "Upload Excel thực tế",
+    description: "Upload file thực tế bán per CN × SKU × tháng. Template: CN | SKU | Tháng | Thực tế (m²) | Doanh thu (VND) | Ghi chú.",
+    badge: "Khuyến nghị",
+    badgeColor: "green",
+  },
+  {
+    key: "manual_input",
+    icon: <PenLine />,
+    title: "Nhập tay",
+    description: "Nhập từng CN × SKU trực tiếp. Phù hợp khi ít dữ liệu hoặc cần điều chỉnh nhanh.",
+  },
+];
+
 export default function DemandPage() {
   const [activeTab, setActiveTab] = useState("total");
   const { tenant } = useTenant();
   const { cnSummaries, loading: forecastLoading } = useDemandForecasts();
   const { markDone } = useNextStep();
   const [importerOpen, setImporterOpen] = useState(false);
+  const [actualOpen, setActualOpen] = useState(false);
   const [aopOpen, setAopOpen] = useState(false);
   const [aopPlan, setAopPlan] = useState<AopPlan>(AOP_PLAN);
 
@@ -107,6 +136,18 @@ export default function DemandPage() {
       description: activeTab === "b2b"
         ? "Áp dụng cho B2B Pipeline."
         : "Áp dụng cho FC tháng.",
+    });
+  };
+
+  const handleActualSelect = (key: string) => {
+    setActualOpen(false);
+    const labels: Record<string, string> = {
+      api_sync: "Tích hợp Bravo (sắp có)",
+      excel_upload: "Upload Excel thực tế — mở wizard",
+      manual_input: "Nhập thực tế tay",
+    };
+    toast.success(labels[key] ?? key, {
+      description: "Áp dụng cho FC vs Actual. MAPE sẽ tính lại tự động.",
     });
   };
 
@@ -193,10 +234,22 @@ export default function DemandPage() {
             </>
           }
           actions={
-            <Button size="sm" onClick={() => setImporterOpen(true)} className="h-8 gap-1.5">
-              <Inbox className="h-3.5 w-3.5" />
-              {activeTab === "b2b" ? "Nhập B2B" : "Nhập FC"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setActualOpen(true)}
+                className="h-8 gap-1.5"
+                title="Cập nhật doanh thu thực tế (Bravo / Excel / Tay)"
+              >
+                <Inbox className="h-3.5 w-3.5" />
+                Nhập thực tế
+              </Button>
+              <Button size="sm" onClick={() => setImporterOpen(true)} className="h-8 gap-1.5">
+                <Inbox className="h-3.5 w-3.5" />
+                {activeTab === "b2b" ? "Nhập B2B" : "Nhập FC"}
+              </Button>
+            </div>
           }
         />
       </div>
@@ -208,6 +261,15 @@ export default function DemandPage() {
         description="Chọn nguồn nhập dữ liệu. Mỗi lần tạo 1 entry trong nhật ký."
         sources={activeTab === "b2b" ? B2B_SOURCES : FC_SOURCES}
         onSelect={handleSourceSelect}
+      />
+
+      <DataSourceSelector
+        open={actualOpen}
+        onClose={() => setActualOpen(false)}
+        title="Nhập thực tế bán hàng"
+        description="Cập nhật doanh thu thực tế per CN × SKU × tháng. MAPE và YTD sẽ tính lại."
+        sources={ACTUAL_SOURCES}
+        onSelect={handleActualSelect}
       />
 
       <AopPlanDialog
