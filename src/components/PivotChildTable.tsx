@@ -15,6 +15,7 @@ import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { SkuDetailSheet } from "@/components/SkuDetailSheet";
+import { EntityDetailSheet, type EntityKind } from "@/components/EntityDetailSheet";
 
 export interface PivotChildRow {
   /** ID của hàng — vd "GA-300 A4" hoặc "CN-BD" */
