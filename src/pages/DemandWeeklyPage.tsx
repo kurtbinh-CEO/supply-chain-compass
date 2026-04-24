@@ -1095,6 +1095,15 @@ export default function DemandWeeklyPage() {
                 Nhập điều chỉnh
               </Button>
             )}
+            <button
+              type="button"
+              onClick={() => setPhasingOpen(true)}
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-button border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-table-sm font-medium text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+              title="Phân bổ FC tháng → tuần"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              Phân bổ FC tuần · {planCycle.label.replace("Tháng ", "T")}
+            </button>
             <span className="hidden sm:inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-1 px-2.5 py-1.5 text-table-sm text-text-2">
               <RefreshCw className="h-3.5 w-3.5 text-info" />
               Demand W20 v2 — 18:00 hôm nay
@@ -1104,6 +1113,13 @@ export default function DemandWeeklyPage() {
             </span>
           </div>
         }
+      />
+
+      <PhasingDialog
+        open={phasingOpen}
+        onClose={() => setPhasingOpen(false)}
+        monthlyFcM2={monthlyFcTotal}
+        cycleLabel={planCycle.label}
       />
 
       <DataSourceSelector
