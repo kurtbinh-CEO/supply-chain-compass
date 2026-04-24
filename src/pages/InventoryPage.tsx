@@ -327,8 +327,63 @@ function buildBranchRows(scale: number): BranchRow[] {
   });
 }
 
+interface SkuPivotInvRow {
+  key: string;
+  base: string;
+  variant: string;
+  totalOnHand: number;
+  avgHstk: number;
+  cnShortageCount: number;
+  worstCnLabel: string;
+  cnBreakdown: PivotChildRow[];
+}
+
+function buildBranchSkuPivot(rows: BranchRow[]): SkuPivotInvRow[] {
+  const map = new Map<string, SkuPivotInvRow>();
+  rows.forEach((cn) => {
+    cn.variants.forEach((v) => {
+      const key = `${v.base}|${v.variant}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          base: v.base,
+          variant: v.variant,
+          totalOnHand: 0,
+          avgHstk: 0,
+          cnShortageCount: 0,
+          worstCnLabel: "—",
+          cnBreakdown: [],
+        });
+      }
+      const p = map.get(key)!;
+      p.totalOnHand += v.onHand;
+      // proxied HSTK = CN-level HSTK (variant-level dailyFc not modeled)
+      const hstk = cn.hstk;
+      const ssTarget = Math.round(v.onHand * 0.4); // mock SS = 40% on-hand
+      p.cnBreakdown.push({
+        key: `${key}-${cn.cnCode}`,
+        label: cn.cnName,
+        qty: v.onHand,
+        hstk,
+        ssTarget,
+        navKind: "cn",
+        navValue: cn.cnCode,
+      });
+      if (hstk < 5) p.cnShortageCount++;
+    });
+  });
+  return Array.from(map.values()).map((p) => {
+    const sumH = p.cnBreakdown.reduce((a, r) => a + r.hstk, 0);
+    p.avgHstk = p.cnBreakdown.length ? +(sumH / p.cnBreakdown.length).toFixed(1) : 0;
+    const worst = [...p.cnBreakdown].sort((a, b) => a.hstk - b.hstk)[0];
+    p.worstCnLabel = worst ? `${worst.label} ${worst.hstk.toFixed(1)}d` : "—";
+    return p;
+  }).sort((a, b) => a.avgHstk - b.avgHstk);
+}
+
 function BranchesTab({ rows }: { rows: BranchRow[] }) {
   const navigate = useNavigate();
+  const [pivot, setPivot] = usePivotMode("inv-cn");
 
   const totals = useMemo(() => {
     const t = rows.reduce((s, r) => s + r.totalOnHand, 0);
@@ -336,7 +391,9 @@ function BranchesTab({ rows }: { rows: BranchRow[] }) {
     return { t, avg };
   }, [rows]);
 
-  const columns: SmartTableColumn<BranchRow>[] = [
+  const skuPivotRows = useMemo(() => buildBranchSkuPivot(rows), [rows]);
+
+  const cnColumns: SmartTableColumn<BranchRow>[] = [
     {
       key: "cnName", label: "Chi nhánh", sortable: true, hideable: false, priority: "high",
       filter: "text", width: 180,
@@ -434,46 +491,121 @@ function BranchesTab({ rows }: { rows: BranchRow[] }) {
     },
   ];
 
+  const skuColumns: SmartTableColumn<SkuPivotInvRow>[] = [
+    {
+      key: "base", label: "Mã hàng", sortable: true, hideable: false, filter: "text", width: 140,
+      render: (r) => (
+        <button
+          className="text-info hover:underline font-medium text-table-sm"
+          onClick={(e) => { e.stopPropagation(); navigate(`/drp?sku=${encodeURIComponent(r.base)}`); }}
+        >
+          {r.base}
+        </button>
+      ),
+    },
+    { key: "variant", label: "Variant", sortable: true, width: 90, render: (r) => <span className="text-text-2">{r.variant}</span> },
+    {
+      key: "totalOnHand", label: "Tồn tổng (m²)", numeric: true, align: "right", sortable: true, width: 130,
+      render: (r) => <span className="tabular-nums font-medium">{r.totalOnHand.toLocaleString("vi-VN")}</span>,
+    },
+    {
+      key: "avgHstk", label: "AVG HSTK", numeric: true, align: "right", sortable: true, width: 100,
+      render: (r) => (
+        <span className={cn("tabular-nums font-medium", r.avgHstk < 3 ? "text-danger" : r.avgHstk < 7 ? "text-warning" : "text-success")}>
+          {r.avgHstk.toFixed(1)}d
+        </span>
+      ),
+    },
+    {
+      key: "cnShortageCount", label: "CN thiếu", numeric: true, align: "right", sortable: true, width: 90,
+      render: (r) => r.cnShortageCount === 0 ? (
+        <span className="text-text-3">0</span>
+      ) : (
+        <span className="rounded-full bg-danger-bg text-danger px-2 py-0.5 text-[11px] font-medium">{r.cnShortageCount} CN</span>
+      ),
+    },
+    {
+      key: "worstCnLabel", label: "Trạng thái", sortable: false,
+      render: (r) => r.cnShortageCount > 0
+        ? <span className="text-warning text-table-sm">🟡 Worst: {r.worstCnLabel}</span>
+        : <span className="text-success text-table-sm">🟢 Đủ tất cả CN</span>,
+    },
+  ];
+
   return (
-    <SmartTable<BranchRow>
-      screenId="inventory-branches"
-      title="Chi nhánh"
-      exportFilename="ton-kho-chi-nhanh"
-      columns={columns}
-      data={rows}
-      defaultDensity="normal"
-      rowSeverity={(r) => r.tone === "block" ? "shortage" : r.tone === "watch" ? "watch" : "ok"}
-      getRowId={(r) => r.cnCode}
-      autoExpandWhen={(r) => r.hstk < 2}
-      drillDown={(r) => (
-        <div className="text-table-sm text-text-2 leading-relaxed">
-          <span className="text-text-3 mr-2">Tồn theo variant:</span>
-          {r.variants.length === 0 ? (
-            <span className="italic text-text-3">— chưa có dữ liệu</span>
-          ) : (
-            r.variants.slice(0, 16).map((v, i) => (
-              <span key={`${v.base}-${v.variant}-${i}`}>
-                <span className="text-text-1 font-medium">{v.base}</span>{" "}
-                <span className="text-text-3">{v.variant}</span>{" "}
-                <span className="tabular-nums">{v.onHand.toLocaleString("vi-VN")}</span>
-                {i < r.variants.length - 1 && <span className="text-text-3 mx-1.5">·</span>}
-              </span>
-            ))
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <PivotToggle mode={pivot} onChange={setPivot} cnLabel="Chi nhánh" skuLabel="Mã hàng" />
+        <span className="text-caption text-text-3">
+          {pivot === "cn" ? "Click 1 CN → xem chi tiết SKU" : "Click 1 SKU → xem phân bố CN"}
+        </span>
+      </div>
+
+      {pivot === "cn" ? (
+        <SmartTable<BranchRow>
+          screenId="inventory-branches"
+          title="Chi nhánh"
+          exportFilename="ton-kho-chi-nhanh"
+          columns={cnColumns}
+          data={rows}
+          defaultDensity="normal"
+          rowSeverity={(r) => r.tone === "block" ? "shortage" : r.tone === "watch" ? "watch" : "ok"}
+          getRowId={(r) => r.cnCode}
+          autoExpandWhen={(r) => r.hstk < 2}
+          drillDown={(r) => {
+            const childRows: PivotChildRow[] = r.variants.slice(0, 16).map((v, i) => ({
+              key: `${r.cnCode}-${v.base}-${v.variant}-${i}`,
+              label: `${v.base} ${v.variant}`,
+              qty: v.onHand,
+              hstk: r.hstk,
+              ssTarget: Math.round(v.onHand * 0.4),
+              navKind: "sku",
+              navValue: v.base,
+            }));
+            if (childRows.length === 0) {
+              return <div className="text-table-sm italic text-text-3">— chưa có dữ liệu variant —</div>;
+            }
+            return (
+              <PivotChildTable
+                rows={childRows}
+                firstColLabel="Mã hàng"
+                screenId={`inv-cn-child-${r.cnCode}`}
+              />
+            );
+          }}
+          summaryRow={{
+            cnName: "Tổng",
+            totalOnHand: <span className="tabular-nums font-semibold">{totals.t.toLocaleString("vi-VN")}</span>,
+            hstk: <span className="tabular-nums font-semibold">{totals.avg.toFixed(1)}d avg</span>,
+          }}
+          emptyState={{
+            icon: <MapPin />,
+            title: "Chưa có dữ liệu chi nhánh",
+            description: "Cấu hình Bravo sync hoặc upload CSV.",
+            action: { label: "Tải template CN →", onClick: () => document.getElementById("inventory-upload-zone")?.scrollIntoView({ behavior: "smooth" }) },
+          }}
+        />
+      ) : (
+        <SmartTable<SkuPivotInvRow>
+          screenId="inventory-branches-sku"
+          title="Mã hàng → Chi nhánh"
+          exportFilename="ton-kho-sku-pivot"
+          columns={skuColumns}
+          data={skuPivotRows}
+          defaultDensity="compact"
+          getRowId={(r) => r.key}
+          rowSeverity={(r) => r.avgHstk < 3 ? "shortage" : r.avgHstk < 7 ? "watch" : "ok"}
+          autoExpandWhen={(r) => r.cnBreakdown.some((c) => c.hstk < 3)}
+          drillDown={(r) => (
+            <PivotChildTable
+              rows={r.cnBreakdown}
+              firstColLabel="Chi nhánh"
+              screenId={`inv-sku-child-${r.key}`}
+            />
           )}
-        </div>
+        />
       )}
-      summaryRow={{
-        cnName: "Tổng",
-        totalOnHand: <span className="tabular-nums font-semibold">{totals.t.toLocaleString("vi-VN")}</span>,
-        hstk: <span className="tabular-nums font-semibold">{totals.avg.toFixed(1)}d avg</span>,
-      }}
-      emptyState={{
-        icon: <MapPin />,
-        title: "Chưa có dữ liệu chi nhánh",
-        description: "Cấu hình Bravo sync hoặc upload CSV.",
-        action: { label: "Tải template CN →", onClick: () => document.getElementById("inventory-upload-zone")?.scrollIntoView({ behavior: "smooth" }) },
-      }}
-    />
+    </div>
   );
 }
 
