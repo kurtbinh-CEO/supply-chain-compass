@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, Fragment } from "react";
+import { useState, useMemo, useEffect, useRef, Fragment } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
 import { useNavigate } from "react-router-dom";
@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   Play, ChevronDown, ChevronRight, ArrowRight, Lock as LockIcon,
-  CheckCircle2, AlertTriangle, Info,
+  CheckCircle2, AlertTriangle, Info, X,
 } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { TermTooltip } from "@/components/TermTooltip";
@@ -21,6 +21,12 @@ import { BRANCHES as _BR2, DRP_RESULTS as _DRP2, PLAN_VERSIONS } from "@/data/un
 import { VersionHistoryPanel } from "@/components/VersionHistoryPanel";
 import { VersionCompareInline } from "@/components/VersionCompareInline";
 import { VersionLockDialog, ViewingVersionBanner } from "@/components/VersionLockDialog";
+import { DrpStepIndicator, type DrpStep } from "@/components/drp/DrpStepIndicator";
+import { DrpPreflight, type PreflightItem } from "@/components/drp/DrpPreflight";
+import { DrpProgress, type ProgressStep } from "@/components/drp/DrpProgress";
+import { DrpCalcSummaryLine, type CalcToken } from "@/components/drp/DrpCalcSummaryLine";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -513,6 +519,43 @@ export default function DrpPage() {
   const [batchDbId, setBatchDbId] = useState<string | null>(null);
   const isPlanLocked = batchStatus === "approved" || batchStatus === "released";
 
+  /* ══ 3-STEP WIZARD: Preflight (1) → Progress (2) → Results (3) ══ */
+  // Mặc định mở thẳng "Kết quả" (DRP đêm qua đã chạy thành công).
+  const [wizardStep, setWizardStep] = useState<DrpStep>(3);
+  const [wizardCompleted, setWizardCompleted] = useState<DrpStep[]>([1, 2]);
+  const [progressIdx, setProgressIdx] = useState(0);
+  const [progressElapsed, setProgressElapsed] = useState(0);
+  const [progressCanCancel, setProgressCanCancel] = useState(true);
+  const [approveExceptionDialog, setApproveExceptionDialog] = useState(false);
+
+  // Preflight items — mock theo PRD D1 rules
+  const preflightItems: PreflightItem[] = useMemo(() => [
+    { key: "nm-stock", label: "Tồn kho NM", result: "5/5 NM cập nhật < 24h", level: "ok" },
+    { key: "cn-stock", label: "Tồn kho CN", result: "12/12 CN sync 06:00", level: "ok" },
+    { key: "cn-adj", label: "CN điều chỉnh", result: "4/12 CN adjust · Đã duyệt", level: "ok" },
+    { key: "sop", label: "S&OP locked", result: "v4 · Locked 16/04", level: "ok" },
+    { key: "nm-commit", label: "NM cam kết", result: "15/25 SKU (60%)", level: "warn",
+      detail: "Mục tiêu ≥ 80%. DRP vẫn chạy nhưng kết quả có thể thiếu chính xác cho NM chưa cam kết.",
+      fixHref: "/hub", fixLabel: "Mở Hub & Cam kết" },
+    { key: "pricelist", label: "Bảng giá NM", result: "5/5 NM hiệu lực", level: "ok" },
+  ], []);
+
+  // 10 progress steps cho Bước 2
+  const progressSteps: ProgressStep[] = useMemo(() => [
+    { id: 1, label: "Nạp nhu cầu", result: "31.632 m² (12 CN, 42 SKU)" },
+    { id: 2, label: "Trừ tồn kho CN", result: "−3.200 m² → 28.432 m²" },
+    { id: 3, label: "Trừ đang về", result: "−1.757 m² → 26.675 m²" },
+    { id: 4, label: "Cộng tồn an toàn", result: "+1.200 m² → 27.875 m²" },
+    { id: 5, label: "Phân bổ LCNB", result: "4 TO · 555 m²" },
+    { id: 6, label: "Hub Pool", result: "780 m²" },
+    { id: 7, label: "Variant split", result: "1 cảnh báo MOQ" },
+    { id: 8, label: "Đóng container", result: "8 chuyến · 1 giữ" },
+    { id: 9, label: "Kiểm tồn NM (ATP)", result: "4/5 PASS" },
+    { id: 10, label: "Tạo PO/TO nháp", result: "5 PO · 4 TO" },
+  ], []);
+
+
+
   /* ── Version History / Compare / Lock state ── */
   const drpVersions = useMemo(
     () => PLAN_VERSIONS.filter((v) => v.planType === "DRP"),
@@ -596,65 +639,121 @@ export default function DrpPage() {
     });
   }, [data, filter, sourceFilter]);
 
-  /* ── DRP run handler ── */
+  /* ── DRP run handler — wizard Step 1 → 2 → 3 ── */
+  const progressTimerRef = useRef<number | null>(null);
+
+  const buildBatchData = async () => {
+    const ts = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const id = `DRP-${ts.getFullYear()}-${pad(ts.getMonth() + 1)}-${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}`;
+    const items: DrpBatch["items"] = [];
+    let seq = 1;
+    data.forEach(cn => cn.allSkus.forEach(sk => {
+      if (sk.sources.hubPo > 0) items.push({
+        code: `RPO-MKD-${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${String(seq++).padStart(3, "0")}`,
+        kind: "RPO", nm: "Mikado", sku: `${sk.item} ${sk.variant}`,
+        qty: sk.sources.hubPo, value: sk.sources.hubPo * 145_000,
+        eta: `${pad(ts.getDate() + 7)}/${pad(ts.getMonth() + 1)}`,
+      });
+      if (sk.sources.lcnbIn > 0) items.push({
+        code: `TO-LCNB-${cn.cn.replace("CN-", "")}-${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${String(seq++).padStart(3, "0")}`,
+        kind: "TO", fromCn: "CN-DN", toCn: cn.cn, sku: `${sk.item} ${sk.variant}`,
+        qty: sk.sources.lcnbIn, value: sk.sources.lcnbIn * 8_000,
+        eta: `${pad(ts.getDate() + 1)}/${pad(ts.getMonth() + 1)}`,
+      });
+    }));
+    const unresolved: DrpBatch["unresolved"] = [];
+    data.forEach(cn => cn.exceptionList.forEach(e =>
+      unresolved.push({ cn: cn.cn, item: e.item, variant: e.variant, gap: e.gap, type: e.type })));
+
+    const batch: DrpBatch = { id, createdAt: `${pad(ts.getHours())}:${pad(ts.getMinutes())}`, items, unresolved };
+    setDrpBatchData(batch);
+    setBatchStatus("draft");
+    setRejectedCodes(new Set());
+
+    try {
+      const { data: res, error } = await supabase.functions.invoke("drp-batch", {
+        body: { action: "create", batch: { batchCode: batch.id, items: batch.items, unresolved: batch.unresolved } },
+      });
+      if (error) throw error;
+      const r = res as { batch?: { id: string } } | null;
+      if (r?.batch?.id) {
+        setBatchDbId(r.batch.id);
+      }
+    } catch (err) {
+      // Local-only is fine for demo
+    }
+  };
+
   const handleRunDrp = async () => {
     if (isPlanLocked) {
       toast.error("Plan đã khoá. Hủy hoặc release batch hiện tại trước khi chạy lại.");
       return;
     }
+    // Bước 2: progress
+    setWizardStep(2);
+    setWizardCompleted([1]);
+    setProgressIdx(0);
+    setProgressElapsed(0);
+    setProgressCanCancel(true);
     setDrpRunning(true);
-    setDrpStep(0);
-    setTimeout(() => setDrpStep(1), 800);
-    setTimeout(() => setDrpStep(2), 1600);
-    setTimeout(async () => {
-      setDrpRunning(false);
-      setDrpStep(0);
 
-      const ts = new Date();
-      const pad = (n: number) => String(n).padStart(2, "0");
-      const id = `DRP-${ts.getFullYear()}-${pad(ts.getMonth() + 1)}-${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}`;
-      const items: DrpBatch["items"] = [];
-      let seq = 1;
-      data.forEach(cn => cn.allSkus.forEach(sk => {
-        if (sk.sources.hubPo > 0) items.push({
-          code: `RPO-MKD-${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${String(seq++).padStart(3, "0")}`,
-          kind: "RPO", nm: "Mikado", sku: `${sk.item} ${sk.variant}`,
-          qty: sk.sources.hubPo, value: sk.sources.hubPo * 145_000,
-          eta: `${pad(ts.getDate() + 7)}/${pad(ts.getMonth() + 1)}`,
-        });
-        if (sk.sources.lcnbIn > 0) items.push({
-          code: `TO-LCNB-${cn.cn.replace("CN-", "")}-${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${String(seq++).padStart(3, "0")}`,
-          kind: "TO", fromCn: "CN-DN", toCn: cn.cn, sku: `${sk.item} ${sk.variant}`,
-          qty: sk.sources.lcnbIn, value: sk.sources.lcnbIn * 8_000,
-          eta: `${pad(ts.getDate() + 1)}/${pad(ts.getMonth() + 1)}`,
-        });
-      }));
-      const unresolved: DrpBatch["unresolved"] = [];
-      data.forEach(cn => cn.exceptionList.forEach(e =>
-        unresolved.push({ cn: cn.cn, item: e.item, variant: e.variant, gap: e.gap, type: e.type })));
+    // Tổng demo 5s, 10 step → 500ms/step
+    const stepMs = 500;
+    if (progressTimerRef.current) window.clearInterval(progressTimerRef.current);
+    progressTimerRef.current = window.setInterval(() => {
+      setProgressElapsed((e) => e + 0.1);
+    }, 100) as unknown as number;
 
-      const batch: DrpBatch = { id, createdAt: `${pad(ts.getHours())}:${pad(ts.getMinutes())}`, items, unresolved };
-      setDrpBatchData(batch);
-      setBatchStatus("draft");
-      setRejectedCodes(new Set());
-
-      try {
-        const { data: res, error } = await supabase.functions.invoke("drp-batch", {
-          body: { action: "create", batch: { batchCode: batch.id, items: batch.items, unresolved: batch.unresolved } },
-        });
-        if (error) throw error;
-        const r = res as { batch?: { id: string } } | null;
-        if (r?.batch?.id) {
-          setBatchDbId(r.batch.id);
-          toast.success("DRP hoàn tất — chờ Review & Approve", {
-            description: `Batch ${batch.id}: ${items.filter(i => i.kind === "RPO").length} RPO + ${items.filter(i => i.kind === "TO").length} TO`,
-          });
-        }
-      } catch (err) {
-        toast.warning("Batch tạo cục bộ — không lưu được DB");
-      }
-    }, 2400);
+    for (let i = 0; i < progressSteps.length; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise<void>((res) => setTimeout(res, stepMs));
+      setProgressIdx(i + 1);
+      if (i === 0) setProgressCanCancel(false); // Nút Hủy chỉ hiện 10s đầu (≈ 1 step)
+    }
+    if (progressTimerRef.current) {
+      window.clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
+    }
+    setDrpRunning(false);
+    await buildBatchData();
+    // Bước 3: kết quả
+    setWizardStep(3);
+    setWizardCompleted([1, 2]);
+    toast.success("DRP hoàn tất — chờ duyệt & chuyển sang Đơn hàng", {
+      description: "Xem kết quả & exception ở Bước 3.",
+    });
   };
+
+  // "Chạy lại" từ Bước 3 → quay về Bước 1 (Preflight)
+  const handleRerun = () => {
+    setWizardStep(1);
+    setWizardCompleted([]);
+  };
+
+  // Cleanup timer
+  useEffect(() => () => {
+    if (progressTimerRef.current) window.clearInterval(progressTimerRef.current);
+  }, []);
+
+  // Approve & Hand-off → /orders
+  const handleApproveAndHandoff = (force: boolean) => {
+    const totalGap = data.reduce((a, r) => a + r.gap, 0);
+    const exceptionCount = data.reduce((a, r) => a + r.exceptionList.length, 0);
+    if (exceptionCount > 0 && !force) {
+      setApproveExceptionDialog(true);
+      return;
+    }
+    const itemCount = drpBatchData?.items.length ?? 0;
+    const poCount = drpBatchData?.items.filter(i => i.kind === "RPO").length ?? 5;
+    const toCount = drpBatchData?.items.filter(i => i.kind === "TO").length ?? 4;
+    toast.success(`Kết quả DRP ${viewingEntityId} v${viewingVersion} đã duyệt`, {
+      description: `${poCount} PO + ${toCount} TO chờ xử lý.`,
+    });
+    setApproveExceptionDialog(false);
+    navigate("/orders?filter=todo");
+  };
+
 
   const visibleBatch = useMemo<DrpBatch | null>(() => {
     if (!drpBatchData) return null;
@@ -722,12 +821,20 @@ export default function DrpPage() {
         }}
       />
 
-      {/* ── HEADER ── */}
-      <div className="flex items-center justify-between mb-3">
+      {/* ── HEADER ── (step-aware title) */}
+      <div className="flex items-center justify-between mb-2">
         <div>
-          <h1 className="text-h2 font-display font-bold text-text-1">Kết quả DRP — Tuần 20</h1>
+          <h1 className="text-h2 font-display font-bold text-text-1">
+            {wizardStep === 1 && "Chạy DRP — Tuần 20"}
+            {wizardStep === 2 && "Đang chạy DRP — Tuần 20"}
+            {wizardStep === 3 && "Kết quả DRP — Tuần 20"}
+          </h1>
           <p className="text-table-sm text-text-3 mt-0.5 flex items-center gap-1.5 flex-wrap">
-            <span>{batchStatus === "released" ? "Đã release sang Đơn hàng" : "Chạy lúc 23:02 đêm qua"}</span>
+            <span>
+              {wizardStep === 1 && "Kiểm tra dữ liệu trước khi chạy"}
+              {wizardStep === 2 && "Vui lòng đợi — DRP đang tính toán"}
+              {wizardStep === 3 && (batchStatus === "released" ? "Đã release sang Đơn hàng" : "Chạy lúc 23:02 đêm qua")}
+            </span>
             <span>·</span>
             <span>Trong kỳ KH:</span>
             <button
@@ -740,22 +847,55 @@ export default function DrpPage() {
             </button>
           </p>
         </div>
-        {isPlanLocked || drpLocked ? (
+        {wizardStep === 3 && (isPlanLocked || drpLocked ? (
           <div className="flex items-center gap-2 rounded-button bg-surface-2 text-text-3 px-4 py-2 border border-surface-3">
             <LockIcon className="h-4 w-4" /> Đã khoá plan
           </div>
         ) : (
           <button
-            onClick={handleRunDrp}
+            onClick={handleRerun}
             disabled={isViewingOldVersion}
-            title={isViewingOldVersion ? "Phiên bản cũ — chỉ xem" : ""}
+            title={isViewingOldVersion ? "Phiên bản cũ — chỉ xem" : "Quay lại Bước 1 (Preflight) để chạy phiên bản mới"}
             className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-3"
           >
             <Play className="h-4 w-4" /> Chạy lại DRP
           </button>
-        )}
+        ))}
       </div>
 
+      {/* ── 3-STEP INDICATOR ── (luôn hiện) */}
+      <DrpStepIndicator current={wizardStep} completed={wizardCompleted} />
+
+
+      {/* ══ BƯỚC 1 — PREFLIGHT ══ */}
+      {wizardStep === 1 && (
+        <DrpPreflight
+          items={preflightItems}
+          onRun={handleRunDrp}
+          onBack={undefined}
+        />
+      )}
+
+      {/* ══ BƯỚC 2 — PROGRESS ══ */}
+      {wizardStep === 2 && (
+        <DrpProgress
+          steps={progressSteps}
+          currentIdx={progressIdx}
+          elapsedSec={progressElapsed}
+          estimatedSec={120}
+          canCancel={progressCanCancel}
+          onCancel={() => {
+            if (progressTimerRef.current) window.clearInterval(progressTimerRef.current);
+            setDrpRunning(false);
+            setWizardStep(1);
+            setWizardCompleted([]);
+            toast.info("Đã hủy. Quay về Bước 1.");
+          }}
+        />
+      )}
+
+      {/* ══ BƯỚC 3 — KẾT QUẢ ══ */}
+      {wizardStep === 3 && (<>
       {/* ── VERSION ROW ── */}
       <div className="flex flex-wrap items-center gap-2 mb-4 text-table-sm">
         <span className={cn(
@@ -855,23 +995,8 @@ export default function DrpPage() {
         />
       )}
 
-      {/* ── DRP progress ── */}
-      {drpRunning && (
-        <div className="mb-4 rounded-card border border-primary/30 bg-primary/5 p-4 animate-fade-in">
-          <div className="flex items-center gap-6">
-            {["Netting", "Allocation", "PO generation"].map((label, i) => (
-              <div key={label} className="flex items-center gap-2">
-                <div className={cn("h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold",
-                  drpStep > i ? "bg-success text-primary-foreground" : drpStep === i ? "bg-primary text-primary-foreground animate-pulse" : "bg-surface-3 text-text-3")}>
-                  {drpStep > i ? "✓" : i + 1}
-                </div>
-                <span className={cn("text-table-sm", drpStep >= i ? "text-text-1 font-medium" : "text-text-3")}>{label}</span>
-                {i < 2 && <div className={cn("w-12 h-0.5", drpStep > i ? "bg-success" : "bg-surface-3")} />}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* (Old inline 3-step progress ribbon removed — Bước 2 dùng DrpProgress full screen) */}
+
 
       {/* ── SS change banner ── */}
       <button onClick={() => navigate("/monitoring")}
@@ -881,49 +1006,38 @@ export default function DrpPage() {
         <span className="ml-auto text-info text-caption flex items-center gap-1">Xem chi tiết <ArrowRight className="h-3 w-3" /></span>
       </button>
 
-      {/* ═══ FLOW STEPPER ═══ */}
-      <div className="rounded-card border border-surface-3 bg-surface-2 p-4 mb-4">
-        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-3">
-          {PHASES.map((phase, pi) => (
-            <div key={phase.name} className="flex-1">
-              <div className="text-[10px] uppercase tracking-wider text-text-3 font-semibold mb-1.5">{phase.name}</div>
-              <div className="flex flex-wrap gap-1.5">
-                {phase.steps.map(step => {
-                  const active = activeStep === step.id;
-                  return (
-                    <button key={step.id} onClick={() => setActiveStep(step.id)}
-                      className={cn(
-                        "relative min-w-[58px] rounded border px-2 py-1.5 text-left transition-all",
-                        active ? "border-primary bg-primary/10 shadow-sm" : "border-surface-3 bg-surface-1 hover:border-primary/40"
-                      )}>
-                      <div className={cn("text-[10px] font-bold tabular-nums", active ? "text-primary" : "text-text-3")}>
-                        {step.id < 10 ? `0${step.id}` : step.id}
-                      </div>
-                      <div className={cn("text-[11px] leading-tight font-medium mt-0.5", active ? "text-text-1" : "text-text-2")}>
-                        {step.label}
-                      </div>
-                      <StepBadgeDot b={step.badge} />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* ═══ 10 BƯỚC TÍNH TOÁN — 1 dòng tóm tắt (thay cho 11-zigzag cũ) ═══ */}
+      <div className="mb-4">
+        <DrpCalcSummaryLine
+          tokens={[
+            { stepId: 1, label: "Nhu cầu 31.632" },
+            { stepId: 2, label: "→ Trừ tồn −3.200" },
+            { stepId: 3, label: "→ Trừ về −1.757" },
+            { stepId: 4, label: "→ +SS 1.200" },
+            { stepId: 5, label: "→ Ròng 27.875", severity: "warn" },
+            { stepId: 6, label: "→ LCNB 4 TO · 555m²" },
+            { stepId: 7, label: "→ Hub 780m²" },
+            { stepId: 8, label: "→ Variant ⚠️1", severity: "warn" },
+            { stepId: 9, label: "→ Container 8 · 1 giữ" },
+            { stepId: 10, label: "→ NM 4/5 PASS", severity: "danger" },
+          ]}
+          onClickToken={(id) => setActiveStep(id)}
+        />
 
-        {/* Step detail */}
-        <div className="rounded border border-surface-3 bg-surface-1/40 p-3">
-          <div className="text-table-sm font-semibold text-text-1 mb-2 flex items-center gap-2">
-            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
-              {activeStep}
-            </span>
-            <span>
-              {PHASES.flatMap(p => p.steps).find(s => s.id === activeStep)?.label}
+        {/* Step detail (chỉ hiện khi có activeStep) */}
+        <div className="mt-2 rounded border border-surface-3 bg-surface-1/40 p-3">
+          <div className="text-table-sm font-semibold text-text-1 mb-2 flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                {activeStep}
+              </span>
+              <span>{PHASES.flatMap(p => p.steps).find(s => s.id === activeStep)?.label ?? `Bước ${activeStep}`}</span>
             </span>
           </div>
           <StepDetail stepId={activeStep} scale={s} />
         </div>
       </div>
+
 
       {/* ═══ SUMMARY CARDS — tóm tắt DRP một lần nhìn ═══ */}
       {(() => {
@@ -1256,6 +1370,40 @@ export default function DrpPage() {
         </span>
       </div>
 
+      {/* ═══ APPROVE & HAND-OFF CTA — cuối Bước 3 ═══ */}
+      <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
+        {(() => {
+          const exceptionCount = data.reduce((a, r) => a + r.exceptionList.length, 0);
+          const disabled = actionsDisabled;
+          return (
+            <button
+              onClick={() => handleApproveAndHandoff(false)}
+              disabled={disabled}
+              className={cn(
+                "inline-flex items-center justify-center gap-2 rounded-button px-6 py-3 text-table font-semibold shadow-sm transition-all",
+                disabled
+                  ? "bg-surface-3 text-text-3 cursor-not-allowed"
+                  : exceptionCount > 0
+                  ? "bg-warning text-primary-foreground hover:opacity-90"
+                  : "bg-success text-primary-foreground hover:opacity-90"
+              )}
+              title={
+                isViewingOldVersion ? "Đang xem phiên cũ — không duyệt được"
+                  : drpLocked ? "Phiên đã khóa — không duyệt được"
+                  : exceptionCount > 0 ? `Còn ${exceptionCount} ngoại lệ chưa xử lý`
+                  : "Duyệt kết quả & chuyển sang Đơn hàng"
+              }
+            >
+              {exceptionCount > 0
+                ? <>⚠️ Duyệt với {exceptionCount} ngoại lệ & Chuyển sang Đơn hàng <ArrowRight className="h-4 w-4" /></>
+                : <>✅ Duyệt kết quả & Chuyển sang Đơn hàng <ArrowRight className="h-4 w-4" /></>}
+            </button>
+          );
+        })()}
+      </div>
+      </>)}
+
+
       {/* ── VERSION HISTORY PANEL (Sheet 420px slide-from-right) ── */}
       <VersionHistoryPanel
         entityType="DRP"
@@ -1303,6 +1451,25 @@ export default function DrpPage() {
           }
         }}
       />
+
+      {/* ── APPROVE-WITH-EXCEPTIONS CONFIRM ── */}
+      <Dialog open={approveExceptionDialog} onOpenChange={(v) => !v && setApproveExceptionDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Còn ngoại lệ chưa xử lý</DialogTitle>
+          </DialogHeader>
+          <p className="text-table-sm text-text-2">
+            DRP W20 v{viewingVersion} còn {data.reduce((a, r) => a + r.exceptionList.length, 0)} ngoại lệ chưa xử lý.
+            Bạn vẫn muốn duyệt và chuyển sang Đơn hàng?
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApproveExceptionDialog(false)}>Hủy</Button>
+            <Button onClick={() => handleApproveAndHandoff(true)}>
+              Duyệt với ngoại lệ ⚠️
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }

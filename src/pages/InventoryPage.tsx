@@ -40,6 +40,7 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
 import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
+import { SkuDetailSheet } from "@/components/SkuDetailSheet";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -152,6 +153,7 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
   const navigate = useNavigate();
   const [pivot, setPivot] = usePivotMode("inv-nm");
   const [cardFilter, setCardFilter] = useState<"all" | "stale" | "full">("all");
+  const [skuSheet, setSkuSheet] = useState<string | null>(null);
 
   const handleRemind = useCallback((name: string) => {
     toast.success(`Đã gửi nhắc ${name}`, {
@@ -341,7 +343,7 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
       render: (r) => (
         <button
           className="text-info hover:underline font-medium text-table-sm"
-          onClick={(e) => { e.stopPropagation(); navigate(`/drp?sku=${encodeURIComponent(r.base)}`); }}
+          onClick={(e) => { e.stopPropagation(); setSkuSheet(r.base); }}
         >
           {r.base}
         </button>
@@ -452,6 +454,7 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
           )}
         />
       )}
+      <SkuDetailSheet open={skuSheet !== null} onClose={() => setSkuSheet(null)} sku={skuSheet} />
     </div>
   );
 }
@@ -561,6 +564,7 @@ function BranchesTab({ rows }: { rows: BranchRow[] }) {
   const navigate = useNavigate();
   const [pivot, setPivot] = usePivotMode("inv-cn");
   const [cardFilter, setCardFilter] = useState<"all" | "critical" | "low">("all");
+  const [skuSheet, setSkuSheet] = useState<string | null>(null);
 
   const totals = useMemo(() => {
     const t = rows.reduce((s, r) => s + r.totalOnHand, 0);
@@ -738,7 +742,7 @@ function BranchesTab({ rows }: { rows: BranchRow[] }) {
       render: (r) => (
         <button
           className="text-info hover:underline font-medium text-table-sm"
-          onClick={(e) => { e.stopPropagation(); navigate(`/drp?sku=${encodeURIComponent(r.base)}`); }}
+          onClick={(e) => { e.stopPropagation(); setSkuSheet(r.base); }}
         >
           {r.base}
         </button>
@@ -864,6 +868,7 @@ function BranchesTab({ rows }: { rows: BranchRow[] }) {
           )}
         />
       )}
+      <SkuDetailSheet open={skuSheet !== null} onClose={() => setSkuSheet(null)} sku={skuSheet} />
     </div>
   );
 }

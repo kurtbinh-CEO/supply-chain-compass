@@ -10,9 +10,11 @@
  *
  * Mọi label tiếng Việt.
  */
+import { useState } from "react";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { SkuDetailSheet } from "@/components/SkuDetailSheet";
 
 export interface PivotChildRow {
   /** ID của hàng — vd "GA-300 A4" hoặc "CN-BD" */
@@ -66,6 +68,7 @@ export function PivotChildTable({
   className,
 }: PivotChildTableProps) {
   const navigate = useNavigate();
+  const [skuSheet, setSkuSheet] = useState<string | null>(null);
   const hasSs = rows.length > 0 && rows.every((r) => typeof r.ssTarget === "number" && r.ssTarget! > 0);
   const showSs = showSoSs ?? hasSs;
 
@@ -87,7 +90,8 @@ export function PivotChildTable({
             onClick={(e) => {
               e.stopPropagation();
               const v = r.navValue ?? r.key;
-              if (r.navKind === "sku") navigate(`/drp?sku=${encodeURIComponent(v)}`);
+              // SKU click → popup detail tại chỗ (không navigate)
+              if (r.navKind === "sku") setSkuSheet(v);
               else if (r.navKind === "cn") navigate(`/drp?cn=${encodeURIComponent(v)}`);
               else if (r.navKind === "nm") navigate(`/supply?nm=${encodeURIComponent(v)}`);
             }}
@@ -176,25 +180,28 @@ export function PivotChildTable({
   ];
 
   return (
-    <div className={cn("rounded-lg border border-surface-3 bg-surface-0 overflow-hidden", className)}>
-      <SmartTable<PivotChildRow>
-        screenId={screenId}
-        columns={columns}
-        data={sorted}
-        defaultDensity="compact"
-        rowSeverity={(r) => {
-          const st = statusFromHstk(r.hstk, thresholds);
-          if (st.tone === "danger") return "shortage";
-          if (st.tone === "warning") return "watch";
-          return "ok";
-        }}
-        getRowId={(r) => r.key}
-        summaryRow={{
-          label: <span className="text-text-3 font-medium">TỔNG</span>,
-          qty: <span className="tabular-nums font-semibold">{totalQty.toLocaleString()}</span>,
-          hstk: <span className="tabular-nums">{avgHstk.toFixed(1)}d</span>,
-        }}
-      />
-    </div>
+    <>
+      <div className={cn("rounded-lg border border-surface-3 bg-surface-0 overflow-hidden", className)}>
+        <SmartTable<PivotChildRow>
+          screenId={screenId}
+          columns={columns}
+          data={sorted}
+          defaultDensity="compact"
+          rowSeverity={(r) => {
+            const st = statusFromHstk(r.hstk, thresholds);
+            if (st.tone === "danger") return "shortage";
+            if (st.tone === "warning") return "watch";
+            return "ok";
+          }}
+          getRowId={(r) => r.key}
+          summaryRow={{
+            label: <span className="text-text-3 font-medium">TỔNG</span>,
+            qty: <span className="tabular-nums font-semibold">{totalQty.toLocaleString()}</span>,
+            hstk: <span className="tabular-nums">{avgHstk.toFixed(1)}d</span>,
+          }}
+        />
+      </div>
+      <SkuDetailSheet open={skuSheet !== null} onClose={() => setSkuSheet(null)} sku={skuSheet} />
+    </>
   );
 }
