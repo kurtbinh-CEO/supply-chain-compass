@@ -848,7 +848,7 @@ export default function DrpPage() {
             tooltip: "Tổng nhu cầu chưa được đáp ứng — cần PO/TO bổ sung",
           },
           {
-            key: "po", label: "PO/TO nháp", value: drpBatchData?.poCount ?? 0, unit: "đơn",
+            key: "po", label: "PO/TO nháp", value: drpBatchData?.items.length ?? 0, unit: "đơn",
             severity: "ok",
             tooltip: "Số đơn DRP đã tạo, chờ duyệt → Phát hành",
           },
