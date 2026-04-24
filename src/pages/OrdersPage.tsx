@@ -784,8 +784,8 @@ function CardDrillDownDialog({
    Per-row action button (button label depends on current stage)
    ═══════════════════════════════════════════════════════════════════════════ */
 function RowActionButton({
-  row, onClick, onCancel,
-}: { row: PoLifecycleRow; onClick: () => void; onCancel: () => void }) {
+  row, onClick, onCancel, groupSize = 1,
+}: { row: PoLifecycleRow; onClick: () => void; onCancel: () => void; groupSize?: number }) {
   const cfg = ACTION_CONFIG[row.stage];
   if (!cfg) {
     if (row.stage === "completed") {
@@ -797,6 +797,11 @@ function RowActionButton({
     // pickup / in_transit — has primary advance + cancel
   }
   const overdue = isOverdue(row);
+  const baseLabel = cfg?.label || ACTION_CONFIG_FALLBACK[row.stage]?.label || "Cập nhật";
+  // Group hint: nếu nhóm có >1 SKU lines cùng stage → action sẽ áp tất cả
+  const groupHint = groupSize > 1
+    ? ` · ${groupSize} SKU sẽ cập nhật cùng lúc`
+    : "";
   return (
     <div className="flex items-center justify-center gap-1">
       <Button
@@ -804,10 +809,10 @@ function RowActionButton({
         variant={overdue ? "destructive" : "default"}
         onClick={(e) => { e.stopPropagation(); onClick(); }}
         className="h-7 text-[11px] px-2.5 gap-1"
-        title={overdue ? `Quá SLA ${STAGE_SLA_HOURS[row.stage]}h. Cần xử lý ngay.` : undefined}
+        title={(overdue ? `Quá SLA ${STAGE_SLA_HOURS[row.stage]}h. Cần xử lý ngay.` : `${baseLabel} cho cả nhóm đơn`) + groupHint}
       >
         {cfg?.icon && <cfg.icon className="h-3.5 w-3.5" />}
-        {cfg?.label || ACTION_CONFIG_FALLBACK[row.stage]?.label || "Cập nhật"}
+        {baseLabel}
       </Button>
       {row.stage !== "completed" && row.stage !== "cancelled" && row.stage !== "in_transit" && (
         <Button
@@ -820,6 +825,87 @@ function RowActionButton({
           <X className="h-3.5 w-3.5" />
         </Button>
       )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ORDERS-TABLE-PATCH: Group drill-down — child SKU table + reused ExpandedRow
+   ═══════════════════════════════════════════════════════════════════════════ */
+function GroupDrillDown({ group }: { group: PoGroup }) {
+  // Đại diện 1 line để render lifecycle/transport/evidence chung (giống nhau trong group).
+  const repr = group.lines[0];
+  return (
+    <div className="bg-surface-1 border-t border-surface-3">
+      {/* ── Child SKU table ── */}
+      <div className="px-4 pt-4 pb-2">
+        <div className="flex items-baseline justify-between mb-2">
+          <div className="text-caption uppercase tracking-wide text-text-3 font-semibold">
+            {group.groupId} — {group.lineCount} mã hàng
+          </div>
+          <div className="text-[11px] text-text-3">
+            Container <span className="font-mono text-text-2">{group.container}</span>
+          </div>
+        </div>
+        <div className="rounded-card border border-surface-3 overflow-hidden bg-surface-0">
+          <table className="w-full text-table-sm">
+            <thead className="bg-surface-1 text-text-3 text-[10px] uppercase tracking-wide">
+              <tr>
+                <th className="text-left px-3 py-1.5 font-semibold">Mã PO con</th>
+                <th className="text-left px-3 py-1.5 font-semibold">Mã hàng</th>
+                <th className="text-right px-3 py-1.5 font-semibold">Số lượng</th>
+                <th className="text-right px-3 py-1.5 font-semibold">Đơn giá</th>
+                <th className="text-right px-3 py-1.5 font-semibold">Thành tiền</th>
+                <th className="text-center px-3 py-1.5 font-semibold">Stage</th>
+                <th className="text-left px-3 py-1.5 font-semibold">Ghi chú</th>
+              </tr>
+            </thead>
+            <tbody>
+              {group.lines.map(l => {
+                const unit = unitPriceFor(l.skuLabel);
+                const total = l.qty * unit;
+                const note = l.timeline.find(e => e.note)?.note ?? "";
+                return (
+                  <tr key={l.id} className="border-t border-surface-3">
+                    <td className="px-3 py-1.5 font-mono text-[11px] text-text-3">{l.poNumber}</td>
+                    <td className="px-3 py-1.5 font-mono text-text-1">{l.skuLabel}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-text-1">
+                      {l.qty.toLocaleString()} m²
+                      {l.qtyConfirmed !== undefined && l.qtyConfirmed < l.qty && (
+                        <div className="text-[10px] text-warning">NM: {l.qtyConfirmed.toLocaleString()}</div>
+                      )}
+                    </td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-text-2">{unit.toLocaleString()} ₫</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums text-text-1 font-medium">
+                      {(total / 1_000_000).toFixed(1)} triệu
+                    </td>
+                    <td className="px-3 py-1.5 text-center">
+                      <Badge variant="outline" className={cn("text-[10px]", STAGE_META[l.stage].tone)}>
+                        {STAGE_META[l.stage].short}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-1.5 text-[11px] text-text-3 truncate max-w-[200px]">{note}</td>
+                  </tr>
+                );
+              })}
+              <tr className="border-t-2 border-surface-3 bg-surface-1/60 font-semibold">
+                <td className="px-3 py-1.5 text-text-3 text-[10px] uppercase">Tổng</td>
+                <td className="px-3 py-1.5 text-text-3 text-[11px]">{group.lineCount} SKU</td>
+                <td className="px-3 py-1.5 text-right tabular-nums text-text-1">
+                  {group.totalQty.toLocaleString()} m²
+                </td>
+                <td />
+                <td className="px-3 py-1.5 text-right tabular-nums text-text-1">
+                  {(group.totalValue / 1_000_000).toFixed(1)} triệu
+                </td>
+                <td colSpan={2} />
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {/* ── Reuse single-line ExpandedRow for lifecycle / transport / evidence / BPO link ── */}
+      <ExpandedRow row={repr} />
     </div>
   );
 }
