@@ -127,10 +127,16 @@ const ITEM_FIELDS: FormField[] = [
   { key: "unitPrice", label: "Đơn giá (VND/m²)", type: "number", placeholder: "180000", span: 1 },
 ];
 
-function ItemsTab() {
-  const [search, setSearch] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState<typeof SKU_BASES[number] | null>(null);
+const ITEM_IMPORT_FIELDS: ImportField[] = [
+  { key: "code", label: "Mã gốc", required: true, aliases: ["ma", "code", "sku"] },
+  { key: "name", label: "Tên SKU", required: true, aliases: ["ten", "ten_sku", "name"] },
+  { key: "nmId", label: "Nhà máy", required: true, type: "select",
+    options: FACTORIES.map((f) => f.id),
+    aliases: ["nm", "nha_may", "factory", "supplier"] },
+  { key: "category", label: "Loại", aliases: ["loai", "category"] },
+  { key: "unit", label: "Đơn vị", aliases: ["don_vi", "uom", "unit"] },
+  { key: "unitPrice", label: "Đơn giá", type: "number", aliases: ["don_gia", "gia", "price"] },
+];
   const [deleting, setDeleting] = useState<typeof SKU_BASES[number] | null>(null);
 
   const rows = useMemo(() => {
