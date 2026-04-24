@@ -171,6 +171,7 @@ export function CommitmentTab({ scale, onTotalsChange }: {
   const [filterStatus, setFilterStatus] = useState<"all" | CommitStatus>("all");
   const [evidenceModal, setEvidenceModal] = useState<{ rowId: string; files: EvidenceFile[] } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<string | null>(null);
+  const [pivot, setPivot] = usePivotMode("hub-commitment");
 
   /* Totals */
   const totals = useMemo(() => {
