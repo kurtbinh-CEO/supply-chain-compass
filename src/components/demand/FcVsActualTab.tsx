@@ -196,7 +196,11 @@ export function FcVsActualTab() {
             data={series}
             getRowId={(r) => r.month}
             rowSeverity={(r) => ((r.mape ?? 0) > target ? "watch" : undefined)}
-            emptyMessage="Chưa có dữ liệu tháng."
+            emptyState={{
+              icon: <CalendarDays />,
+              title: "Chưa có dữ liệu tháng",
+              description: "12 kỳ FC vs Actual sẽ xuất hiện sau khi đóng tháng đầu tiên. Hệ thống tự cập nhật vào ngày 1 mỗi tháng.",
+            }}
           />
         );
       })()}
