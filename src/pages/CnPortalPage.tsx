@@ -138,15 +138,15 @@ const baseAuditLog: Record<string, AuditEntry[]> = {
     { id: "a1", time: "14:32", date: "12/05", week: "W17", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 524, newValue: 568, reason: "Nhà thầu mới Q2, tăng 10%" },
     { id: "a2", time: "15:10", date: "12/05", week: "W17", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "approve", sku: "GA-300", variant: "A4", detail: "Duyệt điều chỉnh +44 (+8.4%)", reason: "Có PO xác nhận" },
     { id: "a3", time: "14:45", date: "12/05", week: "W17", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-400", variant: "A4", detail: "Điều chỉnh demand", oldValue: 294, newValue: 264, reason: "Dự án delay sang Th6" },
-    { id: "a4", time: "16:00", date: "12/05", week: "W17", who: "System", role: "SYSTEM", action: "auto_approve", sku: "GA-600", variant: "A4", detail: "Auto-approve (delta < 10%)", oldValue: 748, newValue: 828 },
+    { id: "a4", time: "16:00", date: "12/05", week: "W17", who: "System", role: "SYSTEM", action: "auto_approve", sku: "GA-600", variant: "A4", detail: "Tự động duyệt (delta < 10%)", oldValue: 748, newValue: 828 },
     { id: "a5", time: "09:30", date: "11/05", week: "W17", who: "Minh Trần", role: "CN_MANAGER", action: "submit", sku: "GA-300", variant: "A4", detail: "Gửi batch 3 SKU điều chỉnh" },
     { id: "a6", time: "10:15", date: "05/05", week: "W16", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 510, newValue: 530, reason: "Tăng nhẹ theo trend" },
     { id: "a7", time: "11:00", date: "05/05", week: "W16", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "approve", sku: "GA-300", variant: "A4", detail: "Duyệt điều chỉnh +20 (+3.9%)" },
     { id: "a8", time: "14:00", date: "05/05", week: "W16", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-600", variant: "A4", detail: "Điều chỉnh demand", oldValue: 700, newValue: 740, reason: "Deal Vingroup phase 1" },
     { id: "a9", time: "14:30", date: "05/05", week: "W16", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "reject", sku: "GA-600", variant: "B2", detail: "Từ chối điều chỉnh +80 (+22%)", oldValue: 360, newValue: 440, reason: "Không có PO" },
-    { id: "a10", time: "15:00", date: "05/05", week: "W16", who: "Minh Trần", role: "CN_MANAGER", action: "revert", sku: "GA-600", variant: "B2", detail: "Revert về forecast gốc", oldValue: 440, newValue: 360 },
-    { id: "a11", time: "09:00", date: "28/04", week: "W15", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 500, newValue: 510, reason: "Micro adjust" },
-    { id: "a12", time: "09:30", date: "28/04", week: "W15", who: "System", role: "SYSTEM", action: "auto_approve", sku: "GA-300", variant: "A4", detail: "Auto-approve (delta < 5%)", oldValue: 500, newValue: 510 },
+    { id: "a10", time: "15:00", date: "05/05", week: "W16", who: "Minh Trần", role: "CN_MANAGER", action: "revert", sku: "GA-600", variant: "B2", detail: "Hoàn tác về dự báo gốc", oldValue: 440, newValue: 360 },
+    { id: "a11", time: "09:00", date: "28/04", week: "W15", who: "Minh Trần", role: "CN_MANAGER", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 500, newValue: 510, reason: "Điều chỉnh nhỏ" },
+    { id: "a12", time: "09:30", date: "28/04", week: "W15", who: "System", role: "SYSTEM", action: "auto_approve", sku: "GA-300", variant: "A4", detail: "Tự động duyệt (delta < 5%)", oldValue: 500, newValue: 510 },
   ],
   "CN-ĐN": [
     { id: "a20", time: "08:30", date: "12/05", week: "W17", who: "Hà Lê", role: "CN_MANAGER", action: "submit", sku: "—", variant: "—", detail: "Chưa adjust — chờ data từ Sales team ĐN" },
@@ -157,7 +157,7 @@ const baseAuditLog: Record<string, AuditEntry[]> = {
     { id: "a30", time: "09:00", date: "12/05", week: "W17", who: "Phong Vũ", role: "SALES", action: "adjust", sku: "GA-300", variant: "A4", detail: "Điều chỉnh demand", oldValue: 380, newValue: 400, reason: "Dự báo tăng nhẹ" },
     { id: "a31", time: "10:00", date: "12/05", week: "W17", who: "Thúy Nguyễn", role: "SC_MANAGER", action: "approve", sku: "GA-300", variant: "A4", detail: "Duyệt +20 (+5.3%)" },
     { id: "a32", time: "11:00", date: "12/05", week: "W17", who: "Phong Vũ", role: "SALES", action: "adjust", sku: "GA-600", variant: "A4", detail: "Điều chỉnh demand", oldValue: 500, newValue: 520, reason: "Nhu cầu tăng" },
-    { id: "a33", time: "11:30", date: "12/05", week: "W17", who: "System", role: "SYSTEM", action: "auto_approve", sku: "GA-600", variant: "A4", detail: "Auto-approve (delta < 5%)", oldValue: 500, newValue: 520 },
+    { id: "a33", time: "11:30", date: "12/05", week: "W17", who: "System", role: "SYSTEM", action: "auto_approve", sku: "GA-600", variant: "A4", detail: "Tự động duyệt (delta < 5%)", oldValue: 500, newValue: 520 },
   ],
   "CN-CT": [
     { id: "a40", time: "08:00", date: "12/05", week: "W17", who: "Tuấn Phạm", role: "SALES", action: "adjust", sku: "GA-400", variant: "A4", detail: "Điều chỉnh demand", oldValue: 180, newValue: 200, reason: "Dự án mới" },
@@ -342,7 +342,7 @@ export default function CnPortalPage() {
       id: `NTF-CN-${Date.now()}`,
       type: "CN_ADJUST",
       typeColor: pending > 0 ? "warning" : "success",
-      message: `${user.name} (${activeCn}) gửi điều chỉnh ${edited.length} SKU. ${approved} auto-approved, ${pending} chờ duyệt.`,
+      message: `${user.name} (${activeCn}) gửi điều chỉnh ${edited.length} SKU. ${approved} tự duyệt, ${pending} chờ duyệt.`,
       timeAgo: "vừa xong",
       read: false,
       url: "/cn-portal",
@@ -374,7 +374,7 @@ export default function CnPortalPage() {
           action: "auto_approve",
           sku: r.item,
           variant: r.variant,
-          detail: `Auto-approve (delta ${sign}${pct}%)`,
+          detail: `Tự động duyệt (delta ${sign}${pct}%)`,
           oldValue: r.forecast,
           newValue: r.adjust!,
         });
@@ -392,7 +392,7 @@ export default function CnPortalPage() {
     });
 
     toast.success("Đã gửi điều chỉnh", {
-      description: `${edited.length} SKU. ${approved} auto-approved, ${pending} chờ duyệt.`,
+      description: `${edited.length} SKU. ${approved} tự duyệt, ${pending} chờ duyệt.`,
     });
   };
 
@@ -557,7 +557,7 @@ export default function CnPortalPage() {
                   { label: "10/12 tuần < threshold 20%", value: "→ trust 83%" },
                 ]}
                 formula={"trust = (số tuần |adjust − actual|/actual < 20%) / 12 tuần\n= 10 / 12 = 83%"}
-                note="Trust > 85% → adjust auto-approve · 60-85% → cần SC duyệt · <60% → siết ±15%"
+                note="Trust > 85% → điều chỉnh tự duyệt · 60-85% → cần SC duyệt · <60% → siết ±15%"
               />
               &nbsp;🟢
             </span>
@@ -1105,9 +1105,9 @@ export default function CnPortalPage() {
                 <SelectItem value="adjust">Điều chỉnh</SelectItem>
                 <SelectItem value="approve">Duyệt</SelectItem>
                 <SelectItem value="reject">Từ chối</SelectItem>
-                <SelectItem value="auto_approve">Auto-approve</SelectItem>
+                <SelectItem value="auto_approve">Tự động duyệt</SelectItem>
                 <SelectItem value="submit">Gửi batch</SelectItem>
-                <SelectItem value="revert">Revert</SelectItem>
+                <SelectItem value="revert">Hoàn tác</SelectItem>
               </SelectContent>
             </Select>
             <span className="text-caption text-text-3 ml-auto">{filteredAudit.length} bản ghi</span>

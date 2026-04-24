@@ -31,7 +31,7 @@ function ExportDropdown() {
         className="inline-flex items-center gap-1.5 rounded-lg border border-surface-3 bg-surface-0 px-3 py-1.5 text-table-sm font-medium text-text-2 hover:border-primary/30 hover:text-text-1 transition-all hover:shadow-sm"
       >
         <Download className="h-3.5 w-3.5" />
-        <span>Export</span>
+        <span>Xuất</span>
         <ChevronDown className={cn("h-3 w-3 text-text-3 transition-transform", open && "rotate-180")} />
       </button>
       {open && (

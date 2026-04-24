@@ -191,7 +191,7 @@ const tab2Nodes: LogicNodeData[] = [
         <br />
         VD: Mikado tồn 12.500 × share 60% = 7.200 cho UNIS.
         <br /><br />
-        Nếu NM chưa cập nhật &gt; 24h → cảnh báo <span className="text-warning font-medium">stale</span>.
+        Nếu NM chưa cập nhật &gt; 24h → cảnh báo <span className="text-warning font-medium">dữ liệu cũ</span>.
       </Note>
     ),
   },

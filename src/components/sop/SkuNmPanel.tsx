@@ -223,7 +223,7 @@ export function SkuNmPanel({ item, variant, netReq, primaryNm, primaryAtp, scale
                   <td className="px-3 py-2.5 tabular-nums text-text-2">{n.costM2}</td>
                   <td className="px-3 py-2.5">
                     {isOffline ? (
-                      <span className="text-text-3 text-table-sm cursor-default" title="NM offline. Liên hệ trực tiếp.">Offline</span>
+                      <span className="text-text-3 text-table-sm cursor-default" title="NM offline. Liên hệ trực tiếp.">Ngoại tuyến</span>
                     ) : isPrimary ? (
                       <span className="text-success text-table-sm font-medium">{sources.find(s => s.nm === n.nm)?.qty.toLocaleString()}</span>
                     ) : n.freshnessMin > 480 ? (

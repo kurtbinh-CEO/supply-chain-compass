@@ -815,7 +815,7 @@ function ScCnDrillDown({ row, onApproveRow, onRejectRow, onTrimRow, onOverrideRo
                     r.decision === "trimmed" ? "text-warning" : "text-danger",
                   )}>
                     {r.decision === "approved" && <><CheckCircle2 className="h-3 w-3" />Duyệt</>}
-                    {r.decision === "override" && <><FileWarning className="h-3 w-3" />Override</>}
+                    {r.decision === "override" && <><FileWarning className="h-3 w-3" />Ghi đè</>}
                     {r.decision === "trimmed" && <><Scissors className="h-3 w-3" />Đã cắt 30%</>}
                     {r.decision === "rejected" && <><XCircle className="h-3 w-3" />Từ chối</>}
                   </span>
