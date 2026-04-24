@@ -867,6 +867,35 @@ export default function DrpPage() {
       <DrpStepIndicator current={wizardStep} completed={wizardCompleted} />
 
 
+      {/* ══ BƯỚC 1 — PREFLIGHT ══ */}
+      {wizardStep === 1 && (
+        <DrpPreflight
+          items={preflightItems}
+          onRun={handleRunDrp}
+          onBack={undefined}
+        />
+      )}
+
+      {/* ══ BƯỚC 2 — PROGRESS ══ */}
+      {wizardStep === 2 && (
+        <DrpProgress
+          steps={progressSteps}
+          currentIdx={progressIdx}
+          elapsedSec={progressElapsed}
+          estimatedSec={120}
+          canCancel={progressCanCancel}
+          onCancel={() => {
+            if (progressTimerRef.current) window.clearInterval(progressTimerRef.current);
+            setDrpRunning(false);
+            setWizardStep(1);
+            setWizardCompleted([]);
+            toast.info("Đã hủy. Quay về Bước 1.");
+          }}
+        />
+      )}
+
+      {/* ══ BƯỚC 3 — KẾT QUẢ ══ */}
+      {wizardStep === 3 && (<>
       {/* ── VERSION ROW ── */}
       <div className="flex flex-wrap items-center gap-2 mb-4 text-table-sm">
         <span className={cn(
