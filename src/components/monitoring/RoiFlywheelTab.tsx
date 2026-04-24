@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
+import { TermTooltip } from "@/components/TermTooltip";
 import { cn } from "@/lib/utils";
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -10,7 +11,7 @@ import { cn } from "@/lib/utils";
 const flywheelNodes = [
   {
     key: "FC",
-    label: "FC chính xác hơn",
+    label: "Dự báo chính xác hơn",
     detail: "MAPE 18 → 14%",
     pos: "top-0 left-1/2 -translate-x-1/2",
     color: "bg-info-bg text-info border-info/30",
@@ -43,11 +44,11 @@ const flywheelNodes = [
 /* ─────────────────────────────────────────────────────────────────────────── */
 
 const loopNodes = [
-  { key: "FC", label: "FC", metric: "MAPE 18%" },
-  { key: "SS", label: "SS", metric: "−13,6%" },
-  { key: "DRP", label: "DRP", metric: "Fill 95,5%" },
-  { key: "PO", label: "PO", metric: "On-time 78%" },
-  { key: "Actual", label: "Actual", metric: "FVA +12%" },
+  { key: "FC", label: "FC", metric: "MAPE 18%", term: "MAPE" },
+  { key: "SS", label: "SS", metric: "−13,6%", term: "SS" },
+  { key: "DRP", label: "DRP", metric: "Fill 95,5%", term: "FillRate" },
+  { key: "PO", label: "PO", metric: "Đúng hẹn 78%", term: "PO" },
+  { key: "Actual", label: "Thực tế", metric: "FVA +12%", term: "FVA" },
 ];
 
 export function RoiFlywheelTab() {
@@ -163,7 +164,9 @@ export function RoiFlywheelTab() {
           {loopNodes.map((n, i) => (
             <div key={n.key} className="flex items-center gap-2">
               <div className="rounded-card border-2 border-primary/30 bg-primary/5 px-4 py-3 text-center min-w-[110px]">
-                <div className="font-display text-body font-bold text-primary">{n.label}</div>
+                <div className="font-display text-body font-bold text-primary">
+                  <TermTooltip term={n.term}>{n.label}</TermTooltip>
+                </div>
                 <div className="text-caption text-text-2 mt-1 tabular-nums">{n.metric}</div>
               </div>
               {i < loopNodes.length - 1 && (

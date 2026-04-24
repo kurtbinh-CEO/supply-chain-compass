@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { StatusChip } from "@/components/StatusChip";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { ArrowRight, Zap, Shield, Target, Box, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { TermTooltip } from "@/components/TermTooltip";
 
 type Period = "Tháng" | "Quý" | "YTD";
 
@@ -16,7 +17,7 @@ function PeriodFilter({ value, onChange }: { value: Period; onChange: (v: Period
     >
       <option value="Tháng">Tháng</option>
       <option value="Quý">Quý</option>
-      <option value="YTD">YTD</option>
+      <option value="YTD">Lũy kế năm</option>
     </select>
   );
 }
@@ -34,49 +35,40 @@ function FeedForwardCard({ title, description, linkLabel, linkUrl }: { title: st
   );
 }
 
-// Section A Data
+// Section A — Audit dự báo
 const demandAudit = [
-  { category: "Finished Goods", plan: "1,240.5", actual: "1,215.2", bias: "-2.0%", fva: "+4.2%" },
-  { category: "Raw Materials", plan: "890.0", actual: "945.8", bias: "+6.2%", fva: "+1.8%" },
-  { category: "Packaging", plan: "459.2", actual: "448.0", bias: "-0.5%", fva: "+0.9%" },
+  { category: "Thành phẩm", plan: "1.240,5", actual: "1.215,2", bias: "-2.0%", fva: "+4.2%" },
+  { category: "Nguyên liệu", plan: "890,0", actual: "945,8", bias: "+6.2%", fva: "+1.8%" },
+  { category: "Bao bì", plan: "459,2", actual: "448,0", bias: "-0.5%", fva: "+0.9%" },
 ];
 
-// Section B Data
+// Section B — Hiệu suất cung ứng
 const supplyPerf = [
-  { node: "VN Central Hub", honoring: "98.5%", onTime: "94.0%", ltGap: "-0.2", grade: "A+" },
-  { node: "North Sourcing", honoring: "82.1%", onTime: "78.5%", ltGap: "+2.5", grade: "C-" },
-  { node: "East Gateway", honoring: "91.0%", onTime: "89.2%", ltGap: "0.0", grade: "B" },
+  { node: "Hub Trung tâm VN", honoring: "98.5%", onTime: "94.0%", ltGap: "-0.2", grade: "A+" },
+  { node: "Sourcing miền Bắc", honoring: "82.1%", onTime: "78.5%", ltGap: "+2.5", grade: "C-" },
+  { node: "Cổng phía Đông", honoring: "91.0%", onTime: "89.2%", ltGap: "0.0", grade: "B" },
 ];
 
-// Section C Data
+// Section C — Ngoại lệ lặp lại
 const topExceptions = [
-  { sku: "SKU-7728: Stockout imminent", location: "Warehouse A", count: "12 occurrences" },
-  { sku: "SKU-9102: Late Arrival Forecast", location: "In-Transit", count: "8 occurrences" },
-  { sku: "SKU-1029: Price Variance Alert", location: "Procurement", count: "5 occurrences" },
+  { sku: "SKU-7728: Sắp hết hàng", location: "Kho A", count: "12 lần" },
+  { sku: "SKU-9102: Dự báo trễ hàng", location: "Đang vận chuyển", count: "8 lần" },
+  { sku: "SKU-1029: Cảnh báo lệch giá", location: "Thu mua", count: "5 lần" },
 ];
 
-// Section D Data
+// Section D — Sức khỏe tồn kho
 const inventoryHealth = [
-  { channel: "Modern Trade", target: "$4.2M", actual: "$3.9M", stockout: "Moderate", adequacy: "92%" },
-  { channel: "E-Commerce", target: "$2.8M", actual: "$3.1M", stockout: "Low", adequacy: "104%" },
-  { channel: "General Trade", target: "$1.5M", actual: "$1.1M", stockout: "High", adequacy: "76%" },
-];
-
-// Section E Waterfall Data
-const waterfallData = [
-  { name: "Base Cost", value: 0, total: 245 },
-  { name: "Freight", value: 0, total: 24.5 },
-  { name: "Stockout", value: 0, total: 112 },
-  { name: "SS Optim", value: 0, total: -45.1 },
-  { name: "Net Plan", value: 0, total: 0 },
+  { channel: "Kênh hiện đại", target: "4,2 tỷ ₫", actual: "3,9 tỷ ₫", stockout: "Trung bình", adequacy: "92%" },
+  { channel: "Thương mại điện tử", target: "2,8 tỷ ₫", actual: "3,1 tỷ ₫", stockout: "Thấp", adequacy: "104%" },
+  { channel: "Kênh truyền thống", target: "1,5 tỷ ₫", actual: "1,1 tỷ ₫", stockout: "Cao", adequacy: "76%" },
 ];
 
 const waterfallChartData = [
-  { name: "Base Cost", positive: 245, negative: 0 },
-  { name: "Freight", positive: 24.5, negative: 0 },
-  { name: "Stockout", positive: 112, negative: 0 },
-  { name: "SS Optim", positive: 0, negative: 45.1 },
-  { name: "Net Plan", positive: 336.4, negative: 0 },
+  { name: "Chi phí gốc", positive: 245, negative: 0 },
+  { name: "Vận chuyển", positive: 24.5, negative: 0 },
+  { name: "Thiếu hàng", positive: 112, negative: 0 },
+  { name: "Tối ưu SS", positive: 0, negative: 45.1 },
+  { name: "Kế hoạch ròng", positive: 336.4, negative: 0 },
 ];
 
 export function AuditFeedbackTab() {
@@ -88,24 +80,32 @@ export function AuditFeedbackTab() {
 
   return (
     <div className="space-y-6">
-      {/* A: Demand Accuracy Audit */}
+      {/* A: Audit độ chính xác dự báo */}
       <div className="grid grid-cols-5 gap-4">
         <div className="col-span-3 rounded-card border border-surface-3 bg-surface-2">
           <div className="px-5 py-4 border-b border-surface-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
-              <h2 className="font-display text-section-header text-text-1">A) Demand Accuracy Audit</h2>
+              <h2 className="font-display text-section-header text-text-1">A) Audit độ chính xác dự báo</h2>
             </div>
             <div className="flex items-center gap-2">
-              <StatusChip status="success" label="Stable" />
+              <StatusChip status="success" label="Ổn định" />
               <PeriodFilter value={periodA} onChange={setPeriodA} />
             </div>
           </div>
           <table className="w-full">
             <thead>
               <tr className="border-b border-surface-3">
-                {["Category", "Plan (K Units)", "Actual (K Units)", "Bias %", "FVA % (Best)"].map((h) => (
-                  <th key={h} className="text-left text-table-header uppercase text-text-3 px-5 py-3">{h}</th>
+                {[
+                  { label: "Nhóm hàng", term: null },
+                  { label: "Kế hoạch (K đơn vị)", term: null },
+                  { label: "Thực tế (K đơn vị)", term: null },
+                  { label: "Sai lệch %", term: null },
+                  { label: "FVA % (Tốt nhất)", term: "FVA" },
+                ].map((h) => (
+                  <th key={h.label} className="text-left text-table-header uppercase text-text-3 px-5 py-3">
+                    {h.term ? <TermTooltip term={h.term}>{h.label}</TermTooltip> : h.label}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -126,15 +126,15 @@ export function AuditFeedbackTab() {
           <div className="rounded-card border border-surface-3 bg-surface-2 p-5 space-y-3">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-info" />
-              <span className="text-table-header uppercase text-info font-semibold tracking-wider">Trust Insights</span>
+              <span className="text-table-header uppercase text-info font-semibold tracking-wider">Mức tin cậy</span>
             </div>
-            <h3 className="font-display text-section-header text-text-1">Model Trust Scores</h3>
+            <h3 className="font-display text-section-header text-text-1">Điểm tin cậy mô hình</h3>
             <p className="text-table text-text-2">
-              System trust in ML forecast for Raw Materials has dropped by 12% due to consistent under-planning.
-              Recommending manual adjustment for Q3.
+              Mức tin cậy của hệ thống đối với dự báo ML cho Nguyên liệu giảm 12% do nhiều lần dưới kế hoạch.
+              Khuyến nghị điều chỉnh thủ công cho Q3.
             </p>
             <div className="flex items-center justify-between pt-2">
-              <span className="text-table-sm text-text-2">Confidence Level</span>
+              <span className="text-table-sm text-text-2">Mức tin cậy</span>
               <span className="text-table font-bold text-primary">82%</span>
             </div>
             <div className="h-1.5 bg-surface-3 rounded-full overflow-hidden">
@@ -142,42 +142,52 @@ export function AuditFeedbackTab() {
             </div>
           </div>
           <FeedForwardCard
-            title="Forecast Adjustment"
-            description="Consider increasing Raw Materials buffer by 6% for Q3."
-            linkLabel="Go to Config"
+            title="Điều chỉnh dự báo"
+            description="Cân nhắc tăng đệm Nguyên liệu thêm 6% cho Q3."
+            linkLabel="Đến Cấu hình"
             linkUrl="/config"
           />
         </div>
       </div>
 
-      {/* B: Supply Performance Metrics */}
+      {/* B: Hiệu suất cung ứng */}
       <div className="grid grid-cols-5 gap-4">
         <div className="col-span-2 rounded-card border border-surface-3 bg-surface-2 p-5 space-y-3">
           <div className="flex items-center gap-2">
             <Zap className="h-4 w-4 text-warning" />
-            <span className="text-table-header uppercase text-warning font-semibold tracking-wider">Automation Hub</span>
+            <span className="text-table-header uppercase text-warning font-semibold tracking-wider">Tự động hóa</span>
           </div>
-          <h3 className="font-display text-section-header text-text-1">ATP Auto-Discount</h3>
+          <h3 className="font-display text-section-header text-text-1">
+            <TermTooltip term="ATP">ATP</TermTooltip> tự giảm
+          </h3>
           <p className="text-table text-text-2">
-            Supplier "NM Logistics" is showing a 15% drop in LT honoring. System has triggered a 5% ATP discount for future orders from this node.
+            NM "NM Logistics" đang giảm 15% tỷ lệ giữ cam kết LT. Hệ thống đã kích hoạt giảm 5% ATP cho các đơn hàng tương lai từ node này.
           </p>
           <button className="inline-flex items-center gap-1 rounded-button border border-primary text-primary px-4 py-2 text-table font-medium hover:bg-info-bg transition-colors">
-            View Supplier Rankings
+            Xem xếp hạng NM
           </button>
         </div>
         <div className="col-span-3 rounded-card border border-surface-3 bg-surface-2">
           <div className="px-5 py-4 border-b border-surface-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Box className="h-4 w-4 text-text-2" />
-              <h2 className="font-display text-section-header text-text-1">B) Supply Performance Metrics</h2>
+              <h2 className="font-display text-section-header text-text-1">B) Hiệu suất cung ứng</h2>
             </div>
             <PeriodFilter value={periodB} onChange={setPeriodB} />
           </div>
           <table className="w-full">
             <thead>
               <tr className="border-b border-surface-3">
-                {["Node", "Honoring %", "On-Time %", "LT Gap (Days)", "Grade"].map((h) => (
-                  <th key={h} className="text-left text-table-header uppercase text-text-3 px-5 py-3">{h}</th>
+                {[
+                  { label: "Node", term: null },
+                  { label: "Giữ cam kết %", term: "HonoringRate" },
+                  { label: "Đúng hẹn %", term: null },
+                  { label: "Lệch LT (Ngày)", term: null },
+                  { label: "Hạng", term: null },
+                ].map((h) => (
+                  <th key={h.label} className="text-left text-table-header uppercase text-text-3 px-5 py-3">
+                    {h.term ? <TermTooltip term={h.term}>{h.label}</TermTooltip> : h.label}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -205,28 +215,30 @@ export function AuditFeedbackTab() {
         </div>
       </div>
 
-      {/* C: Execution & Exception Analysis */}
+      {/* C: Phân tích thực thi & ngoại lệ */}
       <div className="grid grid-cols-5 gap-4">
         <div className="col-span-3 rounded-card border border-surface-3 bg-surface-2">
           <div className="px-5 py-4 border-b border-surface-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-text-2" />
-              <h2 className="font-display text-section-header text-text-1">C) Execution & Exception Analysis</h2>
+              <h2 className="font-display text-section-header text-text-1">C) Thực thi & phân tích ngoại lệ</h2>
             </div>
             <div className="flex items-center gap-6">
               <div className="text-center">
-                <p className="text-table-header uppercase text-text-3">Fill Rate</p>
+                <p className="text-table-header uppercase text-text-3">
+                  <TermTooltip term="FillRate">Tỷ lệ lấp đầy</TermTooltip>
+                </p>
                 <p className="font-display text-kpi text-text-1">96.8%</p>
               </div>
               <div className="text-center">
-                <p className="text-table-header uppercase text-text-3">Resolve Time</p>
+                <p className="text-table-header uppercase text-text-3">Thời gian xử lý</p>
                 <p className="font-display text-kpi text-text-1">4.2h</p>
               </div>
               <PeriodFilter value={periodC} onChange={setPeriodC} />
             </div>
           </div>
           <div className="px-5 py-3">
-            <p className="text-table-header uppercase text-text-3 mb-2">Top 5 Recurring Exceptions</p>
+            <p className="text-table-header uppercase text-text-3 mb-2">Top 5 ngoại lệ lặp lại</p>
             <div className="space-y-2">
               {topExceptions.map((ex, i) => (
                 <div key={i} className="flex items-center gap-3 text-table">
@@ -242,36 +254,44 @@ export function AuditFeedbackTab() {
         <div className="col-span-2 space-y-4">
           <div className="rounded-card border border-surface-3 bg-surface-2 p-5 space-y-3 text-center">
             <Zap className="h-8 w-8 text-primary mx-auto" />
-            <h3 className="font-display text-section-header text-text-1">SS Auto-Increase</h3>
+            <h3 className="font-display text-section-header text-text-1">Tự động tăng SS</h3>
             <p className="text-table text-text-2">
-              Recurrent stockouts detected in Category "Fresh". Safety Stock buffers auto-increased by +12%.
+              Phát hiện thiếu hàng lặp lại ở nhóm "Hàng tươi". Đệm <TermTooltip term="SS">SS</TermTooltip> tự động tăng +12%.
             </p>
-            <span className="inline-block text-table-header uppercase font-bold text-text-1 border border-surface-3 rounded-full px-3 py-1">Active Correction</span>
+            <span className="inline-block text-table-header uppercase font-bold text-text-1 border border-surface-3 rounded-full px-3 py-1">Đang điều chỉnh</span>
           </div>
           <FeedForwardCard
-            title="Exception Feed-Forward"
-            description="Link recurring exceptions to SS adjustments automatically."
-            linkLabel="Go to Safety Stock"
+            title="Chuyển tiếp ngoại lệ"
+            description="Liên kết các ngoại lệ lặp lại với điều chỉnh SS tự động."
+            linkLabel="Đến Tồn an toàn"
             linkUrl="/monitoring"
           />
         </div>
       </div>
 
-      {/* D: Inventory Health Snapshot */}
+      {/* D: Tổng quan sức khỏe tồn kho */}
       <div className="grid grid-cols-5 gap-4">
         <div className="col-span-3 rounded-card border border-surface-3 bg-surface-2">
           <div className="px-5 py-4 border-b border-surface-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Box className="h-4 w-4 text-text-2" />
-              <h2 className="font-display text-section-header text-text-1">D) Inventory Health Snapshot</h2>
+              <h2 className="font-display text-section-header text-text-1">D) Sức khỏe tồn kho</h2>
             </div>
             <PeriodFilter value={periodD} onChange={setPeriodD} />
           </div>
           <table className="w-full">
             <thead>
               <tr className="border-b border-surface-3">
-                {["Channel", "HSTK Target", "Actual HSTK", "Stockout Risk", "SS Adequacy"].map((h) => (
-                  <th key={h} className="text-left text-table-header uppercase text-text-3 px-5 py-3">{h}</th>
+                {[
+                  { label: "Kênh", term: null },
+                  { label: "HSTK mục tiêu", term: "HSTK" },
+                  { label: "HSTK thực tế", term: "HSTK" },
+                  { label: "Rủi ro thiếu hàng", term: null },
+                  { label: "Đầy đủ SS", term: "SS" },
+                ].map((h) => (
+                  <th key={h.label} className="text-left text-table-header uppercase text-text-3 px-5 py-3">
+                    {h.term ? <TermTooltip term={h.term}>{h.label}</TermTooltip> : h.label}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -282,7 +302,7 @@ export function AuditFeedbackTab() {
                   <td className="px-5 py-3 text-table text-text-1 tabular-nums">{r.target}</td>
                   <td className="px-5 py-3 text-table text-text-1 tabular-nums">{r.actual}</td>
                   <td className="px-5 py-3">
-                    <span className={cn("text-table font-bold uppercase", r.stockout === "High" ? "text-danger" : r.stockout === "Moderate" ? "text-warning" : "text-success")}>
+                    <span className={cn("text-table font-bold uppercase", r.stockout === "Cao" ? "text-danger" : r.stockout === "Trung bình" ? "text-warning" : "text-success")}>
                       {r.stockout}
                     </span>
                   </td>
@@ -296,46 +316,46 @@ export function AuditFeedbackTab() {
           <div className="rounded-card border border-surface-3 bg-surface-2 p-5 space-y-3">
             <div className="flex items-center gap-2">
               <div className="h-5 w-1 rounded-full bg-gradient-primary" />
-              <h3 className="font-display text-section-header text-text-1">SS Adjustments</h3>
+              <h3 className="font-display text-section-header text-text-1">Điều chỉnh SS</h3>
             </div>
-            <p className="text-caption text-text-3">Next Cycle Policy</p>
+            <p className="text-caption text-text-3">Chính sách chu kỳ kế tiếp</p>
             <div className="space-y-2">
               <div className="flex justify-between text-table">
-                <span className="text-text-2">Buffer Upscale</span>
+                <span className="text-text-2">Tăng đệm tồn kho</span>
                 <span className="text-success font-medium">+15.2%</span>
               </div>
               <div className="flex justify-between text-table">
-                <span className="text-text-2">Dynamic Throttling</span>
-                <span className="text-text-1 font-medium">ENABLED</span>
+                <span className="text-text-2">Điều tiết động</span>
+                <span className="text-text-1 font-medium">ĐANG BẬT</span>
               </div>
             </div>
-            <p className="text-caption text-text-3 italic">Adjustments will take effect on Monday morning sync.</p>
+            <p className="text-caption text-text-3 italic">Điều chỉnh sẽ có hiệu lực vào sáng thứ Hai khi đồng bộ.</p>
           </div>
           <FeedForwardCard
-            title="Inventory Feed-Forward"
-            description="Low adequacy channels need SS review before next cycle."
-            linkLabel="Go to Supply"
+            title="Chuyển tiếp tồn kho"
+            description="Các kênh đầy đủ thấp cần xem xét SS trước chu kỳ kế tiếp."
+            linkLabel="Đến Cung ứng"
             linkUrl="/supply"
           />
         </div>
       </div>
 
-      {/* E: Financial Impact & Waterfall */}
+      {/* E: Tác động tài chính & waterfall */}
       <div className="grid grid-cols-5 gap-4">
         <div className="col-span-3 rounded-card border border-surface-3 bg-surface-2">
           <div className="px-5 py-4 border-b border-surface-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-text-2" />
-              <h2 className="font-display text-section-header text-text-1">E) Financial Impact & Waterfall</h2>
+              <h2 className="font-display text-section-header text-text-1">E) Tác động tài chính & dòng chi phí</h2>
             </div>
             <div className="flex items-center gap-6">
               <div className="text-center">
-                <p className="text-table-header uppercase text-text-3">WC Locked</p>
-                <p className="font-display text-kpi text-text-1">$12.4M</p>
+                <p className="text-table-header uppercase text-text-3">Vốn lưu động</p>
+                <p className="font-display text-kpi text-text-1">12,4 tỷ ₫</p>
               </div>
               <div className="text-center">
-                <p className="text-table-header uppercase text-text-3">LCNB Savings</p>
-                <p className="font-display text-kpi text-success">+$840K</p>
+                <p className="text-table-header uppercase text-text-3">Tiết kiệm LCNB</p>
+                <p className="font-display text-kpi text-success">+840 triệu ₫</p>
               </div>
               <PeriodFilter value={periodE} onChange={setPeriodE} />
             </div>
@@ -345,18 +365,18 @@ export function AuditFeedbackTab() {
               <BarChart data={waterfallChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-surface-3)" />
                 <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#94a3b8" }} />
-                <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} tickFormatter={(v) => `$${v}K`} />
+                <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} tickFormatter={(v) => `${v}K ₫`} />
                 <Tooltip contentStyle={{ borderRadius: 8, borderColor: "var(--color-surface-3)", fontSize: 12 }} />
-                <Bar dataKey="positive" fill="#2563EB" name="Cost" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="positive" fill="#2563EB" name="Chi phí" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="negative" fill="var(--color-success-text)" name="Tiết kiệm" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
             <div className="grid grid-cols-4 gap-3 mt-4 pt-4 border-t border-surface-3">
               {[
-                { label: "Premium Freight", value: "$24.5K" },
-                { label: "Stockout Cost", value: "$112.0K", color: "text-danger" },
-                { label: "Inv. Holding", value: "$45.1K" },
-                { label: "LCNB ROI", value: "14.2%", color: "text-success" },
+                { label: "Vận chuyển khẩn", value: "24,5 triệu ₫" },
+                { label: "Chi phí thiếu hàng", value: "112,0 triệu ₫", color: "text-danger" },
+                { label: "Chi phí lưu kho", value: "45,1 triệu ₫" },
+                { label: "ROI LCNB", value: "14.2%", color: "text-success" },
               ].map((item) => (
                 <div key={item.label} className="text-center">
                   <p className="text-table-header uppercase text-text-3">{item.label}</p>
@@ -368,17 +388,17 @@ export function AuditFeedbackTab() {
         </div>
         <div className="col-span-2 space-y-4">
           <FeedForwardCard
-            title="Cost Savings Goal"
-            description="Reducing SS by 4% in non-volatile nodes would save an additional $120K in monthly working capital."
-            linkLabel="Go to Config"
+            title="Mục tiêu tiết kiệm"
+            description="Giảm SS thêm 4% ở các node ổn định sẽ tiết kiệm thêm 120 triệu ₫ vốn lưu động mỗi tháng."
+            linkLabel="Đến Cấu hình"
             linkUrl="/config"
           />
           <div className="rounded-card bg-success p-6 text-primary-foreground text-center space-y-3">
             <Shield className="h-10 w-10 mx-auto opacity-80" />
-            <h3 className="font-display text-section-header">Audit Completion</h3>
+            <h3 className="font-display text-section-header">Hoàn thành audit</h3>
             <p className="font-display text-kpi">98.2%</p>
             <button className="inline-flex items-center gap-1 rounded-button border border-white/30 bg-white/10 px-4 py-2 text-table font-medium hover:bg-white/20 transition-colors">
-              Publish Audit
+              Phát hành audit
             </button>
           </div>
         </div>
