@@ -422,10 +422,38 @@ const SUPPLIER_IMPORT_FIELDS: ImportField[] = [
 function SuppliersTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState<typeof FACTORIES[number] | null>(null);
-  const [deleting, setDeleting] = useState<typeof FACTORIES[number] | null>(null);
+  const [editing, setEditing] = useState<MergedFactory | null>(null);
+  const [deleting, setDeleting] = useState<MergedFactory | null>(null);
 
-  const rows = FACTORIES.filter(
+  const { data: cloudFactories = [] } = useMasterFactories();
+  const createFactory = useCreateMasterFactory();
+  const updateFactory = useUpdateMasterFactory();
+  const deleteFactory = useDeleteMasterFactory();
+  const bulkInsertFactories = useBulkInsertMasterFactories();
+
+  const merged: MergedFactory[] = useMemo(() => {
+    const cloudByCode = new Map(cloudFactories.map((c) => [c.code, c]));
+    const fromHardcode: MergedFactory[] = FACTORIES
+      .filter((f) => !cloudByCode.has(f.code))
+      .map((f) => ({
+        id: null, code: f.code, name: f.name, region: f.region,
+        ltDays: f.ltDays, sigmaLt: f.sigmaLt, moqM2: f.moqM2,
+        capacityM2Month: f.capacityM2Month, reliability: f.reliability,
+        honoringPct: f.honoringPct, priceTier1: f.priceTier1, priceTier2: f.priceTier2,
+        source: "hardcode" as const,
+      }));
+    const fromCloud: MergedFactory[] = cloudFactories.map((c) => ({
+      id: c.id, code: c.code, name: c.name, region: c.region,
+      ltDays: c.lt_days, sigmaLt: Number(c.sigma_lt), moqM2: Number(c.moq_m2),
+      capacityM2Month: Number(c.capacity_m2_month), reliability: Number(c.reliability),
+      honoringPct: Number(c.honoring_pct), priceTier1: Number(c.price_tier1),
+      priceTier2: Number(c.price_tier2),
+      source: "cloud" as const,
+    }));
+    return [...fromCloud, ...fromHardcode].sort((a, b) => a.code.localeCompare(b.code));
+  }, [cloudFactories]);
+
+  const rows = merged.filter(
     (f) => f.name.toLowerCase().includes(search.toLowerCase()) || f.code.toLowerCase().includes(search.toLowerCase()),
   );
 
