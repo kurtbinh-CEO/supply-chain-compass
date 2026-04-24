@@ -786,8 +786,60 @@ const ACTION_CONFIG_FALLBACK = ACTION_CONFIG;
    Expanded drill-down
    ═══════════════════════════════════════════════════════════════════════════ */
 function ExpandedRow({ row }: { row: PoLifecycleRow }) {
+  // Tra cứu BPO cha (cam kết tháng) — nếu PO này thuộc 1 BPO trong tracker
+  const bpoLink = row.kind === "RPO" ? findBpoForPo(row.poNumber) : null;
   return (
     <div className="bg-surface-1 border-t border-surface-3 p-4 space-y-4">
+      {/* ═══ BPO link (cam kết tháng cha) ═══ */}
+      {bpoLink && (
+        <div className="rounded border border-info/30 bg-info-bg/40 p-3">
+          <div className="flex items-start gap-2 mb-2">
+            <Layers className="h-4 w-4 text-info shrink-0 mt-0.5" />
+            <div className="flex-1 text-table-sm">
+              <div className="text-text-1">
+                <span className="text-text-3">Thuộc cam kết:</span>{" "}
+                <span className="font-medium">{bpoLink.tracker.nmName} {bpoLink.tracker.skuBaseCode}</span>{" "}
+                <span className="text-text-3">T{bpoLink.tracker.month}</span>
+                {" — "}
+                <span className="font-semibold tabular-nums">
+                  {bpoLink.tracker.committedQty.toLocaleString()} m²
+                </span>
+                <span className="text-text-3">
+                  {" "}· Đã release{" "}
+                  <span className="font-semibold text-text-1 tabular-nums">
+                    {bpoLink.tracker.releasedQty.toLocaleString()}/{bpoLink.tracker.committedQty.toLocaleString()}
+                  </span>
+                  {" "}({bpoLink.tracker.releasePct}%)
+                </span>
+              </div>
+              <div className="text-caption text-text-3 mt-0.5">
+                PO này là release tuần W{bpoLink.week.week}: {bpoLink.week.qty.toLocaleString()}m² ·{" "}
+                {WEEK_RELEASE_LABEL(bpoLink.week.status)}
+                {bpoLink.tracker.remainingQty > 0 && (
+                  <> · Còn chưa đặt: <span className="text-warning font-medium">{bpoLink.tracker.remainingQty.toLocaleString()} m²</span></>
+                )}
+              </div>
+              {/* mini progress */}
+              <div className="mt-2 flex items-center gap-2">
+                <div className="flex-1 h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full",
+                      bpoLink.tracker.releasePct >= BPO_EXPECTED_PCT
+                        ? "bg-success" : bpoLink.tracker.releasePct >= BPO_EXPECTED_PCT * 0.6
+                        ? "bg-warning" : "bg-danger",
+                    )}
+                    style={{ width: `${Math.min(100, bpoLink.tracker.releasePct)}%` }}
+                  />
+                </div>
+                <span className="text-[11px] tabular-nums font-semibold text-text-1 w-10 text-right">
+                  {bpoLink.tracker.releasePct}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Lifecycle timeline */}
       <div>
         <div className="text-caption uppercase tracking-wide text-text-3 mb-2 font-semibold">Lifecycle</div>
