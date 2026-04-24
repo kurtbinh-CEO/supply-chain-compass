@@ -1,6 +1,6 @@
 ---
 name: M17 data inputs
-description: AOP plan dialog (DemandPage badge), KPI Targets editor (Config tab), Carriers tab + transport rates drill-down, datasets for AOP/KPI/Carriers/Transport/FC actual
+description: AOP plan dialog, KPI Targets editor, Carriers tab + transport rates, FC Actual import wired to MAPE — all 5 critical data inputs covered
 type: feature
 ---
 # M17 — Data input gaps
@@ -8,25 +8,27 @@ type: feature
 Phase 1 (datasets + xóa hardcode) — DONE:
 - `AOP_PLAN`, `getAopMonth`, `getAopSkuGroup`, `getAopYtd`
 - `TRANSPORT_RATES` (9 routes × 4 vehicle kinds)
-- `FC_ACTUAL` (T1-T4 2026), `getFcActualYtd`
+- `FC_ACTUAL` (T1-T4 2026), `getFcActualYtd`, `getFcActualByMonth`, `getFcActualMonthsClosed`
 - `KPI_TARGETS` (8 KPIs), `getKpiTarget`
-- SopPage AOP formula = `getAopMonth(5) × groupWeight × cnSkuShare`
-- DemandPage badges đọc `AOP_PLAN.totalTarget` + `getFcActualYtd()`
+- SopPage AOP formula, DemandPage badges đọc live data
 
 Phase 2 — UI editors (DONE):
-- **AopPlanDialog** (`src/components/AopPlanDialog.tsx`) — 4 sections, validation Σ=100%, lock SC_MANAGER
-- **KpiTargetsTab** (`src/components/config/KpiTargetsTab.tsx`) — Tab "Mục tiêu KPI" trong ConfigPage
-- ExecutivePage Tier 1 cards + Sheet header đọc target qua `getKpiTarget()`
+- **AopPlanDialog** mở từ DemandPage badge, 4 sections, validation Σ=100%, lock SC_MANAGER
+- **KpiTargetsTab** trong ConfigPage, edit target + warningThreshold
+- ExecutivePage Tier 1 cards đọc target qua `getKpiTarget()`
 
 Phase 3a — Carriers + transport rates (DONE):
-- **CarriersTab** (`src/components/master/CarriersTab.tsx`):
-  - Tab "Nhà xe" trong MasterDataPage (vị trí 6, sau "Tuyến")
-  - Cột: Mã NVT · Tên · Loại · Vùng · Liên hệ · SLA · Trạng thái · Ghi chú
-  - Click row → expand drill-down: bảng cước per route × `RateVehicleKind` (truck_10t/15t/20ft/40ft) + 4 phụ phí editable + actions [Sửa cước][Upload Excel][Bảng cước mới]
-  - Toolbar: search + [Thêm nhà xe][Nhập Excel] (toast demo)
-- Dataset `Carrier` đã có `code`, `contactName`, `status` — không cần thêm
+- **CarriersTab** (`src/components/master/CarriersTab.tsx`): tab "Nhà xe" trong MasterDataPage
+- Click row → drill-down bảng cước per route × `RateVehicleKind` + 4 phụ phí editable
 
-Còn lại Phase 3:
-- GAP 4: DataSourceSelector "Nhập thực tế" cho FC_ACTUAL ở DemandPage + FcAccuracyTab
-- GAP 5: Master Data CRUD universal pattern (Add/Edit/Delete/Import/Export per tab)
-- Wire FC_ACTUAL vào MAPE thực ở FcVsActualTab
+Phase 3b — FC Actual import + MAPE thật (DONE):
+- DemandPage header: nút **"Nhập thực tế"** (variant outline) cạnh "Nhập FC", mở DataSourceSelector với `ACTUAL_SOURCES` (Bravo / Excel / Tay)
+- FcAccuracyTab (Monitoring): nút **"Cập nhật thực tế"** cạnh chart header MAPE 12 tuần
+- **FcVsActualTab** rewrite: T6/25–T12/25 mock historical, T1/26–T4/26 đọc REAL từ `FC_ACTUAL` qua `getFcActualByMonth()`, T5/26 = "đang chạy"
+- MAPE/Bias/avgMape giờ tính từ FC_ACTUAL thật cho 4 tháng 2026
+- Card "Mô hình dùng nhiều nhất" → "Nguồn thực tế" (`realCount/4` tháng + `FC_ACTUAL.length` dòng)
+- Bảng tháng có cột "Nguồn" (Thực tế/Lịch sử) với enum filter
+
+Còn lại — out of scope M17:
+- Master Data CRUD universal (Add/Edit/Delete dialog cho mọi tab) — defer Phase 4
+- Wizard 5 bước upload Excel thực — đang dùng toast demo
