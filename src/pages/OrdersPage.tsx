@@ -532,6 +532,19 @@ function PoLineage({ po, kind }: { po: PurchaseOrderRow; kind: PoKind }) {
 /* ═══════════════════════════════════════════════════════════════════════════
    §  TAB 2 — Vận chuyển
    ═══════════════════════════════════════════════════════════════════════════ */
+type TransportRowT = {
+  id: string;
+  kind: "PO" | "TO";
+  route: string;
+  qty: number;
+  carrier: string | null;
+  eta: string;
+  status: "wait" | "ready" | "moving" | "hold";
+  fillPct: number;
+  containerType: string;
+  fromRegion?: string;
+};
+
 function TransportTab({
   orders, effective, setOverrides, effectiveTo, setToOverrides, carrierAssign, setCarrierAssign, scale,
 }: {
@@ -547,25 +560,11 @@ function TransportTab({
   type Filter = "all" | "PO" | "TO" | "wait" | "moving";
   const [filter, setFilter] = useState<Filter>("all");
 
-  /* Combine TRANSPORT_PLANS as PO shipments + TO post-approval */
-  type Row = {
-    id: string;
-    kind: "PO" | "TO";
-    route: string;
-    qty: number;
-    carrier: string | null;
-    eta: string;
-    status: "wait" | "ready" | "moving" | "hold";
-    fillPct: number;
-    containerType: string;
-    fromRegion?: string;
-  };
-
-  const rows: Row[] = useMemo(() => {
-    const list: Row[] = [];
+  const rows: TransportRowT[] = useMemo(() => {
+    const list: TransportRowT[] = [];
     TRANSPORT_PLANS.forEach(p => {
       const carrier = carrierAssign[p.id] ?? CARRIERS.find(c => c.id === p.carrierId)?.name ?? null;
-      const status: Row["status"] = p.status === "HOLD" ? "hold"
+      const status: TransportRowT["status"] = p.status === "HOLD" ? "hold"
         : !carrier ? "wait"
         : p.status === "SHIP" ? "moving"
         : "ready";
@@ -582,7 +581,7 @@ function TransportTab({
     TO_DRAFT.filter(t => effectiveTo(t) !== "draft" && effectiveTo(t) !== "submitted").forEach(t => {
       const carrier = carrierAssign[t.id] ?? t.carrier;
       const eff = effectiveTo(t);
-      const status: Row["status"] = eff === "shipped" || eff === "received" ? "moving"
+      const status: TransportRowT["status"] = eff === "shipped" || eff === "received" ? "moving"
         : carrier ? "ready" : "wait";
       list.push({
         id: t.id, kind: "TO",
@@ -621,6 +620,108 @@ function TransportTab({
     { key: "moving", label: "Đang chuyển", count: counts.moving },
   ];
 
+  const handleAssign = (id: string, carrierName: string) => {
+    setCarrierAssign(prev => ({ ...prev, [id]: carrierName }));
+    toast.success(`${id}: gán nhà xe ${carrierName}`);
+  };
+  const handleShipNow = (r: TransportRowT) => {
+    if (r.kind === "TO") setToOverrides(prev => ({ ...prev, [r.id]: "shipped" }));
+    toast.success(`${r.id}: override xuất ngay`);
+  };
+  const handleWaitMore = (r: TransportRowT) => toast.info(`${r.id}: chờ gom thêm hàng`);
+
+  const columns: SmartTableColumn<TransportRowT>[] = [
+    {
+      key: "id", label: "Chuyến", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 180,
+      accessor: (r) => r.id,
+      render: (r) => <span className="font-mono text-[11px] text-text-1">{r.id}</span>,
+    },
+    {
+      key: "kind", label: "Loại", sortable: true, hideable: true, priority: "high",
+      filter: "enum",
+      filterOptions: [
+        { value: "PO", label: "PO" },
+        { value: "TO", label: "TO" },
+      ],
+      width: 80,
+      accessor: (r) => r.kind,
+      render: (r) => <KindBadge kind={r.kind === "PO" ? "RPO" : "TO"} />,
+    },
+    {
+      key: "route", label: "Tuyến", sortable: true, hideable: true, priority: "high",
+      filter: "text",
+      accessor: (r) => r.route,
+      render: (r) => <span className="text-table-sm text-text-2">{r.route}</span>,
+    },
+    {
+      key: "qty", label: "Số lượng", sortable: true, hideable: true, priority: "high",
+      numeric: true, align: "right", width: 130,
+      accessor: (r) => r.qty,
+      render: (r) => (
+        <div>
+          <div className="tabular-nums text-text-1">{r.qty.toLocaleString("vi-VN")}</div>
+          <div className="text-[10px] text-text-3">{r.containerType} · {r.fillPct}%</div>
+        </div>
+      ),
+    },
+    {
+      key: "carrier", label: "Nhà xe", sortable: true, hideable: true, priority: "medium",
+      filter: "text",
+      accessor: (r) => r.carrier ?? "",
+      render: (r) => r.carrier
+        ? <span className="text-text-1">{r.carrier}</span>
+        : <span className="text-text-3 italic">Chưa gán</span>,
+    },
+    {
+      key: "eta", label: "Ngày dự kiến", sortable: true, hideable: true, priority: "medium",
+      width: 120,
+      accessor: (r) => r.eta,
+      render: (r) => <span className="text-table-sm text-text-2">{fmtDate(r.eta)}</span>,
+    },
+    {
+      key: "status", label: "Trạng thái", sortable: true, hideable: true, priority: "high",
+      filter: "enum",
+      filterOptions: [
+        { value: "wait",   label: "Chờ nhà xe" },
+        { value: "hold",   label: "Giữ lại" },
+        { value: "ready",  label: "Sẵn sàng" },
+        { value: "moving", label: "Đang chuyển" },
+      ],
+      width: 130,
+      accessor: (r) => r.status,
+      render: (r) => {
+        const statusLabel =
+          r.status === "wait" ? "Chờ nhà xe"
+          : r.status === "hold" ? "Giữ lại"
+          : r.status === "ready" ? "Sẵn sàng"
+          : "Đang chuyển";
+        const statusCls =
+          r.status === "wait" ? "bg-warning-bg text-warning border-warning/30"
+          : r.status === "hold" ? "bg-danger-bg text-danger border-danger/30"
+          : r.status === "ready" ? "bg-info-bg text-info border-info/30"
+          : "bg-success-bg text-success border-success/30";
+        return (
+          <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium", statusCls)}>
+            {statusLabel}
+          </span>
+        );
+      },
+    },
+    {
+      key: "action", label: "Hành động", sortable: false, hideable: false, priority: "high",
+      align: "right", width: 160,
+      render: (r) => (
+        <TransportActionCell
+          row={r}
+          onAssignCarrier={(name) => handleAssign(r.id, name)}
+          onShipNow={() => handleShipNow(r)}
+          onWaitMore={() => handleWaitMore(r)}
+        />
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-3">
       {/* Filter chips */}
@@ -637,51 +738,26 @@ function TransportTab({
         ))}
       </div>
 
-      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-surface-1/60 border-b border-surface-3">
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Chuyến</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Loại</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Tuyến</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Số lượng</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden md:table-cell">Nhà xe</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Ngày dự kiến</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Trạng thái</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && (
-                <tr><td colSpan={8} className="text-center py-8 text-text-3 text-table-sm">
-                  Không có chuyến nào khớp bộ lọc.
-                </td></tr>
-              )}
-              {filtered.map(r => (
-                <TransportRow
-                  key={r.id} row={r}
-                  onAssignCarrier={(carrierName) => {
-                    setCarrierAssign(prev => ({ ...prev, [r.id]: carrierName }));
-                    toast.success(`${r.id}: gán nhà xe ${carrierName}`);
-                  }}
-                  onShipNow={() => {
-                    if (r.kind === "TO") setToOverrides(prev => ({ ...prev, [r.id]: "shipped" }));
-                    toast.success(`${r.id}: override xuất ngay`);
-                  }}
-                  onWaitMore={() => toast.info(`${r.id}: chờ gom thêm hàng`)}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <SmartTable<TransportRowT>
+        screenId="orders-transport"
+        title="Vận chuyển"
+        exportFilename="orders-transport"
+        columns={columns}
+        data={filtered}
+        getRowId={(r) => r.id}
+        rowSeverity={(r) => r.status === "hold" ? "overdue" : r.status === "wait" ? "watch" : undefined}
+        emptyState={{
+          icon: <Truck className="h-8 w-8" />,
+          title: "Không có chuyến nào",
+          description: "Không có chuyến nào khớp bộ lọc hiện tại.",
+        }}
+      />
     </div>
   );
 }
 
-function TransportRow({ row, onAssignCarrier, onShipNow, onWaitMore }: {
-  row: { id: string; kind: "PO" | "TO"; route: string; qty: number; carrier: string | null; eta: string; status: "wait" | "ready" | "moving" | "hold"; fillPct: number; containerType: string; fromRegion?: string };
+function TransportActionCell({ row, onAssignCarrier, onShipNow, onWaitMore }: {
+  row: TransportRowT;
   onAssignCarrier: (name: string) => void;
   onShipNow: () => void;
   onWaitMore: () => void;
@@ -689,87 +765,60 @@ function TransportRow({ row, onAssignCarrier, onShipNow, onWaitMore }: {
   const [pickerOpen, setPickerOpen] = useState(false);
   const eligible = CARRIERS.filter(c => c.available && (!row.fromRegion || c.region.includes(row.fromRegion)));
 
-  const statusLabel =
-    row.status === "wait" ? "Chờ nhà xe"
-    : row.status === "hold" ? "Giữ lại"
-    : row.status === "ready" ? "Sẵn sàng"
-    : "Đang chuyển";
-  const statusCls =
-    row.status === "wait" ? "bg-warning-bg text-warning border-warning/30"
-    : row.status === "hold" ? "bg-danger-bg text-danger border-danger/30"
-    : row.status === "ready" ? "bg-info-bg text-info border-info/30"
-    : "bg-success-bg text-success border-success/30";
-
-  return (
-    <tr className="border-b border-surface-3 hover:bg-surface-1/40 transition-colors">
-      <td className="px-3 py-2.5"><span className="font-mono text-[11px] text-text-1">{row.id}</span></td>
-      <td className="px-3 py-2.5"><KindBadge kind={row.kind === "PO" ? "RPO" : "TO"} /></td>
-      <td className="px-3 py-2.5 text-table-sm text-text-2">{row.route}</td>
-      <td className="px-3 py-2.5 text-right">
-        <div className="tabular-nums text-text-1">{row.qty.toLocaleString("vi-VN")}</div>
-        <div className="text-[10px] text-text-3">{row.containerType} · {row.fillPct}%</div>
-      </td>
-      <td className="px-3 py-2.5 text-table-sm hidden md:table-cell">
-        {row.carrier ? <span className="text-text-1">{row.carrier}</span> : <span className="text-text-3 italic">Chưa gán</span>}
-      </td>
-      <td className="px-3 py-2.5 text-table-sm text-text-2">{fmtDate(row.eta)}</td>
-      <td className="px-3 py-2.5">
-        <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium", statusCls)}>{statusLabel}</span>
-      </td>
-      <td className="px-3 py-2.5 text-right">
-        {row.status === "wait" && (
-          <div className="relative inline-block">
-            <button onClick={() => setPickerOpen(!pickerOpen)}
-              className="inline-flex items-center gap-1 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1 text-caption font-semibold">
-              Gán nhà xe <ChevronDown className="h-3 w-3" />
-            </button>
-            {pickerOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setPickerOpen(false)} />
-                <div className="absolute right-0 mt-1 z-50 w-72 rounded-card border border-surface-3 bg-surface-2 shadow-lg p-1.5">
-                  {eligible.length === 0 && (
-                    <div className="px-3 py-2 text-caption text-text-3">Không có nhà xe khả dụng cho vùng này.</div>
-                  )}
-                  {eligible.map(c => (
-                    <button key={c.id}
-                      onClick={() => { onAssignCarrier(c.name); setPickerOpen(false); }}
-                      className="w-full text-left px-2 py-1.5 rounded hover:bg-surface-1 transition-colors">
-                      <div className="text-table-sm text-text-1 font-medium">{c.name}</div>
-                      <div className="text-caption text-text-3">
-                        {c.rate40ft > 0 ? `${fmtVnd(c.rate40ft)}/40ft · ` : "Miễn phí · "}
-                        SLA {c.slaOnTimePct}%
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
+  if (row.status === "wait") {
+    return (
+      <div className="relative inline-block" onClick={(e) => e.stopPropagation()}>
+        <button onClick={() => setPickerOpen(!pickerOpen)}
+          className="inline-flex items-center gap-1 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1 text-caption font-semibold">
+          Gán nhà xe <ChevronDown className="h-3 w-3" />
+        </button>
+        {pickerOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setPickerOpen(false)} />
+            <div className="absolute right-0 mt-1 z-50 w-72 rounded-card border border-surface-3 bg-surface-2 shadow-lg p-1.5">
+              {eligible.length === 0 && (
+                <div className="px-3 py-2 text-caption text-text-3">Không có nhà xe khả dụng cho vùng này.</div>
+              )}
+              {eligible.map(c => (
+                <button key={c.id}
+                  onClick={() => { onAssignCarrier(c.name); setPickerOpen(false); }}
+                  className="w-full text-left px-2 py-1.5 rounded hover:bg-surface-1 transition-colors">
+                  <div className="text-table-sm text-text-1 font-medium">{c.name}</div>
+                  <div className="text-caption text-text-3">
+                    {c.rate40ft > 0 ? `${fmtVnd(c.rate40ft)}/40ft · ` : "Miễn phí · "}
+                    SLA {c.slaOnTimePct}%
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
         )}
-        {row.status === "hold" && (
-          <div className="inline-flex gap-1">
-            <button onClick={onShipNow}
-              className="inline-flex items-center gap-1 rounded-button border border-warning/40 bg-warning-bg/40 text-warning px-2 py-1 text-caption font-medium">
-              <Play className="h-3 w-3" /> Xuất ngay
-            </button>
-            <button onClick={onWaitMore}
-              className="inline-flex items-center gap-1 rounded-button border border-surface-3 px-2 py-1 text-caption text-text-2 hover:text-text-1">
-              <Pause className="h-3 w-3" /> Chờ gom
-            </button>
-          </div>
-        )}
-        {row.status === "ready" && (
-          <button onClick={onShipNow}
-            className="inline-flex items-center gap-1 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1 text-caption font-semibold">
-            <Truck className="h-3 w-3" /> Khởi hành
-          </button>
-        )}
-        {row.status === "moving" && (
-          <span className="text-caption text-text-3">Đang chạy</span>
-        )}
-      </td>
-    </tr>
-  );
+      </div>
+    );
+  }
+  if (row.status === "hold") {
+    return (
+      <div className="inline-flex gap-1" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onShipNow}
+          className="inline-flex items-center gap-1 rounded-button border border-warning/40 bg-warning-bg/40 text-warning px-2 py-1 text-caption font-medium">
+          <Play className="h-3 w-3" /> Xuất ngay
+        </button>
+        <button onClick={onWaitMore}
+          className="inline-flex items-center gap-1 rounded-button border border-surface-3 px-2 py-1 text-caption text-text-2 hover:text-text-1">
+          <Pause className="h-3 w-3" /> Chờ gom
+        </button>
+      </div>
+    );
+  }
+  if (row.status === "ready") {
+    return (
+      <button onClick={(e) => { e.stopPropagation(); onShipNow(); }}
+        className="inline-flex items-center gap-1 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1 text-caption font-semibold">
+        <Truck className="h-3 w-3" /> Khởi hành
+      </button>
+    );
+  }
+  return <span className="text-caption text-text-3">Đang chạy</span>;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
