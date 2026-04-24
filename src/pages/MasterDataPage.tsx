@@ -661,10 +661,34 @@ const BRANCH_IMPORT_FIELDS: ImportField[] = [
 function BranchesTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState<typeof BRANCHES[number] | null>(null);
-  const [deleting, setDeleting] = useState<typeof BRANCHES[number] | null>(null);
+  const [editing, setEditing] = useState<MergedBranch | null>(null);
+  const [deleting, setDeleting] = useState<MergedBranch | null>(null);
 
-  const rows = BRANCHES.filter(
+  const { data: cloudBranches = [] } = useMasterBranches();
+  const createBranch = useCreateMasterBranch();
+  const updateBranch = useUpdateMasterBranch();
+  const deleteBranch = useDeleteMasterBranch();
+  const bulkInsertBranches = useBulkInsertMasterBranches();
+
+  const merged: MergedBranch[] = useMemo(() => {
+    const cloudByCode = new Map(cloudBranches.map((c) => [c.code, c]));
+    const fromHardcode: MergedBranch[] = BRANCHES
+      .filter((b) => !cloudByCode.has(b.code))
+      .map((b) => ({
+        id: null, code: b.code, name: b.name, region: b.region,
+        lat: b.lat, lng: b.lng, zFactor: b.zFactor, manager: b.manager,
+        source: "hardcode" as const,
+      }));
+    const fromCloud: MergedBranch[] = cloudBranches.map((c) => ({
+      id: c.id, code: c.code, name: c.name, region: c.region,
+      lat: Number(c.lat), lng: Number(c.lng), zFactor: Number(c.z_factor),
+      manager: c.manager ?? "",
+      source: "cloud" as const,
+    }));
+    return [...fromCloud, ...fromHardcode].sort((a, b) => a.code.localeCompare(b.code));
+  }, [cloudBranches]);
+
+  const rows = merged.filter(
     (b) => b.name.toLowerCase().includes(search.toLowerCase()) || b.code.toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -677,9 +701,17 @@ function BranchesTab() {
         excelImport={{
           entityName: "chi nhánh",
           fields: BRANCH_IMPORT_FIELDS,
-          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} CN (chưa persist)`),
+          onCommit: async (importedRows) => {
+            await bulkInsertBranches.mutateAsync(
+              importedRows.map((r) => ({
+                code: String(r.code), name: String(r.name), region: String(r.region),
+                manager: r.manager ? String(r.manager) : null,
+                lat: Number(r.lat ?? 0), lng: Number(r.lng ?? 0),
+                z_factor: Number(r.zFactor ?? 1.65),
+              })),
+            );
+          },
         }}
-        onImport={(src) => toast.success(`Nhập CN qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "chi_nhanh",
@@ -708,8 +740,15 @@ function BranchesTab() {
             {rows.map((b, i) => {
               const sl = b.zFactor >= 1.96 ? "97.5%" : b.zFactor >= 1.65 ? "95%" : b.zFactor >= 1.5 ? "93.3%" : "90%";
               return (
-                <tr key={b.code} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
-                  <td className="px-4 py-2.5 font-mono font-medium text-text-1">{b.code}</td>
+                <tr key={`${b.code}-${b.source}`} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
+                  <td className="px-4 py-2.5 font-mono font-medium text-text-1">
+                    <div className="flex items-center gap-1.5">
+                      {b.code}
+                      {b.source === "cloud" && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-2.5 text-text-2">{b.name}</td>
                   <td className="px-4 py-2.5"><span className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-1 border border-surface-3 text-text-2 text-table-sm">{b.region}</span></td>
                   <td className="px-4 py-2.5 text-text-2 tabular-nums">{b.lat.toFixed(4)}</td>
@@ -726,7 +765,9 @@ function BranchesTab() {
           </tbody>
         </table>
       </div>
-      <p className="text-table-sm text-text-3">{rows.length} / {BRANCHES.length} chi nhánh</p>
+      <p className="text-table-sm text-text-3">
+        {rows.length} chi nhánh · <span className="text-success">{cloudBranches.length} từ cloud</span> + {BRANCHES.length} từ dataset mẫu
+      </p>
 
       <EntityFormDialog
         open={adding}
@@ -734,8 +775,14 @@ function BranchesTab() {
         entityName="chi nhánh"
         fields={BRANCH_FIELDS}
         onClose={() => setAdding(false)}
-        onSave={(v) => {
-          toast.success(`Đã tạo CN ${v.name} (demo)`);
+        onSave={async (v) => {
+          await createBranch.mutateAsync({
+            code: v.code, name: v.name, region: v.region,
+            manager: v.manager || null,
+            lat: Number(v.lat || 0), lng: Number(v.lng || 0),
+            z_factor: Number(v.zFactor || 1.65),
+          });
+          toast.success(`Đã tạo CN ${v.name}`);
           setAdding(false);
         }}
       />
@@ -749,8 +796,19 @@ function BranchesTab() {
           manager: editing.manager, lat: editing.lat, lng: editing.lng, zFactor: editing.zFactor,
         } : undefined}
         onClose={() => setEditing(null)}
-        onSave={(v) => {
-          toast.success(`Đã cập nhật CN ${v.name} (demo)`);
+        onSave={async (v) => {
+          const payload = {
+            name: v.name, region: v.region,
+            manager: v.manager || null,
+            lat: Number(v.lat || 0), lng: Number(v.lng || 0),
+            z_factor: Number(v.zFactor || 1.65),
+          };
+          if (editing?.source === "cloud" && editing.id) {
+            await updateBranch.mutateAsync({ id: editing.id, ...payload });
+          } else {
+            await createBranch.mutateAsync({ code: v.code, ...payload });
+          }
+          toast.success(`Đã cập nhật CN ${v.name}`);
           setEditing(null);
         }}
       />
@@ -759,12 +817,19 @@ function BranchesTab() {
         entityLabel={deleting ? `CN ${deleting.name}` : ""}
         description={
           deleting
-            ? `Xóa CN ${deleting.name} sẽ ảnh hưởng allocation, transit LT và tồn kho liên quan.`
+            ? (deleting.source === "cloud"
+              ? `CN ${deleting.name} (Cloud) sẽ ảnh hưởng allocation, transit LT và tồn kho liên quan.`
+              : `CN ${deleting.name} thuộc dataset mẫu — không xóa được. Tạo bản Cloud cùng mã rồi xóa bản Cloud.`)
             : undefined
         }
         onClose={() => setDeleting(null)}
-        onConfirm={() => {
-          toast.success(`Đã xóa CN ${deleting?.name} (demo)`);
+        onConfirm={async () => {
+          if (deleting?.source === "cloud" && deleting.id) {
+            await deleteBranch.mutateAsync(deleting.id);
+            toast.success(`Đã xóa CN ${deleting.name}`);
+          } else {
+            toast.warning("Không xóa được dataset mẫu");
+          }
           setDeleting(null);
         }}
       />
