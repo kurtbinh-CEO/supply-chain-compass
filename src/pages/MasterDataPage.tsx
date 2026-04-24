@@ -805,7 +805,12 @@ function ContainersTab() {
         search={search}
         onSearchChange={setSearch}
         onAdd={() => setAdding(true)}
-        onImport={(src) => toast.success(`Nhập loại container từ ${src} (demo)`)}
+        excelImport={{
+          entityName: "loại container",
+          fields: CONTAINER_IMPORT_FIELDS,
+          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} loại container (chưa persist)`),
+        }}
+        onImport={(src) => toast.success(`Nhập loại container qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "container",
