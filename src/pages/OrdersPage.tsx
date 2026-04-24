@@ -85,7 +85,11 @@ export default function OrdersPage() {
   const [actionRow, setActionRow] = useState<PoLifecycleRow | null>(null);
   const [cancelRow, setCancelRow] = useState<PoLifecycleRow | null>(null);
 
-  /* ── Stage counts for summary bar + filter pills ── */
+  /* ── ORDERS-TABLE-PATCH: build PO groups (NM × CN × Week) once per rows change.
+       Filter pills sau đó được tính TRÊN GROUPS, không trên flat lines. ── */
+  const allGroups = useMemo(() => buildPoGroups(rows), [rows]);
+
+  /* ── Group-level counts cho filter pills + summary cards ── */
   const counts = useMemo(() => {
     const stage: Record<LifecycleStage, number> = {
       approved: 0, sent_nm: 0, nm_confirmed: 0, pickup: 0,
@@ -93,26 +97,37 @@ export default function OrdersPage() {
     };
     let todo = 0, transit = 0, done = 0, overdue = 0;
     let po = 0, to = 0;
-    for (const r of rows) {
-      stage[r.stage]++;
-      if (r.kind === "RPO") po++; else to++;
-      if (ACTION_STAGES.includes(r.stage)) todo++;
-      if (r.stage === "pickup" || r.stage === "in_transit") transit++;
-      if (r.stage === "completed") done++;
-      if (isOverdue(r)) overdue++;
+    for (const g of allGroups) {
+      stage[g.stage]++;
+      if (g.kind === "RPO") po++; else to++;
+      if (ACTION_STAGES.includes(g.stage)) todo++;
+      if (g.stage === "pickup" || g.stage === "in_transit") transit++;
+      if (g.stage === "completed") done++;
+      if (g.anyOverdue) overdue++;
     }
-    return { stage, todo, transit, done, overdue, total: rows.length, po, to };
-  }, [rows]);
+    return {
+      stage, todo, transit, done, overdue,
+      total: allGroups.length,
+      lineTotal: rows.length,
+      po, to,
+    };
+  }, [allGroups, rows.length]);
 
-  /* ── Filtered list — multi-select pills ── */
-  const visibleRows = useMemo(() => {
-    return rows.filter(r => {
-      if (kindFilter.size > 0 && !kindFilter.has(r.kind as "RPO" | "TO")) return false;
-      if (overdueOnly && !isOverdue(r)) return false;
-      if (statusFilter.size > 0 && !statusFilter.has(r.stage)) return false;
+  /* ── Filtered groups — multi-select pills ── */
+  const visibleGroups = useMemo(() => {
+    return allGroups.filter(g => {
+      if (kindFilter.size > 0 && !kindFilter.has(g.kind)) return false;
+      if (overdueOnly && !g.anyOverdue) return false;
+      if (statusFilter.size > 0 && !statusFilter.has(g.stage)) return false;
       return true;
     });
-  }, [rows, statusFilter, kindFilter, overdueOnly]);
+  }, [allGroups, statusFilter, kindFilter, overdueOnly]);
+
+  /** Flattened lines (giữ lại cho dialog drill-down popup). */
+  const visibleRows = useMemo(
+    () => visibleGroups.flatMap(g => g.lines),
+    [visibleGroups],
+  );
 
   // Toggle helpers
   const toggleStatus = (s: LifecycleStage) =>
