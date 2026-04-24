@@ -507,10 +507,10 @@ function MockPoRow({ po, scale }: { po: typeof PO_DRAFT[number]; scale: number }
   return (
     <tr className="border-b border-surface-3">
       <td className="px-2 py-2.5"></td>
-      <td className="px-3 py-2.5"><span className="font-mono text-[11px] text-text-1">{po.poId}</span></td>
+      <td className="px-3 py-2.5"><span className="font-mono text-[11px] text-text-1">{po.poNumber}</span></td>
       <td className="px-3 py-2.5"><KindBadge kind="RPO" /></td>
       <td className="px-3 py-2.5 text-table-sm text-text-2">NM {po.nmId} → {po.cnCode}</td>
-      <td className="px-3 py-2.5 text-table-sm text-text-2 hidden md:table-cell">{po.skuId}</td>
+      <td className="px-3 py-2.5 text-table-sm text-text-2 hidden md:table-cell">{po.skuBaseCode}</td>
       <td className="px-3 py-2.5 text-right tabular-nums text-text-1">{qty.toLocaleString("vi-VN")}</td>
       <td className="px-3 py-2.5 text-table-sm text-text-3 hidden lg:table-cell">40ft · 85%</td>
       <td className="px-3 py-2.5"><StageBadge stage={po.status === "draft" ? "draft" : "submitted"} /></td>
