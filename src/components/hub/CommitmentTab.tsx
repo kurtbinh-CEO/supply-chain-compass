@@ -597,6 +597,11 @@ function CommitmentRow({ row, onUpdate, onOpenEvidence, onConfirm }: {
   const delta = row.committed - row.fcSent;
   const deltaPct = row.fcSent > 0 ? (delta / row.fcSent) * 100 : 0;
   const tierMeta = TIER_META[row.tier];
+  const released = releasedFor(row.nmName, row.sku);
+  const remaining = Math.max(0, row.committed - released);
+  const releasePct = row.committed > 0 ? Math.round((released / row.committed) * 100) : 0;
+  const expectedPct = Math.round(BPO_EXPECTED_PCT);
+  const lateRelease = row.committed > 0 && releasePct < expectedPct && remaining > 0;
 
   return (
     <tr className={cn("border-b border-surface-3 transition-colors",
