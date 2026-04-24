@@ -453,7 +453,7 @@ export function B2BInputTab({ deals, setDeals }: Props) {
                     description: "Thêm deal đầu tiên để pipeline cộng dồn vào nhu cầu Demand. Hoặc import từ file Excel.",
                     action: {
                       label: "Thêm deal mới",
-                      onClick: () => setModalDeal({ deal: { customer: "", cn: BRANCHES[0]?.code ?? "", sku: SKU_BASES[0] ?? "", qtyM2: 0, stage: "Tiềm năng", expectedClose: "", note: "" } as Omit<B2bDeal, "id"> }),
+                      onClick: () => setModalDeal({ deal: { ...emptyDeal } }),
                     },
                   }
                 : {
