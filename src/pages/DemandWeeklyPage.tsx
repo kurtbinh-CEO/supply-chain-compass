@@ -580,6 +580,8 @@ function buildScRows(
     const totalDuKien = rows.reduce((s, r) => s + r.duKien, 0);
     const totalAdjust = rows.reduce((s, r) => s + r.adjust, 0);
     const totalPct = totalDuKien > 0 ? (totalAdjust / totalDuKien) * 100 : 0;
+    const actualPrev = actualPrevMonthByCn(b.code);
+    const fcVsActualPct = actualPrev > 0 ? ((totalDuKien - actualPrev) / actualPrev) * 100 : 0;
     const adjustedRows = rows.filter((r) => r.adjust !== 0);
     let pendingCount = 0, overCount = 0, autoCount = 0;
     adjustedRows.forEach((r) => {
@@ -599,6 +601,8 @@ function buildScRows(
       totalDuKien,
       totalAdjust,
       totalPct,
+      actualPrev,
+      fcVsActualPct,
       skuCount: adjustedRows.length,
       pendingCount,
       overCount,
