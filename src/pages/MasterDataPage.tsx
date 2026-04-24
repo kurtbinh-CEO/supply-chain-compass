@@ -9,6 +9,14 @@ import { useVersionConflict, VersionConflictDialog } from "@/components/VersionC
 import { PriceListsTab } from "@/components/master/PriceListsTab";
 import { CarriersTab } from "@/components/master/CarriersTab";
 import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
+import {
+  CrudToolbar,
+  EntityFormDialog,
+  DeleteConfirmDialog,
+  RowActions,
+  exportToCsv,
+  type FormField,
+} from "@/components/master/CrudPrimitives";
 import { Button } from "@/components/ui/button";
 import {
   SKU_BASES,
@@ -104,11 +112,25 @@ function SearchToolbar({
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/* TAB 1 — Mã hàng (SKU bases) with NM column + variant badge + Add modal    */
+/* TAB 1 — Mã hàng (SKU bases) — Full CRUD                                   */
 /* ────────────────────────────────────────────────────────────────────────── */
+const ITEM_FIELDS: FormField[] = [
+  { key: "code",      label: "Mã gốc", type: "text", required: true, mono: true, placeholder: "VD: GA-300", readOnlyOnEdit: true, span: 1 },
+  { key: "name",      label: "Tên SKU", type: "text", required: true, placeholder: "Granite GA 30×30", span: 1 },
+  { key: "nmId",      label: "Nhà máy", type: "select", required: true, span: 1,
+    options: FACTORIES.map((f) => ({ value: f.id, label: `${f.name} (${f.region})` })),
+    hint: "1 mã gốc = 1 NM duy nhất",
+  },
+  { key: "category",  label: "Loại", type: "text", placeholder: "Granite / Ceramic", span: 1 },
+  { key: "unit",      label: "Đơn vị", type: "text", placeholder: "m²", span: 1 },
+  { key: "unitPrice", label: "Đơn giá (VND/m²)", type: "number", placeholder: "180000", span: 1 },
+];
+
 function ItemsTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<typeof SKU_BASES[number] | null>(null);
+  const [deleting, setDeleting] = useState<typeof SKU_BASES[number] | null>(null);
 
   const rows = useMemo(() => {
     const q = search.toLowerCase();
@@ -122,11 +144,29 @@ function ItemsTab() {
 
   return (
     <div className="space-y-3">
-      <SearchToolbar
-        value={search}
-        onChange={setSearch}
+      <CrudToolbar
+        search={search}
+        onSearchChange={setSearch}
         onAdd={() => setAdding(true)}
-        onUpload={() => toast("Upload CSV (demo)")}
+        onImport={(src) => toast.success(`Nhập mã hàng từ ${src} (demo)`)}
+        onExport={() =>
+          exportToCsv(
+            "ma_hang",
+            rows.map((b) => ({
+              ma_goc: b.code,
+              ten: b.name,
+              nha_may: NM_BY_ID[b.nmId],
+              loai: b.category,
+              don_vi: b.unit,
+              don_gia: b.unitPrice,
+              variants: variantCount(b.code),
+            })),
+          )
+        }
+        addLabel="Thêm mã hàng"
+        importTitle="Nhập danh mục mã hàng"
+        importDescription="Chọn nguồn nhập SKU hàng loạt"
+        placeholder="Tìm theo mã, tên, NM..."
       />
 
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
@@ -138,14 +178,16 @@ function ItemsTab() {
                   {h}
                 </th>
               ))}
+              <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3 font-medium w-[88px]">
+                Thao tác
+              </th>
             </tr>
           </thead>
           <tbody>
             {rows.map((b, i) => (
               <tr
                 key={b.code}
-                className={`${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 cursor-pointer transition-colors`}
-                onClick={() => toast(`Chỉnh sửa ${b.code} (demo)`)}
+                className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}
               >
                 <td className="px-4 py-2.5 font-mono font-medium text-text-1">{b.code}</td>
                 <td className="px-4 py-2.5 text-text-2">{b.name}</td>
@@ -162,6 +204,9 @@ function ItemsTab() {
                     {variantCount(b.code)} variant
                   </span>
                 </td>
+                <td className="px-4 py-2.5">
+                  <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -169,115 +214,113 @@ function ItemsTab() {
       </div>
       <p className="text-table-sm text-text-3">{rows.length} / {SKU_BASES.length} mã gốc</p>
 
-      {adding && <NewItemModal onClose={() => setAdding(false)} />}
+      <EntityFormDialog
+        open={adding}
+        mode="create"
+        entityName="mã hàng"
+        fields={ITEM_FIELDS}
+        onClose={() => setAdding(false)}
+        onSave={(v) => {
+          toast.success(`Đã tạo ${v.code} → ${NM_BY_ID[v.nmId as NmId] ?? v.nmId} (demo)`);
+          setAdding(false);
+        }}
+      />
+
+      <EntityFormDialog
+        open={!!editing}
+        mode="edit"
+        entityName="mã hàng"
+        fields={ITEM_FIELDS}
+        initialValues={editing ? {
+          code: editing.code,
+          name: editing.name,
+          nmId: editing.nmId,
+          category: editing.category,
+          unit: editing.unit,
+          unitPrice: editing.unitPrice,
+        } : undefined}
+        onClose={() => setEditing(null)}
+        onSave={(v) => {
+          toast.success(`Đã cập nhật ${v.code} (demo)`);
+          setEditing(null);
+        }}
+      />
+
+      <DeleteConfirmDialog
+        open={!!deleting}
+        entityLabel={deleting ? `mã ${deleting.code}` : ""}
+        description={
+          deleting
+            ? `Mã ${deleting.code} đang có ${variantCount(deleting.code)} variants. Xóa sẽ ảnh hưởng forecast & PO.`
+            : undefined
+        }
+        onClose={() => setDeleting(null)}
+        onConfirm={() => {
+          toast.success(`Đã xóa ${deleting?.code} (demo)`);
+          setDeleting(null);
+        }}
+      />
     </div>
-  );
-}
-
-function NewItemModal({ onClose }: { onClose: () => void }) {
-  const [code, setCode] = useState("");
-  const [name, setName] = useState("");
-  const [nmId, setNmId] = useState<NmId | "">("");
-  const [error, setError] = useState<string | null>(null);
-
-  const onSave = () => {
-    if (!code.trim() || !name.trim()) {
-      setError("Mã gốc và tên là bắt buộc.");
-      return;
-    }
-    if (!nmId) {
-      setError("Phải chọn Nhà máy. 1 mã gốc bắt buộc gắn 1 NM duy nhất.");
-      return;
-    }
-    toast.success(`Đã tạo ${code} → ${NM_BY_ID[nmId as NmId]}`);
-    onClose();
-  };
-
-  return (
-    <>
-      <div className="fixed inset-0 bg-text-1/30 z-50" onClick={onClose} />
-      <div className="fixed right-0 top-0 h-full w-[480px] max-w-full bg-surface-2 border-l border-surface-3 z-50 rounded-l-panel animate-slide-in-right shadow-xl flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-surface-3">
-          <h2 className="font-display text-section-header text-text-1">Tạo mã gốc mới</h2>
-          <button onClick={onClose} className="text-text-3 hover:text-text-1 transition-colors">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          <div>
-            <label className="text-table-sm text-text-3 uppercase font-medium">Mã gốc *</label>
-            <input
-              value={code}
-              onChange={(e) => { setCode(e.target.value.toUpperCase()); setError(null); }}
-              placeholder="VD: GA-300"
-              className="w-full h-10 mt-1 rounded-button border border-surface-3 bg-surface-0 px-3 text-table font-mono text-text-1"
-            />
-          </div>
-          <div>
-            <label className="text-table-sm text-text-3 uppercase font-medium">Tên SKU *</label>
-            <input
-              value={name}
-              onChange={(e) => { setName(e.target.value); setError(null); }}
-              placeholder="Granite GA 30×30"
-              className="w-full h-10 mt-1 rounded-button border border-surface-3 bg-surface-0 px-3 text-table text-text-1"
-            />
-          </div>
-          <div>
-            <label className="text-table-sm text-text-3 uppercase font-medium">
-              Nhà máy * <span className="text-text-3 normal-case">(1 mã gốc = 1 NM duy nhất)</span>
-            </label>
-            <select
-              value={nmId}
-              onChange={(e) => { setNmId(e.target.value as NmId); setError(null); }}
-              className={`w-full h-10 mt-1 rounded-button border bg-surface-0 px-3 text-table text-text-1 ${
-                error && !nmId ? "border-danger" : "border-surface-3"
-              }`}
-            >
-              <option value="">— Chọn nhà máy —</option>
-              {FACTORIES.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name} ({f.region}) — LT {f.ltDays}d, Honoring {f.honoringPct}%
-                </option>
-              ))}
-            </select>
-          </div>
-          {error && (
-            <div className="flex items-start gap-2 p-3 rounded-card bg-danger-bg border border-danger/30 text-danger text-table-sm">
-              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-        </div>
-        <div className="px-6 py-4 border-t border-surface-3 flex gap-2">
-          <button
-            onClick={onSave}
-            className="flex-1 h-10 rounded-button bg-gradient-primary text-primary-foreground font-medium text-table hover:opacity-90 transition-opacity"
-          >
-            Lưu
-          </button>
-          <button
-            onClick={onClose}
-            className="h-10 px-4 rounded-button border border-surface-3 text-text-2 text-table font-medium hover:bg-surface-1 transition-colors"
-          >
-            Huỷ
-          </button>
-        </div>
-      </div>
-    </>
   );
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /* TAB 2 — NM (factories) full attribute table                                */
 /* ────────────────────────────────────────────────────────────────────────── */
+const SUPPLIER_FIELDS: FormField[] = [
+  { key: "code",            label: "Mã NM", type: "text", required: true, mono: true, placeholder: "VD: NM-MIK", readOnlyOnEdit: true, span: 1 },
+  { key: "name",            label: "Tên nhà máy", type: "text", required: true, placeholder: "Mikado Ceramics", span: 1 },
+  { key: "region",          label: "Vùng", type: "select", required: true, span: 1,
+    options: [
+      { value: "Bắc",   label: "Bắc" },
+      { value: "Trung", label: "Trung" },
+      { value: "Nam",   label: "Nam" },
+    ],
+  },
+  { key: "ltDays",          label: "LT (ngày)", type: "number", required: true, span: 1 },
+  { key: "sigmaLt",         label: "σ_LT", type: "number", placeholder: "1.5", span: 1 },
+  { key: "moqM2",           label: "MOQ (m²)", type: "number", span: 1 },
+  { key: "capacityM2Month", label: "Capacity / tháng", type: "number", span: 1 },
+  { key: "honoringPct",     label: "Honoring %", type: "number", placeholder: "85", span: 1 },
+  { key: "priceTier1",      label: "Giá tier 1 (VND)", type: "number", span: 1 },
+  { key: "priceTier2",      label: "Giá tier 2 (VND)", type: "number", span: 1 },
+];
+
 function SuppliersTab() {
   const [search, setSearch] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<typeof FACTORIES[number] | null>(null);
+  const [deleting, setDeleting] = useState<typeof FACTORIES[number] | null>(null);
+
   const rows = FACTORIES.filter(
     (f) => f.name.toLowerCase().includes(search.toLowerCase()) || f.code.toLowerCase().includes(search.toLowerCase()),
   );
+
   return (
     <div className="space-y-3">
-      <SearchToolbar value={search} onChange={setSearch} onAdd={() => toast("Thêm NM (demo)")} onUpload={() => toast("Upload CSV (demo)")} />
+      <CrudToolbar
+        search={search}
+        onSearchChange={setSearch}
+        onAdd={() => setAdding(true)}
+        onImport={(src) => toast.success(`Nhập NM từ ${src} (demo)`)}
+        onExport={() =>
+          exportToCsv(
+            "nha_may",
+            rows.map((f) => ({
+              ma_nm: f.code, ten: f.name, vung: f.region,
+              lt_ngay: f.ltDays, sigma_lt: f.sigmaLt,
+              moq_m2: f.moqM2, capacity_thang: f.capacityM2Month,
+              reliability_pct: Math.round(f.reliability * 100),
+              honoring_pct: f.honoringPct,
+              gia_tier1: f.priceTier1, gia_tier2: f.priceTier2,
+            })),
+          )
+        }
+        addLabel="Thêm NM"
+        importTitle="Nhập danh sách NM"
+        importDescription="Chọn nguồn nhập nhà máy hàng loạt"
+        placeholder="Tìm theo mã, tên NM..."
+      />
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
         <table className="w-full text-table">
           <thead>
@@ -285,11 +328,12 @@ function SuppliersTab() {
               {["Mã NM", "Tên", "Vùng", "LT (ngày)", "σ_LT", "MOQ (m²)", "Capacity/tháng", "Reliability", "Honoring", "Giá tier 1", "Giá tier 2"].map((h) => (
                 <th key={h} className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">{h}</th>
               ))}
+              <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3 font-medium w-[88px]">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((f, i) => (
-              <tr key={f.id} className={`${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
+              <tr key={f.id} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
                 <td className="px-4 py-2.5 font-mono font-medium text-text-1">{f.code}</td>
                 <td className="px-4 py-2.5 text-text-2">{f.name}</td>
                 <td className="px-4 py-2.5 text-text-2">{f.region}</td>
@@ -309,12 +353,59 @@ function SuppliersTab() {
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{f.honoringPct}%</td>
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{fmtVnd(f.priceTier1)}</td>
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{fmtVnd(f.priceTier2)}</td>
+                <td className="px-4 py-2.5">
+                  <RowActions onEdit={() => setEditing(f)} onDelete={() => setDeleting(f)} />
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <p className="text-table-sm text-text-3">{rows.length} / {FACTORIES.length} nhà máy</p>
+
+      <EntityFormDialog
+        open={adding}
+        mode="create"
+        entityName="nhà máy"
+        fields={SUPPLIER_FIELDS}
+        onClose={() => setAdding(false)}
+        onSave={(v) => {
+          toast.success(`Đã tạo NM ${v.name} (demo)`);
+          setAdding(false);
+        }}
+      />
+      <EntityFormDialog
+        open={!!editing}
+        mode="edit"
+        entityName="nhà máy"
+        fields={SUPPLIER_FIELDS}
+        initialValues={editing ? {
+          code: editing.code, name: editing.name, region: editing.region,
+          ltDays: editing.ltDays, sigmaLt: editing.sigmaLt,
+          moqM2: editing.moqM2, capacityM2Month: editing.capacityM2Month,
+          honoringPct: editing.honoringPct,
+          priceTier1: editing.priceTier1, priceTier2: editing.priceTier2,
+        } : undefined}
+        onClose={() => setEditing(null)}
+        onSave={(v) => {
+          toast.success(`Đã cập nhật NM ${v.name} (demo)`);
+          setEditing(null);
+        }}
+      />
+      <DeleteConfirmDialog
+        open={!!deleting}
+        entityLabel={deleting ? `NM ${deleting.name}` : ""}
+        description={
+          deleting
+            ? `NM ${deleting.name} đang gắn với mã hàng và PO. Xóa sẽ làm gãy data link — cân nhắc kỹ.`
+            : undefined
+        }
+        onClose={() => setDeleting(null)}
+        onConfirm={() => {
+          toast.success(`Đã xóa NM ${deleting?.name} (demo)`);
+          setDeleting(null);
+        }}
+      />
     </div>
   );
 }
@@ -322,14 +413,53 @@ function SuppliersTab() {
 /* ────────────────────────────────────────────────────────────────────────── */
 /* TAB 3 — CN (12 branches) with region, lat/lng, z-factor, SS               */
 /* ────────────────────────────────────────────────────────────────────────── */
+const BRANCH_FIELDS: FormField[] = [
+  { key: "code",    label: "Mã CN", type: "text", required: true, mono: true, placeholder: "VD: CN-HCM", readOnlyOnEdit: true, span: 1 },
+  { key: "name",    label: "Tên chi nhánh", type: "text", required: true, placeholder: "CN Hồ Chí Minh", span: 1 },
+  { key: "region",  label: "Vùng", type: "select", required: true, span: 1,
+    options: [
+      { value: "Bắc",   label: "Bắc" },
+      { value: "Trung", label: "Trung" },
+      { value: "Nam",   label: "Nam" },
+    ],
+  },
+  { key: "manager", label: "Quản lý", type: "text", placeholder: "Nguyễn Văn A", span: 1 },
+  { key: "lat",     label: "Lat", type: "number", placeholder: "10.7769", span: 1, hint: "Vĩ độ" },
+  { key: "lng",     label: "Lng", type: "number", placeholder: "106.7009", span: 1, hint: "Kinh độ" },
+  { key: "zFactor", label: "z-factor", type: "number", placeholder: "1.65", span: 2, hint: "1.65 ≈ 95% mức phục vụ" },
+];
+
 function BranchesTab() {
   const [search, setSearch] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<typeof BRANCHES[number] | null>(null);
+  const [deleting, setDeleting] = useState<typeof BRANCHES[number] | null>(null);
+
   const rows = BRANCHES.filter(
     (b) => b.name.toLowerCase().includes(search.toLowerCase()) || b.code.toLowerCase().includes(search.toLowerCase()),
   );
+
   return (
     <div className="space-y-3">
-      <SearchToolbar value={search} onChange={setSearch} onAdd={() => toast("Thêm CN (demo)")} onUpload={() => toast("Upload CSV (demo)")} />
+      <CrudToolbar
+        search={search}
+        onSearchChange={setSearch}
+        onAdd={() => setAdding(true)}
+        onImport={(src) => toast.success(`Nhập CN từ ${src} (demo)`)}
+        onExport={() =>
+          exportToCsv(
+            "chi_nhanh",
+            rows.map((b) => ({
+              ma_cn: b.code, ten: b.name, vung: b.region,
+              lat: b.lat, lng: b.lng, z_factor: b.zFactor, quan_ly: b.manager,
+            })),
+          )
+        }
+        addLabel="Thêm CN"
+        importTitle="Nhập danh sách chi nhánh"
+        importDescription="Chọn nguồn nhập CN hàng loạt"
+        placeholder="Tìm theo mã, tên CN..."
+      />
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
         <table className="w-full text-table">
           <thead>
@@ -337,13 +467,14 @@ function BranchesTab() {
               {["Mã CN", "Tên chi nhánh", "Vùng", "Lat", "Lng", "z-factor", "Mức phục vụ", "Quản lý"].map((h) => (
                 <th key={h} className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">{h}</th>
               ))}
+              <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3 font-medium w-[88px]">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((b, i) => {
               const sl = b.zFactor >= 1.96 ? "97.5%" : b.zFactor >= 1.65 ? "95%" : b.zFactor >= 1.5 ? "93.3%" : "90%";
               return (
-                <tr key={b.code} className={`${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
+                <tr key={b.code} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
                   <td className="px-4 py-2.5 font-mono font-medium text-text-1">{b.code}</td>
                   <td className="px-4 py-2.5 text-text-2">{b.name}</td>
                   <td className="px-4 py-2.5"><span className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-1 border border-surface-3 text-text-2 text-table-sm">{b.region}</span></td>
@@ -352,6 +483,9 @@ function BranchesTab() {
                   <td className="px-4 py-2.5 text-text-2 tabular-nums">{b.zFactor.toFixed(2)}</td>
                   <td className="px-4 py-2.5 text-text-2">{sl}</td>
                   <td className="px-4 py-2.5 text-text-2">{b.manager}</td>
+                  <td className="px-4 py-2.5">
+                    <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} />
+                  </td>
                 </tr>
               );
             })}
@@ -359,6 +493,47 @@ function BranchesTab() {
         </table>
       </div>
       <p className="text-table-sm text-text-3">{rows.length} / {BRANCHES.length} chi nhánh</p>
+
+      <EntityFormDialog
+        open={adding}
+        mode="create"
+        entityName="chi nhánh"
+        fields={BRANCH_FIELDS}
+        onClose={() => setAdding(false)}
+        onSave={(v) => {
+          toast.success(`Đã tạo CN ${v.name} (demo)`);
+          setAdding(false);
+        }}
+      />
+      <EntityFormDialog
+        open={!!editing}
+        mode="edit"
+        entityName="chi nhánh"
+        fields={BRANCH_FIELDS}
+        initialValues={editing ? {
+          code: editing.code, name: editing.name, region: editing.region,
+          manager: editing.manager, lat: editing.lat, lng: editing.lng, zFactor: editing.zFactor,
+        } : undefined}
+        onClose={() => setEditing(null)}
+        onSave={(v) => {
+          toast.success(`Đã cập nhật CN ${v.name} (demo)`);
+          setEditing(null);
+        }}
+      />
+      <DeleteConfirmDialog
+        open={!!deleting}
+        entityLabel={deleting ? `CN ${deleting.name}` : ""}
+        description={
+          deleting
+            ? `Xóa CN ${deleting.name} sẽ ảnh hưởng allocation, transit LT và tồn kho liên quan.`
+            : undefined
+        }
+        onClose={() => setDeleting(null)}
+        onConfirm={() => {
+          toast.success(`Đã xóa CN ${deleting?.name} (demo)`);
+          setDeleting(null);
+        }}
+      />
     </div>
   );
 }
@@ -542,10 +717,50 @@ const CONTAINER_TYPES = [
   { code: "TRUCK10",name: "Truck 10 tấn",    capacityM2: 600,   palletLimit: 8,  weightLimitKg: 10000, costPerKm: 9000,  note: "Nội vùng, LCNB" },
 ];
 
+const CONTAINER_FIELDS: FormField[] = [
+  { key: "code",          label: "Mã loại", type: "text", required: true, mono: true, placeholder: "VD: 20FT", readOnlyOnEdit: true, span: 1 },
+  { key: "name",          label: "Tên loại", type: "text", required: true, placeholder: "Container 20ft", span: 1 },
+  { key: "capacityM2",    label: "Sức chứa (m²)", type: "number", required: true, span: 1 },
+  { key: "palletLimit",   label: "Số pallet tối đa", type: "number", required: true, span: 1 },
+  { key: "weightLimitKg", label: "Tải trọng (kg)", type: "number", required: true, span: 1 },
+  { key: "costPerKm",     label: "Cước (VND/km)", type: "number", required: true, span: 1 },
+  { key: "note",          label: "Ghi chú", type: "textarea", placeholder: "Đường dài, fill ≥ 60%...", span: 2 },
+];
+
 function ContainersTab() {
+  const [search, setSearch] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<typeof CONTAINER_TYPES[number] | null>(null);
+  const [deleting, setDeleting] = useState<typeof CONTAINER_TYPES[number] | null>(null);
+
+  const rows = CONTAINER_TYPES.filter(
+    (c) =>
+      c.code.toLowerCase().includes(search.toLowerCase()) ||
+      c.name.toLowerCase().includes(search.toLowerCase()),
+  );
+
   return (
     <div className="space-y-3">
-      <SearchToolbar value="" onChange={() => {}} onAdd={() => toast("Thêm loại container (demo)")} />
+      <CrudToolbar
+        search={search}
+        onSearchChange={setSearch}
+        onAdd={() => setAdding(true)}
+        onImport={(src) => toast.success(`Nhập loại container từ ${src} (demo)`)}
+        onExport={() =>
+          exportToCsv(
+            "container",
+            rows.map((c) => ({
+              ma: c.code, ten: c.name, suc_chua_m2: c.capacityM2,
+              pallet_limit: c.palletLimit, tai_trong_kg: c.weightLimitKg,
+              cuoc_vnd_km: c.costPerKm, ghi_chu: c.note,
+            })),
+          )
+        }
+        addLabel="Thêm loại container"
+        importTitle="Nhập loại container"
+        importDescription="Chọn nguồn nhập danh mục container"
+        placeholder="Tìm theo mã, tên..."
+      />
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
         <table className="w-full text-table">
           <thead>
@@ -553,11 +768,12 @@ function ContainersTab() {
               {["Mã", "Tên", "Sức chứa (m²)", "Pallet limit", "Tải trọng (kg)", "Cước (VND/km)", "Ghi chú"].map((h) => (
                 <th key={h} className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">{h}</th>
               ))}
+              <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3 font-medium w-[88px]">Thao tác</th>
             </tr>
           </thead>
           <tbody>
-            {CONTAINER_TYPES.map((c, i) => (
-              <tr key={c.code} className={`${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
+            {rows.map((c, i) => (
+              <tr key={c.code} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
                 <td className="px-4 py-2.5 font-mono font-medium text-text-1">{c.code}</td>
                 <td className="px-4 py-2.5 text-text-2">{c.name}</td>
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.capacityM2.toLocaleString("vi-VN")}</td>
@@ -565,11 +781,53 @@ function ContainersTab() {
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.weightLimitKg.toLocaleString("vi-VN")}</td>
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.costPerKm.toLocaleString("vi-VN")}</td>
                 <td className="px-4 py-2.5 text-text-3">{c.note}</td>
+                <td className="px-4 py-2.5">
+                  <RowActions onEdit={() => setEditing(c)} onDelete={() => setDeleting(c)} />
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <p className="text-table-sm text-text-3">{rows.length} / {CONTAINER_TYPES.length} loại container</p>
+
+      <EntityFormDialog
+        open={adding}
+        mode="create"
+        entityName="loại container"
+        fields={CONTAINER_FIELDS}
+        onClose={() => setAdding(false)}
+        onSave={(v) => {
+          toast.success(`Đã tạo loại container ${v.code} (demo)`);
+          setAdding(false);
+        }}
+      />
+      <EntityFormDialog
+        open={!!editing}
+        mode="edit"
+        entityName="loại container"
+        fields={CONTAINER_FIELDS}
+        initialValues={editing ?? undefined}
+        onClose={() => setEditing(null)}
+        onSave={(v) => {
+          toast.success(`Đã cập nhật ${v.code} (demo)`);
+          setEditing(null);
+        }}
+      />
+      <DeleteConfirmDialog
+        open={!!deleting}
+        entityLabel={deleting ? `loại ${deleting.code}` : ""}
+        description={
+          deleting
+            ? `Xóa loại ${deleting.code} sẽ ảnh hưởng tính cước & gom hàng các tuyến đang dùng.`
+            : undefined
+        }
+        onClose={() => setDeleting(null)}
+        onConfirm={() => {
+          toast.success(`Đã xóa ${deleting?.code} (demo)`);
+          setDeleting(null);
+        }}
+      />
     </div>
   );
 }
