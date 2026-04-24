@@ -19,6 +19,9 @@ import {
   X, Image as ImageIcon, Lock, Filter,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
+import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    §  Types
