@@ -17,6 +17,8 @@ import { AuthProvider, useAuth } from "@/components/AuthContext";
 import { ZoomProvider } from "@/components/ZoomControls";
 import { CommandPaletteProvider } from "@/components/CommandPalette";
 import { NextStepProvider } from "@/components/NextStepContext";
+import { OnboardingProvider } from "@/components/onboarding/OnboardingContext";
+import { OnboardingOverlay } from "@/components/onboarding/OnboardingOverlay";
 import { PlanningPeriodProvider } from "@/components/PlanningPeriodContext";
 import { useEffect, useCallback } from "react";
 import { dispatchExpandAll } from "@/hooks/useExpandableRows";
@@ -49,6 +51,7 @@ import NotFound from "./pages/NotFound";
 import CnPortalPage from "./pages/CnPortalPage";
 import ProfilePage from "./pages/ProfilePage";
 import ExecutivePage from "./pages/ExecutivePage";
+import AuditPage from "./pages/AuditPage";
 
 const queryClient = new QueryClient();
 
@@ -99,7 +102,9 @@ function ProtectedRoutes() {
       <NextStepProvider>
       <PlanningPeriodProvider>
       <CommandPaletteProvider>
+      <OnboardingProvider>
         <IdleNudgeMount />
+        <OnboardingOverlay />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/workspace" element={<WorkspacePage />} />
@@ -129,8 +134,10 @@ function ProtectedRoutes() {
           <Route path="/design-test" element={<DesignTest />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/executive" element={<ExecutivePage />} />
+          <Route path="/audit" element={<AuditPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+      </OnboardingProvider>
       </CommandPaletteProvider>
       </PlanningPeriodProvider>
       </NextStepProvider>
