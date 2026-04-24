@@ -464,17 +464,55 @@ function StepDetail({ stepId, scale }: { stepId: number; scale: number }) {
     </div>
   );
 
-  if (stepId === 11) return (
-    <div className="space-y-2 text-table-sm">
-      <div className="flex justify-between"><span>PO chờ duyệt</span><span className="tabular-nums font-medium">5</span></div>
-      <div className="flex justify-between"><span>TO chuyển ngang</span><span className="tabular-nums font-medium">2</span></div>
-      <div className="flex justify-between"><span>PO khẩn (RPO)</span><span className="tabular-nums font-medium text-danger">1</span></div>
-      <button onClick={() => navigate("/orders?tab=approval")}
-        className="mt-2 w-full rounded-button bg-gradient-primary text-primary-foreground px-3 py-2 text-table-sm font-semibold flex items-center justify-center gap-1.5">
-        Mở Đơn hàng — Duyệt PO/TO <ArrowRight className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  );
+  if (stepId === 11) {
+    const toTotalQty = TO_ROWS_LCNB.reduce((s, t) => s + t.qty, 0);
+    const toTotalCost = TO_ROWS_LCNB.reduce((s, t) => s + t.costM, 0);
+    return (
+      <div className="space-y-2 text-table-sm">
+        <div className="flex justify-between"><span>PO chờ duyệt</span><span className="tabular-nums font-medium">5</span></div>
+        <div className="flex justify-between">
+          <span>TO chuyển ngang (LCNB)</span>
+          <span className="tabular-nums font-medium">{TO_ROWS_LCNB.length} TO · {toTotalQty} m²</span>
+        </div>
+        <div className="rounded-card border border-surface-3 overflow-hidden">
+          <table className="w-full text-caption">
+            <thead className="bg-surface-2 text-text-3">
+              <tr>
+                <th className="text-left  px-2 py-1.5 font-medium">Mã TO</th>
+                <th className="text-left  px-2 py-1.5 font-medium">Từ</th>
+                <th className="text-left  px-2 py-1.5 font-medium">Đến</th>
+                <th className="text-left  px-2 py-1.5 font-medium">Mã hàng</th>
+                <th className="text-right px-2 py-1.5 font-medium">Số lượng</th>
+                <th className="text-right px-2 py-1.5 font-medium">Cước</th>
+              </tr>
+            </thead>
+            <tbody>
+              {TO_ROWS_LCNB.map((t) => (
+                <tr key={t.code} className="border-t border-surface-3">
+                  <td className="px-2 py-1.5 font-mono text-text-1">{t.code}</td>
+                  <td className="px-2 py-1.5 text-text-2">{t.fromCn.replace("CN-", "")}</td>
+                  <td className="px-2 py-1.5 text-text-2">{t.toCn.replace("CN-", "")}</td>
+                  <td className="px-2 py-1.5 text-text-2">{t.sku}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{t.qty} m²</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{t.costM.toFixed(1).replace(".", ",")}M₫</td>
+                </tr>
+              ))}
+              <tr className="border-t border-surface-3 bg-surface-2/50 font-semibold">
+                <td className="px-2 py-1.5 text-text-1" colSpan={4}>TỔNG</td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{toTotalQty} m²</td>
+                <td className="px-2 py-1.5 text-right tabular-nums">{toTotalCost.toFixed(1).replace(".", ",")}M₫</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="flex justify-between"><span>PO khẩn (RPO)</span><span className="tabular-nums font-medium text-danger">1</span></div>
+        <button onClick={() => navigate("/orders?tab=approval&filter=TO")}
+          className="mt-2 w-full rounded-button bg-gradient-primary text-primary-foreground px-3 py-2 text-table-sm font-semibold flex items-center justify-center gap-1.5">
+          Duyệt tất cả TO <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
 
   return null;
 }
