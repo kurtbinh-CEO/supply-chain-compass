@@ -413,14 +413,53 @@ function SuppliersTab() {
 /* ────────────────────────────────────────────────────────────────────────── */
 /* TAB 3 — CN (12 branches) with region, lat/lng, z-factor, SS               */
 /* ────────────────────────────────────────────────────────────────────────── */
+const BRANCH_FIELDS: FormField[] = [
+  { key: "code",    label: "Mã CN", type: "text", required: true, mono: true, placeholder: "VD: CN-HCM", readOnlyOnEdit: true, span: 1 },
+  { key: "name",    label: "Tên chi nhánh", type: "text", required: true, placeholder: "CN Hồ Chí Minh", span: 1 },
+  { key: "region",  label: "Vùng", type: "select", required: true, span: 1,
+    options: [
+      { value: "Bắc",   label: "Bắc" },
+      { value: "Trung", label: "Trung" },
+      { value: "Nam",   label: "Nam" },
+    ],
+  },
+  { key: "manager", label: "Quản lý", type: "text", placeholder: "Nguyễn Văn A", span: 1 },
+  { key: "lat",     label: "Lat", type: "number", placeholder: "10.7769", span: 1, hint: "Vĩ độ" },
+  { key: "lng",     label: "Lng", type: "number", placeholder: "106.7009", span: 1, hint: "Kinh độ" },
+  { key: "zFactor", label: "z-factor", type: "number", placeholder: "1.65", span: 2, hint: "1.65 ≈ 95% mức phục vụ" },
+];
+
 function BranchesTab() {
   const [search, setSearch] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<typeof BRANCHES[number] | null>(null);
+  const [deleting, setDeleting] = useState<typeof BRANCHES[number] | null>(null);
+
   const rows = BRANCHES.filter(
     (b) => b.name.toLowerCase().includes(search.toLowerCase()) || b.code.toLowerCase().includes(search.toLowerCase()),
   );
+
   return (
     <div className="space-y-3">
-      <SearchToolbar value={search} onChange={setSearch} onAdd={() => toast("Thêm CN (demo)")} onUpload={() => toast("Upload CSV (demo)")} />
+      <CrudToolbar
+        search={search}
+        onSearchChange={setSearch}
+        onAdd={() => setAdding(true)}
+        onImport={(src) => toast.success(`Nhập CN từ ${src} (demo)`)}
+        onExport={() =>
+          exportToCsv(
+            "chi_nhanh",
+            rows.map((b) => ({
+              ma_cn: b.code, ten: b.name, vung: b.region,
+              lat: b.lat, lng: b.lng, z_factor: b.zFactor, quan_ly: b.manager,
+            })),
+          )
+        }
+        addLabel="Thêm CN"
+        importTitle="Nhập danh sách chi nhánh"
+        importDescription="Chọn nguồn nhập CN hàng loạt"
+        placeholder="Tìm theo mã, tên CN..."
+      />
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
         <table className="w-full text-table">
           <thead>
@@ -428,13 +467,14 @@ function BranchesTab() {
               {["Mã CN", "Tên chi nhánh", "Vùng", "Lat", "Lng", "z-factor", "Mức phục vụ", "Quản lý"].map((h) => (
                 <th key={h} className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">{h}</th>
               ))}
+              <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3 font-medium w-[88px]">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((b, i) => {
               const sl = b.zFactor >= 1.96 ? "97.5%" : b.zFactor >= 1.65 ? "95%" : b.zFactor >= 1.5 ? "93.3%" : "90%";
               return (
-                <tr key={b.code} className={`${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
+                <tr key={b.code} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
                   <td className="px-4 py-2.5 font-mono font-medium text-text-1">{b.code}</td>
                   <td className="px-4 py-2.5 text-text-2">{b.name}</td>
                   <td className="px-4 py-2.5"><span className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-1 border border-surface-3 text-text-2 text-table-sm">{b.region}</span></td>
@@ -443,6 +483,9 @@ function BranchesTab() {
                   <td className="px-4 py-2.5 text-text-2 tabular-nums">{b.zFactor.toFixed(2)}</td>
                   <td className="px-4 py-2.5 text-text-2">{sl}</td>
                   <td className="px-4 py-2.5 text-text-2">{b.manager}</td>
+                  <td className="px-4 py-2.5">
+                    <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} />
+                  </td>
                 </tr>
               );
             })}
@@ -450,6 +493,47 @@ function BranchesTab() {
         </table>
       </div>
       <p className="text-table-sm text-text-3">{rows.length} / {BRANCHES.length} chi nhánh</p>
+
+      <EntityFormDialog
+        open={adding}
+        mode="create"
+        entityName="chi nhánh"
+        fields={BRANCH_FIELDS}
+        onClose={() => setAdding(false)}
+        onSave={(v) => {
+          toast.success(`Đã tạo CN ${v.name} (demo)`);
+          setAdding(false);
+        }}
+      />
+      <EntityFormDialog
+        open={!!editing}
+        mode="edit"
+        entityName="chi nhánh"
+        fields={BRANCH_FIELDS}
+        initialValues={editing ? {
+          code: editing.code, name: editing.name, region: editing.region,
+          manager: editing.manager, lat: editing.lat, lng: editing.lng, zFactor: editing.zFactor,
+        } : undefined}
+        onClose={() => setEditing(null)}
+        onSave={(v) => {
+          toast.success(`Đã cập nhật CN ${v.name} (demo)`);
+          setEditing(null);
+        }}
+      />
+      <DeleteConfirmDialog
+        open={!!deleting}
+        entityLabel={deleting ? `CN ${deleting.name}` : ""}
+        description={
+          deleting
+            ? `Xóa CN ${deleting.name} sẽ ảnh hưởng allocation, transit LT và tồn kho liên quan.`
+            : undefined
+        }
+        onClose={() => setDeleting(null)}
+        onConfirm={() => {
+          toast.success(`Đã xóa CN ${deleting?.name} (demo)`);
+          setDeleting(null);
+        }}
+      />
     </div>
   );
 }
