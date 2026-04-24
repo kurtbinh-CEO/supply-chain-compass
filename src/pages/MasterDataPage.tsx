@@ -466,9 +466,21 @@ function SuppliersTab() {
         excelImport={{
           entityName: "nhà máy",
           fields: SUPPLIER_IMPORT_FIELDS,
-          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} NM (chưa persist)`),
+          onCommit: async (importedRows) => {
+            await bulkInsertFactories.mutateAsync(
+              importedRows.map((r) => ({
+                code: String(r.code), name: String(r.name), region: String(r.region),
+                lt_days: Number(r.ltDays ?? 0),
+                sigma_lt: Number(r.sigmaLt ?? 0),
+                moq_m2: Number(r.moqM2 ?? 0),
+                capacity_m2_month: Number(r.capacityM2Month ?? 0),
+                honoring_pct: Number(r.honoringPct ?? 80),
+                price_tier1: Number(r.priceTier1 ?? 0),
+                price_tier2: Number(r.priceTier2 ?? 0),
+              })),
+            );
+          },
         }}
-        onImport={(src) => toast.success(`Nhập NM qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "nha_may",
