@@ -273,6 +273,8 @@ export function SmartTable<T = any>({
   autoExpandWhen,
   onRowClick,
   emptyMessage = "Không có dữ liệu",
+  isLoading = false,
+  emptyState,
   screenId,
   rowSeverity,
   getRowId,
@@ -282,6 +284,7 @@ export function SmartTable<T = any>({
   className,
 }: SmartTableProps<T>) {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   // ----- Storage keys -----
   const kDensity = `scp-table-${screenId}-density`;
