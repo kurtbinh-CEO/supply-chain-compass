@@ -342,8 +342,11 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
       key: "base", label: "Mã hàng", sortable: true, hideable: false, filter: "text", width: 140,
       render: (r) => (
         <button
-          className="text-info hover:underline font-medium text-table-sm"
-          onClick={(e) => { e.stopPropagation(); setSkuSheet(r.base); }}
+          type="button"
+          data-testid={`sku-cell-nm-${r.base}`}
+          className="text-info hover:underline font-medium text-table-sm cursor-pointer"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); setSkuSheet(r.base); }}
         >
           {r.base}
         </button>
