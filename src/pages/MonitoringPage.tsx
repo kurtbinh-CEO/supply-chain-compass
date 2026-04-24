@@ -23,6 +23,7 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { SYSTEM_ACCURACY } from "@/data/unis-enterprise-dataset";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { MonitoringHeroCards } from "@/components/monitoring/MonitoringHeroCards";
+import { SummaryCards } from "@/components/SummaryCards";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -414,6 +415,51 @@ export default function MonitoringPage() {
 
       {/* M15 — 5 hero KPI cards (always visible above tabs) */}
       <MonitoringHeroCards onTabChange={(k) => { setActiveTab(k); setDrillCn(null); }} />
+
+      {/* M20-PATCH — Summary thẻ tóm tắt nhỏ (bổ sung dưới hero KPI) */}
+      <div className="mt-4 mb-5">
+        <SummaryCards
+          screenId="monitoring"
+          editable
+          cards={[
+            {
+              key: "alerts_total",
+              label: "Cảnh báo mở",
+              value: 8,
+              unit: "items",
+              trend: { delta: "3 mới hôm nay", direction: "up", color: "red" },
+              severity: "warn",
+              onClick: () => setActiveTab("activity"),
+            },
+            {
+              key: "ss_pending",
+              label: "SS chờ duyệt",
+              value: 2,
+              unit: "thay đổi",
+              trend: { delta: "+128M vốn", direction: "up", color: "red" },
+              severity: "warn",
+              onClick: () => navigate("/workspace"),
+            },
+            {
+              key: "nm_at_risk",
+              label: "NM rủi ro cao",
+              value: 1,
+              unit: "NM",
+              trend: { delta: "Phú Mỹ 48%", direction: "down", color: "red" },
+              severity: "critical",
+              onClick: () => setActiveTab("nm"),
+            },
+            {
+              key: "bpo_pace",
+              label: "Tiến độ BPO",
+              value: "72%",
+              unit: "released",
+              trend: { delta: "Ngày 24/30", direction: "flat", color: "gray" },
+              severity: "ok",
+            },
+          ]}
+        />
+      </div>
 
       {/* Tab bar — section "Chi tiết" */}
       <div className="px-1 mb-2 text-caption uppercase tracking-wide text-text-3 font-semibold">
