@@ -1322,3 +1322,119 @@ export function getNmWithoutActivePriceList(): { nmId: NmId; name: string }[] {
     .filter((f) => !NM_PRICE_LISTS.some((pl) => pl.nmId === f.id && pl.status === "Hiệu lực"))
     .map((f) => ({ nmId: f.id, name: f.name }));
 }
+
+// ════════════════════════════════════════════════════════════════════
+// §29-30 — TRANSPORT ROUTES (vehicle types + NM→CN/CN→CN routes)
+// ════════════════════════════════════════════════════════════════════
+
+export type VehicleTypeCode = "CONT_20" | "CONT_40" | "TRUCK_5T" | "TRUCK_10T" | "TRUCK_15T";
+
+export interface VehicleType {
+  code: VehicleTypeCode;
+  label: string;
+  capacityM2: number;       // sức chứa quy đổi m²
+  capacityTon: number;
+  preferredFor: string;     // mô tả use-case
+}
+
+export const VEHICLE_TYPES: VehicleType[] = [
+  { code: "CONT_20",  label: "Container 20ft", capacityM2: 900,  capacityTon: 18,  preferredFor: "Tuyến dài, gom hàng nhỏ" },
+  { code: "CONT_40",  label: "Container 40ft", capacityM2: 1800, capacityTon: 26,  preferredFor: "Tuyến dài, full-load" },
+  { code: "TRUCK_5T", label: "Xe tải 5T",      capacityM2: 250,  capacityTon: 5,   preferredFor: "Tuyến ngắn nội vùng" },
+  { code: "TRUCK_10T",label: "Xe tải 10T",     capacityM2: 500,  capacityTon: 10,  preferredFor: "Tuyến trung bình, linh hoạt" },
+  { code: "TRUCK_15T",label: "Xe tải 15T",     capacityM2: 750,  capacityTon: 15,  preferredFor: "Tuyến trung – dài, no port" },
+];
+
+export interface TransportRoute {
+  routeId: string;
+  fromCode: string;          // NM id hoặc CN code
+  toCode: string;            // CN code
+  fromType: "NM" | "CN";
+  toType: "CN";
+  distanceKm: number;
+  transitDays: number;
+  // Bảng giá per vehicle type (VND, full-load)
+  rates: Partial<Record<VehicleTypeCode, number>>;
+  preferredCarrier: string;  // tên Carrier
+}
+
+export const TRANSPORT_ROUTES: TransportRoute[] = [
+  // NM → CN (5 tuyến)
+  { routeId: "RT-MIK-HN",  fromCode: "MIKADO",  toCode: "CN-HN",  fromType: "NM", toType: "CN", distanceKm: 75,   transitDays: 1, rates: { CONT_40: 4_200_000,  CONT_20: 2_800_000, TRUCK_10T: 2_400_000 }, preferredCarrier: "Vận tải Mikado" },
+  { routeId: "RT-DT-HCM",  fromCode: "DONGTAM", toCode: "CN-HCM", fromType: "NM", toType: "CN", distanceKm: 35,   transitDays: 1, rates: { CONT_40: 2_900_000,  CONT_20: 1_900_000, TRUCK_10T: 1_700_000 }, preferredCarrier: "Tân Cảng" },
+  { routeId: "RT-TOK-DN",  fromCode: "TOKO",    toCode: "CN-DN",  fromType: "NM", toType: "CN", distanceKm: 320,  transitDays: 2, rates: { CONT_40: 11_500_000, CONT_20: 7_800_000, TRUCK_15T: 9_200_000 }, preferredCarrier: "Hải Vân" },
+  { routeId: "RT-VIG-BD",  fromCode: "VIGRACERA", toCode: "CN-BD", fromType: "NM", toType: "CN", distanceKm: 1_650, transitDays: 5, rates: { CONT_40: 14_200_000, CONT_20: 9_500_000 }, preferredCarrier: "Vinatrans" },
+  { routeId: "RT-PHM-CT",  fromCode: "PHUMY",   toCode: "CN-CT",  fromType: "NM", toType: "CN", distanceKm: 220,  transitDays: 1, rates: { CONT_40: 7_400_000,  CONT_20: 5_100_000, TRUCK_10T: 4_600_000 }, preferredCarrier: "Gemadept" },
+  // CN → CN (3 tuyến chuyển ngang phổ biến)
+  { routeId: "RT-HCM-BD",  fromCode: "CN-HCM",  toCode: "CN-BD",  fromType: "CN", toType: "CN", distanceKm: 180,  transitDays: 1, rates: { TRUCK_10T: 3_200_000, TRUCK_15T: 4_100_000, CONT_20: 4_500_000 }, preferredCarrier: "Vinatrans" },
+  { routeId: "RT-DN-NA",   fromCode: "CN-DN",   toCode: "CN-NA",  fromType: "CN", toType: "CN", distanceKm: 280,  transitDays: 1, rates: { TRUCK_10T: 4_800_000, TRUCK_15T: 5_900_000 }, preferredCarrier: "Hải Vân" },
+  { routeId: "RT-HN-HCM",  fromCode: "CN-HN",   toCode: "CN-HCM", fromType: "CN", toType: "CN", distanceKm: 1_720, transitDays: 5, rates: { CONT_40: 15_800_000, CONT_20: 10_400_000 }, preferredCarrier: "Vinatrans" },
+];
+
+// HELPER: tìm rate tốt nhất cho 1 tuyến + khối lượng
+export function getBestRate(fromCode: string, toCode: string, qtyM2: number): {
+  route: TransportRoute;
+  vehicle: VehicleType;
+  rate: number;
+  fillPct: number;
+} | null {
+  const route = TRANSPORT_ROUTES.find((r) => r.fromCode === fromCode && r.toCode === toCode);
+  if (!route) return null;
+  let best: { vehicle: VehicleType; rate: number; fillPct: number } | null = null;
+  for (const [code, rate] of Object.entries(route.rates) as [VehicleTypeCode, number][]) {
+    const v = VEHICLE_TYPES.find((vt) => vt.code === code);
+    if (!v) continue;
+    if (v.capacityM2 < qtyM2) continue; // không đủ chở
+    const fill = Math.min(qtyM2 / v.capacityM2, 1);
+    const costPerM2 = rate / v.capacityM2;
+    if (!best || costPerM2 < best.rate / best.vehicle.capacityM2) {
+      best = { vehicle: v, rate, fillPct: fill * 100 };
+    }
+  }
+  return best ? { route, ...best } : null;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// §D — VERSION REGISTRY (DRP/SOP/Booking/Allocation/PO_Batch versions)
+// ════════════════════════════════════════════════════════════════════
+
+export interface PlanRunVersion {
+  versionId: string;
+  planType: "DRP" | "SOP" | "BOOKING" | "ALLOCATION" | "PO_BATCH";
+  versionNumber: number;
+  runAt: string;
+  runBy: string;
+  status: "DRAFT" | "ACTIVE" | "LOCKED" | "ARCHIVED";
+  lockedBy: string | null;
+  lockedAt: string | null;
+  summary: Record<string, number>;
+}
+
+export const PLAN_VERSIONS: PlanRunVersion[] = [
+  { versionId: "DRP-W20-v3",   planType: "DRP",     versionNumber: 3, runAt: "23:02",            runBy: "System",            status: "ACTIVE",   lockedBy: null,   lockedAt: null,           summary: { netReq: 27_875, exceptions: 3, poDrafted: 5 } },
+  { versionId: "DRP-W20-v2",   planType: "DRP",     versionNumber: 2, runAt: "22:00 hôm qua",    runBy: "System",            status: "ARCHIVED", lockedBy: null,   lockedAt: null,           summary: { netReq: 26_800, exceptions: 2, poDrafted: 4 } },
+  { versionId: "SOP-T5-v4",    planType: "SOP",     versionNumber: 4, runAt: "15/04",            runBy: "SC Manager Thùy",   status: "LOCKED",   lockedBy: "Thùy", lockedAt: "16/04 08:00",  summary: { totalDemand: 31_632 } },
+  { versionId: "COMMIT-T5-v6", planType: "BOOKING", versionNumber: 6, runAt: "22/04",            runBy: "Planner",           status: "ACTIVE",   lockedBy: null,   lockedAt: null,           summary: { confirmed: 15, pending: 5, notContacted: 5 } },
+];
+
+// ════════════════════════════════════════════════════════════════════
+// §E — NM COMMITMENT EVIDENCE (file uploads minh chứng)
+// ════════════════════════════════════════════════════════════════════
+
+export interface NmCommitmentEvidence {
+  commitmentId: string;
+  fileUrl: string;
+  fileType: "image" | "pdf";
+  fileName: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  note: string;
+}
+
+export const NM_COMMITMENT_EVIDENCE: NmCommitmentEvidence[] = [
+  { commitmentId: "MIKADO-GA-300-A4",   fileUrl: "https://placehold.co/600x400/0f4c81/ffffff?text=Zalo+Mikado", fileType: "image", fileName: "zalo_mikado_22042026.png",   uploadedBy: "Planner Hùng",  uploadedAt: "22/04 14:32", note: "NM xác nhận 600m² qua Zalo" },
+  { commitmentId: "MIKADO-GA-400-A4",   fileUrl: "https://placehold.co/600x400/0f4c81/ffffff?text=Email+Mikado", fileType: "image", fileName: "email_mikado_22042026.png",  uploadedBy: "Planner Hùng",  uploadedAt: "22/04 15:10", note: "Email phản hồi đính kèm" },
+  { commitmentId: "DONGTAM-GA-300-B2",  fileUrl: "https://placehold.co/600x400/00714d/ffffff?text=PDF+DongTam", fileType: "pdf",   fileName: "dongtam_commit_T5.pdf",       uploadedBy: "Planner Lan",   uploadedAt: "21/04 09:45", note: "Văn bản cam kết tháng 5" },
+  { commitmentId: "TOKO-GA-600-A4",     fileUrl: "https://placehold.co/600x400/b45309/ffffff?text=Zalo+Toko",   fileType: "image", fileName: "zalo_toko_20042026.jpg",      uploadedBy: "Planner Hùng",  uploadedAt: "20/04 16:20", note: "Toko counter 400m² thay vì 600" },
+  { commitmentId: "VIGRACERA-GA-400-B2",fileUrl: "https://placehold.co/600x400/7c3aed/ffffff?text=Photo+Visit", fileType: "image", fileName: "visit_vigracera_19042026.jpg",uploadedBy: "Planner Thùy",  uploadedAt: "19/04 11:00", note: "Ảnh ghé thăm nhà máy + biên bản" },
+];
