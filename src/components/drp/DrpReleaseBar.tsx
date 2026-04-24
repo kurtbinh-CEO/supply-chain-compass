@@ -364,10 +364,6 @@ export function DrpReleaseBar({
                   </p>
                 </div>
               )
-            ) : tabItems.length === 0 ? (
-              <div className="rounded-card border border-surface-3 bg-surface-1/40 p-6 text-center text-table-sm text-text-3">
-                Không có {tab === "rpo" ? "RPO" : "TO"} nào trong batch này.
-              </div>
             ) : (
               <>
                 {/* Select-all + bulk action bar */}
