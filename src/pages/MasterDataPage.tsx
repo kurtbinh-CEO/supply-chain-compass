@@ -849,6 +849,13 @@ function BranchesTab() {
           setDeleting(null);
         }}
       />
+
+      <MasterAuditPanel
+        open={historyCode !== null}
+        onOpenChange={(v) => !v && setHistoryCode(null)}
+        entity="branch"
+        entityCode={historyCode ?? undefined}
+      />
     </div>
   );
 }
