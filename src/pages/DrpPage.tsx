@@ -853,7 +853,11 @@ export default function DrpPage() {
             tooltip: "Số đơn DRP đã tạo, chờ duyệt → Phát hành",
           },
         ];
-        return <SummaryCards cards={cards} screenId="drp-results" editable />;
+        return (
+          <div data-tour-id="drp-summary">
+            <SummaryCards cards={cards} screenId="drp-results" editable />
+          </div>
+        );
       })()}
 
       {/* ═══ SUMMARY PILLS ═══ */}
