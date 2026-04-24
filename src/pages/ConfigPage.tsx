@@ -14,7 +14,6 @@ import {
   RefreshCw,
   Activity,
   Settings2,
-  Download,
   RotateCcw,
   ChevronRight,
   Info,
