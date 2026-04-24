@@ -215,6 +215,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "nav.logicOps": "Operations Logic",
     "nav.guide": "User Guide",
     "nav.scenarios": "Demo Scenarios",
+    "nav.compare": "Version Compare",
 
     // Sidebar footer
     "workflow.daily": "Daily Workflow",
