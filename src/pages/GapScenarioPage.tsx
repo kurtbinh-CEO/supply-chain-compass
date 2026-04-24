@@ -154,6 +154,7 @@ interface Scenario {
   recommended: boolean;
   needsCeoApproval?: boolean;
   priceInfo?: ScenarioPriceInfo;       // common to A/B/D
+  aiRationale?: string;                // M9: AI explanation
 }
 
 function buildScenarios(row: GapRow): Scenario[] {
