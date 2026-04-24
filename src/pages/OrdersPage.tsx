@@ -263,6 +263,10 @@ function FlowSummary({ counts, onJump }: {
 /* ═══════════════════════════════════════════════════════════════════════════
    §  TAB 1 — Duyệt PO/TO
    ═══════════════════════════════════════════════════════════════════════════ */
+type ApprovalRow =
+  | { type: "po"; key: string; po: PurchaseOrderRow; stage: string; kind: PoKind; qty: number; route: string; sku: string }
+  | { type: "to"; key: string; to: ToRow;            stage: string; kind: PoKind; qty: number; route: string; sku: string };
+
 function ApprovalTab({
   orders, effective, setOverrides, effectiveTo, setToOverrides, scale,
 }: {
@@ -273,29 +277,65 @@ function ApprovalTab({
   setToOverrides: React.Dispatch<React.SetStateAction<Record<string, ToRow["status"]>>>;
   scale: number;
 }) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const toggle = (k: string) => setExpanded(p => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
-
-  /* Combine PO drafts + TO drafts/submitted */
-  type Row =
-    | { type: "po"; key: string; po: PurchaseOrderRow }
-    | { type: "to"; key: string; to: ToRow };
-
-  const rows: Row[] = useMemo(() => {
-    const out: Row[] = [];
+  /* Combine PO drafts + TO drafts/submitted into a single typed row list */
+  const rows: ApprovalRow[] = useMemo(() => {
+    const out: ApprovalRow[] = [];
     orders.forEach(po => {
       const s = effective(po);
-      if (s === "draft" || s === "submitted") out.push({ type: "po", key: po.po_number, po });
+      if (s === "draft" || s === "submitted") {
+        const kind = detectKind(po);
+        const qty = Math.round(Number(po.quantity) * scale);
+        const route = kind === "TO"
+          ? `${po.notes ?? "—"}`
+          : `NM ${po.supplier} → ${po.notes?.match(/CN-[A-Z]+/)?.[0] || "—"}`;
+        out.push({ type: "po", key: po.po_number, po, stage: s, kind, qty, route, sku: po.sku });
+      }
     });
     TO_DRAFT.forEach(to => {
       const s = effectiveTo(to);
-      if (s === "draft" || s === "submitted") out.push({ type: "to", key: to.id, to });
+      if (s === "draft" || s === "submitted") {
+        out.push({
+          type: "to", key: to.id, to, stage: s, kind: "TO",
+          qty: Math.round(to.qty * scale),
+          route: `${to.fromCn} → ${to.toCn}`,
+          sku: to.sku,
+        });
+      }
     });
     return out;
-  }, [orders, effective, effectiveTo]);
+  }, [orders, effective, effectiveTo, scale]);
 
   /* Mock fallback if DB empty */
-  const showMock = orders.length === 0 && PO_DRAFT.length > 0;
+  const showMock = orders.length === 0 && PO_DRAFT.length > 0 && rows.length === 0;
+  const mockRows: ApprovalRow[] = useMemo(() => {
+    if (!showMock) return [];
+    return PO_DRAFT.slice(0, 5).map(po => ({
+      type: "po" as const,
+      key: po.poNumber,
+      po: {
+        po_number: po.poNumber,
+        supplier: po.nmId,
+        sku: po.skuBaseCode,
+        quantity: po.qtyM2,
+        unit_price: 0,
+        currency: "VND",
+        status: po.status,
+        order_date: "",
+        expected_date: null,
+        received_date: null,
+        notes: po.cnCode,
+        tenant: "UNIS",
+        id: po.poNumber,
+      } as PurchaseOrderRow,
+      stage: po.status === "draft" ? "draft" : "submitted",
+      kind: "RPO",
+      qty: Math.round(po.qtyM2 * scale),
+      route: `NM ${po.nmId} → ${po.cnCode}`,
+      sku: po.skuBaseCode,
+    }));
+  }, [showMock, scale]);
+
+  const allRows = rows.length > 0 ? rows : mockRows;
 
   const sendPo = (po: PurchaseOrderRow) => {
     const next = po.status === "draft" ? "submitted" : "confirmed";
@@ -309,9 +349,7 @@ function ApprovalTab({
   };
   const approveAll = () => {
     const updates: Record<string, string> = {};
-    rows.forEach(r => {
-      if (r.type === "po") updates[r.po.po_number] = "confirmed";
-    });
+    rows.forEach(r => { if (r.type === "po") updates[r.po.po_number] = "confirmed"; });
     setOverrides(prev => ({ ...prev, ...updates }));
     const updatesTo: Record<string, ToRow["status"]> = {};
     rows.forEach(r => { if (r.type === "to") updatesTo[r.to.id] = "confirmed"; });
@@ -319,12 +357,82 @@ function ApprovalTab({
     toast.success(`Đã duyệt ${rows.length} đơn`);
   };
 
+  const columns: SmartTableColumn<ApprovalRow>[] = [
+    {
+      key: "key", label: "PO/TO #", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 180,
+      accessor: (r) => r.key,
+      render: (r) => <span className="font-mono text-[11px] text-text-1">{r.key}</span>,
+    },
+    {
+      key: "kind", label: "Loại", sortable: true, hideable: true, priority: "high",
+      filter: "enum",
+      filterOptions: [
+        { value: "RPO", label: "RPO" },
+        { value: "BPO", label: "BPO" },
+        { value: "TO",  label: "TO"  },
+      ],
+      width: 80,
+      accessor: (r) => r.kind,
+      render: (r) => <KindBadge kind={r.kind} />,
+    },
+    {
+      key: "route", label: "Tuyến", sortable: true, hideable: true, priority: "high",
+      filter: "text",
+      accessor: (r) => r.route,
+      render: (r) => <span className="text-table-sm text-text-2">{r.route}</span>,
+    },
+    {
+      key: "sku", label: "Mã hàng", sortable: true, hideable: true, priority: "medium",
+      filter: "text",
+      accessor: (r) => r.sku,
+      render: (r) => <span className="text-table-sm text-text-2">{r.sku}</span>,
+    },
+    {
+      key: "qty", label: "Số lượng", sortable: true, hideable: true, priority: "high",
+      numeric: true, align: "right", width: 110,
+      accessor: (r) => r.qty,
+      render: (r) => <span className="tabular-nums text-text-1">{r.qty.toLocaleString("vi-VN")}</span>,
+    },
+    {
+      key: "container", label: "Container", sortable: false, hideable: true, priority: "low",
+      width: 120,
+      render: (r) => <span className="text-table-sm text-text-3">{r.kind === "TO" ? `Xe 10T · ${Math.round(r.qty / 10)}%` : "40ft · 89%"}</span>,
+    },
+    {
+      key: "stage", label: "Trạng thái", sortable: true, hideable: true, priority: "high",
+      filter: "enum",
+      filterOptions: [
+        { value: "draft",     label: STAGE_LABEL.draft     },
+        { value: "submitted", label: STAGE_LABEL.submitted },
+      ],
+      width: 130,
+      accessor: (r) => r.stage,
+      render: (r) => <StageBadge stage={r.stage} />,
+    },
+    {
+      key: "action", label: "Hành động", sortable: false, hideable: false, priority: "high",
+      align: "right", width: 110,
+      render: (r) => {
+        if (r.stage !== "draft" && r.stage !== "submitted") return null;
+        if (showMock && allRows === mockRows) return <span className="text-caption text-text-3">Mock</span>;
+        return (
+          <button
+            onClick={(e) => { e.stopPropagation(); r.type === "po" ? sendPo(r.po) : sendTo(r.to); }}
+            className="inline-flex items-center gap-1 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1 text-caption font-semibold">
+            <Send className="h-3 w-3" /> {r.stage === "draft" ? "Gửi" : "Duyệt"}
+          </button>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="space-y-3">
       {/* Toolbar */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-table-sm text-text-3">
-          {rows.length > 0 ? `${rows.length} đơn chờ xử lý` : showMock ? `${PO_DRAFT.length} đơn (mock)` : "Không có đơn chờ duyệt"}
+          {rows.length > 0 ? `${rows.length} đơn chờ xử lý` : showMock ? `${mockRows.length} đơn (mock)` : "Không có đơn chờ duyệt"}
         </div>
         {rows.length > 0 && (
           <button onClick={approveAll}
@@ -334,39 +442,25 @@ function ApprovalTab({
         )}
       </div>
 
-      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-surface-1/60 border-b border-surface-3">
-                <th className="w-8"></th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">PO/TO #</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Loại</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Tuyến</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden md:table-cell">Mã hàng</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Số lượng</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden lg:table-cell">Container</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Trạng thái</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 && !showMock && (
-                <tr><td colSpan={9} className="text-center py-8 text-text-3 text-table-sm">
-                  Không có đơn chờ duyệt. Quay về <button onClick={() => location.assign("/drp")} className="text-primary hover:underline">Kết quả DRP</button> để chạy đợt mới.
-                </td></tr>
-              )}
-              {showMock && rows.length === 0 && PO_DRAFT.slice(0, 5).map(po => (
-                <MockPoRow key={po.poNumber} po={po} scale={scale} />
-              ))}
-              {rows.map(r => r.type === "po"
-                ? <PoApprovalRow key={r.key} po={r.po} stage={effective(r.po)} expanded={expanded.has(r.key)} onToggle={() => toggle(r.key)} onSend={() => sendPo(r.po)} scale={scale} />
-                : <ToApprovalRow key={r.key} to={r.to} stage={effectiveTo(r.to)} expanded={expanded.has(r.key)} onToggle={() => toggle(r.key)} onSend={() => sendTo(r.to)} scale={scale} />
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <SmartTable<ApprovalRow>
+        screenId="orders-approval"
+        title="Duyệt PO/TO"
+        exportFilename="orders-approval"
+        columns={columns}
+        data={allRows}
+        getRowId={(r) => r.key}
+        rowSeverity={(r) => r.stage === "submitted" ? "watch" : undefined}
+        emptyState={{
+          icon: <ClipboardCheck className="h-8 w-8" />,
+          title: "Không có đơn chờ duyệt",
+          description: "Quay về Kết quả DRP để chạy đợt mới.",
+          action: { label: "Mở DRP", route: "/drp" },
+        }}
+        drillDown={(r) => r.type === "po"
+          ? <PoLineage po={r.po} kind={r.kind} />
+          : <ToLineage to={r.to} />
+        }
+      />
     </div>
   );
 }
@@ -394,88 +488,20 @@ function KindBadge({ kind }: { kind: PoKind }) {
   );
 }
 
-function PoApprovalRow({ po, stage, expanded, onToggle, onSend, scale }: {
-  po: PurchaseOrderRow; stage: string; expanded: boolean; onToggle: () => void; onSend: () => void; scale: number;
-}) {
-  const kind = detectKind(po);
-  const qty = Math.round(Number(po.quantity) * scale);
-  const route = kind === "TO"
-    ? `${po.notes ?? "—"}`
-    : `NM ${po.supplier} → ${po.notes?.match(/CN-[A-Z]+/)?.[0] || "—"}`;
+function ToLineage({ to }: { to: ToRow }) {
   return (
-    <Fragment>
-      <tr onClick={onToggle} className="border-b border-surface-3 cursor-pointer hover:bg-surface-1/40 transition-colors">
-        <td className="px-2 py-2.5 text-center">
-          {expanded ? <ChevronDown className="h-4 w-4 text-text-3 inline" /> : <ChevronRight className="h-4 w-4 text-text-3 inline" />}
-        </td>
-        <td className="px-3 py-2.5"><span className="font-mono text-[11px] text-text-1">{po.po_number}</span></td>
-        <td className="px-3 py-2.5"><KindBadge kind={kind} /></td>
-        <td className="px-3 py-2.5 text-table-sm text-text-2">{route}</td>
-        <td className="px-3 py-2.5 text-table-sm text-text-2 hidden md:table-cell">{po.sku}</td>
-        <td className="px-3 py-2.5 text-right tabular-nums text-text-1">{qty.toLocaleString("vi-VN")}</td>
-        <td className="px-3 py-2.5 text-table-sm text-text-3 hidden lg:table-cell">40ft · 89%</td>
-        <td className="px-3 py-2.5"><StageBadge stage={stage} /></td>
-        <td className="px-3 py-2.5 text-right">
-          {(stage === "draft" || stage === "submitted") && (
-            <button onClick={(e) => { e.stopPropagation(); onSend(); }}
-              className="inline-flex items-center gap-1 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1 text-caption font-semibold">
-              <Send className="h-3 w-3" /> {stage === "draft" ? "Gửi" : "Duyệt"}
-            </button>
-          )}
-        </td>
-      </tr>
-      {expanded && (
-        <tr><td colSpan={9} className="bg-surface-1/40 px-4 py-3 border-b border-surface-3">
-          <PoLineage po={po} kind={kind} />
-        </td></tr>
-      )}
-    </Fragment>
-  );
-}
-
-function ToApprovalRow({ to, stage, expanded, onToggle, onSend, scale }: {
-  to: ToRow; stage: ToRow["status"]; expanded: boolean; onToggle: () => void; onSend: () => void; scale: number;
-}) {
-  const qty = Math.round(to.qty * scale);
-  return (
-    <Fragment>
-      <tr onClick={onToggle} className="border-b border-surface-3 cursor-pointer hover:bg-surface-1/40 transition-colors">
-        <td className="px-2 py-2.5 text-center">
-          {expanded ? <ChevronDown className="h-4 w-4 text-text-3 inline" /> : <ChevronRight className="h-4 w-4 text-text-3 inline" />}
-        </td>
-        <td className="px-3 py-2.5"><span className="font-mono text-[11px] text-text-1">{to.id}</span></td>
-        <td className="px-3 py-2.5"><KindBadge kind="TO" /></td>
-        <td className="px-3 py-2.5 text-table-sm text-text-2">{to.fromCn} → {to.toCn}</td>
-        <td className="px-3 py-2.5 text-table-sm text-text-2 hidden md:table-cell">{to.sku}</td>
-        <td className="px-3 py-2.5 text-right tabular-nums text-text-1">{qty.toLocaleString("vi-VN")}</td>
-        <td className="px-3 py-2.5 text-table-sm text-text-3 hidden lg:table-cell">Xe 10T · {Math.round(qty / 10)}%</td>
-        <td className="px-3 py-2.5"><StageBadge stage={stage} /></td>
-        <td className="px-3 py-2.5 text-right">
-          {(stage === "draft" || stage === "submitted") && (
-            <button onClick={(e) => { e.stopPropagation(); onSend(); }}
-              className="inline-flex items-center gap-1 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1 text-caption font-semibold">
-              <Send className="h-3 w-3" /> {stage === "draft" ? "Gửi" : "Duyệt"}
-            </button>
-          )}
-        </td>
-      </tr>
-      {expanded && (
-        <tr><td colSpan={9} className="bg-surface-1/40 px-4 py-3 border-b border-surface-3">
-          <div className="text-table-sm text-text-2">
-            <div className="text-caption text-text-3 mb-2">Lineage</div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="rounded bg-surface-2 border border-surface-3 px-2 py-0.5">DRP 23:02</span>
-              <ChevronRight className="h-3 w-3 text-text-3" />
-              <span className="rounded bg-surface-2 border border-surface-3 px-2 py-0.5">LCNB {to.fromCn} → {to.toCn}</span>
-              <ChevronRight className="h-3 w-3 text-text-3" />
-              <span className="rounded bg-surface-2 border border-surface-3 px-2 py-0.5">Xe 10T</span>
-              <ChevronRight className="h-3 w-3 text-text-3" />
-              <span className="rounded bg-warning-bg text-warning border border-warning/30 px-2 py-0.5">Duyệt</span>
-            </div>
-          </div>
-        </td></tr>
-      )}
-    </Fragment>
+    <div className="text-table-sm text-text-2">
+      <div className="text-caption text-text-3 mb-2">Lineage</div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="rounded bg-surface-2 border border-surface-3 px-2 py-0.5">DRP 23:02</span>
+        <ChevronRight className="h-3 w-3 text-text-3" />
+        <span className="rounded bg-surface-2 border border-surface-3 px-2 py-0.5">LCNB {to.fromCn} → {to.toCn}</span>
+        <ChevronRight className="h-3 w-3 text-text-3" />
+        <span className="rounded bg-surface-2 border border-surface-3 px-2 py-0.5">Xe 10T</span>
+        <ChevronRight className="h-3 w-3 text-text-3" />
+        <span className="rounded bg-warning-bg text-warning border border-warning/30 px-2 py-0.5">Duyệt</span>
+      </div>
+    </div>
   );
 }
 
@@ -500,25 +526,6 @@ function PoLineage({ po, kind }: { po: PurchaseOrderRow; kind: PoKind }) {
         <button onClick={() => toast.info("Gộp với PO khác")} className="rounded-button border border-surface-3 px-2.5 py-1 text-caption text-text-2 hover:text-text-1">Gộp</button>
       </div>
     </div>
-  );
-}
-
-function MockPoRow({ po, scale }: { po: typeof PO_DRAFT[number]; scale: number }) {
-  const qty = Math.round(po.qtyM2 * scale);
-  return (
-    <tr className="border-b border-surface-3">
-      <td className="px-2 py-2.5"></td>
-      <td className="px-3 py-2.5"><span className="font-mono text-[11px] text-text-1">{po.poNumber}</span></td>
-      <td className="px-3 py-2.5"><KindBadge kind="RPO" /></td>
-      <td className="px-3 py-2.5 text-table-sm text-text-2">NM {po.nmId} → {po.cnCode}</td>
-      <td className="px-3 py-2.5 text-table-sm text-text-2 hidden md:table-cell">{po.skuBaseCode}</td>
-      <td className="px-3 py-2.5 text-right tabular-nums text-text-1">{qty.toLocaleString("vi-VN")}</td>
-      <td className="px-3 py-2.5 text-table-sm text-text-3 hidden lg:table-cell">40ft · 85%</td>
-      <td className="px-3 py-2.5"><StageBadge stage={po.status === "draft" ? "draft" : "submitted"} /></td>
-      <td className="px-3 py-2.5 text-right">
-        <span className="text-caption text-text-3">Mock</span>
-      </td>
-    </tr>
   );
 }
 
