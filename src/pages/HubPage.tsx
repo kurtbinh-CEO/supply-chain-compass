@@ -9,6 +9,8 @@
  * XÓA: Sourcing Workbench (4-step), tab cũ "Đặt hàng NM"
  */
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { SummaryCards } from "@/components/SummaryCards";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { AppLayout } from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
@@ -156,6 +158,58 @@ export default function HubPage() {
             note="Buffer Hub bù sai số FC + lead-time NM"
           />
         </div>
+      </div>
+
+      {/* M20-PATCH — Summary thẻ tóm tắt cam kết NM */}
+      <div className="mb-5">
+        <SummaryCards
+          screenId="hub"
+          editable
+          cards={[
+            {
+              key: "committed",
+              label: "Đã cam kết",
+              value: "15/25",
+              unit: "SKU",
+              trend: { delta: "60% hoàn thành", direction: "up", color: "green" },
+              severity: "warn",
+              tooltip: "SKU đã có cam kết từ NM (confirmed/counter)",
+            },
+            {
+              key: "waiting",
+              label: "Chờ phản hồi",
+              value: 5,
+              unit: "SKU",
+              trend: { delta: "3 NM", direction: "flat", color: "gray" },
+              severity: "warn",
+              onClick: () => {
+                setActiveTab("commitment");
+                toast.info("Lọc trạng thái: Chờ NM phản hồi");
+              },
+            },
+            {
+              key: "not_contacted",
+              label: "Chưa gọi",
+              value: 5,
+              unit: "SKU",
+              trend: { delta: "2 NM", direction: "up", color: "red" },
+              severity: "critical",
+              onClick: () => {
+                setActiveTab("commitment");
+                toast.warning("Lọc trạng thái: Chưa liên hệ NM");
+              },
+            },
+            {
+              key: "gap",
+              label: "Gap",
+              value: "1.200",
+              unit: "m²",
+              trend: { delta: "↓ vs T4", direction: "down", color: "green" },
+              severity: "warn",
+              onClick: () => navigate("/gap-scenario"),
+            },
+          ]}
+        />
       </div>
 
       <div data-tour="hub-tabs" className="flex items-center justify-between border-b border-surface-3 mb-6">
