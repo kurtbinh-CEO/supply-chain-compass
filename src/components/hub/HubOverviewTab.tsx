@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, AlertTriangle, TrendingDown, TrendingUp, Info }
 import { cn } from "@/lib/utils";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from "recharts";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 
 type NmRiskTier = "low" | "med" | "high";
 
@@ -100,6 +101,94 @@ export function HubOverviewTab({ scale, totals }: Props) {
     { time: "11/05 08:00", who: "Hệ thống",   change: "S&OP v3 khóa T5: 7.650 m²", source: "sop" },
   ];
 
+  /* ─── SmartTable column defs ─── */
+  const compareColumns: SmartTableColumn<CommitmentRow>[] = [
+    {
+      key: "nm", label: "NM", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 120,
+      accessor: (r) => r.nm,
+      render: (r) => <span className="text-text-1 font-medium">{r.nm}</span>,
+    },
+    {
+      key: "sku", label: "SKU", sortable: true, hideable: true, priority: "high",
+      filter: "text", width: 100,
+      accessor: (r) => r.sku,
+      render: (r) => <span className="text-text-2 font-mono">{r.sku}</span>,
+    },
+    {
+      key: "prev", label: "T4 (m²)", sortable: true, hideable: true, priority: "medium",
+      numeric: true, align: "right", width: 110,
+      accessor: (r) => r.prev,
+      render: (r) => <span className="tabular-nums text-text-2">{r.prev.toLocaleString()}</span>,
+    },
+    {
+      key: "curr", label: "T5 (m²)", sortable: true, hideable: false, priority: "high",
+      numeric: true, align: "right", width: 110,
+      accessor: (r) => r.curr,
+      render: (r) => <span className="tabular-nums text-text-1 font-medium">{r.curr.toLocaleString()}</span>,
+    },
+    {
+      key: "delta", label: "Δ%", sortable: true, hideable: false, priority: "high",
+      numeric: true, align: "right", width: 110,
+      accessor: (r) => ((r.curr - r.prev) / r.prev) * 100,
+      render: (r) => {
+        const delta = ((r.curr - r.prev) / r.prev) * 100;
+        const big = Math.abs(delta) >= 30;
+        return (
+          <span className={cn("tabular-nums font-medium inline-flex items-center gap-1", delta >= 0 ? "text-success" : "text-danger")}>
+            {delta >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            {delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
+            {big && delta < 0 && <span className="ml-1">🔴</span>}
+          </span>
+        );
+      },
+    },
+    {
+      key: "reason", label: "Lý do", sortable: false, hideable: true, priority: "low",
+      filter: "text",
+      accessor: (r) => r.reason ?? "",
+      render: (r) => <span className="text-text-3 text-caption">{r.reason || "—"}</span>,
+    },
+  ];
+
+  const changeLogColumns: SmartTableColumn<ChangeLog>[] = [
+    {
+      key: "time", label: "Thời gian", sortable: true, hideable: false, priority: "high",
+      width: 130,
+      accessor: (r) => r.time,
+      render: (r) => <span className="text-text-2 font-mono tabular-nums">{r.time}</span>,
+    },
+    {
+      key: "who", label: "Người / Nguồn", sortable: true, hideable: true, priority: "high",
+      filter: "text", width: 160,
+      accessor: (r) => r.who,
+      render: (r) => <span className="text-text-1">{r.who}</span>,
+    },
+    {
+      key: "change", label: "Thay đổi", sortable: false, hideable: false, priority: "high",
+      filter: "text",
+      accessor: (r) => r.change,
+      render: (r) => <span className="text-text-2">{r.change}</span>,
+    },
+    {
+      key: "source", label: "Nguồn", sortable: true, hideable: true, priority: "medium",
+      filter: "enum",
+      filterOptions: [
+        { value: "drp",    label: "DRP" },
+        { value: "nm",     label: "NM" },
+        { value: "manual", label: "Thủ công" },
+        { value: "sop",    label: "S&OP" },
+      ],
+      width: 100,
+      accessor: (r) => r.source,
+      render: (r) => (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-caption uppercase tracking-wider bg-surface-3 text-text-2">
+          {r.source}
+        </span>
+      ),
+    },
+  ];
+
   const ssAlert = totals.available < totals.ssHub;
 
   return (
@@ -174,49 +263,31 @@ export function HubOverviewTab({ scale, totals }: Props) {
 
         {compareOpen && (
           <div className="px-5 py-4">
-            <table className="w-full text-table-sm">
-              <thead>
-                <tr className="text-left text-caption uppercase text-text-3 tracking-wider border-b border-surface-3">
-                  <th className="py-2 font-medium">NM</th>
-                  <th className="py-2 font-medium">SKU</th>
-                  <th className="py-2 font-medium text-right">T4 (m²)</th>
-                  <th className="py-2 font-medium text-right">T5 (m²)</th>
-                  <th className="py-2 font-medium text-right">Δ%</th>
-                  <th className="py-2 font-medium">Lý do</th>
-                </tr>
-              </thead>
-              <tbody>
-                {compareRows.map((r, i) => {
-                  const delta = ((r.curr - r.prev) / r.prev) * 100;
-                  const big = Math.abs(delta) >= 30;
-                  return (
-                    <tr key={i} className="border-b border-surface-3/40 hover:bg-surface-2/40">
-                      <td className="py-2 text-text-1 font-medium">{r.nm}</td>
-                      <td className="py-2 text-text-2 font-mono">{r.sku}</td>
-                      <td className="py-2 text-right text-text-2 tabular-nums">{r.prev.toLocaleString()}</td>
-                      <td className="py-2 text-right text-text-1 tabular-nums">{r.curr.toLocaleString()}</td>
-                      <td className={cn("py-2 text-right tabular-nums font-medium", delta >= 0 ? "text-success" : "text-danger")}>
-                        <span className="inline-flex items-center gap-1">
-                          {delta >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                          {delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
-                          {big && delta < 0 && <span className="ml-1">🔴</span>}
-                        </span>
-                      </td>
-                      <td className="py-2 text-text-3 text-caption">{r.reason || "—"}</td>
-                    </tr>
-                  );
-                })}
-                <tr className="font-semibold bg-surface-2/40">
-                  <td className="py-2 text-text-1" colSpan={2}>Tổng</td>
-                  <td className="py-2 text-right text-text-1 tabular-nums">{totalPrev.toLocaleString()}</td>
-                  <td className="py-2 text-right text-text-1 tabular-nums">{totalCurr.toLocaleString()}</td>
-                  <td className={cn("py-2 text-right tabular-nums", totalDelta >= 0 ? "text-success" : "text-danger")}>
+            <SmartTable<CommitmentRow>
+              screenId="hub-overview-compare"
+              title="Cam kết NM — T5 vs T4"
+              exportFilename="hub-nm-commitment-compare"
+              defaultDensity="compact"
+              columns={compareColumns}
+              data={compareRows}
+              getRowId={(r) => `${r.nm}-${r.sku}`}
+              rowSeverity={(r) => {
+                const d = ((r.curr - r.prev) / r.prev) * 100;
+                return d <= -30 ? "shortage" : d < 0 ? "watch" : undefined;
+              }}
+              summaryRow={{
+                nm: <span className="font-semibold text-text-1">Tổng</span>,
+                sku: "",
+                prev: <span className="tabular-nums font-semibold text-text-1">{totalPrev.toLocaleString()}</span>,
+                curr: <span className="tabular-nums font-semibold text-text-1">{totalCurr.toLocaleString()}</span>,
+                delta: (
+                  <span className={cn("tabular-nums font-semibold", totalDelta >= 0 ? "text-success" : "text-danger")}>
                     {totalDelta >= 0 ? "+" : ""}{totalDelta.toFixed(1)}%
-                  </td>
-                  <td />
-                </tr>
-              </tbody>
-            </table>
+                  </span>
+                ),
+                reason: "",
+              }}
+            />
           </div>
         )}
       </section>
@@ -275,28 +346,17 @@ export function HubOverviewTab({ scale, totals }: Props) {
           <h2 className="font-display text-section-header text-text-1">Change Log — Hub Stock</h2>
           <span className="text-caption text-text-3">Hub stock</span>
         </div>
-        <table className="w-full text-table-sm">
-          <thead>
-            <tr className="text-left text-caption uppercase text-text-3 tracking-wider border-b border-surface-3">
-              <th className="px-5 py-2 font-medium">Thời gian</th>
-              <th className="px-5 py-2 font-medium">Người / Nguồn</th>
-              <th className="px-5 py-2 font-medium">Thay đổi</th>
-              <th className="px-5 py-2 font-medium">Nguồn</th>
-            </tr>
-          </thead>
-          <tbody>
-            {changeLog.map((log, i) => (
-              <tr key={i} className="border-b border-surface-3/40 last:border-0 hover:bg-surface-2/40">
-                <td className="px-5 py-2 text-text-2 font-mono tabular-nums">{log.time}</td>
-                <td className="px-5 py-2 text-text-1">{log.who}</td>
-                <td className="px-5 py-2 text-text-2">{log.change}</td>
-                <td className="px-5 py-2">
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-caption uppercase tracking-wider bg-surface-3 text-text-2">{log.source}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="p-3">
+          <SmartTable<ChangeLog>
+            screenId="hub-overview-changelog"
+            title="Change Log — Hub Stock"
+            exportFilename="hub-stock-changelog"
+            defaultDensity="compact"
+            columns={changeLogColumns}
+            data={changeLog}
+            getRowId={(r, i) => `${r.time}-${i}`}
+          />
+        </div>
       </section>
     </div>
   );
