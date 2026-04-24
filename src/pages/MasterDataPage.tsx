@@ -71,6 +71,7 @@ type TabKey =
   | "carriers"
   | "distances"
   | "containers"
+  | "aop"
   | "quality";
 
 const tabDefs: { key: TabKey; label: string }[] = [
@@ -82,6 +83,7 @@ const tabDefs: { key: TabKey; label: string }[] = [
   { key: "carriers",   label: "Nhà xe" },
   { key: "distances",  label: "Khoảng cách" },
   { key: "containers", label: "Container" },
+  { key: "aop",        label: "Kế hoạch năm" },
   { key: "quality",    label: "Chất lượng dữ liệu" },
 ];
 
