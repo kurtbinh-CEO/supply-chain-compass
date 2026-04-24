@@ -761,35 +761,94 @@ function ScManagerTab({
         </Button>
       </div>
 
-      {/* SC Manager table — 12 CN with drilldown */}
-      <SmartTable<ScSummaryRow>
-        screenId="demand-weekly-sc"
-        title="12 chi nhánh"
-        exportFilename="demand-weekly-sc-summary"
-        columns={columns}
-        data={scRows}
-        defaultDensity="normal"
-        getRowId={(r) => r.cnCode}
-        rowSeverity={(r) =>
-          r.status === "over" ? "shortage" :
-          r.status === "pending" ? "watch" : "ok"
-        }
-        autoExpandWhen={(r) => r.status === "over" || r.status === "pending"}
-        drillDown={(r) => (
-          <ScCnDrillDown
-            row={r}
-            onApproveRow={onApproveRow}
-            onRejectRow={onRejectRow}
-            onTrimRow={onTrimRow}
-            onOverrideRow={onOverrideRow}
-          />
-        )}
-        emptyState={{
-          icon: <Inbox />,
-          title: "Chưa có CN nào gửi điều chỉnh",
-          description: "Bảng tổng hợp 12 CN sẽ điền dần khi mỗi CN Manager submit điều chỉnh tuần. Cutoff: 18:00 hàng ngày.",
-        }}
-      />
+      {/* Pivot toggle CN ↔ Mã hàng */}
+      <div className="flex items-center justify-between">
+        <PivotToggle mode={pivot} onChange={setPivot} cnLabel="Chi nhánh" skuLabel="Mã hàng" />
+        <span className="text-caption text-text-3">
+          {pivot === "cn" ? "Click 1 CN → xem chi tiết SKU adjust" : "Click 1 SKU → xem CN nào adjust"}
+        </span>
+      </div>
+
+      {pivot === "cn" ? (
+        /* SC Manager table — 12 CN with drilldown */
+        <SmartTable<ScSummaryRow>
+          screenId="demand-weekly-sc"
+          title="12 chi nhánh"
+          exportFilename="demand-weekly-sc-summary"
+          columns={columns}
+          data={scRows}
+          defaultDensity="normal"
+          getRowId={(r) => r.cnCode}
+          rowSeverity={(r) =>
+            r.status === "over" ? "shortage" :
+            r.status === "pending" ? "watch" : "ok"
+          }
+          autoExpandWhen={(r) => r.status === "over" || r.status === "pending"}
+          drillDown={(r) => (
+            <ScCnDrillDown
+              row={r}
+              onApproveRow={onApproveRow}
+              onRejectRow={onRejectRow}
+              onTrimRow={onTrimRow}
+              onOverrideRow={onOverrideRow}
+            />
+          )}
+          emptyState={{
+            icon: <Inbox />,
+            title: "Chưa có CN nào gửi điều chỉnh",
+            description: "Bảng tổng hợp 12 CN sẽ điền dần khi mỗi CN Manager submit điều chỉnh tuần. Cutoff: 18:00 hàng ngày.",
+          }}
+        />
+      ) : (
+        /* SKU-first pivot: aggregate adjust per SKU across CNs */
+        <SmartTable<typeof skuAggRows[number]>
+          screenId="demand-weekly-sc-sku"
+          title="Mã hàng → Chi nhánh adjust"
+          exportFilename="demand-weekly-sku-pivot"
+          columns={[
+            {
+              key: "sku", label: "Mã hàng", sortable: true, width: 160,
+              render: (r) => <span className="font-medium text-text-1 text-table-sm">{r.sku}</span>,
+            },
+            {
+              key: "totalAdjust", label: "Tổng adjust", numeric: true, align: "right", sortable: true, width: 130,
+              render: (r) => (
+                <span className={cn("tabular-nums font-medium", r.totalAdjust > 0 ? "text-success" : r.totalAdjust < 0 ? "text-danger" : "text-text-2")}>
+                  {r.totalAdjust > 0 ? "+" : ""}{r.totalAdjust.toLocaleString("vi-VN")}
+                </span>
+              ),
+            },
+            {
+              key: "cnCount", label: "# CN adjust", numeric: true, align: "right", sortable: true, width: 110,
+              render: (r) => <span className="tabular-nums text-text-2">{r.cnCount}</span>,
+            },
+            {
+              key: "overCount", label: "Vượt biên", numeric: true, align: "right", sortable: true, width: 110,
+              render: (r) => r.overCount > 0
+                ? <span className="rounded-full bg-danger-bg text-danger px-2 py-0.5 text-[11px] font-medium">{r.overCount} CN</span>
+                : <span className="text-success text-table-sm">🟢 Trong biên</span>,
+            },
+          ]}
+          data={skuAggRows}
+          defaultDensity="compact"
+          getRowId={(r) => r.sku}
+          rowSeverity={(r) => r.overCount > 0 ? "shortage" : "ok"}
+          autoExpandWhen={(r) => r.overCount > 0}
+          drillDown={(r) => (
+            <PivotChildTable
+              rows={r.cnBreakdown}
+              firstColLabel="Chi nhánh"
+              screenId={`demand-weekly-sku-child-${r.sku}`}
+              showSoSs={false}
+            />
+          )}
+          emptyState={{
+            icon: <Inbox />,
+            title: "Chưa có SKU nào được adjust",
+            description: "Khi CN gửi điều chỉnh, danh sách SKU sẽ hiện ra ở đây.",
+          }}
+        />
+      )}
     </div>
   );
 }
