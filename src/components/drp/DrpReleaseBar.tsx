@@ -513,7 +513,26 @@ export function DrpReleaseBar({
                       onRowClick={(it) => {
                         if (!it.rejected && status !== "released") toggleRow(it.code);
                       }}
-                      emptyMessage={`Không có ${tab === "rpo" ? "RPO" : "TO"} nào trong batch này.`}
+                      emptyState={{
+                        icon: <Inbox />,
+                        title: tab === "rpo"
+                          ? "Lô này chưa có RPO nào"
+                          : "Lô này chưa có TO nội bộ nào",
+                        description: tab === "rpo"
+                          ? "Tất cả nhu cầu đã được cân đối nội bộ qua điều phối Transfer Order, hoặc bộ lọc đang ẩn các RPO. Thử chuyển sang tab TO nội bộ hoặc chạy lại lô để cập nhật."
+                          : "Không có cơ hội điều phối nội bộ nào trong lô này — toàn bộ nguồn cung đến từ RPO. Thử chuyển sang tab RPO hoặc chạy lại lô để cập nhật.",
+                        action: toItems.length + rpoItems.length - tabItems.length > 0
+                          ? {
+                              label: tab === "rpo"
+                                ? `Xem ${toItems.length} TO nội bộ`
+                                : `Xem ${rpoItems.length} RPO`,
+                              onClick: () => { setTab(tab === "rpo" ? "to" : "rpo"); setSelected(new Set()); },
+                            }
+                          : {
+                              label: "Đóng & chạy lại lô DRP",
+                              onClick: () => { setReviewOpen(false); navigate("/drp"); },
+                            },
+                      }}
                       summaryRow={{
                         code: <span className="font-semibold text-text-1">TỔNG · {tabItems.length} mục</span>,
                         qty: <span className="tabular-nums font-semibold text-text-1">{tabActiveQty.toLocaleString()}</span>,
