@@ -80,13 +80,22 @@ const COMMITMENT_SOURCES: DataSource[] = [
 ];
 
 export default function HubPage() {
-  const [activeTab, setActiveTab] = useState("commitment");
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") || "commitment";
+  const [activeTab, setActiveTab] = useState(initialTab);
   const navigate = useNavigate();
   const { tenant } = useTenant();
   const { markDone } = useNextStep();
   const { current: planCycle, isReadOnly: planLocked } = usePlanningPeriod();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
   const [importerOpen, setImporterOpen] = useState(false);
+
+  // Switch tab if URL param changes (e.g. deep-link from Orders)
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t && t !== activeTab) setActiveTab(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // M6: Hub Available recalculates when Planner edits commitments
   const [confirmedM2, setConfirmedM2] = useState<number | undefined>(undefined);
