@@ -96,6 +96,8 @@ export function CarriersTab() {
         region,
         contactName: values.contactName,
         phone: values.phone,
+        rate20ft: 0,
+        rate40ft: 0,
         slaOnTimePct: sla,
         available: true,
         status: "Hoạt động",
@@ -335,8 +337,8 @@ export function CarriersTab() {
 
       <DeleteConfirmDialog
         open={!!deleteTarget}
-        entityName="nhà xe"
-        entityLabel={deleteTarget?.name ?? ""}
+        entityLabel={deleteTarget ? `nhà xe ${deleteTarget.name}` : ""}
+        description="Hành động không thể hoàn tác. Cước/tuyến liên kết sẽ mất tham chiếu."
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
       />
