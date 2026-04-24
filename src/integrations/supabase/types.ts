@@ -361,6 +361,45 @@ export type Database = {
         }
         Relationships: []
       }
+      master_data_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_name: string | null
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          entity: string
+          entity_code: string
+          id: string
+          tenant: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_name?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity: string
+          entity_code: string
+          id?: string
+          tenant?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_name?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity?: string
+          entity_code?: string
+          id?: string
+          tenant?: string
+        }
+        Relationships: []
+      }
       master_factories: {
         Row: {
           capacity_m2_month: number
