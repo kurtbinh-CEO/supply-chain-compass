@@ -269,25 +269,63 @@ export function CommitmentTab({ scale, onTotalsChange }: {
   };
 
   const confirmRow = (id: string) => {
+    const row = rows.find(r => r.id === id);
     setRows(prev => prev.map(r => r.id === id ? { ...r, locked: true } : r));
     setConfirmDialog(null);
-    toast.success("Đã xác nhận cam kết — row đã khóa");
+    if (!row) {
+      toast.success("Đã xác nhận cam kết");
+      return;
+    }
+    // Check if THIS confirm push tổng SKU đã lock vượt 80% → toast lớn
+    const willLockedCount = rows.filter(r => r.locked).length + (row.locked ? 0 : 1);
+    const newProgress = (willLockedCount / rows.length) * 100;
+    const newConfirmedM2 =
+      rows.filter(r => (r.status === "confirmed" || r.status === "counter") && r.id !== id)
+          .reduce((s, r) => s + r.committed, 0) + row.committed;
+
+    if (newProgress >= 80 && totals.progress < 80) {
+      toast.success(
+        `✅ ${Math.round(newProgress)}% cam kết hoàn tất! Hub Available: ${newConfirmedM2.toLocaleString()}m². DRP đêm nay sẽ tạo PO cho 12 CN.`,
+        { duration: 7000 }
+      );
+    } else {
+      toast.success(
+        `✅ Cam kết ${row.nmName} ${row.sku} đã lưu. Hub Available tăng ${row.committed.toLocaleString()}m². DRP đêm nay sẽ tạo PO từ cam kết này.`,
+        { duration: 6000 }
+      );
+    }
   };
 
   const batchConfirm = () => {
     let count = 0;
+    let added = 0;
     setRows(prev => prev.map(r => {
       if (!r.locked && (r.status === "confirmed" || r.status === "counter") && r.evidence.length > 0) {
         count++;
+        added += r.committed;
         return { ...r, locked: true };
       }
       return r;
     }));
-    toast.success(`Đã xác nhận ${count} cam kết có evidence`);
+    toast.success(
+      `✅ Đã xác nhận ${count} cam kết. Hub Available tăng thêm ${added.toLocaleString()}m². DRP đêm nay sẽ release PO.`,
+      { duration: 6000 }
+    );
   };
 
   const lockMonth = () => {
-    toast.success("🔒 Đã khóa cam kết Tháng 5/2026 — chuyển sang Hub ảo");
+    setMonthLocked(true);
+    toast.success("🔒 Cam kết T5 đã khóa — chuyển sang Hub ảo. DRP đêm nay 23:00 sẽ tạo PO nháp.", {
+      duration: 6000,
+    });
+  };
+
+  const runDrpNow = () => {
+    toast.loading("⚙️ Đang chạy DRP — phân bổ Hub Available cho 12 CN…", { id: "drp-run" });
+    setTimeout(() => {
+      toast.success("✅ DRP xong — đã tạo PO nháp. Mở Đơn hàng để duyệt.", { id: "drp-run", duration: 5000 });
+      navigate("/orders");
+    }, 1500);
   };
 
   /* Status counts for filter chips */
