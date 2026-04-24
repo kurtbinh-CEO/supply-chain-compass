@@ -216,7 +216,29 @@ export default function OrdersPage() {
           counts.overdue > 0 ? "critical" : "ok";
         const urgentTodo = rows.filter(r => ACTION_STAGES.includes(r.stage) && isOverdue(r)).length;
 
+        const bpo = bpoTotals();
+        const expected = Math.round(BPO_EXPECTED_PCT);
+        const bpoSeverity: SummaryCard["severity"] =
+          bpo.pct >= expected ? "ok" :
+          bpo.pct >= expected * 0.6 ? "warn" : "critical";
         const cards: SummaryCard[] = [
+          {
+            key: "bpo", label: "Tiến độ cam kết", value: `${bpo.pct}%`,
+            severity: bpoSeverity,
+            trend: {
+              delta: `${(bpo.released / 1000).toFixed(1)}K/${(bpo.committed / 1000).toFixed(1)}K m²`,
+              direction: bpo.pct >= expected ? "up" : "down",
+              color: bpo.pct >= expected ? "green" : bpo.pct >= expected * 0.6 ? "gray" : "red",
+            },
+            tooltip: `Đã release ${bpo.released.toLocaleString()} / ${bpo.committed.toLocaleString()} m². Ngày ${BPO_DEMO_DAY_OF_MONTH}/${BPO_DEMO_DAYS_IN_MONTH} kỳ vọng ≥ ${expected}%. Click để xem phân rã theo NM.`,
+            onClick: () => {
+              setBpoOpen(true);
+              // smooth-scroll xuống section
+              setTimeout(() => {
+                document.getElementById("bpo-progress")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 50);
+            },
+          },
           {
             key: "todo", label: "Cần xử lý", value: counts.todo, unit: "đơn",
             severity: todoSeverity,
