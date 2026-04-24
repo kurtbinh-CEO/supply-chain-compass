@@ -737,6 +737,41 @@ function ScManagerTab({
       ),
     },
     {
+      key: "actualPrev", label: `Thực tế ${PREV_MONTH_LABEL}`, numeric: true, align: "right",
+      sortable: true, hideable: true, priority: "high", width: 110,
+      accessor: (r) => r.actualPrev,
+      render: (r) => {
+        if (r.actualPrev === 0) return <span className="text-text-3 text-table-sm">—</span>;
+        return <span className="tabular-nums text-text-2">{r.actualPrev.toLocaleString("vi-VN")}</span>;
+      },
+    },
+    {
+      key: "fcWeek", label: "FC tuần", numeric: true, align: "right",
+      sortable: true, hideable: true, priority: "high", width: 130,
+      accessor: (r) => r.totalDuKien,
+      render: (r) => {
+        const high = r.actualPrev > 0 && r.fcVsActualPct > 20;
+        return (
+          <div className="flex flex-col items-end leading-tight" title={high ? `Tháng trước CN-${r.cnCode.replace("CN-","")} bán ${r.actualPrev.toLocaleString("vi-VN")}m²/tuần. Tuần này FC ${r.totalDuKien.toLocaleString("vi-VN")}m² (+${r.fcVsActualPct.toFixed(0)}%). Hợp lý?` : undefined}>
+            <span className={cn(
+              "tabular-nums text-text-1",
+              high && "border border-warning/50 bg-warning-bg/40 text-warning rounded px-1.5 py-0.5 font-medium",
+            )}>
+              {r.totalDuKien.toLocaleString("vi-VN")}
+            </span>
+            {r.actualPrev > 0 && (
+              <span className={cn(
+                "text-[10px] tabular-nums",
+                high ? "text-warning font-medium" : "text-text-3",
+              )}>
+                {r.fcVsActualPct > 0 ? "+" : ""}{r.fcVsActualPct.toFixed(0)}% vs T{PREV_MONTH}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       key: "trust", label: "Trust", numeric: true, align: "right", sortable: true,
       hideable: true, priority: "medium", width: 90,
       render: (r) => (
