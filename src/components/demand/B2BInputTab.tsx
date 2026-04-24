@@ -9,6 +9,7 @@ import {
   type B2bDeal,
   type B2bStage,
 } from "@/data/unis-enterprise-dataset";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 
 interface Props {
   deals: B2bDeal[];
