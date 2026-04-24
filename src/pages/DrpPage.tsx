@@ -13,6 +13,7 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { DrpReleaseBar, type DrpBatch, type DrpBatchStatus } from "@/components/drp/DrpReleaseBar";
 import { useRbac } from "@/components/RbacContext";
+import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
 import { supabase } from "@/integrations/supabase/client";
 import { BRANCHES, DRP_RESULTS } from "@/data/unis-enterprise-dataset";
 
@@ -301,20 +302,70 @@ function StepDetail({ stepId, scale }: { stepId: number; scale: number }) {
     </div>
   );
 
-  if (stepId === 6) return (
-    <div className="space-y-2 text-table-sm">
-      <div className="text-text-3 text-caption flex items-center gap-1">
-        <TermTooltip term="LCNB">Chuyển ngang (LCNB)</TermTooltip> giữa các CN sibling
+  if (stepId === 6) {
+    const toRows = [
+      { code: "TO-HCM-BD-W20-001", from: "CN-HCM", to: "CN-BD", sku: "GA-600 A4", qty: 200 },
+      { code: "TO-QN-NA-W20-001",  from: "CN-QN",  to: "CN-NA", sku: "GA-300 A4", qty: 180 },
+      { code: "TO-HN-NA-W20-002",  from: "CN-HN",  to: "CN-NA", sku: "GM-300 A4", qty: 95 },
+      { code: "TO-DN-CT-W20-001",  from: "CN-DN",  to: "CN-CT", sku: "GA-300 B2", qty: 80 },
+    ];
+    const totalQty = toRows.reduce((s, r) => s + r.qty, 0);
+    return (
+      <div className="space-y-3 text-table-sm">
+        <div className="text-text-3 text-caption flex items-center gap-1">
+          <TermTooltip term="LCNB">Chuyển ngang (LCNB)</TermTooltip> scan: 4 CN dư hàng → {toRows.length} TO nháp tạo tự động
+        </div>
+        <div className="rounded-card border border-surface-3 overflow-hidden">
+          <table className="w-full text-caption">
+            <thead className="bg-surface-2 text-text-3">
+              <tr>
+                <th className="text-left px-2 py-1.5 font-medium">Mã TO</th>
+                <th className="text-left px-2 py-1.5 font-medium">Từ</th>
+                <th className="text-left px-2 py-1.5 font-medium">Đến</th>
+                <th className="text-left px-2 py-1.5 font-medium">Mã hàng</th>
+                <th className="text-right px-2 py-1.5 font-medium">SL</th>
+                <th className="text-center px-2 py-1.5 font-medium">TT</th>
+                <th className="text-right px-2 py-1.5 font-medium">Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {toRows.map((r) => (
+                <tr key={r.code} className="border-t border-surface-3 hover:bg-primary/5">
+                  <td className="px-2 py-1.5 font-mono text-text-1">{r.code}</td>
+                  <td className="px-2 py-1.5 text-text-2">{r.from}</td>
+                  <td className="px-2 py-1.5 text-text-2">{r.to}</td>
+                  <td className="px-2 py-1.5 text-text-2">{r.sku}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums text-text-1">{sc(r.qty)} m²</td>
+                  <td className="px-2 py-1.5 text-center">
+                    <span className="inline-block rounded-full bg-warning-bg text-warning border border-warning/30 px-1.5 py-0.5 text-[10px] font-medium">Nháp</span>
+                  </td>
+                  <td className="px-2 py-1.5 text-right">
+                    <button
+                      type="button"
+                      onClick={() => navigate("/orders?tab=approval&filter=TO")}
+                      className="inline-flex items-center gap-1 rounded-button border border-primary/30 bg-primary/5 text-primary px-2 py-0.5 text-[10px] font-medium hover:bg-primary hover:text-primary-foreground transition-colors"
+                    >
+                      Duyệt <ArrowRight className="h-3 w-3" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex items-center justify-between text-caption text-text-3 border-t border-surface-3 pt-2">
+          <span>{toRows.length} TO · tổng <span className="font-semibold text-text-1 tabular-nums">{sc(totalQty)} m²</span> · cước ước tính <span className="font-semibold text-text-1 tabular-nums">15,3 triệu ₫</span> · 1-2 ngày</span>
+          <button
+            type="button"
+            onClick={() => navigate("/orders?tab=approval&filter=TO")}
+            className="inline-flex items-center gap-1 rounded-button bg-primary text-primary-foreground px-2.5 py-1 text-caption font-medium hover:opacity-90"
+          >
+            Mở Đơn hàng → Duyệt TO <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
       </div>
-      <div className="rounded border border-surface-3 px-3 py-2 bg-surface-1/30">
-        <div>CN-HCM dư <span className="font-semibold tabular-nums">{sc(200)}m²</span> GA-600 → CN-BD <span className="text-text-3">(30km, 1 ngày)</span></div>
-        <div>CN-QN dư <span className="font-semibold tabular-nums">{sc(180)}m²</span> GA-300 → CN-NA <span className="text-text-3">(215km, 1 ngày)</span></div>
-      </div>
-      <div className="flex justify-between border-t border-surface-3 pt-2 font-semibold">
-        <span>→ LCNB cover {sc(380)}m². Còn lại</span>
-        <ClickableNumber value={`${sc(1020).toLocaleString()}m²`} color="text-warning" /></div>
-    </div>
-  );
+    );
+  }
 
   if (stepId === 7) return (
     <div className="space-y-2 text-table-sm">
@@ -421,6 +472,7 @@ export default function DrpPage() {
   const s = tenantScales[tenant] || 1;
   const navigate = useNavigate();
   const { canApprove } = useRbac();
+  const { current: planCycle } = usePlanningPeriod();
 
   /* ── Step navigation ── */
   const [activeStep, setActiveStep] = useState<number>(5);
@@ -642,8 +694,18 @@ export default function DrpPage() {
       <div className="flex items-center justify-between mb-3">
         <div>
           <h1 className="text-h2 font-display font-bold text-text-1">Kết quả DRP — Tuần 20</h1>
-          <p className="text-table-sm text-text-3 mt-0.5">
-            {batchStatus === "released" ? "Đã release sang Đơn hàng" : "Chạy lúc 23:02 đêm qua"}
+          <p className="text-table-sm text-text-3 mt-0.5 flex items-center gap-1.5 flex-wrap">
+            <span>{batchStatus === "released" ? "Đã release sang Đơn hàng" : "Chạy lúc 23:02 đêm qua"}</span>
+            <span>·</span>
+            <span>Trong kỳ KH:</span>
+            <button
+              type="button"
+              onClick={() => navigate("/demand")}
+              className="inline-flex items-center gap-1 rounded-full bg-info-bg text-info border border-info/30 px-2 py-0.5 text-caption font-medium hover:bg-info/15 transition-colors"
+              title="Mở rà soát nhu cầu của kỳ này"
+            >
+              {planCycle.label}
+            </button>
           </p>
         </div>
         {isPlanLocked ? (

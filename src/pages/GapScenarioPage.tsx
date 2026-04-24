@@ -3,6 +3,8 @@ import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
+import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
+import { PlanningPeriodSelector } from "@/components/PlanningPeriodSelector";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -770,6 +772,7 @@ export default function GapScenarioPage() {
   const [selected, setSelected] = useState<GapRow | null>(
     rows.find((r) => r.nmId === "TOKO") ?? null
   );
+  const { current: planCycle, isReadOnly: planLocked } = usePlanningPeriod();
 
   const totalGap = rows.reduce((s, r) => s + r.gapM2, 0);
   const totalRequested = rows.reduce((s, r) => s + r.totalRequestedM2, 0);
@@ -781,22 +784,27 @@ export default function GapScenarioPage() {
   return (
     <AppLayout>
       <ScreenHeader
-        title="Khoảng cách & Kịch bản"
-        subtitle={`Tổng gap ${fmtM2(totalGap)} (${overallGapPct}% so với cam kết) · Ngày ${CURRENT_DAY}/${TOTAL_DAYS}`}
+        title="Gap & Kịch bản"
+        subtitle={planLocked
+          ? `Chế độ chỉ xem — ${planCycle.label} đã khóa`
+          : `Tổng gap ${fmtM2(totalGap)} (${overallGapPct}% so với cam kết)`}
         actions={
-          <div className="flex items-center gap-2 text-table-sm">
-            <span className="rounded-full bg-danger-bg text-danger px-2.5 py-1 border border-danger/30 inline-flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" />
-              {rows.filter((r) => r.status === "critical").length} NM nguy hiểm
-            </span>
-            <span className="rounded-full bg-warning-bg text-warning px-2.5 py-1 border border-warning/30 inline-flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {rows.filter((r) => r.status === "watch").length} cần theo dõi
-            </span>
-            <span className="rounded-full bg-success-bg text-success px-2.5 py-1 border border-success/30 inline-flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3" />
-              {rows.filter((r) => r.status === "on_track").length} đúng tiến độ
-            </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <PlanningPeriodSelector />
+            <div className="flex items-center gap-2 text-table-sm">
+              <span className="rounded-full bg-danger-bg text-danger px-2.5 py-1 border border-danger/30 inline-flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {rows.filter((r) => r.status === "critical").length} NM nguy hiểm
+              </span>
+              <span className="rounded-full bg-warning-bg text-warning px-2.5 py-1 border border-warning/30 inline-flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {rows.filter((r) => r.status === "watch").length} cần theo dõi
+              </span>
+              <span className="rounded-full bg-success-bg text-success px-2.5 py-1 border border-success/30 inline-flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3" />
+                {rows.filter((r) => r.status === "on_track").length} đúng tiến độ
+              </span>
+            </div>
           </div>
         }
       />
