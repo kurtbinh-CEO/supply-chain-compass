@@ -21,6 +21,7 @@ import { RoiFlywheelTab } from "@/components/monitoring/RoiFlywheelTab";
 import { TermTooltip } from "@/components/TermTooltip";
 import { SYSTEM_ACCURACY } from "@/data/unis-enterprise-dataset";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
+import { MonitoringHeroCards } from "@/components/monitoring/MonitoringHeroCards";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -343,10 +344,11 @@ function TrendIcon({ trend }: { trend: string }) {
 
 const tabs = [
   { key: "overview", label: "Tổng quan" },
-  { key: "inv", label: "Tồn kho & SS" },
-  { key: "perf", label: "Hiệu suất" },
+  { key: "inv", label: "Tồn kho an toàn" },
+  { key: "perf", label: "Tiến độ đặt hàng" },
   { key: "nm-risk", label: "Rủi ro NM" },
-  { key: "roi", label: "ROI & Bánh đà" },
+  { key: "roi", label: "ROI" },
+  { key: "fc", label: "Dự báo" },
   { key: "activity", label: "Activity Log" },
 ];
 
