@@ -8,13 +8,15 @@ import { FcVsActualTab } from "@/components/demand/FcVsActualTab";
 import { useTenant } from "@/components/TenantContext";
 import { useDemandForecasts } from "@/hooks/useDemandForecasts";
 import { Loader2, Inbox, Zap, FileSpreadsheet, Database, PenLine } from "lucide-react";
-import { B2B_DEALS, B2B_STAGE_PROB, DEMAND_FC, AOP_PLAN, getFcActualYtd, type B2bStage, type B2bDeal } from "@/data/unis-enterprise-dataset";
+import { B2B_DEALS, B2B_STAGE_PROB, DEMAND_FC, AOP_PLAN, getFcActualYtd, type AopPlan, type B2bStage, type B2bDeal } from "@/data/unis-enterprise-dataset";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
 import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
+import { AopPlanDialog } from "@/components/AopPlanDialog";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
 
 const tabs = [
   { key: "total", label: "Demand tổng" },
@@ -90,6 +92,8 @@ export default function DemandPage() {
   const { cnSummaries, loading: forecastLoading } = useDemandForecasts();
   const { markDone } = useNextStep();
   const [importerOpen, setImporterOpen] = useState(false);
+  const [aopOpen, setAopOpen] = useState(false);
+  const [aopPlan, setAopPlan] = useState<AopPlan>(AOP_PLAN);
 
   const handleSourceSelect = (key: string) => {
     setImporterOpen(false);
@@ -174,11 +178,17 @@ export default function DemandPage() {
           subtitle=""
           badges={
             <>
-              <span className="rounded-full bg-info-bg text-info px-3 py-1 text-table-sm font-medium">
-                AOP {AOP_PLAN.year}: {AOP_PLAN.totalTarget.toLocaleString("vi-VN")} m²
-              </span>
+              <button
+                type="button"
+                onClick={() => setAopOpen(true)}
+                title="Click để xem / chỉnh sửa Kế hoạch năm"
+                className="group inline-flex items-center gap-1.5 rounded-full bg-info-bg text-info px-3 py-1 text-table-sm font-medium hover:bg-info/15 hover:ring-1 hover:ring-info/30 transition-all"
+              >
+                AOP {aopPlan.year}: {aopPlan.totalTarget.toLocaleString("vi-VN")} m²
+                <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
               <span className="rounded-full bg-success-bg text-success px-3 py-1 text-table-sm font-medium">
-                YTD: {getFcActualYtd(AOP_PLAN.year).toLocaleString("vi-VN")} ({((getFcActualYtd(AOP_PLAN.year) / AOP_PLAN.totalTarget) * 100).toFixed(1)}%)
+                YTD: {getFcActualYtd(aopPlan.year).toLocaleString("vi-VN")} ({((getFcActualYtd(aopPlan.year) / aopPlan.totalTarget) * 100).toFixed(1)}%)
               </span>
             </>
           }
