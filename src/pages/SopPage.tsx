@@ -12,7 +12,7 @@ import { AvatarBar, AutoSaveIndicator, useCellPresence } from "@/components/Cell
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PreLockDialog } from "@/components/BatchLockBanner";
 import { useSopConsensus } from "@/hooks/useSopConsensus";
-import { BRANCHES, DEMAND_FC, SKU_BASES, SKU_VARIANTS } from "@/data/unis-enterprise-dataset";
+import { BRANCHES, DEMAND_FC, SKU_BASES, SKU_VARIANTS, AOP_PLAN, getAopMonth } from "@/data/unis-enterprise-dataset";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 import { NextStepBanner } from "@/components/NextStepBanner";
@@ -60,17 +60,27 @@ function buildEnterpriseConsensus(): ConsensusRow[] {
 
   const fvaModels = ["v2 CN Input", "v0 Statistical", "v1 Sales", "v3 Consensus"];
 
+  // AOP tháng 5 phân bổ theo trọng số nhóm SKU + tỷ lệ FC theo CN.
+  // Thay cho hardcode `baseFc * 0.92` — đọc từ AOP_PLAN (M17).
+  const aopMay = getAopMonth(5);
+  const totalFcMay = DEMAND_FC.reduce((s, r) => s + r.fcM2, 0) || 1;
+
   return BRANCHES.map((cn, cnIdx) => {
     const skus: SkuRow[] = topBases.flatMap((base) => {
       const variants = SKU_VARIANTS.filter((v) => v.baseCode === base.code).slice(0, 1);
       const fcRow = DEMAND_FC.find((r) => r.skuBaseCode === base.code && r.cnCode === cn.code);
       const baseFc = fcRow?.fcM2 ?? 0;
+      // Trọng số nhóm SKU từ AOP_PLAN ("GA-300" / "GA-400" / "GA-600" / "Khác")
+      const groupKey = AOP_PLAN.skuGroupWeights[base.code] != null ? base.code : "Khác";
+      const groupWeight = (AOP_PLAN.skuGroupWeights[groupKey] ?? 0) / 100;
+      const cnSkuShare = totalFcMay > 0 ? baseFc / totalFcMay : 0;
+      // AOP cho ô (CN × SKU) = AOP tháng × trọng số nhóm × tỷ lệ FC của CN trong tổng FC
+      const aop = Math.round(aopMay * groupWeight * cnSkuShare * (totalFcMay / Math.max(1, baseFc * 12)));
       return variants.map((vt) => {
         const v0 = Math.round(baseFc * 0.95);
         const v1 = Math.round(baseFc * 1.05);
         const v2 = Math.round(baseFc * 1.02);
         const v3 = baseFc;
-        const aop = Math.round(baseFc * 0.92);
         return {
           item: base.code,
           variant: vt.variantTag,
@@ -78,7 +88,7 @@ function buildEnterpriseConsensus(): ConsensusRow[] {
           v1,
           v2,
           v3,
-          aop,
+          aop: aop > 0 ? aop : Math.round(baseFc * 0.92),  // fallback nếu data trống
           note: "",
         };
       });

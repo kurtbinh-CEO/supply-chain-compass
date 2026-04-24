@@ -8,7 +8,7 @@ import { FcVsActualTab } from "@/components/demand/FcVsActualTab";
 import { useTenant } from "@/components/TenantContext";
 import { useDemandForecasts } from "@/hooks/useDemandForecasts";
 import { Loader2, Inbox, Zap, FileSpreadsheet, Database, PenLine } from "lucide-react";
-import { B2B_DEALS, B2B_STAGE_PROB, DEMAND_FC, type B2bStage, type B2bDeal } from "@/data/unis-enterprise-dataset";
+import { B2B_DEALS, B2B_STAGE_PROB, DEMAND_FC, AOP_PLAN, getFcActualYtd, type B2bStage, type B2bDeal } from "@/data/unis-enterprise-dataset";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
@@ -174,8 +174,12 @@ export default function DemandPage() {
           subtitle=""
           badges={
             <>
-              <span className="rounded-full bg-info-bg text-info px-3 py-1 text-table-sm font-medium">AOP 2026: 560.000 m²</span>
-              <span className="rounded-full bg-success-bg text-success px-3 py-1 text-table-sm font-medium">YTD: 187.600 (34%)</span>
+              <span className="rounded-full bg-info-bg text-info px-3 py-1 text-table-sm font-medium">
+                AOP {AOP_PLAN.year}: {AOP_PLAN.totalTarget.toLocaleString("vi-VN")} m²
+              </span>
+              <span className="rounded-full bg-success-bg text-success px-3 py-1 text-table-sm font-medium">
+                YTD: {getFcActualYtd(AOP_PLAN.year).toLocaleString("vi-VN")} ({((getFcActualYtd(AOP_PLAN.year) / AOP_PLAN.totalTarget) * 100).toFixed(1)}%)
+              </span>
             </>
           }
           actions={
