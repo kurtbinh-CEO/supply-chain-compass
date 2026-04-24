@@ -294,9 +294,42 @@ function CnManagerTab({
       ),
     },
     {
-      key: "duKien", label: "Dự kiến (m²)", sortable: true, numeric: true, align: "right",
+      key: "actualPrev", label: `Thực tế ${PREV_MONTH_LABEL}`, sortable: true, numeric: true, align: "right",
+      hideable: true, priority: "high", width: 110,
+      accessor: (r) => actualPrevMonthByCnSku(r.cnCode, r.item),
+      render: (r) => {
+        const actual = actualPrevMonthByCnSku(r.cnCode, r.item);
+        if (actual === 0) return <span className="text-text-3 text-table-sm">—</span>;
+        const deltaPct = ((r.duKien - actual) / actual) * 100;
+        const high = deltaPct > 20;
+        return (
+          <div className="flex flex-col items-end leading-tight" title={high ? `Tháng trước CN bán ${actual.toLocaleString("vi-VN")}m²/tuần. FC tuần này ${r.duKien.toLocaleString("vi-VN")}m² (${deltaPct > 0 ? "+" : ""}${deltaPct.toFixed(0)}%). Hợp lý?` : undefined}>
+            <span className="tabular-nums text-text-2">{actual.toLocaleString("vi-VN")}</span>
+            {high && (
+              <span className="text-[10px] text-warning font-medium">
+                FC +{deltaPct.toFixed(0)}%
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "duKien", label: "FC tuần (m²)", sortable: true, numeric: true, align: "right",
       hideable: false, priority: "high", width: 110,
-      render: (r) => <span className="tabular-nums text-text-2">{r.duKien.toLocaleString("vi-VN")}</span>,
+      render: (r) => {
+        const actual = actualPrevMonthByCnSku(r.cnCode, r.item);
+        const deltaPct = actual > 0 ? ((r.duKien - actual) / actual) * 100 : 0;
+        const high = actual > 0 && deltaPct > 20;
+        return (
+          <span className={cn(
+            "tabular-nums text-text-2",
+            high && "border border-warning/50 bg-warning-bg/40 text-warning rounded px-1.5 py-0.5 font-medium",
+          )}>
+            {r.duKien.toLocaleString("vi-VN")}
+          </span>
+        );
+      },
     },
     {
       key: "adjust", label: "Điều chỉnh", hideable: false, priority: "high", width: 130, align: "right",
