@@ -139,9 +139,14 @@ export function FcVsActualTab() {
           })()}
         </div>
         <div className="rounded-card border border-surface-3 bg-surface-2 p-4">
-          <p className="text-caption text-text-3 uppercase tracking-wide mb-1">Mô hình dùng nhiều nhất</p>
-          <p className="font-display text-kpi-md text-text-1">HW+XGB</p>
-          <p className="text-caption text-text-3 mt-1">5/12 tháng gần đây</p>
+          <p className="text-caption text-text-3 uppercase tracking-wide mb-1">Nguồn thực tế</p>
+          <p className="font-display text-kpi-md text-text-1 tabular-nums">
+            {realCount}/4 <span className="text-body text-text-3">tháng 2026</span>
+          </p>
+          <p className="text-caption text-text-3 mt-1 inline-flex items-center gap-1">
+            <Database className="h-3 w-3" />
+            FC_ACTUAL · {FC_ACTUAL.length} dòng
+          </p>
         </div>
       </div>
 
