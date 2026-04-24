@@ -59,5 +59,19 @@ Phase 6 — Persist Master Data vào Lovable Cloud (DONE):
   - Footer hiển thị "X từ cloud + Y từ dataset mẫu"
   - Excel wizard onCommit gọi `bulkInsert*` thật → dòng hợp lệ vào DB ngay
 
-Còn lại:
-- Phase 7: Audit log Master Data CRUD (ai, khi nào, before/after diff → ActivityLog)
+Phase 7 — Audit log Master Data CRUD (DONE):
+- Migration tạo `master_data_audit` (entity, entity_code, action, actor_id, actor_name, before_data, after_data, created_at) — RLS public read + auth insert, immutable (no UPDATE/DELETE)
+- `useMasterData.ts` wrap mọi mutation (create/update/delete/bulkInsert × 4 entity) tự động ghi audit:
+  - create/bulk_import: snapshot `after`
+  - update: fetch snapshot `before` trước update, log cả `before`+`after`
+  - delete: fetch snapshot `before` trước delete, log `before`
+  - actor lấy từ `supabase.auth.getUser()` (display_name → full_name → email → "Khách")
+- `useMasterAudit({ entity?, entity_code?, limit? })` hook query React Query
+- **`MasterAuditPanel`** (`src/components/master/MasterAuditPanel.tsx`): slide-in 480px Sheet
+  - Mode 1: header "Lịch sử" button → toàn bộ với tab filter (Tất cả / Hàng / NM / CN / Cont)
+  - Mode 2: per-row history icon trong RowActions → filter theo entity+code
+  - Diff viewer: action=update hiện list field changes (max 6) với strike-through old → new
+  - action=delete hiện snapshot summary (3 fields đầu)
+  - Relative time ("5 phút trước"), action icon + tone (create=success, update=info, delete=danger)
+- `RowActions` thêm prop optional `onHistory` → icon History đầu tiên, gọi setHistoryCode(row.code)
+
