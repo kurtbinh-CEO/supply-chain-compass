@@ -8,6 +8,18 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useFcAccuracy } from "@/hooks/useMonitoringData";
 import { TermTooltip } from "@/components/TermTooltip";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+
+type ModelRow = {
+  name: string;
+  mape: string;
+  mapeNum: number;
+  trend: "up" | "down";
+  stdev: string;
+  ssImpact: string;
+  wcImpact: string;
+  optimal: boolean;
+};
 
 const fallbackMapeData = [
   { week: "W01", hw: 28, ai: 22 }, { week: "W02", hw: 26, ai: 24 }, { week: "W03", hw: 30, ai: 25 },
@@ -21,10 +33,66 @@ const models = [
   { name: "XGBoost (AI)", mape: "16.2%", trend: "down", stdev: "±1.8", ssImpact: "-300m²", wcImpact: "-56Mđ", optimal: true },
 ];
 
+const models: ModelRow[] = [
+  { name: "HW (Hiện tại)", mape: "24.8%", mapeNum: 24.8, trend: "up", stdev: "±4.2", ssImpact: "1.2k m²", wcImpact: "182Mđ", optimal: false },
+  { name: "XGBoost (AI)", mape: "16.2%", mapeNum: 16.2, trend: "down", stdev: "±1.8", ssImpact: "-300m²", wcImpact: "-56Mđ", optimal: true },
+];
+
 export function FcAccuracyTab() {
   const [showSwitchModal, setShowSwitchModal] = useState(false);
   const { weeklyData } = useFcAccuracy();
   const mapeData = weeklyData.length > 0 ? weeklyData : fallbackMapeData;
+
+  const modelColumns: SmartTableColumn<ModelRow>[] = [
+    {
+      key: "name", label: "Mô hình", sortable: true, hideable: false, priority: "high", width: 200,
+      filter: "text", accessor: (r) => r.name,
+      render: (r) => (
+        <span className="inline-flex items-center gap-2">
+          <span className="text-table font-medium text-text-1">{r.name}</span>
+          {r.optimal && <StatusChip status="success" label="Tối ưu" />}
+        </span>
+      ),
+    },
+    {
+      key: "mape", label: "MAPE", sortable: true, hideable: false, priority: "high",
+      numeric: true, align: "right", width: 100, accessor: (r) => r.mapeNum,
+      render: (r) => (
+        <span className={cn("font-mono font-bold tabular-nums", r.optimal ? "text-success" : "text-text-1")}>{r.mape}</span>
+      ),
+    },
+    {
+      key: "trend", label: "Xu hướng", sortable: true, hideable: true, priority: "medium",
+      align: "center", width: 100, accessor: (r) => r.trend,
+      filter: "enum",
+      filterOptions: [
+        { value: "up", label: "Tăng" },
+        { value: "down", label: "Giảm" },
+      ],
+      render: (r) => r.trend === "up"
+        ? <TrendingUp className="inline h-4 w-4 text-danger" />
+        : <TrendingDown className="inline h-4 w-4 text-success" />,
+    },
+    {
+      key: "stdev", label: "σ (Độ lệch)", sortable: false, hideable: true, priority: "low",
+      align: "right", width: 110,
+      render: (r) => <span className="tabular-nums text-text-2">{r.stdev}</span>,
+    },
+    {
+      key: "ssImpact", label: "Ảnh hưởng SS", sortable: false, hideable: true, priority: "medium",
+      align: "right", width: 130,
+      render: (r) => (
+        <span className={cn("font-medium tabular-nums", r.optimal ? "text-success" : "text-text-2")}>{r.ssImpact}</span>
+      ),
+    },
+    {
+      key: "wcImpact", label: "Ảnh hưởng vốn", sortable: false, hideable: true, priority: "medium",
+      align: "right", width: 130,
+      render: (r) => (
+        <span className={cn("font-medium tabular-nums", r.optimal ? "text-success" : "text-text-2")}>{r.wcImpact}</span>
+      ),
+    },
+  ];
 
   const handleSwitchConfirm = () => {
     setShowSwitchModal(false);
