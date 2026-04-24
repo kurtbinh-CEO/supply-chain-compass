@@ -30,8 +30,8 @@ import DemandPage from "./pages/DemandPage";
 import SopPage from "./pages/SopPage";
 import HubPage from "./pages/HubPage";
 import GapScenarioPage from "./pages/GapScenarioPage";
-// M1 — /supply giữ redirect → /inventory (page file vẫn tên SupplyPage)
-import SupplyPage from "./pages/SupplyPage";
+// M2 — /inventory page (đã đổi tên SupplyPage → InventoryPage)
+import InventoryPage from "./pages/InventoryPage";
 import DemandWeeklyPage from "./pages/DemandWeeklyPage";
 import DrpPage from "./pages/DrpPage";
 import OrdersPage from "./pages/OrdersPage";
@@ -103,8 +103,8 @@ function ProtectedRoutes() {
           <Route path="/sop" element={<SopPage />} />
           <Route path="/hub" element={<HubPage />} />
           <Route path="/gap-scenario" element={<GapScenarioPage />} />
-          {/* M1 — /inventory là route chính cho tồn kho NM+CN */}
-          <Route path="/inventory" element={<SupplyPage />} />
+          {/* M2 — /inventory là route chính cho tồn kho NM+CN (2 tabs) */}
+          <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/supply" element={<Navigate to="/inventory" replace />} />
           <Route path="/demand-weekly" element={<DemandWeeklyPage />} />
           <Route path="/drp" element={<DrpPage />} />
