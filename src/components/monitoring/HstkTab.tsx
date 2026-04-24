@@ -3,7 +3,8 @@ import { cn } from "@/lib/utils";
 import { StatusChip } from "@/components/StatusChip";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { ArrowUpDown, Cloud, RefreshCw } from "lucide-react";
+import { Cloud, RefreshCw, PackageSearch } from "lucide-react";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 
 // Heatmap data
 const nodes = ["CN Mikado", "CN Toko", "CN PhúMỹ", "CN ĐôngAnh"];
@@ -46,25 +47,10 @@ const inventoryData: InvRow[] = [
   { id: "5", name: "Cement Grey Matt", sku: "C-4801-GY-M", onHand: 3400, reserved: 1200, committed: 800, inTransit: 0, available: 1400, ssGap: 1200, ssGapDelta: 200, hstk: "10.1d", aging: "Healthy", synced: true },
 ];
 
-type SortKey = keyof InvRow;
-
 export function HstkTab() {
-  const [sortKey, setSortKey] = useState<SortKey>("name");
-  const [sortAsc, setSortAsc] = useState(true);
   const [correctionRow, setCorrectionRow] = useState<InvRow | null>(null);
   const [newQty, setNewQty] = useState("");
   const [reason, setReason] = useState("");
-
-  const sorted = [...inventoryData].sort((a, b) => {
-    const va = a[sortKey], vb = b[sortKey];
-    if (typeof va === "number" && typeof vb === "number") return sortAsc ? va - vb : vb - va;
-    return sortAsc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
-  });
-
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortAsc(!sortAsc);
-    else { setSortKey(key); setSortAsc(true); }
-  };
 
   const handleSubmitCorrection = () => {
     setCorrectionRow(null);
@@ -72,23 +58,107 @@ export function HstkTab() {
     setReason("");
   };
 
-  const SortHeader = ({ label, field, align = "left" }: { label: string; field: SortKey; align?: string }) => (
-    <th
-      className={cn("text-table-header uppercase text-text-3 px-4 py-3 cursor-pointer hover:text-text-1 select-none", align === "right" ? "text-right" : "text-left")}
-      onClick={() => toggleSort(field)}
-    >
-      <span className="inline-flex items-center gap-1">
-        {label}
-        <ArrowUpDown className={cn("h-3 w-3", sortKey === field ? "text-primary" : "text-text-3")} />
-      </span>
-    </th>
-  );
+  const columns: SmartTableColumn<InvRow>[] = [
+    {
+      key: "name", label: "Item & Variant", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 220, accessor: (r) => `${r.name} ${r.sku}`,
+      render: (r) => (
+        <div className="flex flex-col">
+          <span className="text-table font-medium text-text-1">{r.name}</span>
+          <span className="text-caption text-text-3 font-mono">{r.sku}</span>
+        </div>
+      ),
+    },
+    {
+      key: "onHand", label: "On-Hand", sortable: true, hideable: true, priority: "high",
+      numeric: true, align: "right", width: 110,
+      render: (r) => <span className="tabular-nums font-medium text-text-1">{r.onHand.toLocaleString()}</span>,
+    },
+    {
+      key: "reserved", label: "Reserved", sortable: true, hideable: true, priority: "low",
+      numeric: true, align: "right", width: 110,
+      render: (r) => <span className="tabular-nums text-text-2">{r.reserved.toLocaleString()}</span>,
+    },
+    {
+      key: "committed", label: "Committed", sortable: true, hideable: true, priority: "medium",
+      numeric: true, align: "right", width: 110,
+      render: (r) => <span className="tabular-nums text-text-2">{r.committed.toLocaleString()}</span>,
+    },
+    {
+      key: "inTransit", label: "In-Transit", sortable: true, hideable: true, priority: "medium",
+      numeric: true, align: "right", width: 110,
+      render: (r) => (
+        <span className={cn("tabular-nums font-medium", r.inTransit > 0 ? "text-primary" : "text-text-2")}>
+          {r.inTransit.toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      key: "available", label: "Available", sortable: true, hideable: false, priority: "high",
+      numeric: true, align: "right", width: 110,
+      render: (r) => <span className="tabular-nums font-bold text-text-1">{r.available.toLocaleString()}</span>,
+    },
+    {
+      key: "ssGapDelta", label: "SS / Gap", sortable: true, hideable: true, priority: "high",
+      numeric: true, align: "right", width: 130,
+      render: (r) => (
+        <div className="tabular-nums">
+          <span className="text-table text-text-1">{r.ssGap.toLocaleString()}</span>
+          <span className={cn("text-table-sm font-medium block", r.ssGapDelta >= 0 ? "text-success" : "text-danger")}>
+            {r.ssGapDelta >= 0 ? "+" : ""}{r.ssGapDelta.toLocaleString()}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: "hstk", label: "HSTK", sortable: true, hideable: true, priority: "medium",
+      numeric: true, align: "right", width: 90, accessor: (r) => parseFloat(r.hstk),
+      render: (r) => <span className="tabular-nums text-text-1">{r.hstk}</span>,
+    },
+    {
+      key: "aging", label: "Aging", sortable: true, hideable: false, priority: "high",
+      align: "center", width: 110, accessor: (r) => r.aging,
+      filter: "enum",
+      filterOptions: [
+        { value: "Critical", label: "🔴 Critical" },
+        { value: "Warning",  label: "🟡 Warning" },
+        { value: "Healthy",  label: "🟢 Healthy" },
+      ],
+      render: (r) => (
+        <StatusChip
+          status={r.aging === "Critical" ? "danger" : r.aging === "Warning" ? "warning" : "success"}
+          label={r.aging}
+        />
+      ),
+    },
+    {
+      key: "synced", label: "Sync", sortable: true, hideable: true, priority: "low",
+      align: "center", width: 70, accessor: (r) => (r.synced ? 1 : 0),
+      render: (r) => r.synced
+        ? <Cloud className="h-4 w-4 text-success mx-auto" />
+        : <RefreshCw className="h-4 w-4 text-warning mx-auto animate-spin" />,
+    },
+    {
+      key: "action", label: "Hành động", sortable: false, hideable: false, priority: "high",
+      align: "center", width: 160,
+      render: (r) => r.aging !== "Healthy" ? (
+        <Button
+          size="sm"
+          variant="default"
+          className="text-caption bg-text-1 text-surface-0 hover:bg-text-2 h-7"
+          onClick={(e) => { e.stopPropagation(); setCorrectionRow(r); }}
+        >
+          Planning correction
+        </Button>
+      ) : <span className="text-caption text-text-3">—</span>,
+    },
+  ];
 
   return (
     <div className="space-y-6">
       {/* Heatmap */}
       <div className="rounded-card border border-surface-3 bg-surface-2 p-5">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h2 className="font-display text-section-header text-text-1">Inventory Health Heatmap</h2>
           <div className="flex items-center gap-4 text-table-sm">
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-sm bg-danger" /> Critical (&lt;5d)</span>
@@ -98,12 +168,10 @@ export function HstkTab() {
         </div>
         <div className="overflow-x-auto">
           <div className="grid gap-1.5" style={{ gridTemplateColumns: `140px repeat(${skus.length}, 1fr)` }}>
-            {/* Header row */}
             <div />
             {skus.map((s) => (
               <div key={s} className="text-center text-table-header uppercase text-text-3 py-2">{s}</div>
             ))}
-            {/* Data rows */}
             {nodes.map((node, ri) => (
               <>
                 <div key={node} className="flex items-center text-table font-medium text-text-1 pr-3">{node}</div>
@@ -121,118 +189,28 @@ export function HstkTab() {
         </div>
       </div>
 
-      {/* Inventory Table */}
-      <div className="rounded-card border border-surface-3 bg-surface-2">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-surface-3">
-          <h2 className="font-display text-section-header text-text-1">Chi tiết tồn kho</h2>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm">Lọc</Button>
-            <Button variant="outline" size="sm">Xuất CSV</Button>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-surface-3">
-                <SortHeader label="Item & Variant" field="name" />
-                <SortHeader label="On-Hand" field="onHand" align="right" />
-                <SortHeader label="Reserved" field="reserved" align="right" />
-                <SortHeader label="Committed" field="committed" align="right" />
-                <SortHeader label="In-Transit" field="inTransit" align="right" />
-                <SortHeader label="Available" field="available" align="right" />
-                <SortHeader label="SS / Gap" field="ssGapDelta" align="right" />
-                <SortHeader label="HSTK" field="hstk" align="right" />
-                <SortHeader label="Aging" field="aging" />
-                <th className="text-table-header uppercase text-text-3 px-4 py-3 text-center">Sync</th>
-                <th className="text-table-header uppercase text-text-3 px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {sorted.map((row, i) => {
-                // Rule 13 — row severity from aging + HSTK staleness
-                const hstkDays = parseFloat(row.hstk);
-                const severity: "shortage" | "watch" | "stale" | "ok" =
-                  row.aging === "Critical"
-                    ? "shortage"
-                    : row.aging === "Warning"
-                      ? "watch"
-                      : !isNaN(hstkDays) && hstkDays > 15
-                        ? "stale"
-                        : "ok";
-                return (
-                  <tr
-                    key={row.id}
-                    data-severity={severity}
-                    data-keyboard-row={`hstk-${row.id}`}
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && row.aging !== "Healthy") {
-                        e.preventDefault();
-                        setCorrectionRow(row);
-                      }
-                    }}
-                    className={cn(
-                      "border-b border-surface-3/50 hover:bg-surface-3 transition-colors outline-none",
-                      i % 2 === 0 ? "bg-surface-0" : "bg-surface-2",
-                    )}
-                  >
-                    <td className="px-4 py-3">
-                      <div>
-                        <span className="text-table font-medium text-text-1 block">{row.name}</span>
-                        <span className="text-caption text-text-3 font-mono">{row.sku}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-table text-text-1 text-right tabular-nums font-medium">{row.onHand.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-table text-text-2 text-right tabular-nums">{row.reserved.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-table text-text-2 text-right tabular-nums">{row.committed.toLocaleString()}</td>
-                    <td className={cn("px-4 py-3 text-table text-right tabular-nums font-medium", row.inTransit > 0 ? "text-primary" : "text-text-2")}>
-                      {row.inTransit.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-table text-text-1 text-right tabular-nums font-bold">{row.available.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="tabular-nums">
-                        <span className="text-table text-text-1">{row.ssGap.toLocaleString()}</span>
-                        <span className={cn("text-table-sm font-medium block", row.ssGapDelta >= 0 ? "text-success" : "text-danger")}>
-                          {row.ssGapDelta >= 0 ? "+" : ""}{row.ssGapDelta.toLocaleString()}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-table text-text-1 text-right tabular-nums">{row.hstk}</td>
-                    <td className="px-4 py-3">
-                      <StatusChip
-                        status={row.aging === "Critical" ? "danger" : row.aging === "Warning" ? "warning" : "success"}
-                        label={row.aging}
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {row.synced ? (
-                        <Cloud className="h-4 w-4 text-success mx-auto" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4 text-warning mx-auto animate-spin" />
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {row.aging !== "Healthy" && (
-                        <Button size="sm" variant="default" className="text-caption bg-text-1 text-surface-0 hover:bg-text-2" onClick={() => setCorrectionRow(row)}>
-                          Planning correction
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        <div className="px-5 py-3 border-t border-surface-3 flex items-center justify-between text-table-sm text-text-3">
-          <span>Showing 1-5 of 156 items across 4 nodes</span>
-          <div className="flex gap-1">
-            {["←", "1", "2", "3", "→"].map((p) => (
-              <button key={p} className={cn("h-7 w-7 rounded-md text-table-sm font-medium", p === "1" ? "bg-primary text-primary-foreground" : "hover:bg-surface-3 text-text-2")}>{p}</button>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Inventory Table — SmartTable */}
+      <SmartTable<InvRow>
+        screenId="monitoring-hstk-inventory"
+        title="Chi tiết tồn kho"
+        exportFilename="hstk-inventory-detail"
+        columns={columns}
+        data={inventoryData}
+        defaultDensity="compact"
+        getRowId={(r) => r.id}
+        rowSeverity={(r) => {
+          const hstkDays = parseFloat(r.hstk);
+          if (r.aging === "Critical") return "shortage";
+          if (r.aging === "Warning")  return "watch";
+          if (!isNaN(hstkDays) && hstkDays > 15) return "stale";
+          return "ok";
+        }}
+        emptyState={{
+          icon: <PackageSearch />,
+          title: "Không có item phù hợp",
+          description: "Bộ lọc Aging hoặc tìm kiếm hiện đang ẩn toàn bộ items. Xoá lọc để xem lại 156 items trên 4 nodes.",
+        }}
+      />
 
       {/* Planning Correction Modal */}
       <Dialog open={!!correctionRow} onOpenChange={() => setCorrectionRow(null)}>
