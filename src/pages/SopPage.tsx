@@ -8,6 +8,8 @@ import { BalanceLockTab } from "@/components/sop/BalanceLockTab";
 import { SopDeadlineStepper } from "@/components/sop/SopDeadlineStepper";
 import { FileText, Loader2, PackageOpen } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
+import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
+import { PlanningPeriodSelector } from "@/components/PlanningPeriodSelector";
 import { AvatarBar, AutoSaveIndicator, useCellPresence } from "@/components/CellPresence";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PreLockDialog } from "@/components/BatchLockBanner";
