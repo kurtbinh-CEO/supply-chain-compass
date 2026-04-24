@@ -485,23 +485,23 @@ export default function ExecutivePage() {
 
   /* ─── Allocation columns ─── */
   const allocCols: SmartTableColumn<AllocRow>[] = [
-    { key: "cn", header: "CN", width: 90, sticky: true, render: (r) => <span className="font-mono font-semibold text-text-1">{r.cn}</span> },
-    { key: "demand", header: "Nhu cầu", width: 90, align: "right", render: (r) => <span className="tabular-nums">{r.demand.toLocaleString("vi-VN")}</span> },
-    { key: "alloc", header: "Phân bổ", width: 90, align: "right", render: (r) => <span className="tabular-nums">{r.alloc.toLocaleString("vi-VN")}</span> },
+    { key: "cn", label: "CN", width: 90, sticky: true, render: (r) => <span className="font-mono font-semibold text-text-1">{r.cn}</span> },
+    { key: "demand", label: "Nhu cầu", width: 90, align: "right", render: (r) => <span className="tabular-nums">{r.demand.toLocaleString("vi-VN")}</span> },
+    { key: "alloc", label: "Phân bổ", width: 90, align: "right", render: (r) => <span className="tabular-nums">{r.alloc.toLocaleString("vi-VN")}</span> },
     {
-      key: "fillRate", header: "Tỷ lệ", width: 90, align: "right",
+      key: "fillRate", label: "Tỷ lệ", width: 90, align: "right",
       render: (r) => <span className={cn("tabular-nums font-bold", toneText(r.tone))}>{r.fillRate}%</span>,
     },
-    { key: "received", header: "Đã nhận", width: 90, align: "right", render: (r) => <span className="tabular-nums">{r.received.toLocaleString("vi-VN")}</span> },
-    { key: "pipeline", header: "Pipeline", width: 90, align: "right", render: (r) => <span className="tabular-nums text-text-2">{r.pipeline.toLocaleString("vi-VN")}</span> },
+    { key: "received", label: "Đã nhận", width: 90, align: "right", render: (r) => <span className="tabular-nums">{r.received.toLocaleString("vi-VN")}</span> },
+    { key: "pipeline", label: "Pipeline", width: 90, align: "right", render: (r) => <span className="tabular-nums text-text-2">{r.pipeline.toLocaleString("vi-VN")}</span> },
     {
-      key: "gap", header: "Thiếu", width: 90, align: "right",
+      key: "gap", label: "Thiếu", width: 90, align: "right",
       render: (r) => r.gap > 0
         ? <span className="tabular-nums font-medium text-danger">{r.gap.toLocaleString("vi-VN")}</span>
         : <span className="tabular-nums text-text-3">—</span>,
     },
     {
-      key: "rating", header: "Đánh giá", width: 100,
+      key: "rating", label: "Đánh giá", width: 100,
       render: (r) => (
         <span className={cn("inline-flex items-center gap-1 text-table-sm font-medium", toneText(r.tone))}>
           {toneEmoji(r.tone)} {r.tone === "ok" ? "Tốt" : r.tone === "near" ? "Cần theo dõi" : "Khẩn cấp"}
@@ -512,10 +512,10 @@ export default function ExecutivePage() {
 
   /* ─── Trend columns ─── */
   const trendCols: SmartTableColumn<TrendRow>[] = [
-    { key: "kpi", header: "KPI", width: 200, sticky: true, render: (r) => <span className="font-medium text-text-1">{r.kpi}</span> },
+    { key: "kpi", label: "KPI", width: 200, sticky: true, render: (r) => <span className="font-medium text-text-1">{r.kpi}</span> },
     ...(["t12","t1","t2","t3","t4","t5"] as const).map((k, i) => ({
       key: k,
-      header: ["T12/25","T1/26","T2/26","T3/26","T4/26","T5/26 (dk)"][i],
+      label: ["T12/25","T1/26","T2/26","T3/26","T4/26","T5/26 (dk)"][i],
       width: 95, align: "right" as const,
       render: (r: TrendRow) => {
         const v = r[k];
@@ -539,11 +539,11 @@ export default function ExecutivePage() {
       },
     })),
     {
-      key: "target", header: "Mục tiêu", width: 100, align: "right",
+      key: "target", label: "Mục tiêu", width: 100, align: "right",
       render: (r) => <span className="tabular-nums text-text-2">{r.target}{r.unit}</span>,
     },
     {
-      key: "trend", header: "Xu hướng", width: 100,
+      key: "trend", label: "Xu hướng", width: 100,
       render: (r) => {
         const arr = [r.t12, r.t1, r.t2, r.t3, r.t4, r.t5];
         const ok = r.lowerIsBetter ? r.t5 <= r.target : r.t5 >= r.target;
@@ -609,7 +609,7 @@ export default function ExecutivePage() {
           </div>
         </div>
         <SmartTable<AllocRow>
-          tableKey="exec.alloc"
+          screenId="exec.alloc"
           data={ALLOC_ROWS}
           columns={allocCols}
           rowSeverity={(r) => r.tone === "miss" ? "shortage" : r.tone === "near" ? "watch" : undefined}
@@ -626,7 +626,7 @@ export default function ExecutivePage() {
           <p className="text-table-sm text-text-3 mt-1">Click số → xem chi tiết tháng đó</p>
         </div>
         <SmartTable<TrendRow>
-          tableKey="exec.trend"
+          screenId="exec.trend"
           data={TREND_ROWS}
           columns={trendCols}
           defaultDensity="compact"
