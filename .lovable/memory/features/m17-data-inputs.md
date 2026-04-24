@@ -14,6 +14,7 @@ Phase 1 (datasets + xóa hardcode) — DONE:
 
 Phase 2 — UI editors (DONE):
 - **AopPlanDialog** mở từ DemandPage badge, 4 sections, validation Σ=100%, lock SC_MANAGER
+- **AopSummaryPanel** (`src/components/AopSummaryPanel.tsx`): preview card (KPI strip + monthly bars + SKU/Region split) + nút [Chỉnh sửa] mở AopPlanDialog. Dùng ở 2 nơi: ConfigPage tab "Kế hoạch năm (AOP)" + MasterDataPage tab "Kế hoạch năm" → tổng cộng 3 entry points (Demand badge / Config / MasterData)
 - **KpiTargetsTab** trong ConfigPage, edit target + warningThreshold
 - ExecutivePage Tier 1 cards đọc target qua `getKpiTarget()`
 
