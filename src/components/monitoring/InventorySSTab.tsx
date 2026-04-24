@@ -95,6 +95,7 @@ export function InventorySSTab({ scale: s }: Props) {
   const [simOpen, setSimOpen] = useState(false);
   const [simSku, setSimSku] = useState<typeof ssSkuData[0] | null>(null);
   const [simZ, setSimZ] = useState(1.65);
+  const [skuSheet, setSkuSheet] = useState<string | null>(null);
 
   const cnData = baseCnData.map((r) => ({
     ...r,
