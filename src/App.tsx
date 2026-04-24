@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,6 +17,9 @@ import { AuthProvider, useAuth } from "@/components/AuthContext";
 import { ZoomProvider } from "@/components/ZoomControls";
 import { CommandPaletteProvider } from "@/components/CommandPalette";
 import { NextStepProvider } from "@/components/NextStepContext";
+import { OnboardingProvider, useOnboarding } from "@/components/onboarding/OnboardingContext";
+import { OnboardingOverlay } from "@/components/onboarding/OnboardingOverlay";
+import { getTourForRoute } from "@/components/onboarding/tours";
 import { PlanningPeriodProvider } from "@/components/PlanningPeriodContext";
 import { useEffect, useCallback } from "react";
 import { dispatchExpandAll } from "@/hooks/useExpandableRows";
@@ -49,6 +52,7 @@ import NotFound from "./pages/NotFound";
 import CnPortalPage from "./pages/CnPortalPage";
 import ProfilePage from "./pages/ProfilePage";
 import ExecutivePage from "./pages/ExecutivePage";
+import AuditPage from "./pages/AuditPage";
 
 const queryClient = new QueryClient();
 
@@ -99,7 +103,10 @@ function ProtectedRoutes() {
       <NextStepProvider>
       <PlanningPeriodProvider>
       <CommandPaletteProvider>
+      <OnboardingProvider>
         <IdleNudgeMount />
+        <OnboardingOverlay />
+        <OnboardingAutoStart />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/workspace" element={<WorkspacePage />} />
@@ -129,8 +136,10 @@ function ProtectedRoutes() {
           <Route path="/design-test" element={<DesignTest />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/executive" element={<ExecutivePage />} />
+          <Route path="/audit" element={<AuditPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+      </OnboardingProvider>
       </CommandPaletteProvider>
       </PlanningPeriodProvider>
       </NextStepProvider>
@@ -150,6 +159,28 @@ function IdleNudgeMount() {
   const { pendingCount, exceptions } = useWorkspace();
   const getPendingCount = useCallback(() => pendingCount + exceptions.length, [pendingCount, exceptions.length]);
   useIdleNudge({ getPendingCount });
+  return null;
+}
+
+/** Tự động khởi động onboarding tour cho route hiện tại nếu user chưa xem. */
+function OnboardingAutoStart() {
+  const location = useLocation();
+  const { isTourCompleted, startTour, activeTour } = useOnboarding();
+
+  useEffect(() => {
+    const tour = getTourForRoute(location.pathname);
+    if (!tour) return;
+    if (activeTour) return;
+    if (isTourCompleted(tour.id)) return;
+    try {
+      const enabled = localStorage.getItem("scp:onboarding:enabled");
+      if (enabled === "false") return;
+    } catch {}
+    const timer = setTimeout(() => startTour(tour), 800);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
   return null;
 }
 

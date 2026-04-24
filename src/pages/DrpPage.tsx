@@ -853,7 +853,11 @@ export default function DrpPage() {
             tooltip: "Số đơn DRP đã tạo, chờ duyệt → Phát hành",
           },
         ];
-        return <SummaryCards cards={cards} screenId="drp-results" editable />;
+        return (
+          <div data-tour-id="drp-summary">
+            <SummaryCards cards={cards} screenId="drp-results" editable />
+          </div>
+        );
       })()}
 
       {/* ═══ SUMMARY PILLS ═══ */}
@@ -923,7 +927,7 @@ export default function DrpPage() {
       </div>
 
       {/* ═══ MAIN TABLE ═══ */}
-      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+      <div data-tour-id="drp-table" className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>

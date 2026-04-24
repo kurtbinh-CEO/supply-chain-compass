@@ -4,7 +4,7 @@ import {
   Package, CalendarDays, GitBranch,
   Truck, Database, FileBarChart, Settings,
   ChevronLeft, Play, BookOpen, Building, GraduationCap, LayoutDashboard,
-  AlertTriangle, RefreshCw, Crown, FlaskConical, GitCompare,
+  AlertTriangle, RefreshCw, Crown, FlaskConical, GitCompare, ScrollText, GraduationCap as GradCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/components/SidebarContext";
@@ -13,6 +13,8 @@ import { useWorkspace } from "@/components/WorkspaceContext";
 import { useRbac, UserRole } from "@/components/RbacContext";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useI18n } from "@/components/i18n/I18nContext";
+import { useOnboarding } from "@/components/onboarding/OnboardingContext";
+import { getTourForRoute } from "@/components/onboarding/tours";
 import smartlogIcon from "@/assets/smartlog-icon.png";
 
 /* M1 — Sidebar restructure
@@ -114,6 +116,7 @@ const navGroups: NavGroup[] = [
       { kind: "item", titleKey: "nav.guide", icon: GraduationCap, url: "/guide" },
       { kind: "item", titleKey: "nav.scenarios", icon: FlaskConical, url: "/scenarios" },
       { kind: "item", titleKey: "nav.compare", icon: GitCompare, url: "/compare" },
+      { kind: "item", titleKey: "nav.audit", icon: ScrollText, url: "/audit" },
     ],
   },
 ];
@@ -166,6 +169,8 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const { t } = useI18n();
   const dailyBadges = useDailyBadges();
+  const { startTour } = useOnboarding();
+  const tourForRoute = getTourForRoute(location.pathname);
 
   const handleStartWorkflow = (type: "daily" | "monthly") => {
     startWorkflow(type);
@@ -306,10 +311,20 @@ export function AppSidebar() {
         })}
       </nav>
 
-      {/* Footer: Workflow trigger */}
+      {/* Footer: Workflow trigger + Tour */}
       <div className="border-t border-surface-3 p-3 space-y-1 shrink-0">
         {!collapsed ? (
           <div className="space-y-1">
+            {tourForRoute && (
+              <button
+                onClick={() => startTour(tourForRoute)}
+                className="flex w-full items-center gap-2 rounded-button px-3 py-2 text-body text-text-2 font-medium hover:bg-surface-3 hover:text-text-1 transition-colors"
+                title="Bắt đầu hướng dẫn cho màn hình này"
+              >
+                <GradCap className="h-4 w-4" />
+                <span>Hướng dẫn màn này</span>
+              </button>
+            )}
             <button
               onClick={() => handleStartWorkflow("daily")}
               className="flex w-full items-center gap-2 rounded-button px-3 py-2 text-body text-primary font-medium hover:bg-info-bg transition-colors"

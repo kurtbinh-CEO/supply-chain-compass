@@ -43,6 +43,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "nav.guide": "Hướng dẫn",
     "nav.scenarios": "Tình huống Demo",
     "nav.compare": "So sánh phiên bản",
+    "nav.audit": "Audit Trail",
 
     // Sidebar footer
     "workflow.daily": "Quy trình ngày",
@@ -216,6 +217,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "nav.guide": "User Guide",
     "nav.scenarios": "Demo Scenarios",
     "nav.compare": "Version Compare",
+    "nav.audit": "Audit Trail",
 
     // Sidebar footer
     "workflow.daily": "Daily Workflow",
