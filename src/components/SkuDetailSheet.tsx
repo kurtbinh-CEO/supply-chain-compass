@@ -206,27 +206,34 @@ export function SkuDetailSheet({ open, onClose, sku, branches, factories }: Prop
             </div>
           </section>
 
-          {/* Explicit cross-links */}
+          {/* Explicit cross-links — KHÔNG navigate khi user click chỗ khác trong sheet */}
           <section>
             <div className="text-table-sm font-semibold text-text-1 mb-2">Liên kết</div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
+              {/* Primary: Xem DRP — chỉ navigate khi click nút này */}
               <button
                 onClick={() => { onClose(); navigate(`/drp?sku=${encodeURIComponent(sku ?? "")}`); }}
-                className="flex items-center justify-between rounded-button border border-surface-3 bg-surface-1 hover:bg-info-bg px-3 py-2 text-table-sm text-info hover:text-info transition-colors"
+                className="flex items-center justify-between rounded-button bg-primary text-primary-foreground hover:bg-primary/90 px-3.5 py-2.5 text-table-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                aria-label={`Mở DRP cho ${sku ?? "SKU"}`}
               >
-                <span>Xem DRP {sku}</span>
-                <ArrowRight className="h-3.5 w-3.5" />
+                <span className="inline-flex items-center gap-2">
+                  <ArrowRight className="h-4 w-4" />
+                  Xem DRP {sku}
+                </span>
+                <span className="text-[11px] opacity-80">/drp?sku={sku}</span>
               </button>
+
+              {/* Secondary: cross-links khác */}
               <button
                 onClick={() => { onClose(); navigate(`/hub?sku=${encodeURIComponent(sku ?? "")}`); }}
-                className="flex items-center justify-between rounded-button border border-surface-3 bg-surface-1 hover:bg-info-bg px-3 py-2 text-table-sm text-info hover:text-info transition-colors"
+                className="flex items-center justify-between rounded-button border border-surface-3 bg-surface-1 hover:bg-info-bg px-3 py-2 text-table-sm text-info transition-colors"
               >
                 <span>Xem cam kết NM</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={() => { onClose(); navigate(`/demand-weekly?sku=${encodeURIComponent(sku ?? "")}`); }}
-                className="flex items-center justify-between rounded-button border border-surface-3 bg-surface-1 hover:bg-info-bg px-3 py-2 text-table-sm text-info hover:text-info transition-colors"
+                className="flex items-center justify-between rounded-button border border-surface-3 bg-surface-1 hover:bg-info-bg px-3 py-2 text-table-sm text-info transition-colors"
               >
                 <span>Xem nhu cầu tuần</span>
                 <ArrowRight className="h-3.5 w-3.5" />
