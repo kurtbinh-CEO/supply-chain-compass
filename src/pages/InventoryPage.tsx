@@ -562,7 +562,7 @@ export default function InventoryPage() {
       <ScreenHeader
         title="Tồn kho"
         subtitle={`5 nhà máy · 12 chi nhánh · Cập nhật 06:00 sáng nay`}
-        rightSlot={
+        actions={
           <div className="hidden sm:flex items-center gap-2 rounded-button border border-surface-3 bg-surface-1 px-3 py-1.5 text-table-sm">
             <RefreshCw className="h-3.5 w-3.5 text-success" />
             <span className="text-text-2">Bravo sync v12 — 06:00</span>
