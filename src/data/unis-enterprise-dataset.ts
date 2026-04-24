@@ -1511,38 +1511,14 @@ export function getAopYtd(currentMonth: number, plan: AopPlan = AOP_PLAN): numbe
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
- * §M17  CARRIERS — Nhà xe (5 NVT)
- * ════════════════════════════════════════════════════════════════════════════ */
-export type CarrierType = "Đối tác" | "Nội bộ";
-export type CarrierStatus = "Hoạt động" | "Tạm ngưng";
-
-export interface Carrier {
-  id: string;
-  code: string;
-  name: string;
-  type: CarrierType;
-  regions: string;          // "Bắc, Trung" / "Toàn quốc"
-  contactName: string;
-  contactPhone: string;
-  slaPct: number;           // 0–100
-  status: CarrierStatus;
-  note: string;
-}
-
-export const CARRIERS: Carrier[] = [
-  { id: "VINATRANS",  code: "NVT-VNT", name: "Vinatrans",       type: "Đối tác", regions: "Toàn quốc",  contactName: "Nguyễn Văn Khôi", contactPhone: "0903 111 222", slaPct: 96, status: "Hoạt động",  note: "Đối tác chính, đầy đủ container" },
-  { id: "GIANGTRUONG",code: "NVT-GTR", name: "Giang Trường",     type: "Đối tác", regions: "Nam, Tây Nam", contactName: "Trần Thị Hằng",   contactPhone: "0912 345 100", slaPct: 92, status: "Hoạt động",  note: "Mạnh ở khu vực Mekong" },
-  { id: "TANCANG",    code: "NVT-TC",  name: "Tân Cảng Logistics", type: "Đối tác", regions: "Toàn quốc",  contactName: "Lê Quốc Đạt",     contactPhone: "0987 765 432", slaPct: 94, status: "Hoạt động",  note: "Mạnh container 20/40ft" },
-  { id: "INTERNAL",   code: "NVT-NB",  name: "Đội xe nội bộ UNIS", type: "Nội bộ", regions: "Nam",        contactName: "Phạm Minh Tùng",  contactPhone: "0908 222 333", slaPct: 98, status: "Hoạt động",  note: "10 xe 10T + 5 xe 15T" },
-  { id: "BACVIET",    code: "NVT-BV",  name: "Bắc Việt",          type: "Đối tác", regions: "Bắc, Trung", contactName: "Hoàng Anh Tuấn",  contactPhone: "0966 888 111", slaPct: 84, status: "Tạm ngưng", note: "Tạm ngưng do tranh chấp giá" },
-];
-
-/* ════════════════════════════════════════════════════════════════════════════
  * §M17  TRANSPORT_RATES — Cước vận chuyển per (carrier × route × vehicle)
- * ════════════════════════════════════════════════════════════════════════════ */
-export type VehicleType = "truck_10t" | "truck_15t" | "20ft" | "40ft";
+ * ════════════════════════════════════════════════════════════════════════════
+ * Dùng `RateVehicleKind` (rate-card) — KHÁC `VehicleType` (vehicle master ở
+ * §29-30) vốn dành cho TransportPlan capacity. Hai khái niệm tách biệt.
+ */
+export type RateVehicleKind = "truck_10t" | "truck_15t" | "20ft" | "40ft";
 
-export const VEHICLE_LABELS: Record<VehicleType, string> = {
+export const RATE_VEHICLE_LABELS: Record<RateVehicleKind, string> = {
   truck_10t: "Xe 10T",
   truck_15t: "Xe 15T",
   "20ft":    "Cont 20FT",
@@ -1550,25 +1526,25 @@ export const VEHICLE_LABELS: Record<VehicleType, string> = {
 };
 
 export interface TransportRate {
-  carrierId: string;
-  routeKey: string;          // "MKD→CN-HN"
-  routeLabel: string;        // hiển thị
-  vehicleType: VehicleType;
-  ratePerTrip: number;       // VND
+  carrierId: string;          // FK → Carrier.id
+  routeKey: string;           // "MKD→CN-HN"
+  routeLabel: string;         // hiển thị
+  vehicleKind: RateVehicleKind;
+  ratePerTrip: number;        // VND
   surcharges: { loadUnload: number; bot: number; port: number; returnEmpty: number };
-  validFrom: string;         // dd/mm/yyyy
+  validFrom: string;          // dd/mm/yyyy
   validTo: string;
 }
 
 const STD_SURCHARGE = { loadUnload: 500_000, bot: 200_000, port: 0, returnEmpty: 1_500_000 };
 const CONT_SURCHARGE = { loadUnload: 500_000, bot: 200_000, port: 800_000, returnEmpty: 1_500_000 };
 
-function makeRoute(carrierId: string, routeKey: string, routeLabel: string, prices: Record<VehicleType, number>): TransportRate[] {
-  return (Object.keys(prices) as VehicleType[]).map((v) => ({
+function makeRoute(carrierId: string, routeKey: string, routeLabel: string, prices: Record<RateVehicleKind, number>): TransportRate[] {
+  return (Object.keys(prices) as RateVehicleKind[]).map((v) => ({
     carrierId,
     routeKey,
     routeLabel,
-    vehicleType: v,
+    vehicleKind: v,
     ratePerTrip: prices[v],
     surcharges: v === "20ft" || v === "40ft" ? CONT_SURCHARGE : STD_SURCHARGE,
     validFrom: "01/01/2026",
@@ -1577,19 +1553,19 @@ function makeRoute(carrierId: string, routeKey: string, routeLabel: string, pric
 }
 
 export const TRANSPORT_RATES: TransportRate[] = [
-  // VINATRANS — toàn quốc
-  ...makeRoute("VINATRANS", "MKD→CN-HN",  "Mikado → CN Hà Nội",     { truck_10t: 5_200_000, truck_15t: 7_800_000, "20ft": 8_500_000,  "40ft": 14_200_000 }),
-  ...makeRoute("VINATRANS", "DTM→CN-HCM", "Đồng Tâm → CN TP.HCM",   { truck_10t: 3_800_000, truck_15t: 5_500_000, "20ft": 6_200_000,  "40ft": 10_800_000 }),
-  ...makeRoute("VINATRANS", "TKO→CN-DN",  "Toko → CN Đà Nẵng",      { truck_10t: 4_500_000, truck_15t: 6_800_000, "20ft": 7_200_000,  "40ft": 12_500_000 }),
-  ...makeRoute("VINATRANS", "MKD→CN-DN",  "Mikado → CN Đà Nẵng",    { truck_10t: 6_800_000, truck_15t: 9_500_000, "20ft": 10_200_000, "40ft": 17_500_000 }),
-  // GIANGTRUONG — Nam, Tây Nam
-  ...makeRoute("GIANGTRUONG", "DTM→CN-CT", "Đồng Tâm → CN Cần Thơ", { truck_10t: 2_800_000, truck_15t: 4_200_000, "20ft": 4_800_000,  "40ft": 8_200_000 }),
-  ...makeRoute("GIANGTRUONG", "DTM→CN-LA", "Đồng Tâm → CN Long An", { truck_10t: 1_900_000, truck_15t: 2_900_000, "20ft": 3_500_000,  "40ft": 6_200_000 }),
-  // TANCANG — container chuyên dụng
-  ...makeRoute("TANCANG", "PMY→CN-HCM", "Phú Mỹ → CN TP.HCM",       { truck_10t: 2_200_000, truck_15t: 3_300_000, "20ft": 3_800_000,  "40ft": 6_800_000 }),
-  ...makeRoute("TANCANG", "VGC→CN-HN",  "Vigracera → CN Hà Nội",    { truck_10t: 4_800_000, truck_15t: 7_200_000, "20ft": 7_800_000,  "40ft": 13_500_000 }),
-  // INTERNAL — chỉ Nam
-  ...makeRoute("INTERNAL", "DTM→CN-BD", "Đồng Tâm → CN Bình Dương", { truck_10t: 1_500_000, truck_15t: 2_300_000, "20ft": 2_800_000,  "40ft": 4_900_000 }),
+  // CR-01 Vinatrans
+  ...makeRoute("CR-01", "MKD→CN-HN",  "Mikado → CN Hà Nội",     { truck_10t: 5_200_000, truck_15t: 7_800_000, "20ft": 8_500_000,  "40ft": 14_200_000 }),
+  ...makeRoute("CR-01", "DTM→CN-HCM", "Đồng Tâm → CN TP.HCM",   { truck_10t: 3_800_000, truck_15t: 5_500_000, "20ft": 6_200_000,  "40ft": 10_800_000 }),
+  ...makeRoute("CR-01", "TKO→CN-DN",  "Toko → CN Đà Nẵng",      { truck_10t: 4_500_000, truck_15t: 6_800_000, "20ft": 7_200_000,  "40ft": 12_500_000 }),
+  ...makeRoute("CR-01", "MKD→CN-DN",  "Mikado → CN Đà Nẵng",    { truck_10t: 6_800_000, truck_15t: 9_500_000, "20ft": 10_200_000, "40ft": 17_500_000 }),
+  // CR-02 Gemadept
+  ...makeRoute("CR-02", "DTM→CN-CT", "Đồng Tâm → CN Cần Thơ",   { truck_10t: 2_800_000, truck_15t: 4_200_000, "20ft": 4_800_000,  "40ft": 8_200_000 }),
+  ...makeRoute("CR-02", "DTM→CN-LA", "Đồng Tâm → CN Long An",   { truck_10t: 1_900_000, truck_15t: 2_900_000, "20ft": 3_500_000,  "40ft": 6_200_000 }),
+  // CR-03 Tân Cảng STC
+  ...makeRoute("CR-03", "PMY→CN-HCM", "Phú Mỹ → CN TP.HCM",     { truck_10t: 2_200_000, truck_15t: 3_300_000, "20ft": 3_800_000,  "40ft": 6_800_000 }),
+  ...makeRoute("CR-03", "VGC→CN-HN",  "Vigracera → CN Hà Nội",  { truck_10t: 4_800_000, truck_15t: 7_200_000, "20ft": 7_800_000,  "40ft": 13_500_000 }),
+  // CR-04 Mikado nội bộ
+  ...makeRoute("CR-04", "DTM→CN-BD",  "Đồng Tâm → CN Bình Dương", { truck_10t: 1_500_000, truck_15t: 2_300_000, "20ft": 2_800_000, "40ft": 4_900_000 }),
 ];
 
 /* ════════════════════════════════════════════════════════════════════════════
