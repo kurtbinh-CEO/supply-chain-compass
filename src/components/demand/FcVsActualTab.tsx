@@ -2,6 +2,10 @@ import { useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
 import { cn } from "@/lib/utils";
 import { FC_MAPE_BY_CN, BRANCHES } from "@/data/unis-enterprise-dataset";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+
+type MonthRow = { month: string; fc: number; actual: number | null; delta: number | null; mape: number | null; model: string };
+type CnMapeRow = { cn: string; name: string; mape: number; model: string };
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /* FC vs Actual — 12 months (mock historical, deterministic)                  */
@@ -112,89 +116,132 @@ export function FcVsActualTab() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <div className="px-5 py-3 border-b border-surface-3 flex items-center justify-between">
-          <h3 className="font-display text-body font-semibold text-text-1">Chi tiết theo tháng</h3>
-          <span className="text-caption text-text-3">12 tháng gần nhất</span>
-        </div>
-        <table className="w-full text-table-sm">
-          <thead>
-            <tr className="border-b border-surface-3 bg-surface-1/50">
-              {["Tháng", "Dự báo (m²)", "Thực tế (m²)", "Δ", "MAPE", "Mô hình"].map((h, i) => (
-                <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {series.map((r) => {
-              const overTarget = (r.mape ?? 0) > target;
+      {/* Table — Chi tiết theo tháng (SmartTable) */}
+      {(() => {
+        const monthCols: SmartTableColumn<MonthRow>[] = [
+          { key: "month", label: "Tháng", sortable: true, accessor: (r) => r.month, priority: "high" },
+          {
+            key: "fc",
+            label: "Dự báo (m²)",
+            numeric: true,
+            sortable: true,
+            accessor: (r) => r.fc,
+            render: (r) => <span className="tabular-nums text-text-1">{r.fc.toLocaleString()}</span>,
+          },
+          {
+            key: "actual",
+            label: "Thực tế (m²)",
+            numeric: true,
+            sortable: true,
+            accessor: (r) => r.actual ?? 0,
+            render: (r) =>
+              r.actual !== null ? (
+                <span className="tabular-nums text-text-1">{r.actual.toLocaleString()}</span>
+              ) : (
+                <span className="text-text-3 italic">đang chạy</span>
+              ),
+          },
+          {
+            key: "delta",
+            label: "Δ",
+            numeric: true,
+            sortable: true,
+            accessor: (r) => r.delta ?? 0,
+            render: (r) =>
+              r.delta !== null ? (
+                <span className={cn("font-medium tabular-nums", r.delta > 0 ? "text-success" : "text-danger")}>
+                  {r.delta > 0 ? "+" : ""}
+                  {r.delta.toLocaleString()}
+                </span>
+              ) : (
+                <span className="text-text-3">—</span>
+              ),
+          },
+          {
+            key: "mape",
+            label: "MAPE",
+            numeric: true,
+            sortable: true,
+            accessor: (r) => r.mape ?? 0,
+            render: (r) => {
+              if (r.mape === null) return <span className="text-text-3">—</span>;
+              const over = r.mape > target;
               return (
-                <tr key={r.month} className="border-b border-surface-3/50 hover:bg-surface-1/30">
-                  <td className="px-4 py-2.5 text-table font-medium text-text-1">{r.month}</td>
-                  <td className="px-4 py-2.5 text-table tabular-nums text-text-1">{r.fc.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 text-table tabular-nums text-text-1">
-                    {r.actual !== null ? r.actual.toLocaleString() : <span className="text-text-3 italic">đang chạy</span>}
-                  </td>
-                  <td className="px-4 py-2.5 text-table tabular-nums">
-                    {r.delta !== null ? (
-                      <span className={cn("font-medium", r.delta > 0 ? "text-success" : "text-danger")}>
-                        {r.delta > 0 ? "+" : ""}{r.delta.toLocaleString()}
-                      </span>
-                    ) : (
-                      <span className="text-text-3">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 text-table tabular-nums">
-                    {r.mape !== null ? (
-                      <span className={cn("font-medium", overTarget ? "text-danger" : "text-success")}>
-                        {r.mape}% {overTarget && "🔴"}
-                      </span>
-                    ) : (
-                      <span className="text-text-3">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 text-table text-text-2">{r.model}</td>
-                </tr>
+                <span className={cn("font-medium tabular-nums", over ? "text-danger" : "text-success")}>
+                  {r.mape}% {over && "🔴"}
+                </span>
               );
-            })}
-          </tbody>
-        </table>
-      </div>
+            },
+          },
+          {
+            key: "model",
+            label: "Mô hình",
+            sortable: true,
+            filter: "enum",
+            filterOptions: [
+              { value: "Holt-Winters", label: "Holt-Winters" },
+              { value: "XGBoost", label: "XGBoost" },
+              { value: "HW+XGB", label: "HW+XGB" },
+            ],
+            accessor: (r) => r.model,
+          },
+        ];
+        return (
+          <SmartTable<MonthRow>
+            screenId="fc-vs-actual-monthly"
+            title="Chi tiết theo tháng"
+            exportFilename="fc-vs-actual-monthly"
+            columns={monthCols}
+            data={series}
+            getRowId={(r) => r.month}
+            rowSeverity={(r) => ((r.mape ?? 0) > target ? "watch" : undefined)}
+            emptyMessage="Chưa có dữ liệu tháng."
+          />
+        );
+      })()}
 
-      {/* Per-CN MAPE */}
-      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <div className="px-5 py-3 border-b border-surface-3">
-          <h3 className="font-display text-body font-semibold text-text-1">MAPE theo CN — tháng gần nhất</h3>
-        </div>
-        <table className="w-full text-table-sm">
-          <thead>
-            <tr className="border-b border-surface-3 bg-surface-1/50">
-              {["CN", "Tên", "MAPE", "Mô hình"].map((h, i) => (
-                <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {cnMape.map((r) => (
-              <tr key={r.cn} className="border-b border-surface-3/50 hover:bg-surface-1/30">
-                <td className="px-4 py-2.5 text-table font-medium text-text-1">{r.cn}</td>
-                <td className="px-4 py-2.5 text-table text-text-2">{r.name}</td>
-                <td className="px-4 py-2.5 text-table tabular-nums">
-                  <span className={cn("font-medium", r.mape > target ? "text-danger" : "text-success")}>
-                    {r.mape}% {r.mape > target && "🔴"}
-                  </span>
-                </td>
-                <td className="px-4 py-2.5 text-table text-text-2">{r.model}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Per-CN MAPE — SmartTable */}
+      {(() => {
+        const cnCols: SmartTableColumn<CnMapeRow>[] = [
+          { key: "cn", label: "CN", sortable: true, accessor: (r) => r.cn, priority: "high" },
+          { key: "name", label: "Tên", sortable: true, accessor: (r) => r.name },
+          {
+            key: "mape",
+            label: "MAPE",
+            numeric: true,
+            sortable: true,
+            accessor: (r) => r.mape,
+            render: (r) => (
+              <span className={cn("font-medium tabular-nums", r.mape > target ? "text-danger" : "text-success")}>
+                {r.mape}% {r.mape > target && "🔴"}
+              </span>
+            ),
+          },
+          {
+            key: "model",
+            label: "Mô hình",
+            sortable: true,
+            filter: "enum",
+            filterOptions: [
+              { value: "Holt-Winters", label: "Holt-Winters" },
+              { value: "XGBoost", label: "XGBoost" },
+            ],
+            accessor: (r) => r.model,
+          },
+        ];
+        return (
+          <SmartTable<CnMapeRow>
+            screenId="fc-vs-actual-cn-mape"
+            title="MAPE theo CN — tháng gần nhất"
+            exportFilename="fc-vs-actual-cn-mape"
+            columns={cnCols}
+            data={cnMape}
+            getRowId={(r) => r.cn}
+            rowSeverity={(r) => (r.mape > target ? "watch" : undefined)}
+            emptyMessage="Chưa có dữ liệu CN."
+          />
+        );
+      })()}
     </div>
   );
 }
