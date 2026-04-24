@@ -43,7 +43,7 @@ import {
 } from "@/lib/bpo-tracker";
 import {
   Send, CheckCircle2, Truck, Package, Flag, ClipboardCheck,
-  Phone, AlertTriangle, ChevronDown, ChevronRight,
+  Phone, AlertTriangle, ChevronDown, ChevronRight, ArrowRight,
   Camera, FileText, X, Image, PenLine, ShieldAlert, Layers,
 } from "lucide-react";
 
@@ -786,8 +786,27 @@ const ACTION_CONFIG_FALLBACK = ACTION_CONFIG;
    Expanded drill-down
    ═══════════════════════════════════════════════════════════════════════════ */
 function ExpandedRow({ row }: { row: PoLifecycleRow }) {
+  const navigate = useNavigate();
   // Tra cứu BPO cha (cam kết tháng) — nếu PO này thuộc 1 BPO trong tracker
   const bpoLink = row.kind === "RPO" ? findBpoForPo(row.poNumber) : null;
+
+  const goToCommitment = () => {
+    if (!bpoLink) return;
+    const params = new URLSearchParams({
+      tab: "commitment",
+      nm: bpoLink.tracker.nmId,
+      sku: bpoLink.tracker.skuBaseCode,
+    });
+    navigate(`/hub?${params.toString()}`);
+  };
+
+  // PO này là release thứ mấy (đếm theo thứ tự tuần trong tracker)
+  const releaseIndex = bpoLink
+    ? bpoLink.tracker.weeklyBreakdown
+        .filter(w => w.qty > 0)
+        .findIndex(w => w.poNumber === row.poNumber) + 1
+    : 0;
+
   return (
     <div className="bg-surface-1 border-t border-surface-3 p-4 space-y-4">
       {/* ═══ BPO link (cam kết tháng cha) ═══ */}
@@ -796,24 +815,38 @@ function ExpandedRow({ row }: { row: PoLifecycleRow }) {
           <div className="flex items-start gap-2 mb-2">
             <Layers className="h-4 w-4 text-info shrink-0 mt-0.5" />
             <div className="flex-1 text-table-sm">
-              <div className="text-text-1">
-                <span className="text-text-3">Thuộc cam kết:</span>{" "}
-                <span className="font-medium">{bpoLink.tracker.nmName} {bpoLink.tracker.skuBaseCode}</span>{" "}
-                <span className="text-text-3">T{bpoLink.tracker.month}</span>
-                {" — "}
+              <div className="text-text-1 flex items-center gap-1.5 flex-wrap">
+                <span className="text-text-3">Cam kết gốc:</span>
+                <button
+                  type="button"
+                  onClick={goToCommitment}
+                  className="inline-flex items-center gap-1 rounded border border-info/40 bg-surface-0 hover:bg-info/10 hover:border-info px-1.5 py-0.5 font-medium text-info transition-colors"
+                  title="Mở Hub Cam kết & cuộn tới dòng tương ứng"
+                >
+                  {bpoLink.tracker.nmName} {bpoLink.tracker.skuBaseCode} T{bpoLink.tracker.month}
+                  <ArrowRight className="h-3 w-3" />
+                </button>
+                <span className="text-text-3">—</span>
                 <span className="font-semibold tabular-nums">
                   {bpoLink.tracker.committedQty.toLocaleString()} m²
                 </span>
                 <span className="text-text-3">
-                  {" "}· Đã release{" "}
+                  · Đã release{" "}
                   <span className="font-semibold text-text-1 tabular-nums">
                     {bpoLink.tracker.releasedQty.toLocaleString()}/{bpoLink.tracker.committedQty.toLocaleString()}
                   </span>
                   {" "}({bpoLink.tracker.releasePct}%)
                 </span>
+                {releaseIndex > 0 && (
+                  <span className="text-text-3">
+                    · Release{" "}
+                    <span className="text-text-1 font-semibold">#{releaseIndex}</span>
+                    : {bpoLink.week.qty.toLocaleString()}m²
+                  </span>
+                )}
               </div>
               <div className="text-caption text-text-3 mt-0.5">
-                PO này là release tuần W{bpoLink.week.week}: {bpoLink.week.qty.toLocaleString()}m² ·{" "}
+                PO này release tuần W{bpoLink.week.week} ·{" "}
                 {WEEK_STATUS_META[bpoLink.week.status].emoji} {WEEK_STATUS_META[bpoLink.week.status].label}
                 {bpoLink.tracker.remainingQty > 0 && (
                   <> · Còn chưa đặt: <span className="text-warning font-medium">{bpoLink.tracker.remainingQty.toLocaleString()} m²</span></>
