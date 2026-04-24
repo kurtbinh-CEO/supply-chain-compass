@@ -115,6 +115,28 @@ const REASONS = [
 ] as const;
 type Reason = typeof REASONS[number] | "";
 
+/* ────────────── Actual M-1 (Tháng trước) lookup ──────────────
+ * Quy đổi actual tháng trước → weekly-equivalent (÷ 4 tuần) để so sánh trực tiếp với FC tuần.
+ * PREV_MONTH = 4 (T4) — current period là T5/W20.
+ */
+const PREV_MONTH = 4;
+const PREV_MONTH_LABEL = "T4";
+
+function actualPrevMonthByCnSku(cnCode: string, item: string): number {
+  const monthlyTotal = FC_ACTUAL
+    .filter((r) => r.cnCode === cnCode && r.skuBaseCode === item && r.month === PREV_MONTH)
+    .reduce((s, r) => s + r.actualQtyM2, 0);
+  // Quy đổi sang tuần (÷ 4.3 tuần/tháng, làm tròn)
+  return Math.round(monthlyTotal / 4.3);
+}
+
+function actualPrevMonthByCn(cnCode: string): number {
+  const monthlyTotal = FC_ACTUAL
+    .filter((r) => r.cnCode === cnCode && r.month === PREV_MONTH)
+    .reduce((s, r) => s + r.actualQtyM2, 0);
+  return Math.round(monthlyTotal / 4.3);
+}
+
 /** SKU seeds per CN (~4 SKUs each, scaled by tenant). Pre-filled adjustments
  *  illustrate the 4 demo cases described in spec. */
 const CN_SKUS: Record<string, SkuSeed[]> = {
