@@ -814,7 +814,7 @@ function ExpandedRow({ row }: { row: PoLifecycleRow }) {
               </div>
               <div className="text-caption text-text-3 mt-0.5">
                 PO này là release tuần W{bpoLink.week.week}: {bpoLink.week.qty.toLocaleString()}m² ·{" "}
-                {WEEK_RELEASE_LABEL(bpoLink.week.status)}
+                {WEEK_STATUS_META[bpoLink.week.status].emoji} {WEEK_STATUS_META[bpoLink.week.status].label}
                 {bpoLink.tracker.remainingQty > 0 && (
                   <> · Còn chưa đặt: <span className="text-warning font-medium">{bpoLink.tracker.remainingQty.toLocaleString()} m²</span></>
                 )}
