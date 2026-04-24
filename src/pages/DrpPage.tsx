@@ -1255,6 +1255,54 @@ export default function DrpPage() {
           Click bất kỳ bước nào ở trên để xem chi tiết tính toán.
         </span>
       </div>
+
+      {/* ── VERSION HISTORY PANEL (Sheet 420px slide-from-right) ── */}
+      <VersionHistoryPanel
+        entityType="DRP"
+        entityId="DRP-W20"
+        versions={drpVersions}
+        currentVersion={viewingVersion}
+        activeVersion={activeDrpVersion}
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        onSwitchVersion={(v, eid) => {
+          setViewingVersion(v);
+          setViewingEntityId(eid);
+          setHistoryOpen(false);
+          if (v !== activeDrpVersion || eid !== "DRP-W20") {
+            toast.info(`Đang xem snapshot ${eid} v${v}`, {
+              description: "Mọi thay đổi đã khóa cho đến khi quay về phiên hiện hành.",
+            });
+          }
+        }}
+        onCompare={(v1, v2, eid) => {
+          setViewingEntityId(eid);
+          setViewingVersion(v1);
+          setCompareRightVersion(v2);
+          setCompareMode(true);
+          setHistoryOpen(false);
+        }}
+      />
+
+      {/* ── LOCK / UNLOCK DIALOG ── */}
+      <VersionLockDialog
+        open={lockDialogOpen}
+        onClose={() => setLockDialogOpen(false)}
+        mode={drpLocked ? "unlock" : "lock"}
+        entityLabel="DRP W20"
+        versionNumber={viewingVersion}
+        onConfirm={(reason) => {
+          if (drpLocked) {
+            setDrpLocked(null);
+            toast.success(`Đã mở khóa DRP W20 v${viewingVersion}`, { description: reason || undefined });
+          } else {
+            const now = new Date();
+            const at = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+            setDrpLocked({ by: "Thùy", at, reason });
+            toast.success(`Đã khóa DRP W20 v${viewingVersion}`, { description: `Bởi Thùy lúc ${at}${reason ? ` · ${reason}` : ""}` });
+          }
+        }}
+      />
     </AppLayout>
   );
 }
