@@ -1098,19 +1098,19 @@ export default function DrpPage() {
             <dl className="space-y-2 text-table-sm">
               <div className="flex items-center justify-between">
                 <dt className="text-text-2">Nhu cầu gộp</dt>
-                <dd className="tabular-nums font-semibold text-text-1">{sc(31632).toLocaleString()} m²</dd>
+                <dd className="tabular-nums font-semibold text-text-1">{(31632 * s | 0).toLocaleString()} m²</dd>
               </div>
               <div className="flex items-center justify-between">
                 <dt className="text-text-2">Nhu cầu ròng (sau tồn)</dt>
-                <dd className="tabular-nums font-semibold text-text-1">{sc(27875).toLocaleString()} m²</dd>
+                <dd className="tabular-nums font-semibold text-text-1">{(27875 * s | 0).toLocaleString()} m²</dd>
               </div>
               <div className="flex items-center justify-between">
                 <dt className="text-text-2">LCNB cover</dt>
-                <dd className="tabular-nums font-medium text-warning">{sc(555).toLocaleString()} m²</dd>
+                <dd className="tabular-nums font-medium text-warning">{(555 * s | 0).toLocaleString()} m²</dd>
               </div>
               <div className="flex items-center justify-between">
                 <dt className="text-text-2">Hub cover</dt>
-                <dd className="tabular-nums font-medium text-info">{sc(780).toLocaleString()} m²</dd>
+                <dd className="tabular-nums font-medium text-info">{(780 * s | 0).toLocaleString()} m²</dd>
               </div>
               <div className="flex items-center justify-between">
                 <dt className="text-text-2">NM ATP</dt>
