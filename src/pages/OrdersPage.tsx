@@ -56,6 +56,8 @@ const ACTION_STAGES: LifecycleStage[] = ["approved", "sent_nm", "nm_confirmed", 
 export default function OrdersPage() {
   const { tenant } = useTenant();
   const scale = tenantScales[tenant] || 1;
+  const navigate = useNavigate();
+  const { current: planCycle } = usePlanningPeriod();
 
   // Local mutable copy of seed (so dialogs can advance stages within session).
   const [rows, setRows] = useState<PoLifecycleRow[]>(() =>
