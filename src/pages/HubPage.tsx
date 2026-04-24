@@ -1,9 +1,19 @@
+/**
+ * Hub & Cam kết NM (M6 rewrite)
+ *
+ * 3 tabs:
+ *   1. Cam kết NM   — UNIS Planner gõ cam kết + upload evidence
+ *   2. Hub ảo       — Available recalc theo confirmed (giữ HubOverviewTab)
+ *   3. Đối chiếu    — Reconciliation (giữ nguyên)
+ *
+ * XÓA: Sourcing Workbench (4-step), tab cũ "Đặt hàng NM"
+ */
 import { useState, useEffect } from "react";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { AppLayout } from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/TenantContext";
-import { SourcingWorkbench } from "@/components/hub/SourcingWorkbench";
+import { CommitmentTab } from "@/components/hub/CommitmentTab";
 import { ReconciliationTab } from "@/components/hub/ReconciliationTab";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { HubOverviewTab } from "@/components/hub/HubOverviewTab";
@@ -11,32 +21,32 @@ import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
 
-type Objective = "hybrid" | "lt" | "cost";
-
 // Hub-level mock totals (m²) — derived from S&OP locked + NM commitments
-function getHubTotals(scale: number) {
+function getHubTotals(scale: number, nmConfirmedOverride?: number) {
   const sopLocked = Math.round(7650 * scale);
-  const nmConfirmed = Math.round(7200 * scale); // ~94% honoring
+  const nmConfirmed = nmConfirmedOverride ?? Math.round(7200 * scale); // ~94% honoring
   const released = Math.round(5400 * scale);    // ~75% of confirmed
   const ssHub = Math.round(420 * scale);        // safety stock at hub
-  const available = sopLocked + ssHub - released; // formula: SOP + SS − released
+  // M6: Available formula = Σ(NM confirmed) − Σ(PO released) − SS Hub
+  const available = nmConfirmed - released - ssHub;
   return { sopLocked, nmConfirmed, released, ssHub, available };
 }
 
-
 const tabs = [
-  { key: "overview", label: "Hub ảo Overview" },
-  { key: "sourcing", label: "Sourcing Workbench" },
-  { key: "recon", label: "Đối chiếu" },
+  { key: "commitment", label: "Cam kết NM" },
+  { key: "overview",   label: "Hub ảo" },
+  { key: "recon",      label: "Đối chiếu" },
 ];
 
 export default function HubPage() {
-  const [activeTab, setActiveTab] = useState("overview");
-  const [objective, setObjective] = useState<Objective>("hybrid");
+  const [activeTab, setActiveTab] = useState("commitment");
   const { tenant } = useTenant();
   const { markDone } = useNextStep();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
-  const totals = getHubTotals(scale);
+
+  // M6: Hub Available recalculates when Planner edits commitments
+  const [confirmedM2, setConfirmedM2] = useState<number | undefined>(undefined);
+  const totals = getHubTotals(scale, confirmedM2);
 
   // After 1.5s on the page, mark "hub.reviewed" — banner points to /gap-scenario.
   useEffect(() => {
@@ -47,21 +57,8 @@ export default function HubPage() {
   return (
     <AppLayout>
       <ScreenHeader
-        title="Hub & Sourcing — Tháng 5"
-        subtitle="S&OP locked: 7.650m² · Day 8/30"
-        actions={
-          activeTab === "sourcing" ? (
-            <select
-              value={objective}
-              onChange={(e) => setObjective(e.target.value as Objective)}
-              className="rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-table-sm text-text-1 outline-none"
-            >
-              <option value="hybrid">Weighted Hybrid</option>
-              <option value="lt">Shortest LT</option>
-              <option value="cost">Lowest Cost</option>
-            </select>
-          ) : undefined
-        }
+        title="Hub & Cam kết NM — Tháng 5/2026"
+        subtitle="S&OP locked v4 · Ngày 8/30 · Planner gõ cam kết NM trực tiếp"
       />
 
       {/* Hub KPI strip — clickable totals */}
@@ -72,7 +69,7 @@ export default function HubPage() {
             value={`${totals.available.toLocaleString()} m²`}
             label="Hub Available"
             color={cn("font-display text-section-header", totals.available < 0 ? "text-danger" : "text-success")}
-            formula={`Available = SOP locked + SS Hub − Released\n= ${totals.sopLocked.toLocaleString()} + ${totals.ssHub.toLocaleString()} − ${totals.released.toLocaleString()}\n= ${totals.available.toLocaleString()} m²`}
+            formula={`Available = Σ NM Confirmed − Σ Released − SS Hub\n= ${totals.nmConfirmed.toLocaleString()} − ${totals.released.toLocaleString()} − ${totals.ssHub.toLocaleString()}\n= ${totals.available.toLocaleString()} m²`}
             note="Available = số m² còn có thể release từ Hub mà không vi phạm SS"
           />
         </div>
@@ -82,8 +79,8 @@ export default function HubPage() {
             value={`${totals.nmConfirmed.toLocaleString()} m²`}
             label="Σ NM đã confirm"
             color="text-text-1 font-display text-section-header"
-            formula={`Σ NM Confirmed = Σ commit_response.committedM2 (status=confirmed)\nHonoring = ${((totals.nmConfirmed / totals.sopLocked) * 100).toFixed(1)}% vs SOP locked`}
-            note="Cam kết của các NM cho tháng — so với SOP locked để tính honoring"
+            formula={`Σ NM Confirmed = Σ commitments.committed (status ∈ {confirmed, counter})\nHonoring = ${((totals.nmConfirmed / totals.sopLocked) * 100).toFixed(1)}% vs SOP locked`}
+            note="Cam kết của các NM (Planner gõ ở tab 1) — so với SOP locked để tính honoring"
           />
         </div>
         <div className="flex flex-col">
@@ -126,22 +123,18 @@ export default function HubPage() {
         ))}
       </div>
 
+      <div data-tour="hub-commitment">
+        {activeTab === "commitment" && (
+          <CommitmentTab scale={scale} onTotalsChange={setConfirmedM2} />
+        )}
+      </div>
       <div data-tour="hub-overview">
         {activeTab === "overview" && <HubOverviewTab scale={scale} totals={totals} />}
-      </div>
-      <div data-tour="hub-sourcing">
-        {activeTab === "sourcing" && (
-          <SourcingWorkbench
-            scale={scale}
-            objective={objective}
-            onObjectiveChange={setObjective}
-          />
-        )}
       </div>
       <div data-tour="hub-recon">
         {activeTab === "recon" && <ReconciliationTab scale={scale} />}
       </div>
-      {activeTab !== "overview" && (
+      {activeTab !== "commitment" && (
         <div className="mt-6">
           <ChangeLogPanel entityType="hub_stock" maxItems={6} />
         </div>
