@@ -1454,12 +1454,20 @@ export default function MasterDataPage() {
   const { conflict: mdConflict, clearConflict: clearMdConflict } = useVersionConflict();
   const [activeTab, setActiveTab] = useState("items");
   const [importerOpen, setImporterOpen] = useState<null | "price" | "freight">(null);
+  const [auditOpen, setAuditOpen] = useState(false);
 
   const importerLabel: Record<string, { title: string; sources: DataSource[] }> = {
     price: { title: "Nhập bảng giá NM", sources: PRICE_SOURCES },
     freight: { title: "Nhập cước vận chuyển", sources: FREIGHT_SOURCES },
   };
   const current = importerOpen ? importerLabel[importerOpen] : null;
+
+  // Map active tab → audit entity filter
+  const auditEntity = activeTab === "items" ? "item"
+    : activeTab === "suppliers" ? "factory"
+    : activeTab === "branches" ? "branch"
+    : activeTab === "containers" ? "container"
+    : undefined;
 
   return (
     <AppLayout>
@@ -1488,6 +1496,12 @@ export default function MasterDataPage() {
         />
       )}
 
+      <MasterAuditPanel
+        open={auditOpen}
+        onOpenChange={setAuditOpen}
+        entity={auditEntity}
+      />
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex items-center justify-between mb-4 gap-3">
           <TabsList className="bg-surface-1 border border-surface-3 flex flex-wrap h-auto">
@@ -1502,18 +1516,30 @@ export default function MasterDataPage() {
             ))}
           </TabsList>
 
-          {activeTab === "pricelists" && (
-            <Button size="sm" onClick={() => setImporterOpen("price")} className="h-8 gap-1.5 shrink-0">
-              <Inbox className="h-3.5 w-3.5" />
-              Nhập bảng giá
+          <div className="flex items-center gap-2 shrink-0">
+            {activeTab === "pricelists" && (
+              <Button size="sm" onClick={() => setImporterOpen("price")} className="h-8 gap-1.5">
+                <Inbox className="h-3.5 w-3.5" />
+                Nhập bảng giá
+              </Button>
+            )}
+            {activeTab === "routes" && (
+              <Button size="sm" onClick={() => setImporterOpen("freight")} className="h-8 gap-1.5">
+                <Inbox className="h-3.5 w-3.5" />
+                Nhập cước
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setAuditOpen(true)}
+              className="h-8 gap-1.5"
+              title={auditEntity ? `Lịch sử thay đổi tab này` : "Lịch sử thay đổi Master Data"}
+            >
+              <History className="h-3.5 w-3.5" />
+              Lịch sử
             </Button>
-          )}
-          {activeTab === "routes" && (
-            <Button size="sm" onClick={() => setImporterOpen("freight")} className="h-8 gap-1.5 shrink-0">
-              <Inbox className="h-3.5 w-3.5" />
-              Nhập cước
-            </Button>
-          )}
+          </div>
         </div>
 
         <TabsContent value="items"><ItemsTab /></TabsContent>
