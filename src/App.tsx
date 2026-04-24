@@ -32,6 +32,7 @@ import SopPage from "./pages/SopPage";
 import HubPage from "./pages/HubPage";
 import GapScenarioPage from "./pages/GapScenarioPage";
 import DemoScenariosPage from "./pages/DemoScenariosPage";
+import ComparePage from "./pages/ComparePage";
 // M2 — /inventory page (đã đổi tên SupplyPage → InventoryPage)
 import InventoryPage from "./pages/InventoryPage";
 import DemandWeeklyPage from "./pages/DemandWeeklyPage";
@@ -108,6 +109,7 @@ function ProtectedRoutes() {
           <Route path="/hub" element={<HubPage />} />
           <Route path="/gap-scenario" element={<GapScenarioPage />} />
           <Route path="/scenarios" element={<DemoScenariosPage />} />
+          <Route path="/compare" element={<ComparePage />} />
           {/* M2 — /inventory là route chính cho tồn kho NM+CN (2 tabs) */}
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/supply" element={<Navigate to="/inventory" replace />} />

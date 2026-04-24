@@ -4,7 +4,7 @@ import {
   Package, CalendarDays, GitBranch,
   Truck, Database, FileBarChart, Settings,
   ChevronLeft, Play, BookOpen, Building, GraduationCap, LayoutDashboard,
-  AlertTriangle, RefreshCw, Crown, FlaskConical,
+  AlertTriangle, RefreshCw, Crown, FlaskConical, GitCompare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/components/SidebarContext";
@@ -113,6 +113,7 @@ const navGroups: NavGroup[] = [
       { kind: "item", titleKey: "nav.logicOps", icon: BookOpen, url: "/logic" },
       { kind: "item", titleKey: "nav.guide", icon: GraduationCap, url: "/guide" },
       { kind: "item", titleKey: "nav.scenarios", icon: FlaskConical, url: "/scenarios" },
+      { kind: "item", titleKey: "nav.compare", icon: GitCompare, url: "/compare" },
     ],
   },
 ];
