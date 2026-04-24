@@ -218,66 +218,72 @@ export function TopBar() {
   ];
 
   return (
-    <header className="sticky top-0 z-30 flex h-12 items-center border-b border-surface-3 bg-surface-2/80 backdrop-blur-md px-5 gap-3">
-      {/* Tenant selector */}
+    <header className="sticky top-0 z-30 flex h-14 items-center border-b border-surface-3 bg-surface-2/85 backdrop-blur-xl px-4 gap-2.5">
+      {/* ─── LEFT: Tenant + Freshness + Breadcrumb ─── */}
       <TenantDropdown tenant={tenant} setTenant={setTenant} tenants={tenants} />
 
-      {/* Freshness indicator (P26) */}
       <FreshnessIndicator />
 
-      {/* Divider */}
-      <div className="h-5 w-px bg-surface-3" />
+      <div className="h-6 w-px bg-surface-3 shrink-0 mx-0.5" />
 
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-table-sm">
-        <span className="text-text-3">SCP</span>
+      {/* Breadcrumb — never wrap, truncate on overflow */}
+      <nav className="flex items-center gap-1.5 text-table-sm min-w-0 overflow-hidden">
+        <span className="text-text-3 font-medium shrink-0">SCP</span>
         {groupName && (
           <>
-            <ChevronRight className="h-3 w-3 text-text-3/50" />
-            <span className="text-text-3">{groupName}</span>
+            <ChevronRight className="h-3 w-3 text-text-3/40 shrink-0" />
+            <span className="text-text-3 truncate hidden sm:inline">{groupName}</span>
           </>
         )}
-        <ChevronRight className="h-3 w-3 text-text-3/50" />
-        <span className="text-text-1 font-semibold">{pageName}</span>
+        <ChevronRight className="h-3 w-3 text-text-3/40 shrink-0" />
+        <span className="text-text-1 font-semibold truncate">{pageName}</span>
       </nav>
 
-      <div className="flex-1" />
+      <div className="flex-1 min-w-2" />
 
-      {/* Search */}
+      {/* ─── RIGHT: Search + Controls + User ─── */}
+
+      {/* Search — primary action, always visible */}
       <button
         onClick={openPalette}
-        className="flex items-center gap-2 rounded-lg border border-surface-3 bg-surface-0 px-3 py-1.5 text-table-sm text-text-3 hover:border-primary/40 transition-all hover:shadow-sm"
+        className="flex shrink-0 items-center gap-2 rounded-lg border border-surface-3 bg-surface-0 px-3 h-8 text-table-sm text-text-3 hover:border-primary/40 hover:bg-surface-1 transition-all"
         title="Command palette (⌘K)"
       >
         <Search className="h-3.5 w-3.5" />
         <span className="hidden xl:inline">{t("search.placeholder")}</span>
-        <kbd className="ml-3 rounded bg-surface-3/50 px-1.5 py-0.5 text-caption font-mono text-text-3">⌘K</kbd>
+        <kbd className="hidden xl:inline ml-2 rounded bg-surface-3/60 px-1.5 py-0.5 text-[10px] font-mono text-text-3 border border-surface-3">⌘K</kbd>
       </button>
 
-      {/* Language toggle */}
-      <button
-        onClick={() => setLocale(locale === "vi" ? "en" : "vi")}
-        className="flex items-center gap-1 rounded-lg border border-surface-3 px-2 py-1.5 text-caption font-semibold text-text-2 hover:border-primary/40 transition-all uppercase tracking-wide"
-        title={locale === "vi" ? "Switch to English" : "Chuyển sang Tiếng Việt"}
-      >
-        <Globe className="h-3.5 w-3.5 text-text-3" />
-        {locale}
-      </button>
+      {/* Compact icon group: Lang + Zoom + Theme — unified card */}
+      <div className="flex shrink-0 items-center h-8 rounded-lg border border-surface-3 bg-surface-0 px-1 gap-0.5">
+        {/* Language */}
+        <button
+          onClick={() => setLocale(locale === "vi" ? "en" : "vi")}
+          className="flex items-center gap-1 rounded-md px-2 h-6 text-[11px] font-bold text-text-2 hover:bg-surface-2 transition-colors uppercase"
+          title={locale === "vi" ? "Switch to English" : "Chuyển sang Tiếng Việt"}
+        >
+          <Globe className="h-3 w-3 text-text-3" />
+          {locale}
+        </button>
 
-      {/* Zoom controls (R14) */}
-      <ZoomControls />
+        <div className="h-4 w-px bg-surface-3" />
 
-      {/* Theme toggle */}
-      <div className="flex items-center rounded-lg border border-surface-3 p-0.5 gap-0.5">
+        {/* Zoom */}
+        <ZoomControls />
+
+        <div className="h-4 w-px bg-surface-3" />
+
+        {/* Theme — 3 modes */}
         {themeOptions.map((opt) => (
           <button
             key={opt.value}
             onClick={() => setTheme(opt.value)}
-            className={`rounded-md p-1.5 transition-all ${
+            className={cn(
+              "rounded-md p-1.5 transition-all",
               theme === opt.value
                 ? "bg-primary text-white shadow-sm"
-                : "text-text-3 hover:text-text-1"
-            }`}
+                : "text-text-3 hover:text-text-1 hover:bg-surface-2"
+            )}
             title={opt.label}
           >
             <opt.icon className="h-3 w-3" />
@@ -285,35 +291,42 @@ export function TopBar() {
         ))}
       </div>
 
-      {/* Bell */}
-      <button className="relative rounded-lg p-2 hover:bg-surface-3 transition-colors">
+      {/* Bell — standalone */}
+      <button
+        className="relative shrink-0 rounded-lg h-8 w-8 flex items-center justify-center border border-transparent hover:border-surface-3 hover:bg-surface-0 transition-all"
+        title="Thông báo"
+      >
         <Bell className="h-4 w-4 text-text-2" />
         <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-danger ring-2 ring-surface-2" />
       </button>
 
-      {/* Role + Avatar + Sign out */}
-      <div className="flex items-center gap-2 pl-1 border-l border-surface-3 ml-1">
-        <div className="flex flex-col items-end">
-          <span className="text-table-sm font-medium text-text-1 leading-tight">{profile?.display_name || "Người dùng"}</span>
-          <span className="text-caption text-primary font-medium leading-tight">{t("role.planner")}</span>
-        </div>
+      {/* User cluster — divider + avatar + name + signout */}
+      <div className="flex shrink-0 items-center gap-2 pl-2.5 border-l border-surface-3 ml-0.5 h-8">
         <button
           onClick={() => navigate("/profile")}
-          className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-caption font-bold text-white shadow-sm hover:opacity-80 transition-opacity cursor-pointer"
+          className="flex items-center gap-2.5 rounded-lg pr-2 hover:bg-surface-0 transition-colors"
           title="Hồ sơ cá nhân"
         >
-          {profile?.avatar_url ? (
-            <img src={profile.avatar_url} alt="Avatar" className="h-8 w-8 rounded-lg object-cover" />
-          ) : (
-            (profile?.display_name || "U").slice(0, 2).toUpperCase()
-          )}
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-[11px] font-bold text-white shadow-sm overflow-hidden">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="Avatar" className="h-8 w-8 object-cover" />
+            ) : (
+              (profile?.display_name || "U").slice(0, 2).toUpperCase()
+            )}
+          </div>
+          <div className="hidden md:flex flex-col items-start leading-tight">
+            <span className="text-[12px] font-semibold text-text-1 max-w-[100px] truncate">
+              {profile?.display_name || "Người dùng"}
+            </span>
+            <span className="text-[10px] text-primary font-medium">{t("role.planner")}</span>
+          </div>
         </button>
         <button
           onClick={signOut}
-          className="rounded-lg p-1.5 hover:bg-surface-3 transition-colors text-text-3 hover:text-danger"
+          className="rounded-lg h-8 w-8 flex items-center justify-center hover:bg-danger/10 transition-colors text-text-3 hover:text-danger"
           title="Đăng xuất"
         >
-          <LogOut className="h-4 w-4" />
+          <LogOut className="h-3.5 w-3.5" />
         </button>
       </div>
     </header>
