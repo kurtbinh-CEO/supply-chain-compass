@@ -841,7 +841,7 @@ export const SYSTEM_ACCURACY: SystemAccuracyRow = {
 export type ConfigGroup =
   | "Demand" | "Supply" | "DRP" | "LCNB" | "Hub" | "S&OP"
   | "Transport" | "Inventory" | "Feedback" | "Workflow"
-  | "RBAC" | "Tenant" | "Notification" | "Audit";
+  | "RBAC" | "Tenant" | "Notification" | "Audit" | "Scenario";
 
 export interface ConfigKey {
   key: string;
