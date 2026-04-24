@@ -771,6 +771,8 @@ function ScManagerTab({
 
   return (
     <div className="space-y-4">
+      <SummaryCards screenId="demand-weekly-sc" cards={scSummary} />
+
       {/* Summary banner */}
       <div className="rounded-card border border-surface-3 bg-surface-1 px-4 py-3 flex flex-wrap items-center gap-3">
         <Lock className="h-4 w-4 text-text-3 shrink-0" />
