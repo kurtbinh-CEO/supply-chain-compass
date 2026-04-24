@@ -70,6 +70,7 @@ export function PivotChildTable({
 }: PivotChildTableProps) {
   const navigate = useNavigate();
   const [skuSheet, setSkuSheet] = useState<string | null>(null);
+  const [entitySheet, setEntitySheet] = useState<{ kind: EntityKind; code: string } | null>(null);
   const hasSs = rows.length > 0 && rows.every((r) => typeof r.ssTarget === "number" && r.ssTarget! > 0);
   const showSs = showSoSs ?? hasSs;
 
