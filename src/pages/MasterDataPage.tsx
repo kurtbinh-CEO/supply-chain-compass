@@ -303,6 +303,19 @@ const SUPPLIER_FIELDS: FormField[] = [
   { key: "priceTier2",      label: "Giá tier 2 (VND)", type: "number", span: 1 },
 ];
 
+const SUPPLIER_IMPORT_FIELDS: ImportField[] = [
+  { key: "code",            label: "Mã NM", required: true, aliases: ["ma", "code", "factory_code"] },
+  { key: "name",            label: "Tên nhà máy", required: true, aliases: ["ten", "name", "factory_name"] },
+  { key: "region",          label: "Vùng", required: true, type: "select", options: ["Bắc", "Trung", "Nam"], aliases: ["vung", "region", "area"] },
+  { key: "ltDays",          label: "LT (ngày)", required: true, type: "number", aliases: ["lt", "lead_time", "lt_ngay"] },
+  { key: "sigmaLt",         label: "σ_LT", type: "number", aliases: ["sigma", "sigma_lt"] },
+  { key: "moqM2",           label: "MOQ (m²)", type: "number", aliases: ["moq"] },
+  { key: "capacityM2Month", label: "Capacity / tháng", type: "number", aliases: ["capacity", "cap_thang"] },
+  { key: "honoringPct",     label: "Honoring %", type: "number", aliases: ["honoring"] },
+  { key: "priceTier1",      label: "Giá tier 1", type: "number", aliases: ["gia_tier1", "price_tier1"] },
+  { key: "priceTier2",      label: "Giá tier 2", type: "number", aliases: ["gia_tier2", "price_tier2"] },
+];
+
 function SuppliersTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
