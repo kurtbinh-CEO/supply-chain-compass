@@ -441,7 +441,7 @@ export default function ConfigPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-surface-1 border border-surface-3 mb-4 flex-wrap h-auto">
           {TABS.map((t) => {
-            const isMeta = t.v === "integration" || t.v === "kpi_targets";
+            const isMeta = t.v === "integration" || t.v === "kpi_targets" || t.v === "aop";
             return (
               <TabsTrigger
                 key={t.v}
