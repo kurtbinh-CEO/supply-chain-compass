@@ -18,6 +18,8 @@ import {
   COMMITMENT_GAPS,
   FACTORIES,
   NM_COMMITMENTS,
+  HONORING_BY_NM,
+  CONFIG_KEYS,
   getEffectivePrice,
   type CommitmentGapRow,
   type Factory,
@@ -26,6 +28,7 @@ import {
 } from "@/data/unis-enterprise-dataset";
 import { Button } from "@/components/ui/button";
 import { TermTooltip } from "@/components/TermTooltip";
+import { ClickableNumber } from "@/components/ClickableNumber";
 
 // Map mỗi NM → SKU base chính (dùng để tra giá thực)
 const NM_TOP_SKU: Record<NmId, string> = {
@@ -151,6 +154,7 @@ interface Scenario {
   recommended: boolean;
   needsCeoApproval?: boolean;
   priceInfo?: ScenarioPriceInfo;       // common to A/B/D
+  aiRationale?: string;                // M9: AI explanation
 }
 
 function buildScenarios(row: GapRow): Scenario[] {
@@ -168,6 +172,10 @@ function buildScenarios(row: GapRow): Scenario[] {
   const nextBreakPrice = eff
     ? eff.allBreaks.find((b) => b.fromQty > eff.matchedBreak.fromQty)?.pricePerM2 ?? Math.round(basePrice * 1.15)
     : row.nm.priceTier2;
+
+  // Config keys (M9): negotiation cost + hybrid split %
+  const negoPerM2 = (CONFIG_KEYS.find((c) => c.key === "scenario.negotiation_cost_per_m2")?.defaultValue as number) ?? 9500;
+  const hybridPct = ((CONFIG_KEYS.find((c) => c.key === "scenario.hybrid_split_pct")?.defaultValue as number) ?? 50) / 100;
 
   // Format phụ phí text (cho card display)
   const surchargeText = eff && eff.surcharges.length > 0
@@ -194,10 +202,22 @@ function buildScenarios(row: GapRow): Scenario[] {
   // ─── Chi phí từng kịch bản ─────────────────────────────────────
   const costA = gapQty * totalPrice;                                  // dùng totalPrice (gồm phụ phí)
   const costB = committed * (nextBreakPrice - basePrice);             // chênh giữa break hiện tại & break tiếp
-  const costC = Math.max(5_000_000, Math.round(gapQty * 9_500));      // negotiation overhead
-  const costD = Math.round(costA * 0.5 + costC * 0.5);
+  const costC = Math.max(5_000_000, Math.round(gapQty * negoPerM2));  // negotiation overhead theo config
+  const costD = Math.round(costA * hybridPct + costC * (1 - hybridPct));
 
-  const recommendC = row.relationshipPct >= 80 && !row.stale;
+  // ─── AI rule nâng cấp (3 yếu tố thay 1) ────────────────────────
+  // Quan hệ tổng = honoring × 0.6 + ontime × 0.4
+  const honoring = HONORING_BY_NM.find((h) => h.nmId === row.nm.id);
+  const relationship = honoring
+    ? Math.round(honoring.honoringPct * 0.6 + honoring.ontimePct * 0.4)
+    : row.relationshipPct;
+  // Counter rate proxy: NM nào không có cam kết Hard → coi như hay counter
+  const counterRate = row.gapPct >= 15 ? 0.6 : 0.2;
+  const recommendC = relationship >= 75 && !row.stale && counterRate < 0.5;
+
+  const aiRationale = recommendC
+    ? `✨ AI khuyến nghị C vì NM ${row.nm.name} quan hệ ${relationship}% (honoring ${honoring?.honoringPct ?? "—"}% + ontime ${honoring?.ontimePct ?? "—"}%), ít counter (${Math.round(counterRate * 100)}%).`
+    : `✨ AI khuyến nghị D vì NM ${row.nm.name} cần phương án dự phòng (quan hệ ${relationship}%${row.stale ? ", dữ liệu cũ" : ""}, counter ${Math.round(counterRate * 100)}%).`;
 
   const formulaA = surchargeText
     ? `${gapQty.toLocaleString("vi-VN")} × ${totalPrice.toLocaleString("vi-VN")}₫ (gốc ${basePrice.toLocaleString("vi-VN")} + phụ phí ${surchargeAmount.toLocaleString("vi-VN")})`
@@ -215,6 +235,7 @@ function buildScenarios(row: GapRow): Scenario[] {
       cons: ["Tốn vốn lớn", "Rủi ro slow-mover"],
       recommended: false,
       priceInfo,
+      aiRationale,
     },
     {
       key: "B",
@@ -227,30 +248,33 @@ function buildScenarios(row: GapRow): Scenario[] {
       cons: ["Áp ngược toàn bộ committed", "Mất lợi thế giá break thấp"],
       recommended: false,
       priceInfo,
+      aiRationale,
     },
     {
       key: "C",
       title: "Đàm phán chuyển kỳ",
       subtitle: `Dời gap sang tháng kế, giữ ${eff?.breakLabel ?? "giá hiện tại"}`,
       cost: costC,
-      costFormula: "Chi phí xử lý + bù pipeline (~10 triệu ₫)",
+      costFormula: `Gap ${gapQty.toLocaleString("vi-VN")} × ${negoPerM2.toLocaleString("vi-VN")}₫ (config scenario.negotiation_cost_per_m2)`,
       risk: "NM phải đồng ý — phụ thuộc relationship",
       pros: ["Tiết kiệm vốn nhất", "Giữ giá thỏa thuận"],
       cons: ["Cần NM chấp thuận", "Có thể trễ DRP tuần"],
       recommended: recommendC,
       priceInfo,
+      aiRationale,
     },
     {
       key: "D",
-      title: "Kết hợp 50 / 50",
-      subtitle: "Nửa mua bù, nửa đàm phán dời",
+      title: `Kết hợp ${Math.round(hybridPct * 100)} / ${Math.round((1 - hybridPct) * 100)}`,
+      subtitle: `${Math.round(hybridPct * 100)}% mua bù, ${Math.round((1 - hybridPct) * 100)}% đàm phán dời`,
       cost: costD,
-      costFormula: `50% × A + 50% × C`,
+      costFormula: `${Math.round(hybridPct * 100)}% × A + ${Math.round((1 - hybridPct) * 100)}% × C (config scenario.hybrid_split_pct)`,
       risk: "Phức tạp logistics, cần 2 luồng phê duyệt",
       pros: ["Cân bằng rủi ro", "Linh hoạt theo NM"],
       cons: ["Quản lý 2 lệnh song song"],
       recommended: !recommendC,
       priceInfo,
+      aiRationale,
     },
   ];
 }
@@ -480,9 +504,16 @@ function ScenarioCard({
         <p className="text-caption text-text-3 uppercase tracking-wider">
           Chi phí ước tính
         </p>
-        <p className="font-display text-h2 font-bold text-text-1 mt-0.5 tabular-nums">
-          {fmtVnd(scenario.cost)}
-        </p>
+        <ClickableNumber
+          value={fmtVnd(scenario.cost)}
+          label={`Kịch bản ${scenario.key} — Chi phí ước tính`}
+          color="font-display text-h2 font-bold text-text-1 mt-0.5 tabular-nums"
+          breakdown={[
+            { label: "Công thức", value: scenario.costFormula },
+            ...(scenario.priceInfo?.surchargeText ? [{ label: "Phụ phí", value: scenario.priceInfo.surchargeText }] : []),
+          ]}
+          note={scenario.aiRationale ?? scenario.costFormula}
+        />
         <p className="text-caption text-text-3 mt-0.5">{scenario.costFormula}</p>
         {/* Phụ phí breakdown */}
         {scenario.priceInfo?.surchargeText && (scenario.key === "A" || scenario.key === "D") && (
@@ -492,6 +523,13 @@ function ScenarioCard({
           </p>
         )}
       </div>
+
+      {/* AI rationale (M9 — explanation tiếng Việt) */}
+      {scenario.recommended && scenario.aiRationale && (
+        <div className="rounded-button bg-primary/5 border border-primary/20 px-3 py-2 text-caption text-text-1 leading-relaxed">
+          {scenario.aiRationale}
+        </div>
+      )}
 
       <div className="space-y-2">
         <div>

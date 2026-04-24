@@ -22,6 +22,8 @@ import {
   AlertTriangle,
   Eye,
   RefreshCw,
+  Package,
+  MapPin,
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
@@ -261,7 +263,12 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
         capacity:    <span className="tabular-nums font-semibold">{totals.c.toLocaleString("vi-VN")}</span>,
         utilizationPct: <span className="tabular-nums font-semibold">{totals.pct}%</span>,
       }}
-      emptyMessage="Chưa có dữ liệu nhà máy."
+      emptyState={{
+        icon: <Package />,
+        title: "Chưa có dữ liệu nhà máy",
+        description: "Upload tồn kho NM hoặc chờ Bravo sync.",
+        action: { label: "Upload tồn kho →", onClick: () => document.getElementById("inventory-upload-zone")?.scrollIntoView({ behavior: "smooth" }) },
+      }}
     />
   );
 }
@@ -453,7 +460,12 @@ function BranchesTab({ rows }: { rows: BranchRow[] }) {
         totalOnHand: <span className="tabular-nums font-semibold">{totals.t.toLocaleString("vi-VN")}</span>,
         hstk: <span className="tabular-nums font-semibold">{totals.avg.toFixed(1)}d avg</span>,
       }}
-      emptyMessage="Chưa có dữ liệu chi nhánh."
+      emptyState={{
+        icon: <MapPin />,
+        title: "Chưa có dữ liệu chi nhánh",
+        description: "Cấu hình Bravo sync hoặc upload CSV.",
+        action: { label: "Tải template CN →", onClick: () => document.getElementById("inventory-upload-zone")?.scrollIntoView({ behavior: "smooth" }) },
+      }}
     />
   );
 }
@@ -499,7 +511,7 @@ function UploadZone() {
   };
 
   return (
-    <section className="space-y-3">
+    <section id="inventory-upload-zone" className="space-y-3 scroll-mt-24">
       <h3 className="text-section-header font-semibold text-text-1">Cập nhật tồn kho</h3>
       <div
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}

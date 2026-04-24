@@ -37,6 +37,7 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -86,6 +87,13 @@ export interface SmartTableColumn<T = any> {
   numeric?: boolean;
 }
 
+export interface SmartTableEmptyState {
+  icon?: React.ReactNode;
+  title: string;
+  description?: string;
+  action?: { label: string; route?: string; onClick?: () => void };
+}
+
 export interface SmartTableProps<T = any> {
   columns: SmartTableColumn<T>[];
   data: T[];
@@ -94,6 +102,10 @@ export interface SmartTableProps<T = any> {
   autoExpandWhen?: (row: T) => boolean;
   onRowClick?: (row: T) => void;
   emptyMessage?: string;
+  /** Trạng thái loading — hiện shimmer rows */
+  isLoading?: boolean;
+  /** Empty state khi data.length === 0 && !isLoading */
+  emptyState?: SmartTableEmptyState;
   /** ID duy nhất cho screen — dùng cho localStorage persist */
   screenId: string;
   /** Hàm tính severity cho row (gắn data-severity) */
@@ -262,6 +274,8 @@ export function SmartTable<T = any>({
   autoExpandWhen,
   onRowClick,
   emptyMessage = "Không có dữ liệu",
+  isLoading = false,
+  emptyState,
   screenId,
   rowSeverity,
   getRowId,
@@ -271,6 +285,7 @@ export function SmartTable<T = any>({
   className,
 }: SmartTableProps<T>) {
   const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   // ----- Storage keys -----
   const kDensity = `scp-table-${screenId}-density`;
@@ -785,7 +800,57 @@ export function SmartTable<T = any>({
           </thead>
 
           <tbody>
-            {processedData.length === 0 && (
+            {isLoading && (
+              Array.from({ length: 5 }).map((_, rowIdx) => (
+                <tr key={`shimmer-${rowIdx}`} className={cn("border-b border-border/60", ds.rowH)}>
+                  {drillDown && <td className={cn("w-7", ds.cellPad)} />}
+                  {cols.map((c, colIdx) => {
+                    const widthPct = 40 + ((rowIdx * 7 + colIdx * 13) % 41); // 40-80%
+                    return (
+                      <td key={c.key} className={cn("align-middle", ds.cellPad)}>
+                        <div
+                          className="h-3.5 rounded-sm bg-gradient-to-r from-muted via-muted/40 to-muted animate-pulse"
+                          style={{ width: `${widthPct}%`, backgroundSize: "200% 100%" }}
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))
+            )}
+
+            {!isLoading && processedData.length === 0 && emptyState && (
+              <tr>
+                <td colSpan={cols.length + (drillDown ? 1 : 0)} className="p-12 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    {emptyState.icon && (
+                      <div className="opacity-30 [&>svg]:h-12 [&>svg]:w-12">{emptyState.icon}</div>
+                    )}
+                    <p className="text-[15px] font-medium text-foreground">{emptyState.title}</p>
+                    {emptyState.description && (
+                      <p className="text-[13px] text-muted-foreground max-w-md">{emptyState.description}</p>
+                    )}
+                    {emptyState.action && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => {
+                          if (emptyState.action?.onClick) emptyState.action.onClick();
+                          else if (emptyState.action?.route && !emptyState.action.route.startsWith("#")) {
+                            navigate(emptyState.action.route);
+                          }
+                        }}
+                      >
+                        {emptyState.action.label}
+                      </Button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )}
+
+            {!isLoading && processedData.length === 0 && !emptyState && (
               <tr>
                 <td
                   colSpan={cols.length + (drillDown ? 1 : 0)}
@@ -796,7 +861,7 @@ export function SmartTable<T = any>({
               </tr>
             )}
 
-            {processedData.map((row, idx) => {
+            {!isLoading && processedData.map((row, idx) => {
               const id = rowIdOf(row, idx);
               const isOpen = expanded.has(id);
               const sev = rowSeverity?.(row);
