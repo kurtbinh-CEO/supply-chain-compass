@@ -519,6 +519,43 @@ export default function DrpPage() {
   const [batchDbId, setBatchDbId] = useState<string | null>(null);
   const isPlanLocked = batchStatus === "approved" || batchStatus === "released";
 
+  /* ══ 3-STEP WIZARD: Preflight (1) → Progress (2) → Results (3) ══ */
+  // Mặc định mở thẳng "Kết quả" (DRP đêm qua đã chạy thành công).
+  const [wizardStep, setWizardStep] = useState<DrpStep>(3);
+  const [wizardCompleted, setWizardCompleted] = useState<DrpStep[]>([1, 2]);
+  const [progressIdx, setProgressIdx] = useState(0);
+  const [progressElapsed, setProgressElapsed] = useState(0);
+  const [progressCanCancel, setProgressCanCancel] = useState(true);
+  const [approveExceptionDialog, setApproveExceptionDialog] = useState(false);
+
+  // Preflight items — mock theo PRD D1 rules
+  const preflightItems: PreflightItem[] = useMemo(() => [
+    { key: "nm-stock", label: "Tồn kho NM", result: "5/5 NM cập nhật < 24h", level: "ok" },
+    { key: "cn-stock", label: "Tồn kho CN", result: "12/12 CN sync 06:00", level: "ok" },
+    { key: "cn-adj", label: "CN điều chỉnh", result: "4/12 CN adjust · Đã duyệt", level: "ok" },
+    { key: "sop", label: "S&OP locked", result: "v4 · Locked 16/04", level: "ok" },
+    { key: "nm-commit", label: "NM cam kết", result: "15/25 SKU (60%)", level: "warn",
+      detail: "Mục tiêu ≥ 80%. DRP vẫn chạy nhưng kết quả có thể thiếu chính xác cho NM chưa cam kết.",
+      fixHref: "/hub", fixLabel: "Mở Hub & Cam kết" },
+    { key: "pricelist", label: "Bảng giá NM", result: "5/5 NM hiệu lực", level: "ok" },
+  ], []);
+
+  // 10 progress steps cho Bước 2
+  const progressSteps: ProgressStep[] = useMemo(() => [
+    { id: 1, label: "Nạp nhu cầu", result: "31.632 m² (12 CN, 42 SKU)" },
+    { id: 2, label: "Trừ tồn kho CN", result: "−3.200 m² → 28.432 m²" },
+    { id: 3, label: "Trừ đang về", result: "−1.757 m² → 26.675 m²" },
+    { id: 4, label: "Cộng tồn an toàn", result: "+1.200 m² → 27.875 m²" },
+    { id: 5, label: "Phân bổ LCNB", result: "4 TO · 555 m²" },
+    { id: 6, label: "Hub Pool", result: "780 m²" },
+    { id: 7, label: "Variant split", result: "1 cảnh báo MOQ" },
+    { id: 8, label: "Đóng container", result: "8 chuyến · 1 giữ" },
+    { id: 9, label: "Kiểm tồn NM (ATP)", result: "4/5 PASS" },
+    { id: 10, label: "Tạo PO/TO nháp", result: "5 PO · 4 TO" },
+  ], []);
+
+
+
   /* ── Version History / Compare / Lock state ── */
   const drpVersions = useMemo(
     () => PLAN_VERSIONS.filter((v) => v.planType === "DRP"),
