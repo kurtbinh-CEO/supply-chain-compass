@@ -109,7 +109,48 @@ function buildFactoryRows(scale: number): FactoryRow[] {
   });
 }
 
+interface SkuPivotNmRow {
+  key: string;
+  base: string;
+  totalOnHand: number;
+  nmCount: number;
+  worstNm: string;
+  worstHstk: number;
+  nmBreakdown: PivotChildRow[];
+}
+
+function buildFactorySkuPivot(rows: FactoryRow[]): SkuPivotNmRow[] {
+  const map = new Map<string, SkuPivotNmRow>();
+  rows.forEach((nm) => {
+    nm.skus.forEach((s) => {
+      if (!map.has(s.code)) {
+        map.set(s.code, { key: s.code, base: s.code, totalOnHand: 0, nmCount: 0, worstNm: "—", worstHstk: 99, nmBreakdown: [] });
+      }
+      const p = map.get(s.code)!;
+      p.totalOnHand += s.onHand;
+      p.nmCount++;
+      // Mock HSTK = capacity utilization-derived freshness proxy
+      const hstk = nm.tone === "block" ? 1.5 : nm.tone === "watch" ? 5.5 : 14;
+      if (hstk < p.worstHstk) { p.worstHstk = hstk; p.worstNm = nm.name; }
+      const ssTarget = Math.round(s.onHand * 0.4);
+      p.nmBreakdown.push({
+        key: `${s.code}-${nm.nmId}`,
+        label: nm.name,
+        qty: s.onHand,
+        hstk,
+        ssTarget,
+        navKind: "nm",
+        navValue: nm.nmId,
+      });
+    });
+  });
+  return Array.from(map.values()).sort((a, b) => a.worstHstk - b.worstHstk);
+}
+
 function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
+  const navigate = useNavigate();
+  const [pivot, setPivot] = usePivotMode("inv-nm");
+
   const handleRemind = useCallback((name: string) => {
     toast.success(`Đã gửi nhắc ${name}`, {
       description: "Notification qua Zalo + email — yêu cầu cập nhật tồn trong 4h.",
@@ -121,6 +162,8 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
     const c = rows.reduce((s, r) => s + r.capacity, 0);
     return { t, c, pct: c === 0 ? 0 : Math.round((t / c) * 100) };
   }, [rows]);
+
+  const skuPivotRows = useMemo(() => buildFactorySkuPivot(rows), [rows]);
 
   const columns: SmartTableColumn<FactoryRow>[] = [
     {
