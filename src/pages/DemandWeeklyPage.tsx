@@ -1030,10 +1030,11 @@ function ScCnDrillDown({ row, onApproveRow, onRejectRow, onTrimRow, onOverrideRo
       <thead>
         <tr className="text-[10px] uppercase text-text-3 border-b border-surface-3">
           <th className="text-left  px-2 py-1.5 font-medium">Mã hàng</th>
-          <th className="text-right px-2 py-1.5 font-medium">Dự kiến</th>
+          <th className="text-right px-2 py-1.5 font-medium">Thực tế {PREV_MONTH_LABEL}</th>
+          <th className="text-right px-2 py-1.5 font-medium">FC tuần</th>
           <th className="text-right px-2 py-1.5 font-medium">Adjust</th>
           <th className="text-left  px-2 py-1.5 font-medium">Lý do</th>
-          <th className="text-right px-2 py-1.5 font-medium">Δ%</th>
+          <th className="text-right px-2 py-1.5 font-medium">Δ% vs FC</th>
           <th className="text-right px-2 py-1.5 font-medium">Hành động</th>
         </tr>
       </thead>
@@ -1041,6 +1042,9 @@ function ScCnDrillDown({ row, onApproveRow, onRejectRow, onTrimRow, onOverrideRo
         {adjusted.map((r) => {
           const sev = classifyRow(r, row.config);
           const pct = r.duKien > 0 ? (r.adjust / r.duKien) * 100 : 0;
+          const actual = actualPrevMonthByCnSku(r.cnCode, r.item);
+          const finalQty = r.duKien + r.adjust;
+          const deltaVsActual = actual > 0 ? ((finalQty - actual) / actual) * 100 : 0;
           const reasonLabel = r.reason === "Khác" && r.reasonOther
             ? `Khác: ${r.reasonOther}` : (r.reason || "—");
           const decided = r.decision !== undefined;
@@ -1051,6 +1055,10 @@ function ScCnDrillDown({ row, onApproveRow, onRejectRow, onTrimRow, onOverrideRo
                 <span className="text-text-3">{r.variant}</span>
               </td>
               <td className="px-2 py-1.5 text-right tabular-nums text-text-2">
+                {actual > 0 ? actual.toLocaleString("vi-VN") : "—"}
+              </td>
+              <td className="px-2 py-1.5 text-right tabular-nums text-text-2"
+                title={actual > 0 ? `Sau adjust: ${finalQty.toLocaleString("vi-VN")} (${deltaVsActual > 0 ? "+" : ""}${deltaVsActual.toFixed(0)}% vs T${PREV_MONTH})` : undefined}>
                 {r.duKien.toLocaleString("vi-VN")}
               </td>
               <td className="px-2 py-1.5 text-right tabular-nums">
