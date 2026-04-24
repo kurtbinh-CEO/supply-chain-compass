@@ -13,6 +13,9 @@ import {
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { TermTooltip } from "@/components/TermTooltip";
 import { Switch } from "@/components/ui/switch";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+
+type VersionDiffRow = { sku: string; p2: number; p3: number; delta: number; deltaPct: number };
 
 const fmtVnd = (v: number) => v.toLocaleString("vi-VN");
 const nmName = (id: string) => FACTORIES.find((f) => f.id === id)?.name ?? id;
