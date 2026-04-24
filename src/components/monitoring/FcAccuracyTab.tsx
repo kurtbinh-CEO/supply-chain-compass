@@ -28,10 +28,6 @@ const fallbackMapeData = [
   { week: "W10", hw: 22, ai: 20 }, { week: "W11", hw: 20, ai: 18 }, { week: "W12", hw: 24.8, ai: 16.2 },
 ];
 
-const models = [
-  { name: "HW (Hiện tại)", mape: "24.8%", trend: "up", stdev: "±4.2", ssImpact: "1.2k m²", wcImpact: "182Mđ", optimal: false },
-  { name: "XGBoost (AI)", mape: "16.2%", trend: "down", stdev: "±1.8", ssImpact: "-300m²", wcImpact: "-56Mđ", optimal: true },
-];
 
 const models: ModelRow[] = [
   { name: "HW (Hiện tại)", mape: "24.8%", mapeNum: 24.8, trend: "up", stdev: "±4.2", ssImpact: "1.2k m²", wcImpact: "182Mđ", optimal: false },
