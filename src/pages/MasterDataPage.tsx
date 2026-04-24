@@ -267,14 +267,60 @@ function ItemsTab() {
 /* ────────────────────────────────────────────────────────────────────────── */
 /* TAB 2 — NM (factories) full attribute table                                */
 /* ────────────────────────────────────────────────────────────────────────── */
+const SUPPLIER_FIELDS: FormField[] = [
+  { key: "code",            label: "Mã NM", type: "text", required: true, mono: true, placeholder: "VD: NM-MIK", readOnlyOnEdit: true, span: 1 },
+  { key: "name",            label: "Tên nhà máy", type: "text", required: true, placeholder: "Mikado Ceramics", span: 1 },
+  { key: "region",          label: "Vùng", type: "select", required: true, span: 1,
+    options: [
+      { value: "Bắc",   label: "Bắc" },
+      { value: "Trung", label: "Trung" },
+      { value: "Nam",   label: "Nam" },
+    ],
+  },
+  { key: "ltDays",          label: "LT (ngày)", type: "number", required: true, span: 1 },
+  { key: "sigmaLt",         label: "σ_LT", type: "number", placeholder: "1.5", span: 1 },
+  { key: "moqM2",           label: "MOQ (m²)", type: "number", span: 1 },
+  { key: "capacityM2Month", label: "Capacity / tháng", type: "number", span: 1 },
+  { key: "honoringPct",     label: "Honoring %", type: "number", placeholder: "85", span: 1 },
+  { key: "priceTier1",      label: "Giá tier 1 (VND)", type: "number", span: 1 },
+  { key: "priceTier2",      label: "Giá tier 2 (VND)", type: "number", span: 1 },
+];
+
 function SuppliersTab() {
   const [search, setSearch] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<typeof FACTORIES[number] | null>(null);
+  const [deleting, setDeleting] = useState<typeof FACTORIES[number] | null>(null);
+
   const rows = FACTORIES.filter(
     (f) => f.name.toLowerCase().includes(search.toLowerCase()) || f.code.toLowerCase().includes(search.toLowerCase()),
   );
+
   return (
     <div className="space-y-3">
-      <SearchToolbar value={search} onChange={setSearch} onAdd={() => toast("Thêm NM (demo)")} onUpload={() => toast("Upload CSV (demo)")} />
+      <CrudToolbar
+        search={search}
+        onSearchChange={setSearch}
+        onAdd={() => setAdding(true)}
+        onImport={(src) => toast.success(`Nhập NM từ ${src} (demo)`)}
+        onExport={() =>
+          exportToCsv(
+            "nha_may",
+            rows.map((f) => ({
+              ma_nm: f.code, ten: f.name, vung: f.region,
+              lt_ngay: f.ltDays, sigma_lt: f.sigmaLt,
+              moq_m2: f.moqM2, capacity_thang: f.capacityM2Month,
+              reliability_pct: Math.round(f.reliability * 100),
+              honoring_pct: f.honoringPct,
+              gia_tier1: f.priceTier1, gia_tier2: f.priceTier2,
+            })),
+          )
+        }
+        addLabel="Thêm NM"
+        importTitle="Nhập danh sách NM"
+        importDescription="Chọn nguồn nhập nhà máy hàng loạt"
+        placeholder="Tìm theo mã, tên NM..."
+      />
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
         <table className="w-full text-table">
           <thead>
@@ -282,11 +328,12 @@ function SuppliersTab() {
               {["Mã NM", "Tên", "Vùng", "LT (ngày)", "σ_LT", "MOQ (m²)", "Capacity/tháng", "Reliability", "Honoring", "Giá tier 1", "Giá tier 2"].map((h) => (
                 <th key={h} className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">{h}</th>
               ))}
+              <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3 font-medium w-[88px]">Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((f, i) => (
-              <tr key={f.id} className={`${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
+              <tr key={f.id} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
                 <td className="px-4 py-2.5 font-mono font-medium text-text-1">{f.code}</td>
                 <td className="px-4 py-2.5 text-text-2">{f.name}</td>
                 <td className="px-4 py-2.5 text-text-2">{f.region}</td>
@@ -306,12 +353,59 @@ function SuppliersTab() {
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{f.honoringPct}%</td>
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{fmtVnd(f.priceTier1)}</td>
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{fmtVnd(f.priceTier2)}</td>
+                <td className="px-4 py-2.5">
+                  <RowActions onEdit={() => setEditing(f)} onDelete={() => setDeleting(f)} />
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <p className="text-table-sm text-text-3">{rows.length} / {FACTORIES.length} nhà máy</p>
+
+      <EntityFormDialog
+        open={adding}
+        mode="create"
+        entityName="nhà máy"
+        fields={SUPPLIER_FIELDS}
+        onClose={() => setAdding(false)}
+        onSave={(v) => {
+          toast.success(`Đã tạo NM ${v.name} (demo)`);
+          setAdding(false);
+        }}
+      />
+      <EntityFormDialog
+        open={!!editing}
+        mode="edit"
+        entityName="nhà máy"
+        fields={SUPPLIER_FIELDS}
+        initialValues={editing ? {
+          code: editing.code, name: editing.name, region: editing.region,
+          ltDays: editing.ltDays, sigmaLt: editing.sigmaLt,
+          moqM2: editing.moqM2, capacityM2Month: editing.capacityM2Month,
+          honoringPct: editing.honoringPct,
+          priceTier1: editing.priceTier1, priceTier2: editing.priceTier2,
+        } : undefined}
+        onClose={() => setEditing(null)}
+        onSave={(v) => {
+          toast.success(`Đã cập nhật NM ${v.name} (demo)`);
+          setEditing(null);
+        }}
+      />
+      <DeleteConfirmDialog
+        open={!!deleting}
+        entityLabel={deleting ? `NM ${deleting.name}` : ""}
+        description={
+          deleting
+            ? `NM ${deleting.name} đang gắn với mã hàng và PO. Xóa sẽ làm gãy data link — cân nhắc kỹ.`
+            : undefined
+        }
+        onClose={() => setDeleting(null)}
+        onConfirm={() => {
+          toast.success(`Đã xóa NM ${deleting?.name} (demo)`);
+          setDeleting(null);
+        }}
+      />
     </div>
   );
 }
