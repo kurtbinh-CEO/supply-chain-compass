@@ -17,6 +17,7 @@ import { TERMS } from "@/components/i18n/terms";
 import { toast } from "sonner";
 import { CONFIG_KEYS, type ConfigGroup, type ConfigKey as DsConfigKey } from "@/data/unis-enterprise-dataset";
 import { KpiTargetsTab } from "@/components/config/KpiTargetsTab";
+import { AopSummaryPanel } from "@/components/AopSummaryPanel";
 
 /* ── Tab structure (8 functional groupings) ── */
 type TabDef = {
@@ -36,6 +37,11 @@ const TABS: TabDef[] = [
   {
     v: "kpi_targets",
     l: "Mục tiêu KPI",
+    groups: [],
+  },
+  {
+    v: "aop",
+    l: "Kế hoạch năm (AOP)",
     groups: [],
   },
   {
@@ -436,7 +442,7 @@ export default function ConfigPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-surface-1 border border-surface-3 mb-4 flex-wrap h-auto">
           {TABS.map((t) => {
-            const isMeta = t.v === "integration" || t.v === "kpi_targets";
+            const isMeta = t.v === "integration" || t.v === "kpi_targets" || t.v === "aop";
             return (
               <TabsTrigger
                 key={t.v}
@@ -460,6 +466,8 @@ export default function ConfigPage() {
               <IntegrationsTab />
             ) : t.v === "kpi_targets" ? (
               <KpiTargetsTab />
+            ) : t.v === "aop" ? (
+              <AopSummaryPanel />
             ) : (
               <ConfigTable rows={visibleByTab[t.v] ?? []} onUpdate={handleUpdate} />
             )}

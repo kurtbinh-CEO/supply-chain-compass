@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PriceListsTab } from "@/components/master/PriceListsTab";
 import { CarriersTab } from "@/components/master/CarriersTab";
+import { AopSummaryPanel } from "@/components/AopSummaryPanel";
 import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
 import {
   CrudToolbar,
@@ -71,6 +72,7 @@ type TabKey =
   | "carriers"
   | "distances"
   | "containers"
+  | "aop"
   | "quality";
 
 const tabDefs: { key: TabKey; label: string }[] = [
@@ -82,6 +84,7 @@ const tabDefs: { key: TabKey; label: string }[] = [
   { key: "carriers",   label: "Nhà xe" },
   { key: "distances",  label: "Khoảng cách" },
   { key: "containers", label: "Container" },
+  { key: "aop",        label: "Kế hoạch năm" },
   { key: "quality",    label: "Chất lượng dữ liệu" },
 ];
 
@@ -1577,6 +1580,7 @@ export default function MasterDataPage() {
         <TabsContent value="carriers"><CarriersTab /></TabsContent>
         <TabsContent value="distances"><DistancesTab /></TabsContent>
         <TabsContent value="containers"><ContainersTab /></TabsContent>
+        <TabsContent value="aop"><AopSummaryPanel /></TabsContent>
         <TabsContent value="quality"><QualityTab /></TabsContent>
       </Tabs>
 
