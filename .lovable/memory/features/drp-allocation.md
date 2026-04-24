@@ -13,10 +13,11 @@ The 11-step `FlowStepper` (KẾ HOẠCH → PHÂN BỔ → THỰC THI) is sticky
 
 **`DrpReleaseBar`** (sticky banner at top of /drp when batch exists): pipeline `draft → reviewed → approved → released`. The "Xem xét" drawer items table migrated to **SmartTable** (Lô E):
 - `screenId="drp-batch-items-rpo"` and `drp-batch-items-to`: separate persistence per tab. Columns: select checkbox, Mã (mono), NM (RPO) / Từ→Đến (TO), SKU (text filter), SL m², Giá trị (VND), Dự kiến đến.
-- Bulk action bar above table holds the select-all `Checkbox` + "Duyệt mục đã chọn / Từ chối / Bỏ chọn" buttons.
+- Bulk action bar above table holds the select-all `Checkbox` + "Duyệt mục đã chọn / Từ chối / Bỏ chọn" buttons (only renders when `selectableCodes.length > 0`).
 - `summaryRow` shows TỔNG (active items) + total qty + total value (VND).
 - `rowSeverity`: `"stale"` for rejected items (line-through), `"watch"` for selected.
 - `onRowClick` toggles selection (skipped when rejected or released).
+- **Refined `emptyState`** per tab (Inbox icon + tab-specific copy). Action adapts: if the other tab has items → "Xem N TO/RPO" switches tab + clears selection; if both tabs empty → "Đóng & chạy lại lô DRP" closes drawer and routes to `/drp`.
 - Drawer also has Exceptions tab (flat cards, not a table) and footer with Approve/Release.
 
 **Allocation page** (/allocation): LCNB Opportunities (TO_DRAFT cards) + Exceptions SmartTable (`screenId="allocation-exceptions"`, already SmartTable).
