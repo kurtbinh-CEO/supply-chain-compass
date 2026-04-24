@@ -467,6 +467,25 @@ export default function OrdersPage() {
           onConfirm={(reason, note) => { cancelPo(cancelRow.id, reason, note); setCancelRow(null); }}
         />
       )}
+
+      {drillFocus && (
+        <CardDrillDownDialog
+          focus={drillFocus}
+          rows={rows}
+          counts={counts}
+          onClose={() => setDrillFocus(null)}
+          onApplyFilter={(s) => {
+            // map drill action to pill filter
+            if (s === "todo") setStatusFilter(new Set(ACTION_STAGES));
+            else if (s === "transit") setStatusFilter(new Set<LifecycleStage>(["pickup", "in_transit"]));
+            else if (s === "overdue") { setOverdueOnly(true); setStatusFilter(new Set()); }
+            else if (s === "done") setStatusFilter(new Set<LifecycleStage>(["completed"]));
+            else if (typeof s === "object") setStatusFilter(new Set([s.stage]));
+            setDrillFocus(null);
+          }}
+          onOpenRow={(r) => { setDrillFocus(null); setExpanded(prev => new Set(prev).add(r.id)); }}
+        />
+      )}
     </AppLayout>
   );
 }
