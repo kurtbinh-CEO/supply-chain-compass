@@ -147,7 +147,7 @@ export function TransferOrdersTab() {
         exportFilename="lenh-dieu-chuyen-to"
         columns={columns}
         data={rows}
-        defaultDensity="normal"
+        defaultDensity="compact"
         getRowId={(r) => r.toNumber}
         rowSeverity={(r) =>
           r.status === "received" ? "ok" :

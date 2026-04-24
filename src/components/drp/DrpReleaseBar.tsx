@@ -508,6 +508,7 @@ export function DrpReleaseBar({
                       exportFilename={`drp-batch-${batch.id}-${tab}`}
                       columns={cols}
                       data={tabItems}
+                      defaultDensity="compact"
                       getRowId={(it) => it.code}
                       rowSeverity={(it) => (it.rejected ? "stale" : selected.has(it.code) ? "watch" : undefined)}
                       onRowClick={(it) => {

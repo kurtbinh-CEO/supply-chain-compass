@@ -284,6 +284,7 @@ export function PriceListsTab() {
                   exportFilename="toko-v2-v3-compare"
                   columns={cmpCols}
                   data={versionDiff}
+                  defaultDensity="compact"
                   getRowId={(r) => r.sku}
                   rowSeverity={(r) => (r.deltaPct >= 4 ? "watch" : undefined)}
                   emptyState={{

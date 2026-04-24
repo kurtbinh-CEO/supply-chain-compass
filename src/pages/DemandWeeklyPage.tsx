@@ -427,7 +427,7 @@ function CnManagerTab({
         exportFilename={`demand-weekly-${cnCode}`}
         columns={columns}
         data={rows}
-        defaultDensity="normal"
+        defaultDensity="compact"
         getRowId={(r) => r.key}
         rowSeverity={(r) => {
           const sev = classifyRow(r, config);

@@ -312,7 +312,7 @@ export function SafetyStockTab() {
         exportFilename="audit-nhat-ky-ss"
         columns={logColumns}
         data={changeLogs}
-        defaultDensity="normal"
+        defaultDensity="compact"
         getRowId={(r, i) => `${r.date}-${r.sku}-${i}`}
         emptyState={{
           icon: <History />,
