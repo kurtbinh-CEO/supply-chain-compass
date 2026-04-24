@@ -317,11 +317,11 @@ export default function OrdersPage() {
         rowSeverity={(r) => isOverdue(r) ? "shortage" : isNearSla(r) ? "watch" : undefined}
         autoExpandWhen={(r) => expanded.has(r.id)}
         emptyState={{
-          icon: filter === "overdue" ? <CheckCircle2 /> : <ClipboardCheck />,
-          title: filter === "overdue" ? "Không có đơn trễ hạn" : "Không có đơn nào",
-          description: filter === "todo"
-            ? "Mọi đơn đã được xử lý. Quay lại sau hoặc xem tab khác."
-            : "Thử đổi filter hoặc tải đơn mới từ DRP batch.",
+          icon: overdueOnly ? <CheckCircle2 /> : <ClipboardCheck />,
+          title: overdueOnly ? "Không có đơn trễ hạn" : "Không có đơn nào",
+          description: noFilters
+            ? "Chưa có đơn trong tuần. Tải đơn mới từ DRP batch."
+            : "Thử bỏ bớt bộ lọc hoặc bấm \"Tất cả\" để xem toàn bộ.",
         }}
         drillDown={(r) => <ExpandedRow row={r} />}
         columns={[
