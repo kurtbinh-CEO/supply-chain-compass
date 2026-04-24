@@ -474,53 +474,106 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
                   </td>
                 </tr>
 
-                {isExpanded && skus.map((sk) => (
-                  <tr
-                    key={`${c.cn}-${sk.item}-${sk.variant}`}
-                    className="border-b border-surface-3/30 bg-primary/[0.02] hover:bg-primary/[0.06] transition-colors animate-fade-in"
-                  >
-                    <td className="px-3 py-2" />
-                    <td className="px-2 py-2 pl-6">
-                      <span className="font-mono text-text-2 text-table-sm">{sk.item}</span>
-                      <span className="ml-1 text-text-3 text-table-sm">{sk.variant}</span>
-                    </td>
-                    <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">
-                      <span className="inline-flex items-center gap-1.5">
-                        {sk.fc.toLocaleString()}
-                        <LogicTooltip
-                          title={`${sk.item} ${sk.variant} — FC Model`}
-                          content={`Model: ${sk.source}\nHistory: 24 tháng (05/2024–04/2026)\nMAPE: ${sk.mape}% (accuracy ${(100 - sk.mape).toFixed(1)}%)\nAuto-selected: ${sk.source === "Holt-Winters" ? "HW" : "XGB"} vì MAPE thấp hơn cho SKU này.\nChạy: 01/05/2026 auto.`}
-                        >
-                          <span className={cn(
-                            "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium cursor-pointer",
-                            sk.mape <= 15 ? "bg-success-bg text-success" : sk.mape <= 20 ? "bg-warning-bg text-warning" : "bg-danger-bg text-danger"
-                          )}>
-                            {sk.source === "Holt-Winters" ? "HW" : "XGB"} {sk.mape}%
+                {isExpanded && skus.map((sk) => {
+                  const cnSkuKey = `${c.cn}::${sk.item}`;
+                  const skuExpanded = expandedCnSkus.has(cnSkuKey);
+                  const variants = variantSplit(sk.item);
+                  return (
+                    <React.Fragment key={`${c.cn}-${sk.item}-${sk.variant}`}>
+                      <tr
+                        onClick={() => toggleCnSku(cnSkuKey)}
+                        className="border-b border-surface-3/30 bg-primary/[0.02] hover:bg-primary/[0.06] transition-colors animate-fade-in cursor-pointer"
+                      >
+                        <td className="px-3 py-2 text-center">
+                          <div className={cn("transition-transform duration-200 inline-block", skuExpanded && "rotate-90")}>
+                            <ChevronRight className="h-3 w-3 text-text-3" />
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 pl-6">
+                          <span className="font-mono text-text-2 text-table-sm">{sk.item}</span>
+                          <span className="ml-1 text-text-3 text-table-sm">{sk.variant}</span>
+                          <span className="ml-1.5 text-[10px] text-text-3">({variants.length} variants)</span>
+                        </td>
+                        <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">
+                          <span className="inline-flex items-center gap-1.5">
+                            {sk.fc.toLocaleString()}
+                            <LogicTooltip
+                              title={`${sk.item} ${sk.variant} — FC Model`}
+                              content={`Model: ${sk.source}\nHistory: 24 tháng (05/2024–04/2026)\nMAPE: ${sk.mape}% (accuracy ${(100 - sk.mape).toFixed(1)}%)\nAuto-selected: ${sk.source === "Holt-Winters" ? "HW" : "XGB"} vì MAPE thấp hơn cho SKU này.\nChạy: 01/05/2026 auto.`}
+                            >
+                              <span className={cn(
+                                "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium cursor-pointer",
+                                sk.mape <= 15 ? "bg-success-bg text-success" : sk.mape <= 20 ? "bg-warning-bg text-warning" : "bg-danger-bg text-danger"
+                              )}>
+                                {sk.source === "Holt-Winters" ? "HW" : "XGB"} {sk.mape}%
+                              </span>
+                            </LogicTooltip>
                           </span>
-                        </LogicTooltip>
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">{sk.b2b.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-center tabular-nums text-text-3 text-table-sm">{sk.po.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-center tabular-nums font-semibold text-primary/80 text-table-sm border-l border-surface-3/50">{sk.total.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-center">
-                      <MiniSparkline data={[Math.round(sk.total * 0.88), Math.round(sk.total * 0.94), sk.total]} width={40} height={16} />
-                    </td>
-                    <td className="px-3 py-2">
-                      <CompositionBar fc={sk.fc} b2b={sk.b2b} po={sk.po} total={sk.total} />
-                    </td>
-                    <td className={cn("px-3 py-2 text-center tabular-nums text-table-sm",
-                      sk.vsLm > 0 ? "text-success" : sk.vsLm < 0 ? "text-danger" : "text-text-3"
-                    )}>
-                      {sk.vsLm > 0 ? "+" : ""}{sk.vsLm}%
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <button onClick={(e) => { e.stopPropagation(); setOverrideModal({ sku: `${sk.item} ${sk.variant}`, value: sk.total }); }}
-                        className="text-[11px] text-primary hover:underline font-medium">Ghi đè</button>
-                    </td>
-                    <td />
-                  </tr>
-                ))}
+                        </td>
+                        <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">{sk.b2b.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-center tabular-nums text-text-3 text-table-sm">{sk.po.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-center tabular-nums font-semibold text-primary/80 text-table-sm border-l border-surface-3/50">{sk.total.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-center">
+                          <MiniSparkline data={[Math.round(sk.total * 0.88), Math.round(sk.total * 0.94), sk.total]} width={40} height={16} />
+                        </td>
+                        <td className="px-3 py-2">
+                          <CompositionBar fc={sk.fc} b2b={sk.b2b} po={sk.po} total={sk.total} />
+                        </td>
+                        <td className={cn("px-3 py-2 text-center tabular-nums text-table-sm",
+                          sk.vsLm > 0 ? "text-success" : sk.vsLm < 0 ? "text-danger" : "text-text-3"
+                        )}>
+                          {sk.vsLm > 0 ? "+" : ""}{sk.vsLm}%
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <button onClick={(e) => { e.stopPropagation(); setOverrideModal({ sku: `${sk.item} ${sk.variant}`, value: sk.total }); }}
+                            className="text-[11px] text-primary hover:underline font-medium">Ghi đè</button>
+                        </td>
+                        <td />
+                      </tr>
+
+                      {/* ── L3: Variant breakdown ── */}
+                      {skuExpanded && variants.map((v) => {
+                        const fcV = Math.round(sk.fc * v.share);
+                        const b2bV = Math.round(sk.b2b * v.share);
+                        const poV = Math.round(sk.po * v.share);
+                        const totalV = fcV + b2bV + poV;
+                        return (
+                          <tr
+                            key={`${cnSkuKey}-${v.tag}`}
+                            className="border-b border-surface-3/20 bg-primary/[0.04] hover:bg-primary/[0.08] transition-colors animate-fade-in"
+                          >
+                            <td className="px-3 py-1.5" />
+                            <td className="px-2 py-1.5 pl-12">
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="h-1 w-1 rounded-full bg-text-3" />
+                                <span className="font-mono text-text-3 text-[11px]">{sk.item}-{v.tag}</span>
+                                <span className="text-text-3 text-[10px]">({Math.round(v.share * 100)}%)</span>
+                              </span>
+                            </td>
+                            <td className="px-3 py-1.5 text-center tabular-nums text-text-3 text-[11px]">{fcV.toLocaleString()}</td>
+                            <td className="px-3 py-1.5 text-center tabular-nums text-text-3 text-[11px]">{b2bV.toLocaleString()}</td>
+                            <td className="px-3 py-1.5 text-center tabular-nums text-text-3 text-[11px]">{poV.toLocaleString()}</td>
+                            <td className="px-3 py-1.5 text-center tabular-nums font-medium text-primary/70 text-[11px] border-l border-surface-3/30">{totalV.toLocaleString()}</td>
+                            <td className="px-3 py-1.5" />
+                            <td className="px-3 py-1.5">
+                              <CompositionBar fc={fcV} b2b={b2bV} po={poV} total={totalV} />
+                            </td>
+                            <td className="px-3 py-1.5 text-center text-text-3 text-[10px]">—</td>
+                            <td className="px-3 py-1.5 text-center">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setOverrideModal({ sku: `${sk.item}-${v.tag}`, value: totalV }); }}
+                                className="text-[10px] text-primary/70 hover:text-primary hover:underline"
+                              >
+                                Ghi đè
+                              </button>
+                            </td>
+                            <td />
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })}
               </React.Fragment>
             );
           })}
