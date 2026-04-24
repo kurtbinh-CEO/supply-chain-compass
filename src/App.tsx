@@ -105,6 +105,7 @@ function ProtectedRoutes() {
       <OnboardingProvider>
         <IdleNudgeMount />
         <OnboardingOverlay />
+        <OnboardingAutoStart />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/workspace" element={<WorkspacePage />} />
