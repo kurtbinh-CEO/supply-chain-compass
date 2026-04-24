@@ -448,6 +448,7 @@ function ApprovalTab({
         exportFilename="orders-approval"
         columns={columns}
         data={allRows}
+        defaultDensity="compact"
         getRowId={(r) => r.key}
         rowSeverity={(r) => r.stage === "submitted" ? "watch" : undefined}
         emptyState={{
@@ -744,6 +745,7 @@ function TransportTab({
         exportFilename="orders-transport"
         columns={columns}
         data={filtered}
+        defaultDensity="compact"
         getRowId={(r) => r.id}
         rowSeverity={(r) => r.status === "hold" ? "overdue" : r.status === "wait" ? "watch" : undefined}
         emptyState={{
@@ -939,6 +941,7 @@ function TrackingTab({ orders, effective, effectiveTo, carrierAssign, scale }: {
       exportFilename="orders-tracking"
       columns={columns}
       data={rows}
+      defaultDensity="compact"
       getRowId={(r) => r.id}
       rowSeverity={(r) => r.status === "received" ? "ok" : r.status === "shipped" ? "watch" : undefined}
       emptyState={{

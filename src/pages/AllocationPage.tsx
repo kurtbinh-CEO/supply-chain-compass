@@ -319,7 +319,7 @@ export default function AllocationPage() {
           exportFilename="ngoai-le-phan-bo"
           columns={exceptionColumns}
           data={exceptions}
-          defaultDensity="normal"
+          defaultDensity="compact"
           getRowId={(r) => `${r.cnCode}-${r.skuBaseCode}`}
           rowSeverity={(r) => r.status === "SHORTAGE" ? "shortage" : "watch"}
           emptyState={{

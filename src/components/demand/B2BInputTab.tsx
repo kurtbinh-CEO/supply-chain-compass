@@ -444,6 +444,7 @@ export function B2BInputTab({ deals, setDeals }: Props) {
             exportFilename="b2b-deals"
             columns={cols}
             data={filtered}
+            defaultDensity="compact"
             getRowId={(r) => r.id}
             emptyState={
               deals.length === 0

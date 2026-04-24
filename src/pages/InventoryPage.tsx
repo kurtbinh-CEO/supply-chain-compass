@@ -243,7 +243,7 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
       exportFilename="ton-kho-nha-may"
       columns={columns}
       data={rows}
-      defaultDensity="normal"
+      defaultDensity="compact"
       rowSeverity={(r) => r.tone === "block" ? "shortage" : r.tone === "watch" ? "watch" : "ok"}
       getRowId={(r) => r.nmId}
       drillDown={(r) => (
