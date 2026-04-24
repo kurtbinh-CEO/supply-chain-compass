@@ -6,16 +6,37 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { TermTooltip } from "@/components/TermTooltip";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+
+type SsStatus = "Tối ưu" | "Thiếu hàng" | "Thủ công";
+type SsTargetRow = {
+  node: string;
+  sku: string;
+  current: number;
+  formula: string;
+  demand: number;
+  status: SsStatus;
+};
 
 // Mục tiêu SS
-const ssTargets = [
-  { node: "CN_NORTH_01", sku: "SKU-29384-H", current: 1420, formula: "z*σ*√LT", demand: 84.2, status: "Tối ưu" as const },
-  { node: "CN_SOUTH_04", sku: "SKU-11029-K", current: 840, formula: "z*σ*√LT", demand: 32.1, status: "Thiếu hàng" as const },
-  { node: "CN_WEST_02", sku: "SKU-88210-L", current: 2100, formula: "Ghi đè thủ công", demand: 112.5, status: "Thủ công" as const },
+const ssTargets: SsTargetRow[] = [
+  { node: "CN_NORTH_01", sku: "SKU-29384-H", current: 1420, formula: "z*σ*√LT", demand: 84.2, status: "Tối ưu" },
+  { node: "CN_SOUTH_04", sku: "SKU-11029-K", current: 840, formula: "z*σ*√LT", demand: 32.1, status: "Thiếu hàng" },
+  { node: "CN_WEST_02", sku: "SKU-88210-L", current: 2100, formula: "Ghi đè thủ công", demand: 112.5, status: "Thủ công" },
 ];
 
+type ChangeLogRow = {
+  date: string;
+  sku: string;
+  from: number;
+  to: number;
+  delta: string;
+  trigger: string;
+  approver: string;
+};
+
 // Nhật ký thay đổi
-const changeLogs = [
+const changeLogs: ChangeLogRow[] = [
   { date: "24/10/2023", sku: "SKU-29384-H", from: 1200, to: 1420, delta: "+18.3%", trigger: "Nhu cầu tăng đột biến (Mùa vụ)", approver: "Nguyễn T. Anh" },
   { date: "22/10/2023", sku: "SKU-11029-K", from: 950, to: 840, delta: "-11.5%", trigger: "Tối ưu thời gian đặt hàng", approver: "Mark S. Curator" },
 ];
@@ -41,7 +62,6 @@ const ssAlert = {
 export function SafetyStockTab() {
   const [simParam, setSimParam] = useState(simParams[0]);
   const [simValue, setSimValue] = useState(98);
-  const [dateFilter, setDateFilter] = useState("all");
   const [ssAlertStatus, setSsAlertStatus] = useState<"pending" | "confirmed" | "kept">("pending");
 
   const beforeSS = 12402;
@@ -62,6 +82,95 @@ export function SafetyStockTab() {
     setSsAlertStatus("kept");
     toast.info("Giữ SS cũ", { description: `${ssAlert.sku}: vẫn ${ssAlert.oldSs.toLocaleString()} m². Đã ghi log.` });
   };
+
+  // ============================ SmartTable cấu hình ============================
+  const ssColumns: SmartTableColumn<SsTargetRow>[] = [
+    {
+      key: "node", label: "Node × SKU", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 180, accessor: (r) => `${r.node} ${r.sku}`,
+      render: (r) => (
+        <div>
+          <span className="text-table font-medium text-text-1 block">{r.node}</span>
+          <span className="text-caption text-text-3 font-mono">{r.sku}</span>
+        </div>
+      ),
+    },
+    {
+      key: "current", label: "Mục tiêu hiện tại", sortable: true, hideable: true, priority: "high",
+      numeric: true, align: "right", width: 140,
+      render: (r) => (
+        <span className="font-medium text-text-1 tabular-nums">
+          {r.current.toLocaleString()} <span className="text-text-3 text-caption">đv</span>
+        </span>
+      ),
+    },
+    {
+      key: "formula", label: "Công thức SS", sortable: false, hideable: true, priority: "low",
+      width: 160,
+      render: (r) => <span className="text-text-2 font-mono italic">{r.formula}</span>,
+    },
+    {
+      key: "demand", label: "Σ Nhu cầu", sortable: true, hideable: true, priority: "medium",
+      numeric: true, align: "right", width: 110,
+      render: (r) => <span className="text-text-1 tabular-nums">{r.demand}</span>,
+    },
+    {
+      key: "status", label: "Trạng thái", sortable: true, hideable: false, priority: "high",
+      width: 130, accessor: (r) => r.status,
+      filter: "enum",
+      filterOptions: [
+        { value: "Tối ưu", label: "Tối ưu" },
+        { value: "Thiếu hàng", label: "Thiếu hàng" },
+        { value: "Thủ công", label: "Thủ công" },
+      ],
+      render: (r) => (
+        <StatusChip
+          status={r.status === "Tối ưu" ? "success" : r.status === "Thiếu hàng" ? "danger" : "warning"}
+          label={r.status}
+        />
+      ),
+    },
+    {
+      key: "actions", label: "Sửa", sortable: false, hideable: false,
+      align: "center", width: 60,
+      render: () => <Pencil className="inline h-4 w-4 text-text-3 hover:text-primary cursor-pointer" />,
+    },
+  ];
+
+  const logColumns: SmartTableColumn<ChangeLogRow>[] = [
+    {
+      key: "date", label: "Ngày", sortable: true, hideable: false, priority: "high",
+      width: 110,
+      render: (r) => <span className="text-text-2 tabular-nums">{r.date}</span>,
+    },
+    {
+      key: "sku", label: "SKU", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 140,
+      render: (r) => <span className="font-medium text-text-1 font-mono">{r.sku}</span>,
+    },
+    {
+      key: "delta", label: "Thay đổi", sortable: false, hideable: false, priority: "high",
+      width: 200, accessor: (r) => r.to - r.from,
+      render: (r) => (
+        <span className="tabular-nums">
+          <span className="text-text-2">{r.from.toLocaleString()}</span>
+          <span className={cn("mx-1", r.delta.startsWith("+") ? "text-success" : "text-danger")}>→</span>
+          <span className="text-text-1 font-medium">{r.to.toLocaleString()}</span>
+          <span className={cn("ml-1 text-table-sm font-medium", r.delta.startsWith("+") ? "text-success" : "text-danger")}>{r.delta}</span>
+        </span>
+      ),
+    },
+    {
+      key: "trigger", label: "Nguyên nhân", sortable: false, hideable: true, priority: "medium",
+      filter: "text", width: 280,
+      render: (r) => <span className="text-text-2">{r.trigger}</span>,
+    },
+    {
+      key: "approver", label: "Người duyệt", sortable: true, hideable: true, priority: "medium",
+      filter: "text", width: 160,
+      render: (r) => <span className="text-text-1">{r.approver}</span>,
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -123,42 +232,17 @@ export function SafetyStockTab() {
       )}
       <div className="grid grid-cols-5 gap-6">
         {/* A: Bảng mục tiêu SS */}
-        <div className="col-span-3 rounded-card border border-surface-3 bg-surface-2">
-          <div className="px-5 py-4 border-b border-surface-3 flex items-center justify-between">
-            <h2 className="font-display text-section-header text-text-1">
-              Mục tiêu <TermTooltip term="SS">SS</TermTooltip> hiện tại
-            </h2>
-            <span className="text-table-sm text-text-3 bg-surface-0 rounded-full px-2.5 py-0.5 border border-surface-3">z=1.64 (95%)</span>
-          </div>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-surface-3">
-                {["Node × SKU", "Mục tiêu hiện tại", "Công thức SS", "Σ Nhu cầu", "Trạng thái", ""].map((h) => (
-                  <th key={h} className="text-left text-table-header uppercase text-text-3 px-5 py-3">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {ssTargets.map((r, i) => (
-                <tr key={r.node} className={cn("border-b border-surface-3/50 hover:bg-surface-3 transition-colors", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
-                  <td className="px-5 py-3">
-                    <span className="text-table font-medium text-text-1 block">{r.node}</span>
-                    <span className="text-caption text-text-3 font-mono">{r.sku}</span>
-                  </td>
-                  <td className="px-5 py-3 text-table font-medium text-text-1 tabular-nums">{r.current.toLocaleString()} <span className="text-text-3 text-caption">đv</span></td>
-                  <td className="px-5 py-3 text-table text-text-2 font-mono italic">{r.formula}</td>
-                  <td className="px-5 py-3 text-table text-text-1 tabular-nums">{r.demand}</td>
-                  <td className="px-5 py-3">
-                    <StatusChip
-                      status={r.status === "Tối ưu" ? "success" : r.status === "Thiếu hàng" ? "danger" : "warning"}
-                      label={r.status}
-                    />
-                  </td>
-                  <td className="px-5 py-3"><Pencil className="h-4 w-4 text-text-3 hover:text-primary cursor-pointer" /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="col-span-3">
+          <SmartTable<SsTargetRow>
+            screenId="monitoring-ss-targets"
+            title="Mục tiêu SS hiện tại (z=1.64 / 95%)"
+            exportFilename="muc-tieu-safety-stock"
+            columns={ssColumns}
+            data={ssTargets}
+            defaultDensity="normal"
+            getRowId={(r) => `${r.node}-${r.sku}`}
+            rowSeverity={(r) => r.status === "Thiếu hàng" ? "shortage" : r.status === "Thủ công" ? "watch" : "ok"}
+          />
         </div>
 
         {/* C: Mô phỏng */}
@@ -217,47 +301,15 @@ export function SafetyStockTab() {
       </div>
 
       {/* B: Audit & Nhật ký thay đổi */}
-      <div className="rounded-card border border-surface-3 bg-surface-2">
-        <div className="px-5 py-4 border-b border-surface-3 flex items-center justify-between">
-          <h2 className="font-display text-section-header text-text-1">Audit & Nhật ký thay đổi</h2>
-          <select
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="h-8 rounded-button border border-surface-3 bg-surface-0 px-3 text-table-sm text-text-1 focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="all">Tất cả</option>
-            <option value="7d">7 ngày</option>
-            <option value="30d">30 ngày</option>
-          </select>
-        </div>
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-surface-3">
-              {["Ngày", "SKU", "Thay đổi", "Nguyên nhân", "Người duyệt"].map((h) => (
-                <th key={h} className="text-left text-table-header uppercase text-text-3 px-5 py-3">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {changeLogs.map((log, i) => (
-              <tr key={i} className={cn("border-b border-surface-3/50 hover:bg-surface-3 transition-colors", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
-                <td className="px-5 py-3 text-table text-text-2 tabular-nums">{log.date}</td>
-                <td className="px-5 py-3 text-table font-medium text-text-1 font-mono">{log.sku}</td>
-                <td className="px-5 py-3">
-                  <span className="text-table tabular-nums">
-                    <span className="text-text-2">{log.from.toLocaleString()}</span>
-                    <span className={cn("mx-1", log.delta.startsWith("+") ? "text-success" : "text-danger")}>→</span>
-                    <span className="text-text-1 font-medium">{log.to.toLocaleString()}</span>
-                    <span className={cn("ml-1 text-table-sm font-medium", log.delta.startsWith("+") ? "text-success" : "text-danger")}>{log.delta}</span>
-                  </span>
-                </td>
-                <td className="px-5 py-3 text-table text-text-2">{log.trigger}</td>
-                <td className="px-5 py-3 text-table text-text-1">{log.approver}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <SmartTable<ChangeLogRow>
+        screenId="monitoring-ss-changelog"
+        title="Audit & Nhật ký thay đổi"
+        exportFilename="audit-nhat-ky-ss"
+        columns={logColumns}
+        data={changeLogs}
+        defaultDensity="normal"
+        getRowId={(r, i) => `${r.date}-${r.sku}-${i}`}
+      />
 
       {/* D: Biểu đồ xu hướng FC→SS→WC */}
       <div className="rounded-card border border-surface-3 bg-surface-2 p-5">
