@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { ArrowRight, Zap, Shield, Target, Box, DollarSign } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { TermTooltip } from "@/components/TermTooltip";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 
 type Period = "Tháng" | "Quý" | "YTD";
 
@@ -36,14 +37,16 @@ function FeedForwardCard({ title, description, linkLabel, linkUrl }: { title: st
 }
 
 // Section A — Audit dự báo
-const demandAudit = [
+type DemandAuditRow = { category: string; plan: string; actual: string; bias: string; fva: string };
+const demandAudit: DemandAuditRow[] = [
   { category: "Thành phẩm", plan: "1.240,5", actual: "1.215,2", bias: "-2.0%", fva: "+4.2%" },
   { category: "Nguyên liệu", plan: "890,0", actual: "945,8", bias: "+6.2%", fva: "+1.8%" },
   { category: "Bao bì", plan: "459,2", actual: "448,0", bias: "-0.5%", fva: "+0.9%" },
 ];
 
 // Section B — Hiệu suất cung ứng
-const supplyPerf = [
+type SupplyPerfRow = { node: string; honoring: string; onTime: string; ltGap: string; grade: string };
+const supplyPerf: SupplyPerfRow[] = [
   { node: "Hub Trung tâm VN", honoring: "98.5%", onTime: "94.0%", ltGap: "-0.2", grade: "A+" },
   { node: "Sourcing miền Bắc", honoring: "82.1%", onTime: "78.5%", ltGap: "+2.5", grade: "C-" },
   { node: "Cổng phía Đông", honoring: "91.0%", onTime: "89.2%", ltGap: "0.0", grade: "B" },
@@ -57,7 +60,8 @@ const topExceptions = [
 ];
 
 // Section D — Sức khỏe tồn kho
-const inventoryHealth = [
+type InventoryHealthRow = { channel: string; target: string; actual: string; stockout: string; adequacy: string };
+const inventoryHealth: InventoryHealthRow[] = [
   { channel: "Kênh hiện đại", target: "4,2 tỷ ₫", actual: "3,9 tỷ ₫", stockout: "Trung bình", adequacy: "92%" },
   { channel: "Thương mại điện tử", target: "2,8 tỷ ₫", actual: "3,1 tỷ ₫", stockout: "Thấp", adequacy: "104%" },
   { channel: "Kênh truyền thống", target: "1,5 tỷ ₫", actual: "1,1 tỷ ₫", stockout: "Cao", adequacy: "76%" },
@@ -78,49 +82,153 @@ export function AuditFeedbackTab() {
   const [periodD, setPeriodD] = useState<Period>("Tháng");
   const [periodE, setPeriodE] = useState<Period>("Tháng");
 
+  // ====================== SmartTable cấu hình ======================
+  const demandColumns: SmartTableColumn<DemandAuditRow>[] = [
+    {
+      key: "category", label: "Nhóm hàng", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 180,
+      render: (r) => <span className="font-medium text-text-1">{r.category}</span>,
+    },
+    {
+      key: "plan", label: "Kế hoạch (K đv)", sortable: true, hideable: true, priority: "medium",
+      numeric: true, align: "right", width: 140, accessor: (r) => parseFloat(r.plan.replace(",", ".")),
+      render: (r) => <span className="text-text-2 tabular-nums">{r.plan}</span>,
+    },
+    {
+      key: "actual", label: "Thực tế (K đv)", sortable: true, hideable: true, priority: "medium",
+      numeric: true, align: "right", width: 140, accessor: (r) => parseFloat(r.actual.replace(",", ".")),
+      render: (r) => <span className="text-text-2 tabular-nums">{r.actual}</span>,
+    },
+    {
+      key: "bias", label: "Sai lệch %", sortable: true, hideable: true, priority: "high",
+      numeric: true, align: "right", width: 110, accessor: (r) => parseFloat(r.bias),
+      render: (r) => (
+        <span className={cn("font-medium tabular-nums", r.bias.startsWith("-") ? "text-danger" : "text-success")}>{r.bias}</span>
+      ),
+    },
+    {
+      key: "fva", label: "FVA % (Tốt nhất)", sortable: true, hideable: true, priority: "high",
+      numeric: true, align: "right", width: 140, accessor: (r) => parseFloat(r.fva),
+      render: (r) => <span className="font-medium text-success tabular-nums">{r.fva}</span>,
+    },
+  ];
+
+  const supplyColumns: SmartTableColumn<SupplyPerfRow>[] = [
+    {
+      key: "node", label: "Node", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 200,
+      render: (r) => <span className="font-medium text-text-1">{r.node}</span>,
+    },
+    {
+      key: "honoring", label: "Giữ cam kết %", sortable: true, hideable: true, priority: "high",
+      numeric: true, align: "right", width: 140, accessor: (r) => parseFloat(r.honoring),
+      render: (r) => <span className="text-text-1 tabular-nums">{r.honoring}</span>,
+    },
+    {
+      key: "onTime", label: "Đúng hẹn %", sortable: true, hideable: true, priority: "medium",
+      numeric: true, align: "right", width: 130, accessor: (r) => parseFloat(r.onTime),
+      render: (r) => <span className="text-text-1 tabular-nums">{r.onTime}</span>,
+    },
+    {
+      key: "ltGap", label: "Lệch LT (Ngày)", sortable: true, hideable: true, priority: "medium",
+      numeric: true, align: "right", width: 140, accessor: (r) => parseFloat(r.ltGap),
+      render: (r) => (
+        <span className={cn(
+          "font-medium tabular-nums",
+          r.ltGap.startsWith("+") ? "text-danger" : r.ltGap === "0.0" ? "text-text-2" : "text-success"
+        )}>
+          {r.ltGap}
+        </span>
+      ),
+    },
+    {
+      key: "grade", label: "Hạng", sortable: true, hideable: false, priority: "high",
+      align: "center", width: 90,
+      filter: "enum",
+      filterOptions: [
+        { value: "A+", label: "A+" }, { value: "A", label: "A" },
+        { value: "B", label: "B" }, { value: "C-", label: "C-" },
+      ],
+      render: (r) => (
+        <span className={cn(
+          "inline-flex items-center justify-center h-7 w-9 rounded-md text-table-sm font-bold border",
+          r.grade.startsWith("A") ? "border-success text-success bg-success-bg" :
+          r.grade.startsWith("B") ? "border-info text-info bg-info-bg" :
+          "border-danger text-danger bg-danger-bg"
+        )}>
+          {r.grade}
+        </span>
+      ),
+    },
+  ];
+
+  const inventoryColumns: SmartTableColumn<InventoryHealthRow>[] = [
+    {
+      key: "channel", label: "Kênh", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 200,
+      render: (r) => <span className="font-medium text-text-1">{r.channel}</span>,
+    },
+    {
+      key: "target", label: "HSTK mục tiêu", sortable: false, hideable: true, priority: "medium",
+      align: "right", width: 130,
+      render: (r) => <span className="text-text-1 tabular-nums">{r.target}</span>,
+    },
+    {
+      key: "actual", label: "HSTK thực tế", sortable: false, hideable: true, priority: "medium",
+      align: "right", width: 130,
+      render: (r) => <span className="text-text-1 tabular-nums">{r.actual}</span>,
+    },
+    {
+      key: "stockout", label: "Rủi ro thiếu hàng", sortable: true, hideable: false, priority: "high",
+      width: 150, accessor: (r) => r.stockout,
+      filter: "enum",
+      filterOptions: [
+        { value: "Cao", label: "Cao" },
+        { value: "Trung bình", label: "Trung bình" },
+        { value: "Thấp", label: "Thấp" },
+      ],
+      render: (r) => (
+        <span className={cn(
+          "font-bold uppercase",
+          r.stockout === "Cao" ? "text-danger" : r.stockout === "Trung bình" ? "text-warning" : "text-success"
+        )}>
+          {r.stockout}
+        </span>
+      ),
+    },
+    {
+      key: "adequacy", label: "Đầy đủ SS", sortable: true, hideable: true, priority: "medium",
+      numeric: true, align: "right", width: 110, accessor: (r) => parseFloat(r.adequacy),
+      render: (r) => <span className="text-text-1 tabular-nums">{r.adequacy}</span>,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* A: Audit độ chính xác dự báo */}
       <div className="grid grid-cols-5 gap-4">
-        <div className="col-span-3 rounded-card border border-surface-3 bg-surface-2">
-          <div className="px-5 py-4 border-b border-surface-3 flex items-center justify-between">
+        <div className="col-span-3 space-y-2">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
               <h2 className="font-display text-section-header text-text-1">A) Audit độ chính xác dự báo</h2>
+              <TermTooltip term="FVA"><span className="text-caption text-text-3">(FVA)</span></TermTooltip>
             </div>
             <div className="flex items-center gap-2">
               <StatusChip status="success" label="Ổn định" />
               <PeriodFilter value={periodA} onChange={setPeriodA} />
             </div>
           </div>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-surface-3">
-                {[
-                  { label: "Nhóm hàng", term: null },
-                  { label: "Kế hoạch (K đơn vị)", term: null },
-                  { label: "Thực tế (K đơn vị)", term: null },
-                  { label: "Sai lệch %", term: null },
-                  { label: "FVA % (Tốt nhất)", term: "FVA" },
-                ].map((h) => (
-                  <th key={h.label} className="text-left text-table-header uppercase text-text-3 px-5 py-3">
-                    {h.term ? <TermTooltip term={h.term}>{h.label}</TermTooltip> : h.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {demandAudit.map((r, i) => (
-                <tr key={r.category} className={cn("border-b border-surface-3/50", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
-                  <td className="px-5 py-3 text-table font-medium text-text-1">{r.category}</td>
-                  <td className="px-5 py-3 text-table text-text-2 tabular-nums">{r.plan}</td>
-                  <td className="px-5 py-3 text-table text-text-2 tabular-nums">{r.actual}</td>
-                  <td className={cn("px-5 py-3 text-table font-medium tabular-nums", r.bias.startsWith("-") ? "text-danger" : "text-success")}>{r.bias}</td>
-                  <td className="px-5 py-3 text-table font-medium text-success tabular-nums">{r.fva}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <SmartTable<DemandAuditRow>
+            screenId="monitoring-audit-demand"
+            title="Audit độ chính xác dự báo"
+            exportFilename="audit-do-chinh-xac-du-bao"
+            columns={demandColumns}
+            data={demandAudit}
+            defaultDensity="normal"
+            getRowId={(r) => r.category}
+            rowSeverity={(r) => Math.abs(parseFloat(r.bias)) > 5 ? "watch" : "ok"}
+          />
         </div>
         <div className="col-span-2 space-y-4">
           <div className="rounded-card border border-surface-3 bg-surface-2 p-5 space-y-3">
@@ -167,51 +275,25 @@ export function AuditFeedbackTab() {
             Xem xếp hạng NM
           </button>
         </div>
-        <div className="col-span-3 rounded-card border border-surface-3 bg-surface-2">
-          <div className="px-5 py-4 border-b border-surface-3 flex items-center justify-between">
+        <div className="col-span-3 space-y-2">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Box className="h-4 w-4 text-text-2" />
               <h2 className="font-display text-section-header text-text-1">B) Hiệu suất cung ứng</h2>
+              <TermTooltip term="HonoringRate"><span className="text-caption text-text-3">(Honoring)</span></TermTooltip>
             </div>
             <PeriodFilter value={periodB} onChange={setPeriodB} />
           </div>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-surface-3">
-                {[
-                  { label: "Node", term: null },
-                  { label: "Giữ cam kết %", term: "HonoringRate" },
-                  { label: "Đúng hẹn %", term: null },
-                  { label: "Lệch LT (Ngày)", term: null },
-                  { label: "Hạng", term: null },
-                ].map((h) => (
-                  <th key={h.label} className="text-left text-table-header uppercase text-text-3 px-5 py-3">
-                    {h.term ? <TermTooltip term={h.term}>{h.label}</TermTooltip> : h.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {supplyPerf.map((r, i) => (
-                <tr key={r.node} className={cn("border-b border-surface-3/50", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
-                  <td className="px-5 py-3 text-table font-medium text-text-1">{r.node}</td>
-                  <td className="px-5 py-3 text-table text-text-1 tabular-nums">{r.honoring}</td>
-                  <td className="px-5 py-3 text-table text-text-1 tabular-nums">{r.onTime}</td>
-                  <td className={cn("px-5 py-3 text-table font-medium tabular-nums", r.ltGap.startsWith("+") ? "text-danger" : r.ltGap === "0.0" ? "text-text-2" : "text-success")}>{r.ltGap}</td>
-                  <td className="px-5 py-3">
-                    <span className={cn(
-                      "inline-flex items-center justify-center h-7 w-9 rounded-md text-table-sm font-bold border",
-                      r.grade.startsWith("A") ? "border-success text-success bg-success-bg" :
-                      r.grade.startsWith("B") ? "border-info text-info bg-info-bg" :
-                      "border-danger text-danger bg-danger-bg"
-                    )}>
-                      {r.grade}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <SmartTable<SupplyPerfRow>
+            screenId="monitoring-audit-supply"
+            title="Hiệu suất cung ứng"
+            exportFilename="hieu-suat-cung-ung"
+            columns={supplyColumns}
+            data={supplyPerf}
+            defaultDensity="normal"
+            getRowId={(r) => r.node}
+            rowSeverity={(r) => r.grade.startsWith("C") ? "shortage" : r.grade.startsWith("B") ? "watch" : "ok"}
+          />
         </div>
       </div>
 
@@ -271,46 +353,25 @@ export function AuditFeedbackTab() {
 
       {/* D: Tổng quan sức khỏe tồn kho */}
       <div className="grid grid-cols-5 gap-4">
-        <div className="col-span-3 rounded-card border border-surface-3 bg-surface-2">
-          <div className="px-5 py-4 border-b border-surface-3 flex items-center justify-between">
+        <div className="col-span-3 space-y-2">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Box className="h-4 w-4 text-text-2" />
               <h2 className="font-display text-section-header text-text-1">D) Sức khỏe tồn kho</h2>
+              <TermTooltip term="HSTK"><span className="text-caption text-text-3">(HSTK)</span></TermTooltip>
             </div>
             <PeriodFilter value={periodD} onChange={setPeriodD} />
           </div>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-surface-3">
-                {[
-                  { label: "Kênh", term: null },
-                  { label: "HSTK mục tiêu", term: "HSTK" },
-                  { label: "HSTK thực tế", term: "HSTK" },
-                  { label: "Rủi ro thiếu hàng", term: null },
-                  { label: "Đầy đủ SS", term: "SS" },
-                ].map((h) => (
-                  <th key={h.label} className="text-left text-table-header uppercase text-text-3 px-5 py-3">
-                    {h.term ? <TermTooltip term={h.term}>{h.label}</TermTooltip> : h.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {inventoryHealth.map((r, i) => (
-                <tr key={r.channel} className={cn("border-b border-surface-3/50", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
-                  <td className="px-5 py-3 text-table font-medium text-text-1">{r.channel}</td>
-                  <td className="px-5 py-3 text-table text-text-1 tabular-nums">{r.target}</td>
-                  <td className="px-5 py-3 text-table text-text-1 tabular-nums">{r.actual}</td>
-                  <td className="px-5 py-3">
-                    <span className={cn("text-table font-bold uppercase", r.stockout === "Cao" ? "text-danger" : r.stockout === "Trung bình" ? "text-warning" : "text-success")}>
-                      {r.stockout}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-table text-text-1 tabular-nums">{r.adequacy}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <SmartTable<InventoryHealthRow>
+            screenId="monitoring-audit-inventory"
+            title="Sức khỏe tồn kho"
+            exportFilename="suc-khoe-ton-kho"
+            columns={inventoryColumns}
+            data={inventoryHealth}
+            defaultDensity="normal"
+            getRowId={(r) => r.channel}
+            rowSeverity={(r) => r.stockout === "Cao" ? "shortage" : r.stockout === "Trung bình" ? "watch" : "ok"}
+          />
         </div>
         <div className="col-span-2 space-y-4">
           <div className="rounded-card border border-surface-3 bg-surface-2 p-5 space-y-3">
