@@ -147,9 +147,21 @@ export function FcAccuracyTab() {
             <h2 className="font-display text-section-header text-text-1">
               Hiệu suất <TermTooltip term="MAPE">MAPE</TermTooltip> 12 tuần
             </h2>
-            <div className="flex items-center gap-4 text-table-sm text-text-2">
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-text-3" /> HW (Hiện tại)</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> XGBoost (AI)</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4 text-table-sm text-text-2">
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-text-3" /> HW (Hiện tại)</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> XGBoost (AI)</span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setActualOpen(true)}
+                className="h-8 gap-1.5"
+                title="Cập nhật doanh thu thực tế để tính lại MAPE"
+              >
+                <Inbox className="h-3.5 w-3.5" />
+                Cập nhật thực tế
+              </Button>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={280}>
