@@ -346,28 +346,17 @@ export function HubOverviewTab({ scale, totals }: Props) {
           <h2 className="font-display text-section-header text-text-1">Change Log — Hub Stock</h2>
           <span className="text-caption text-text-3">Hub stock</span>
         </div>
-        <table className="w-full text-table-sm">
-          <thead>
-            <tr className="text-left text-caption uppercase text-text-3 tracking-wider border-b border-surface-3">
-              <th className="px-5 py-2 font-medium">Thời gian</th>
-              <th className="px-5 py-2 font-medium">Người / Nguồn</th>
-              <th className="px-5 py-2 font-medium">Thay đổi</th>
-              <th className="px-5 py-2 font-medium">Nguồn</th>
-            </tr>
-          </thead>
-          <tbody>
-            {changeLog.map((log, i) => (
-              <tr key={i} className="border-b border-surface-3/40 last:border-0 hover:bg-surface-2/40">
-                <td className="px-5 py-2 text-text-2 font-mono tabular-nums">{log.time}</td>
-                <td className="px-5 py-2 text-text-1">{log.who}</td>
-                <td className="px-5 py-2 text-text-2">{log.change}</td>
-                <td className="px-5 py-2">
-                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-caption uppercase tracking-wider bg-surface-3 text-text-2">{log.source}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="p-3">
+          <SmartTable<ChangeLog>
+            screenId="hub-overview-changelog"
+            title="Change Log — Hub Stock"
+            exportFilename="hub-stock-changelog"
+            defaultDensity="compact"
+            columns={changeLogColumns}
+            data={changeLog}
+            getRowId={(r, i) => `${r.time}-${i}`}
+          />
+        </div>
       </section>
     </div>
   );
