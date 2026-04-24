@@ -99,7 +99,7 @@ export function Step3Tracking({ scale, onPrev }: Props) {
     },
     {
       key: "progress", label: "Tiến độ", value: `${totals.pct}%`, unit: "",
-      trend: { delta: `Ngày ${dayCurrent}/${dayMonth}`, direction: "flat", color: progressTone === "ok" ? "green" : progressTone === "warn" ? "amber" : "red" },
+      trend: { delta: `Ngày ${dayCurrent}/${dayMonth}`, direction: "flat", color: progressTone === "ok" ? "green" : progressTone === "warn" ? "gray" : "red" },
       severity: progressTone,
       tooltip: `Mục tiêu ngày ${dayCurrent}: ~${expectedPct}%`,
     },
