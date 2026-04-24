@@ -490,7 +490,12 @@ function BranchesTab() {
         search={search}
         onSearchChange={setSearch}
         onAdd={() => setAdding(true)}
-        onImport={(src) => toast.success(`Nhập CN từ ${src} (demo)`)}
+        excelImport={{
+          entityName: "chi nhánh",
+          fields: BRANCH_IMPORT_FIELDS,
+          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} CN (chưa persist)`),
+        }}
+        onImport={(src) => toast.success(`Nhập CN qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "chi_nhanh",
