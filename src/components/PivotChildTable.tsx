@@ -182,6 +182,16 @@ export function PivotChildTable({
       : []),
   ];
 
+  // Row-level open: click bất kỳ cell số nào → mở cùng popup như khi click mã.
+  // Khớp guideline: numeric cells = popup detail tại chỗ; KHÔNG navigate.
+  const handleRowOpen = (r: PivotChildRow) => {
+    if (!r.navKind) return;
+    const v = r.navValue ?? r.key;
+    if (r.navKind === "sku") setSkuSheet(v);
+    else if (r.navKind === "cn") setEntitySheet({ kind: "cn", code: v });
+    else if (r.navKind === "nm") setEntitySheet({ kind: "nm", code: v });
+  };
+
   return (
     <>
       <div className={cn("rounded-lg border border-surface-3 bg-surface-0 overflow-hidden", className)}>
@@ -190,6 +200,7 @@ export function PivotChildTable({
           columns={columns}
           data={sorted}
           defaultDensity="compact"
+          onRowClick={handleRowOpen}
           rowSeverity={(r) => {
             const st = statusFromHstk(r.hstk, thresholds);
             if (st.tone === "danger") return "shortage";
