@@ -2,6 +2,10 @@ import { useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from "recharts";
 import { cn } from "@/lib/utils";
 import { FC_MAPE_BY_CN, BRANCHES } from "@/data/unis-enterprise-dataset";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+
+type MonthRow = { month: string; fc: number; actual: number | null; delta: number | null; mape: number | null; model: string };
+type CnMapeRow = { cn: string; name: string; mape: number; model: string };
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /* FC vs Actual — 12 months (mock historical, deterministic)                  */
