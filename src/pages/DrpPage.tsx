@@ -542,6 +542,225 @@ function SourceBadge({ kind, qty, hideLabelMobile = false }: { kind: SrcKind; qt
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   §  SKU-FIRST PIVOT TABLE — "Mã hàng → Chi nhánh"
+   Trả lời: "SKU nào phân bổ thế nào? CN nào thiếu? NM nào nguồn?"
+   Header KHÁC + drill-down per-CN với cột LCNB nhận/gửi.
+   ═══════════════════════════════════════════════════════════════════════════ */
+function SkuFirstPivotTable({
+  data, onLcnbClick, onNavigateOrders,
+}: {
+  data: CnRow[];
+  onLcnbClick: (t: ToLcnbRow) => void;
+  onNavigateOrders: () => void;
+}) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Aggregate per SKU base across all CNs
+  interface SkuPivotRow {
+    sku: string;
+    totalDemand: number;
+    totalAlloc: number;
+    fillPct: number;
+    cnShortage: { cn: string; demand: number; alloc: number; fill: number }[];
+    nmSources: { name: string; pct: number }[];
+    perCn: { cn: string; demand: number; alloc: number; fill: number; onHand: number; lcnbIn: number; lcnbOut: number; hubPo: number; lcnbInFrom?: string; lcnbOutTo?: string }[];
+  }
+
+  const skuRows: SkuPivotRow[] = (() => {
+    const map = new Map<string, SkuPivotRow>();
+    data.forEach((cn) => {
+      cn.allSkus.forEach((sk) => {
+        const key = sk.item;
+        if (!map.has(key)) {
+          map.set(key, { sku: key, totalDemand: 0, totalAlloc: 0, fillPct: 0, cnShortage: [], nmSources: [], perCn: [] });
+        }
+        const p = map.get(key)!;
+        p.totalDemand += sk.demand;
+        p.totalAlloc += sk.allocated;
+        const fill = sk.demand > 0 ? Math.round((sk.allocated / sk.demand) * 100) : 100;
+        if (fill < 95) p.cnShortage.push({ cn: cn.cn, demand: sk.demand, alloc: sk.allocated, fill });
+        // Match TOs whose SKU starts with this base
+        const toIn = TO_ROWS_LCNB.find((t) => t.toCn === cn.cn && t.sku.startsWith(sk.item));
+        const toOut = TO_ROWS_LCNB.find((t) => t.fromCn === cn.cn && t.sku.startsWith(sk.item));
+        p.perCn.push({
+          cn: cn.cn, demand: sk.demand, alloc: sk.allocated, fill,
+          onHand: sk.sources.onHand,
+          lcnbIn: toIn?.qty ?? sk.sources.lcnbIn,
+          lcnbOut: toOut?.qty ?? Math.abs(sk.sources.internalTransfer),
+          hubPo: sk.sources.hubPo,
+          lcnbInFrom: toIn?.fromCn.replace("CN-", ""),
+          lcnbOutTo: toOut?.toCn.replace("CN-", ""),
+        });
+      });
+    });
+    // Compute fill, NM source mix (mock based on SKU prefix)
+    const NM_MIX: Record<string, { name: string; pct: number }[]> = {
+      "GA-300": [{ name: "Mikado", pct: 60 }, { name: "Toko", pct: 40 }],
+      "GA-400": [{ name: "Mikado", pct: 70 }, { name: "Vigracera", pct: 30 }],
+      "GA-600": [{ name: "Mikado", pct: 55 }, { name: "Toko", pct: 45 }],
+      "GT-300": [{ name: "Phú Mỹ", pct: 100 }],
+      "GT-600": [{ name: "Toko", pct: 100 }],
+      "GM-300": [{ name: "Đồng Tâm", pct: 100 }],
+    };
+    const out = Array.from(map.values()).map((p) => ({
+      ...p,
+      fillPct: p.totalDemand > 0 ? Math.round((p.totalAlloc / p.totalDemand) * 100) : 100,
+      nmSources: NM_MIX[p.sku] ?? [],
+    }));
+    // Sort by total gap desc (largest shortage first)
+    out.sort((a, b) => (b.totalDemand - b.totalAlloc) - (a.totalDemand - a.totalAlloc));
+    return out;
+  })();
+
+  const toggle = (sku: string) => setExpanded((s) => {
+    const n = new Set(s);
+    if (n.has(sku)) n.delete(sku); else n.add(sku);
+    return n;
+  });
+
+  return (
+    <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-surface-1/60 border-b border-surface-3">
+              <th className="w-8"></th>
+              <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Mã hàng</th>
+              <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Nhu cầu tổng</th>
+              <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Phân bổ tổng</th>
+              <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Lấp đầy</th>
+              <th className="px-3 py-2.5 text-left  text-table-header uppercase text-text-3">CN thiếu</th>
+              <th className="px-3 py-2.5 text-left  text-table-header uppercase text-text-3">NM nguồn</th>
+            </tr>
+          </thead>
+          <tbody>
+            {skuRows.map((r) => {
+              // Auto-expand if ≥2 CN thiếu
+              const isOpen = expanded.has(r.sku) || r.cnShortage.length >= 2;
+              const sev = r.fillPct >= 95 ? "ok" : r.fillPct >= 80 ? "watch" : "short";
+              return (
+                <Fragment key={r.sku}>
+                  <tr
+                    className={cn(
+                      "border-b border-surface-3 cursor-pointer transition-colors",
+                      sev === "short" && "bg-danger-bg/20 border-l-2 border-l-danger",
+                      sev === "watch" && "bg-warning-bg/15 border-l-2 border-l-warning",
+                      sev === "ok" && "hover:bg-surface-1/40",
+                    )}
+                    onClick={() => toggle(r.sku)}
+                  >
+                    <td className="px-2 py-2.5 text-center">
+                      {isOpen ? <ChevronDown className="h-4 w-4 text-text-3 inline" /> : <ChevronRight className="h-4 w-4 text-text-3 inline" />}
+                    </td>
+                    <td className="px-3 py-2.5 font-medium text-text-1">{r.sku}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-text-1">{r.totalDemand.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-text-2">{r.totalAlloc.toLocaleString()}</td>
+                    <td className="px-3 py-2.5 text-right">
+                      <span className={cn("tabular-nums font-semibold",
+                        sev === "ok" && "text-success",
+                        sev === "watch" && "text-warning",
+                        sev === "short" && "text-danger",
+                      )}>{r.fillPct}%</span>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {r.cnShortage.length > 0 ? (
+                        <span
+                          title={r.cnShortage.map((c) => `${c.cn} (${c.fill}%)`).join(", ")}
+                          className="inline-flex items-center gap-1 rounded-full border border-danger/30 bg-danger-bg px-2 py-0.5 text-[11px] font-semibold text-danger"
+                        >
+                          {r.cnShortage.length} CN
+                        </span>
+                      ) : <span className="text-success text-caption">🟢 Đủ</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-table-sm text-text-2">
+                      {r.nmSources.map((n) => `${n.name} ${n.pct}%`).join(" · ")}
+                    </td>
+                  </tr>
+                  {isOpen && (
+                    <tr>
+                      <td colSpan={7} className="bg-surface-1/40 px-4 py-3 border-b border-surface-3">
+                        <div className="text-caption text-text-3 mb-2">
+                          Phân bổ {r.sku} cho {r.perCn.length} CN — cột LCNB nhận/gửi cho thấy luân chuyển ngang
+                        </div>
+                        <table className="w-full text-table-sm">
+                          <thead>
+                            <tr className="text-text-3 text-caption border-b border-surface-3">
+                              <th className="text-left  py-1 font-medium">CN</th>
+                              <th className="text-right py-1 font-medium">Nhu cầu</th>
+                              <th className="text-right py-1 font-medium">Tồn CN</th>
+                              <th className="text-right py-1 font-medium">LCNB nhận</th>
+                              <th className="text-right py-1 font-medium">LCNB gửi</th>
+                              <th className="text-right py-1 font-medium">Hub PO</th>
+                              <th className="text-right py-1 font-medium">Lấp đầy</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {r.perCn.map((c) => {
+                              const cSev = c.fill >= 95 ? "ok" : c.fill >= 80 ? "watch" : "short";
+                              const inTo = TO_ROWS_LCNB.find((t) => t.toCn === c.cn && t.sku.startsWith(r.sku));
+                              const outTo = TO_ROWS_LCNB.find((t) => t.fromCn === c.cn && t.sku.startsWith(r.sku));
+                              return (
+                                <tr key={c.cn} className="border-t border-surface-3/40">
+                                  <td className="py-1.5 font-medium text-text-1">{c.cn}</td>
+                                  <td className="py-1.5 text-right tabular-nums">{c.demand.toLocaleString()}</td>
+                                  <td className="py-1.5 text-right tabular-nums text-text-2">{c.onHand.toLocaleString()}</td>
+                                  <td className="py-1.5 text-right tabular-nums">
+                                    {c.lcnbIn > 0 && inTo ? (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); onLcnbClick(inTo); }}
+                                        className="inline-flex items-center gap-0.5 rounded-full border border-success/30 bg-success-bg px-1.5 py-0.5 text-[11px] font-semibold text-success hover:opacity-80"
+                                      >
+                                        +{c.lcnbIn} ({c.lcnbInFrom})
+                                      </button>
+                                    ) : <span className="text-text-3">0</span>}
+                                  </td>
+                                  <td className="py-1.5 text-right tabular-nums">
+                                    {c.lcnbOut > 0 && outTo ? (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); onLcnbClick(outTo); }}
+                                        className="inline-flex items-center gap-0.5 rounded-full border border-warning/30 bg-warning-bg px-1.5 py-0.5 text-[11px] font-semibold text-warning hover:opacity-80"
+                                      >
+                                        −{c.lcnbOut} (→{c.lcnbOutTo})
+                                      </button>
+                                    ) : <span className="text-text-3">0</span>}
+                                  </td>
+                                  <td className="py-1.5 text-right tabular-nums text-text-2">{c.hubPo > 0 ? c.hubPo.toLocaleString() : "—"}</td>
+                                  <td className={cn("py-1.5 text-right tabular-nums font-semibold",
+                                    cSev === "ok" && "text-success",
+                                    cSev === "watch" && "text-warning",
+                                    cSev === "short" && "text-danger",
+                                  )}>{c.fill}% {cSev === "ok" && "✅"} {cSev === "short" && "🔴"}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="px-3 py-2 text-caption text-text-3 border-t border-surface-3 flex items-center justify-between">
+        <span>Sắp xếp theo gap giảm dần · auto-mở SKU có ≥2 CN thiếu</span>
+        <button
+          type="button"
+          onClick={onNavigateOrders}
+          className="inline-flex items-center gap-1 text-primary hover:underline"
+        >
+          Duyệt tất cả TO → <ArrowRight className="h-3 w-3" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    §  MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════════════════ */
 
