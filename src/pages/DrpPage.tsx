@@ -344,12 +344,9 @@ function StepDetail({ stepId, scale }: { stepId: number; scale: number }) {
   );
 
   if (stepId === 6) {
-    const toRows = [
-      { code: "TO-HCM-BD-W20-001", from: "CN-HCM", to: "CN-BD", sku: "GA-600 A4", qty: 200 },
-      { code: "TO-QN-NA-W20-001",  from: "CN-QN",  to: "CN-NA", sku: "GA-300 A4", qty: 180 },
-      { code: "TO-HN-NA-W20-002",  from: "CN-HN",  to: "CN-NA", sku: "GM-300 A4", qty: 95 },
-      { code: "TO-DN-CT-W20-001",  from: "CN-DN",  to: "CN-CT", sku: "GA-300 B2", qty: 80 },
-    ];
+    const toRows = TO_ROWS_LCNB.map((t) => ({
+      code: t.code, from: t.fromCn, to: t.toCn, sku: t.sku, qty: t.qty,
+    }));
     const totalQty = toRows.reduce((s, r) => s + r.qty, 0);
     return (
       <div className="space-y-3 text-table-sm">
