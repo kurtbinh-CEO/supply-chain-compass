@@ -17,6 +17,10 @@ import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
 import { supabase } from "@/integrations/supabase/client";
 import { BRANCHES, DRP_RESULTS } from "@/data/unis-enterprise-dataset";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
+import { BRANCHES as _BR2, DRP_RESULTS as _DRP2, PLAN_VERSIONS } from "@/data/unis-enterprise-dataset";
+import { VersionHistoryPanel } from "@/components/VersionHistoryPanel";
+import { VersionCompareInline } from "@/components/VersionCompareInline";
+import { VersionLockDialog, ViewingVersionBanner } from "@/components/VersionLockDialog";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -508,6 +512,31 @@ export default function DrpPage() {
   const [rejectedCodes, setRejectedCodes] = useState<Set<string>>(new Set());
   const [batchDbId, setBatchDbId] = useState<string | null>(null);
   const isPlanLocked = batchStatus === "approved" || batchStatus === "released";
+
+  /* ── Version History / Compare / Lock state ── */
+  const drpVersions = useMemo(
+    () => PLAN_VERSIONS.filter((v) => v.planType === "DRP"),
+    []
+  );
+  const drpW20 = useMemo(
+    () => drpVersions.filter((v) => v.entityId === "DRP-W20"),
+    [drpVersions]
+  );
+  // Version "thực tế đang chạy" = ACTIVE hoặc LOCKED mới nhất của DRP-W20
+  const activeDrpVersion = useMemo(() => {
+    const live = drpW20.find((v) => v.status === "ACTIVE" || v.status === "LOCKED");
+    return live?.versionNumber ?? 3;
+  }, [drpW20]);
+  const [viewingVersion, setViewingVersion] = useState<number>(activeDrpVersion);
+  const [viewingEntityId, setViewingEntityId] = useState<string>("DRP-W20");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareRightVersion, setCompareRightVersion] = useState<number | null>(null);
+  const [lockDialogOpen, setLockDialogOpen] = useState(false);
+  const [drpLocked, setDrpLocked] = useState<{ by: string; at: string; reason: string } | null>(null);
+  const isViewingOldVersion = viewingVersion !== activeDrpVersion || viewingEntityId !== "DRP-W20";
+  // Mọi action UI bị chặn nếu đang xem cũ HOẶC đã khóa
+  const actionsDisabled = isViewingOldVersion || isPlanLocked || drpLocked != null;
 
   const drpBatch = useBatchLock({
     batchType: "DRP", status: "info",
