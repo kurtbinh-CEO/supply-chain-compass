@@ -26,7 +26,28 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import { useRbac } from "@/components/RbacContext";
+import { getKpiTarget } from "@/data/unis-enterprise-dataset";
 import { cn } from "@/lib/utils";
+
+/** Map card key (Tier 1) → kpiKey trong KPI_TARGETS dataset. */
+const KPI_TARGET_MAP: Record<string, string> = {
+  fill:     "fill_rate",
+  doi:      "days_of_inventory",
+  wc:       "working_capital",
+  fc:       "forecast_accuracy",
+  otd:      "on_time_delivery",
+  supplier: "supplier_fill_rate",
+};
+
+/** Render "Mục tiêu ≥ 95%" / "Mục tiêu ≤ 35 ngày" từ KPI_TARGETS. Fallback về fallback. */
+function kpiTargetLabel(cardKey: string, fallback: string): string {
+  const tgt = getKpiTarget(KPI_TARGET_MAP[cardKey] ?? "");
+  if (!tgt) return fallback;
+  const cmp = tgt.direction === "higher_better" ? "≥" : "≤";
+  // Format 4500 → "4.500"; 95 → "95"
+  const v = tgt.target.toLocaleString("vi-VN");
+  return `Mục tiêu ${cmp} ${v} ${tgt.unit}`;
+}
 
 /* ════════════════════════════════════════════════════════════════════════
  * MOCK DATA
