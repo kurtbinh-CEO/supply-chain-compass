@@ -422,6 +422,7 @@ export default function DrpPage() {
   const s = tenantScales[tenant] || 1;
   const navigate = useNavigate();
   const { canApprove } = useRbac();
+  const { current: planCycle } = usePlanningPeriod();
 
   /* ── Step navigation ── */
   const [activeStep, setActiveStep] = useState<number>(5);
