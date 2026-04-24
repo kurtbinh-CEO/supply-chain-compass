@@ -332,7 +332,12 @@ function SuppliersTab() {
         search={search}
         onSearchChange={setSearch}
         onAdd={() => setAdding(true)}
-        onImport={(src) => toast.success(`Nhập NM từ ${src} (demo)`)}
+        excelImport={{
+          entityName: "nhà máy",
+          fields: SUPPLIER_IMPORT_FIELDS,
+          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} NM (chưa persist)`),
+        }}
+        onImport={(src) => toast.success(`Nhập NM qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "nha_may",
