@@ -213,6 +213,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "nav.configItem": "Config",
     "nav.logicOps": "Operations Logic",
     "nav.guide": "User Guide",
+    "nav.scenarios": "Demo Scenarios",
 
     // Sidebar footer
     "workflow.daily": "Daily Workflow",
