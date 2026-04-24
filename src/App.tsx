@@ -109,6 +109,7 @@ function ProtectedRoutes() {
           <Route path="/hub" element={<HubPage />} />
           <Route path="/gap-scenario" element={<GapScenarioPage />} />
           <Route path="/scenarios" element={<DemoScenariosPage />} />
+          <Route path="/compare" element={<ComparePage />} />
           {/* M2 — /inventory là route chính cho tồn kho NM+CN (2 tabs) */}
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/supply" element={<Navigate to="/inventory" replace />} />
