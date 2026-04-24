@@ -76,6 +76,36 @@ function buildLayers(args: {
 
 const VISIBLE_BASES = ["GA-300", "GA-400", "GA-600", "GT-300", "GT-600", "GM-300"] as const;
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   §  LCNB (TO) catalog — shared across DRP table, drill-downs, summary
+   ═══════════════════════════════════════════════════════════════════════════ */
+export interface ToLcnbRow {
+  code: string;
+  fromCn: string;   // "CN-HCM"
+  toCn: string;     // "CN-BD"
+  sku: string;
+  qty: number;      // m²
+  costM: number;    // triệu VND
+}
+
+export const TO_ROWS_LCNB: ToLcnbRow[] = [
+  { code: "TO-HCM-BD-W20-001", fromCn: "CN-HCM", toCn: "CN-BD", sku: "GA-600 A4", qty: 200, costM: 4.2 },
+  { code: "TO-QN-NA-W20-001",  fromCn: "CN-QN",  toCn: "CN-NA", sku: "GA-300 A4", qty: 180, costM: 3.6 },
+  { code: "TO-HN-NA-W20-002",  fromCn: "CN-HN",  toCn: "CN-NA", sku: "GM-300 A4", qty: 95,  costM: 1.9 },
+  { code: "TO-DN-CT-W20-001",  fromCn: "CN-DN",  toCn: "CN-CT", sku: "GA-300 B2", qty: 80,  costM: 1.6 },
+];
+
+function findToByDestCn(cnCode: string): ToLcnbRow | undefined {
+  const k = cnCode.replace(/^CN-/, "");
+  return TO_ROWS_LCNB.find((t) => t.toCn.replace(/^CN-/, "") === k);
+}
+function lcnbInForCn(cnCode: string): ToLcnbRow[] {
+  return TO_ROWS_LCNB.filter((t) => t.toCn === cnCode);
+}
+function lcnbOutForCn(cnCode: string): ToLcnbRow[] {
+  return TO_ROWS_LCNB.filter((t) => t.fromCn === cnCode);
+}
+
 type ExcSeed = {
   cn: string; sku: string; type: "SHORTAGE" | "WATCH";
   demand: number; allocated: number; gap: number;
