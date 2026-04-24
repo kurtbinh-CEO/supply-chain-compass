@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 
 /* ─────────────────────────────────────────────────────────────
    Types
