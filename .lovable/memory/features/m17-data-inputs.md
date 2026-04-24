@@ -40,5 +40,14 @@ Phase 4 — Master Data CRUD universal (DONE):
 - Pattern đồng nhất: hover row → [✏️Sửa] [🗑️Xóa]; header có [+Thêm] [↑Nhập] [↓Xuất]
 - CSV export tiếng Việt: cột name VN, BOM UTF-8 cho Excel mở đúng
 
+Phase 5 — Excel Wizard 5 bước (DONE):
+- **`src/components/master/ExcelImportWizard.tsx`**: dùng `xlsx@0.18.5`, 5 step (Upload → Preview → Mapping → Validate → Commit)
+- Hỗ trợ `.xlsx/.xls/.csv`, drag-drop, multi-sheet, auto-suggest mapping (alias + normalize VI→EN)
+- Validate: required, type number/select whitelist, duplicate `code` trong file
+- Step 4 hiển thị tối đa 100 lỗi với row#/field/message; Step 5 confirm + chỉ commit dòng hợp lệ
+- `CrudToolbar` thêm prop `excelImport={ entityName, fields: ImportField[], onCommit }`. Khi user chọn "Excel/CSV" trong DataSourceSelector → mở wizard thay vì gọi `onImport`
+- Wired vào 4 tab Master Data: Mã hàng, NM, CN, Container — mỗi tab có `*_IMPORT_FIELDS` riêng với aliases tiếng Việt
+
 Còn lại — out of scope:
-- Wizard 5 bước upload Excel thực — đang dùng toast demo
+- Persist data vào Lovable Cloud (defer Phase 6)
+- Audit log Master Data CRUD (defer Phase 7)
