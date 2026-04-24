@@ -7,6 +7,7 @@ import { Search, Plus, Upload, X, AlertTriangle, CheckCircle2, Wrench, Inbox, Za
 import { toast } from "sonner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PriceListsTab } from "@/components/master/PriceListsTab";
+import { CarriersTab } from "@/components/master/CarriersTab";
 import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +43,7 @@ type TabKey =
   | "pricelists"
   | "branches"
   | "routes"
+  | "carriers"
   | "distances"
   | "containers"
   | "quality";
@@ -52,6 +54,7 @@ const tabDefs: { key: TabKey; label: string }[] = [
   { key: "pricelists", label: "Bảng giá" },
   { key: "branches",   label: "CN" },
   { key: "routes",     label: "Tuyến" },
+  { key: "carriers",   label: "Nhà xe" },
   { key: "distances",  label: "Khoảng cách" },
   { key: "containers", label: "Container" },
   { key: "quality",    label: "Chất lượng dữ liệu" },
@@ -867,6 +870,7 @@ export default function MasterDataPage() {
         <TabsContent value="pricelists"><PriceListsTab /></TabsContent>
         <TabsContent value="branches"><BranchesTab /></TabsContent>
         <TabsContent value="routes"><RoutesTab /></TabsContent>
+        <TabsContent value="carriers"><CarriersTab /></TabsContent>
         <TabsContent value="distances"><DistancesTab /></TabsContent>
         <TabsContent value="containers"><ContainersTab /></TabsContent>
         <TabsContent value="quality"><QualityTab /></TabsContent>
