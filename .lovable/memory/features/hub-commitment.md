@@ -11,7 +11,7 @@ The Hub page (/hub) is restructured (M6) into 3 tabs:
    - Batch action: [Xác nhận tất cả đã liên hệ] locks all rows with evidence.
    - Filter chips by status with counts.
 
-2. **Hub ảo** — Reuses HubOverviewTab. Hub Available formula updated to `Σ NM Confirmed − Σ Released − SS Hub`. Auto-recalculates when Planner changes commitments via `onTotalsChange` callback.
+2. **Hub ảo** — Reuses HubOverviewTab. Hub Available formula updated to `Σ NM Confirmed − Σ Released − SS Hub`. Auto-recalculates when Planner changes commitments via `onTotalsChange` callback. Two sub-tables migrated to **SmartTable** (Lô C): "Cam kết NM — T5 vs T4" (`screenId="hub-overview-compare"`, severity row coloring on Δ ≤ −30%, summary row for totals) and "Change Log — Hub Stock" (`screenId="hub-overview-changelog"`, enum filter on Source: drp/nm/manual/sop). Other sections (Hub Available KPI, NM cards grid, Stock Timeline chart) unchanged.
 
 3. **Đối chiếu** — Unchanged ReconciliationTab.
 
