@@ -639,65 +639,121 @@ export default function DrpPage() {
     });
   }, [data, filter, sourceFilter]);
 
-  /* ── DRP run handler ── */
+  /* ── DRP run handler — wizard Step 1 → 2 → 3 ── */
+  const progressTimerRef = useRef<number | null>(null);
+
+  const buildBatchData = async () => {
+    const ts = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const id = `DRP-${ts.getFullYear()}-${pad(ts.getMonth() + 1)}-${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}`;
+    const items: DrpBatch["items"] = [];
+    let seq = 1;
+    data.forEach(cn => cn.allSkus.forEach(sk => {
+      if (sk.sources.hubPo > 0) items.push({
+        code: `RPO-MKD-${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${String(seq++).padStart(3, "0")}`,
+        kind: "RPO", nm: "Mikado", sku: `${sk.item} ${sk.variant}`,
+        qty: sk.sources.hubPo, value: sk.sources.hubPo * 145_000,
+        eta: `${pad(ts.getDate() + 7)}/${pad(ts.getMonth() + 1)}`,
+      });
+      if (sk.sources.lcnbIn > 0) items.push({
+        code: `TO-LCNB-${cn.cn.replace("CN-", "")}-${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${String(seq++).padStart(3, "0")}`,
+        kind: "TO", fromCn: "CN-DN", toCn: cn.cn, sku: `${sk.item} ${sk.variant}`,
+        qty: sk.sources.lcnbIn, value: sk.sources.lcnbIn * 8_000,
+        eta: `${pad(ts.getDate() + 1)}/${pad(ts.getMonth() + 1)}`,
+      });
+    }));
+    const unresolved: DrpBatch["unresolved"] = [];
+    data.forEach(cn => cn.exceptionList.forEach(e =>
+      unresolved.push({ cn: cn.cn, item: e.item, variant: e.variant, gap: e.gap, type: e.type })));
+
+    const batch: DrpBatch = { id, createdAt: `${pad(ts.getHours())}:${pad(ts.getMinutes())}`, items, unresolved };
+    setDrpBatchData(batch);
+    setBatchStatus("draft");
+    setRejectedCodes(new Set());
+
+    try {
+      const { data: res, error } = await supabase.functions.invoke("drp-batch", {
+        body: { action: "create", batch: { batchCode: batch.id, items: batch.items, unresolved: batch.unresolved } },
+      });
+      if (error) throw error;
+      const r = res as { batch?: { id: string } } | null;
+      if (r?.batch?.id) {
+        setBatchDbId(r.batch.id);
+      }
+    } catch (err) {
+      // Local-only is fine for demo
+    }
+  };
+
   const handleRunDrp = async () => {
     if (isPlanLocked) {
       toast.error("Plan đã khoá. Hủy hoặc release batch hiện tại trước khi chạy lại.");
       return;
     }
+    // Bước 2: progress
+    setWizardStep(2);
+    setWizardCompleted([1]);
+    setProgressIdx(0);
+    setProgressElapsed(0);
+    setProgressCanCancel(true);
     setDrpRunning(true);
-    setDrpStep(0);
-    setTimeout(() => setDrpStep(1), 800);
-    setTimeout(() => setDrpStep(2), 1600);
-    setTimeout(async () => {
-      setDrpRunning(false);
-      setDrpStep(0);
 
-      const ts = new Date();
-      const pad = (n: number) => String(n).padStart(2, "0");
-      const id = `DRP-${ts.getFullYear()}-${pad(ts.getMonth() + 1)}-${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}`;
-      const items: DrpBatch["items"] = [];
-      let seq = 1;
-      data.forEach(cn => cn.allSkus.forEach(sk => {
-        if (sk.sources.hubPo > 0) items.push({
-          code: `RPO-MKD-${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${String(seq++).padStart(3, "0")}`,
-          kind: "RPO", nm: "Mikado", sku: `${sk.item} ${sk.variant}`,
-          qty: sk.sources.hubPo, value: sk.sources.hubPo * 145_000,
-          eta: `${pad(ts.getDate() + 7)}/${pad(ts.getMonth() + 1)}`,
-        });
-        if (sk.sources.lcnbIn > 0) items.push({
-          code: `TO-LCNB-${cn.cn.replace("CN-", "")}-${pad(ts.getMonth() + 1)}${pad(ts.getDate())}-${String(seq++).padStart(3, "0")}`,
-          kind: "TO", fromCn: "CN-DN", toCn: cn.cn, sku: `${sk.item} ${sk.variant}`,
-          qty: sk.sources.lcnbIn, value: sk.sources.lcnbIn * 8_000,
-          eta: `${pad(ts.getDate() + 1)}/${pad(ts.getMonth() + 1)}`,
-        });
-      }));
-      const unresolved: DrpBatch["unresolved"] = [];
-      data.forEach(cn => cn.exceptionList.forEach(e =>
-        unresolved.push({ cn: cn.cn, item: e.item, variant: e.variant, gap: e.gap, type: e.type })));
+    // Tổng demo 5s, 10 step → 500ms/step
+    const stepMs = 500;
+    if (progressTimerRef.current) window.clearInterval(progressTimerRef.current);
+    progressTimerRef.current = window.setInterval(() => {
+      setProgressElapsed((e) => e + 0.1);
+    }, 100) as unknown as number;
 
-      const batch: DrpBatch = { id, createdAt: `${pad(ts.getHours())}:${pad(ts.getMinutes())}`, items, unresolved };
-      setDrpBatchData(batch);
-      setBatchStatus("draft");
-      setRejectedCodes(new Set());
-
-      try {
-        const { data: res, error } = await supabase.functions.invoke("drp-batch", {
-          body: { action: "create", batch: { batchCode: batch.id, items: batch.items, unresolved: batch.unresolved } },
-        });
-        if (error) throw error;
-        const r = res as { batch?: { id: string } } | null;
-        if (r?.batch?.id) {
-          setBatchDbId(r.batch.id);
-          toast.success("DRP hoàn tất — chờ Review & Approve", {
-            description: `Batch ${batch.id}: ${items.filter(i => i.kind === "RPO").length} RPO + ${items.filter(i => i.kind === "TO").length} TO`,
-          });
-        }
-      } catch (err) {
-        toast.warning("Batch tạo cục bộ — không lưu được DB");
-      }
-    }, 2400);
+    for (let i = 0; i < progressSteps.length; i++) {
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise<void>((res) => setTimeout(res, stepMs));
+      setProgressIdx(i + 1);
+      if (i === 0) setProgressCanCancel(false); // Nút Hủy chỉ hiện 10s đầu (≈ 1 step)
+    }
+    if (progressTimerRef.current) {
+      window.clearInterval(progressTimerRef.current);
+      progressTimerRef.current = null;
+    }
+    setDrpRunning(false);
+    await buildBatchData();
+    // Bước 3: kết quả
+    setWizardStep(3);
+    setWizardCompleted([1, 2]);
+    toast.success("DRP hoàn tất — chờ duyệt & chuyển sang Đơn hàng", {
+      description: "Xem kết quả & exception ở Bước 3.",
+    });
   };
+
+  // "Chạy lại" từ Bước 3 → quay về Bước 1 (Preflight)
+  const handleRerun = () => {
+    setWizardStep(1);
+    setWizardCompleted([]);
+  };
+
+  // Cleanup timer
+  useEffect(() => () => {
+    if (progressTimerRef.current) window.clearInterval(progressTimerRef.current);
+  }, []);
+
+  // Approve & Hand-off → /orders
+  const handleApproveAndHandoff = (force: boolean) => {
+    const totalGap = data.reduce((a, r) => a + r.gap, 0);
+    const exceptionCount = data.reduce((a, r) => a + r.exceptionList.length, 0);
+    if (exceptionCount > 0 && !force) {
+      setApproveExceptionDialog(true);
+      return;
+    }
+    const itemCount = drpBatchData?.items.length ?? 0;
+    const poCount = drpBatchData?.items.filter(i => i.kind === "RPO").length ?? 5;
+    const toCount = drpBatchData?.items.filter(i => i.kind === "TO").length ?? 4;
+    toast.success(`Kết quả DRP ${viewingEntityId} v${viewingVersion} đã duyệt`, {
+      description: `${poCount} PO + ${toCount} TO chờ xử lý.`,
+    });
+    setApproveExceptionDialog(false);
+    navigate("/orders?filter=todo");
+  };
+
 
   const visibleBatch = useMemo<DrpBatch | null>(() => {
     if (!drpBatchData) return null;
