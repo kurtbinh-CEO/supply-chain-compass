@@ -45,6 +45,7 @@ import GuidePage from "./pages/GuidePage";
 import NotFound from "./pages/NotFound";
 import CnPortalPage from "./pages/CnPortalPage";
 import ProfilePage from "./pages/ProfilePage";
+import ExecutivePage from "./pages/ExecutivePage";
 
 const queryClient = new QueryClient();
 
@@ -121,6 +122,7 @@ function ProtectedRoutes() {
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/design-test" element={<DesignTest />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/executive" element={<ExecutivePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </CommandPaletteProvider>
