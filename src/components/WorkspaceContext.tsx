@@ -33,26 +33,26 @@ export interface Notification {
 }
 
 const initialApprovals: Approval[] = [
-  { id: "APR-001", type: "S&OP", typeColor: "info", description: "Consensus T5: 7.650m² — Lock Day 7", submitter: "Chị Thúy", timeAgo: "2h" },
-  { id: "APR-002", type: "CN Adjust", typeColor: "warning", description: "CN-BD +12,5% GA-300 A4", submitter: "Anh Minh", timeAgo: "45m" },
-  { id: "APR-003", type: "PO Release", typeColor: "info", description: "PO-BD-W16 Mikado 1.200m²", submitter: "System", timeAgo: "30m" },
-  { id: "APR-004", type: "Force-release", typeColor: "danger", description: "Toko stale 28h — force 3 cấp?", submitter: "Chị Thúy", timeAgo: "15m" },
-  { id: "APR-005", type: "TO Source", typeColor: "info", description: "CN-DN→BD 220m² GA-300 A4. HSTK 12d→9d. Savings 32Mđ", submitter: "System", timeAgo: "10m" },
-  { id: "APR-006", type: "SS Change", typeColor: "warning", description: "GA-300 A4: 900→1.350 (SL 95%→98%). WC +83Mđ", submitter: "Anh Thắng", timeAgo: "5m" },
+  { id: "APR-001", type: "S&OP", typeColor: "info", description: "Đồng thuận T5: 7.650m² — Ngày khóa 7", submitter: "Chị Thúy", timeAgo: "2 giờ trước" },
+  { id: "APR-002", type: "CN điều chỉnh", typeColor: "warning", description: "CN-BD +12,5% GA-300 A4", submitter: "Anh Minh", timeAgo: "45 phút" },
+  { id: "APR-003", type: "Phát hành PO", typeColor: "info", description: "PO-BD-W16 Mikado 1.200m²", submitter: "Hệ thống", timeAgo: "30 phút" },
+  { id: "APR-004", type: "Phát hành khẩn", typeColor: "danger", description: "Toko dữ liệu cũ 28h — phát hành khẩn 3 cấp?", submitter: "Chị Thúy", timeAgo: "15 phút" },
+  { id: "APR-005", type: "Nguồn TO", typeColor: "info", description: "CN-DN→BD 220m² GA-300 A4. HSTK 12d→9d. Tiết kiệm 32Mđ", submitter: "Hệ thống", timeAgo: "10 phút" },
+  { id: "APR-006", type: "Thay đổi tồn kho an toàn", typeColor: "warning", description: "GA-300 A4: 900→1.350 (SL 95%→98%). Vốn lưu động +83Mđ", submitter: "Anh Thắng", timeAgo: "5 phút" },
 ];
 
 const initialExceptions: ExceptionCard[] = [
   { id: "EXC-001", type: "SHORTAGE", typeLabel: "Thiếu hàng", typeColor: "danger", sku: "GA-300 A4", location: "CN-BD", risk: "120 triệu ₫", fixCost: "8,8 triệu ₫", roi: "13,6×", url: "/drp" },
-  { id: "EXC-002", type: "PO_OVERDUE", typeLabel: "PO Overdue", typeColor: "warning", sku: "Toko 557m²", location: "", risk: "85Mđ", fixCost: "", roi: "", url: "/orders" },
-  { id: "EXC-003", type: "FC_DRIFT", typeLabel: "FC Drift", typeColor: "info", sku: "MAPE 18,4%", location: "", risk: "", fixCost: "", roi: "", url: "/demand-weekly" },
+  { id: "EXC-002", type: "PO_OVERDUE", typeLabel: "PO quá hạn", typeColor: "warning", sku: "Toko 557m²", location: "", risk: "85Mđ", fixCost: "", roi: "", url: "/orders" },
+  { id: "EXC-003", type: "FC_DRIFT", typeLabel: "Sai lệch dự báo", typeColor: "info", sku: "MAPE 18,4%", location: "", risk: "", fixCost: "", roi: "", url: "/demand-weekly" },
 ];
 
 const initialNotifications: Notification[] = [
-  { id: "NTF-001", type: "PO_OVERDUE", typeColor: "danger", message: "Đơn hàng #PO8829 từ Mikado trễ 3 ngày so với dự kiến.", timeAgo: "2m ago", read: false, url: "/orders" },
-  { id: "NTF-002", type: "GAP_ALERT", typeColor: "warning", message: "Cảnh báo hụt hàng GA-300 tại kho Miền Tây tuần W18.", timeAgo: "15m ago", read: false, url: "/drp" },
-  { id: "NTF-003", type: "DATA_STALE", typeColor: "info", message: "Tồn kho ERP chưa cập nhật hơn 24h.", timeAgo: "1h ago", read: false, url: "/monitoring" },
-  { id: "NTF-004", type: "SYSTEM", typeColor: "success", message: "Backup hệ thống hoàn tất. Toàn bộ kịch bản đã được lưu.", timeAgo: "3h ago", read: true, url: "/config" },
-  { id: "NTF-005", type: "PO_OVERDUE", typeColor: "danger", message: "Hợp đồng #CN229 chưa được ký duyệt bởi Anh Minh.", timeAgo: "5h ago", read: true, url: "/orders" },
+  { id: "NTF-001", type: "PO_OVERDUE", typeColor: "danger", message: "Đơn hàng #PO8829 từ Mikado trễ 3 ngày so với dự kiến.", timeAgo: "2 phút trước", read: false, url: "/orders" },
+  { id: "NTF-002", type: "GAP_ALERT", typeColor: "warning", message: "Cảnh báo hụt hàng GA-300 tại kho Miền Tây tuần W18.", timeAgo: "15 phút trước", read: false, url: "/drp" },
+  { id: "NTF-003", type: "DATA_STALE", typeColor: "info", message: "Tồn kho ERP chưa cập nhật hơn 24h.", timeAgo: "1 giờ trước", read: false, url: "/monitoring" },
+  { id: "NTF-004", type: "SYSTEM", typeColor: "success", message: "Sao lưu hệ thống hoàn tất. Toàn bộ kịch bản đã được lưu.", timeAgo: "3 giờ trước", read: true, url: "/config" },
+  { id: "NTF-005", type: "PO_OVERDUE", typeColor: "danger", message: "Hợp đồng #CN229 chưa được ký duyệt bởi Anh Minh.", timeAgo: "5 giờ trước", read: true, url: "/orders" },
 ];
 
 interface WorkspaceContextType {

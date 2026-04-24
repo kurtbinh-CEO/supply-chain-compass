@@ -43,18 +43,18 @@ function fmtVndShort(v: number): string {
 }
 
 const stageLabels: Record<string, string> = {
-  draft: "Draft", submitted: "Submitted", confirmed: "Confirmed",
-  shipped: "Shipped", received: "Received", cancelled: "Cancelled",
+  draft: "Nháp", submitted: "Đã gửi", confirmed: "Đã xác nhận",
+  shipped: "Đã giao", received: "Đã nhận", cancelled: "Đã hủy",
 };
 
 type StageKey = "created" | "approved" | "released" | "shipped" | "received";
 
 const stageDefs: { key: StageKey; label: string; icon: typeof FileText; tone: string }[] = [
-  { key: "created",  label: "Đã tạo",  icon: FileText,       tone: "text-text-2" },
-  { key: "approved", label: "Approved", icon: ClipboardCheck, tone: "text-primary" },
-  { key: "released", label: "Released", icon: PackageCheck,   tone: "text-primary" },
-  { key: "shipped",  label: "Shipped",  icon: Truck,          tone: "text-info" },
-  { key: "received", label: "Received", icon: Warehouse,      tone: "text-success" },
+  { key: "created",  label: "Đã tạo",       icon: FileText,       tone: "text-text-2" },
+  { key: "approved", label: "Đã duyệt",     icon: ClipboardCheck, tone: "text-primary" },
+  { key: "released", label: "Đã phát hành", icon: PackageCheck,   tone: "text-primary" },
+  { key: "shipped",  label: "Đã giao",      icon: Truck,          tone: "text-info" },
+  { key: "received", label: "Đã nhận",      icon: Warehouse,      tone: "text-success" },
 ];
 
 export function BpoFlowCard({ data }: { data: BpoFlowData }) {

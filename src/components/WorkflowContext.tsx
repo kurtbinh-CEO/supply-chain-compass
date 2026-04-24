@@ -30,10 +30,10 @@ const monthlySteps: Omit<WorkflowStep, "status" | "completedAt">[] = [
 ];
 
 export const feedbackLoops = [
-  { from: "/monitoring", to: "/inventory",    label: "MAPE → SS Hub recalc" },
-  { from: "/monitoring", to: "/drp",          label: "Trust → SS CN adjust" },
-  { from: "/orders",     to: "/hub",          label: "PO released → Hub ảo" },
-  { from: "/orders",     to: "/gap-scenario", label: "Released → Gap update" },
+  { from: "/monitoring", to: "/inventory",    label: "MAPE → Tính lại SS Hub" },
+  { from: "/monitoring", to: "/drp",          label: "Tin cậy → Điều chỉnh SS CN" },
+  { from: "/orders",     to: "/hub",          label: "PO đã phát hành → Hub ảo" },
+  { from: "/orders",     to: "/gap-scenario", label: "Phát hành → Cập nhật Gap" },
 ];
 
 interface WorkflowContextType {
