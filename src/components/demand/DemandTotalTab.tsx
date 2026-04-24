@@ -963,7 +963,7 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
                 <option key={v.key} value={v.key}>{v.label}</option>
               ))}
             </select>
-            <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setExpandedCns(new Set()); setExpandedSkus(new Set()); }} />
+            <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setExpandedCns(new Set()); setExpandedSkus(new Set()); setExpandedCnSkus(new Set()); setExpandedSkuCns(new Set()); }} />
           </div>
         </SectionHeader>
         {pivotMode === "sku" ? renderSkuTable() : renderCnTable()}
