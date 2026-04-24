@@ -663,34 +663,79 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
                   </td>
                 </tr>
 
-                {isExpanded && sk.cnDetails.map((c) => (
-                  <tr
-                    key={`${skuKey}-${c.cn}`}
-                    className="border-b border-surface-3/30 bg-primary/[0.02] hover:bg-primary/[0.06] transition-colors animate-fade-in"
-                  >
-                    <td className="px-3 py-2" />
-                    <td className="px-2 py-2 pl-6 text-text-2 text-table-sm" colSpan={2}>{c.cn}</td>
-                    <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">
-                      <span className="cursor-help group relative">
-                        {c.fc.toLocaleString()}
-                        <span className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 bg-text-1 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-20">
-                          {c.source}, MAPE {c.mape}%
-                        </span>
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">{c.b2b.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-center tabular-nums text-text-3 text-table-sm">{c.po.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-center tabular-nums font-semibold text-primary/80 text-table-sm border-l border-surface-3/50">{c.total.toLocaleString()}</td>
-                    <td className="px-3 py-2">
-                      <CompositionBar fc={c.fc} b2b={c.b2b} po={c.po} total={c.total} />
-                    </td>
-                    <td className={cn("px-3 py-2 text-center tabular-nums text-table-sm",
-                      c.vsLm > 0 ? "text-success" : c.vsLm < 0 ? "text-danger" : "text-text-3"
-                    )}>
-                      {c.vsLm > 0 ? "+" : ""}{c.vsLm}%
-                    </td>
-                  </tr>
-                ))}
+                {isExpanded && sk.cnDetails.map((c) => {
+                  const skuCnKey = `${skuKey}::${c.cn}`;
+                  const cnExpanded = expandedSkuCns.has(skuCnKey);
+                  const variants = variantSplit(sk.item);
+                  return (
+                    <React.Fragment key={`${skuKey}-${c.cn}`}>
+                      <tr
+                        onClick={() => toggleSkuCn(skuCnKey)}
+                        className="border-b border-surface-3/30 bg-primary/[0.02] hover:bg-primary/[0.06] transition-colors animate-fade-in cursor-pointer"
+                      >
+                        <td className="px-3 py-2 text-center">
+                          <div className={cn("transition-transform duration-200 inline-block", cnExpanded && "rotate-90")}>
+                            <ChevronRight className="h-3 w-3 text-text-3" />
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 pl-6 text-text-2 text-table-sm" colSpan={2}>
+                          {c.cn}
+                          <span className="ml-1.5 text-[10px] text-text-3">({variants.length} variants)</span>
+                        </td>
+                        <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">
+                          <span className="cursor-help group relative">
+                            {c.fc.toLocaleString()}
+                            <span className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 bg-text-1 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-20">
+                              {c.source}, MAPE {c.mape}%
+                            </span>
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">{c.b2b.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-center tabular-nums text-text-3 text-table-sm">{c.po.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-center tabular-nums font-semibold text-primary/80 text-table-sm border-l border-surface-3/50">{c.total.toLocaleString()}</td>
+                        <td className="px-3 py-2">
+                          <CompositionBar fc={c.fc} b2b={c.b2b} po={c.po} total={c.total} />
+                        </td>
+                        <td className={cn("px-3 py-2 text-center tabular-nums text-table-sm",
+                          c.vsLm > 0 ? "text-success" : c.vsLm < 0 ? "text-danger" : "text-text-3"
+                        )}>
+                          {c.vsLm > 0 ? "+" : ""}{c.vsLm}%
+                        </td>
+                      </tr>
+
+                      {/* ── L3: Variant breakdown for this SKU at this CN ── */}
+                      {cnExpanded && variants.map((v) => {
+                        const fcV = Math.round(c.fc * v.share);
+                        const b2bV = Math.round(c.b2b * v.share);
+                        const poV = Math.round(c.po * v.share);
+                        const totalV = fcV + b2bV + poV;
+                        return (
+                          <tr
+                            key={`${skuCnKey}-${v.tag}`}
+                            className="border-b border-surface-3/20 bg-primary/[0.04] hover:bg-primary/[0.08] transition-colors animate-fade-in"
+                          >
+                            <td className="px-3 py-1.5" />
+                            <td className="px-2 py-1.5 pl-12 text-table-sm" colSpan={2}>
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="h-1 w-1 rounded-full bg-text-3" />
+                                <span className="font-mono text-text-3 text-[11px]">{sk.item}-{v.tag}</span>
+                                <span className="text-text-3 text-[10px]">({Math.round(v.share * 100)}%)</span>
+                              </span>
+                            </td>
+                            <td className="px-3 py-1.5 text-center tabular-nums text-text-3 text-[11px]">{fcV.toLocaleString()}</td>
+                            <td className="px-3 py-1.5 text-center tabular-nums text-text-3 text-[11px]">{b2bV.toLocaleString()}</td>
+                            <td className="px-3 py-1.5 text-center tabular-nums text-text-3 text-[11px]">{poV.toLocaleString()}</td>
+                            <td className="px-3 py-1.5 text-center tabular-nums font-medium text-primary/70 text-[11px] border-l border-surface-3/30">{totalV.toLocaleString()}</td>
+                            <td className="px-3 py-1.5">
+                              <CompositionBar fc={fcV} b2b={b2bV} po={poV} total={totalV} />
+                            </td>
+                            <td className="px-3 py-1.5 text-center text-text-3 text-[10px]">—</td>
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })}
               </React.Fragment>
             );
           })}
