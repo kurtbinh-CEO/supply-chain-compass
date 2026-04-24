@@ -218,8 +218,9 @@ export default function DemandPage() {
       {/* Header */}
       <div data-tour="demand-header">
         <ScreenHeader
-          title="Demand Review — Tháng 5"
-          subtitle=""
+          title="Rà soát nhu cầu"
+          subtitle={planLocked ? `Chế độ chỉ xem — ${planCycle.label} đã khóa` : ""}
+          actions={<PlanningPeriodSelector />}
           badges={
             <>
               <button
