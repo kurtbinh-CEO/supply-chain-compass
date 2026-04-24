@@ -364,9 +364,10 @@ function ItemsTab() {
         entityLabel={deleting ? `mã ${deleting.code}` : ""}
         description={
           deleting
-            ? deleting.source === "cloud"
+            ? (deleting.source === "cloud"
               ? `Mã ${deleting.code} (Cloud) đang có ${variantCount(deleting.code)} variants. Xóa sẽ ảnh hưởng forecast & PO. Yêu cầu quyền admin.`
-              : `Mã ${deleting.code} thuộc dataset mẫu — không thể xóa từ đây. Để ẩn, hãy thêm bản Cloud cùng mã rồi xóa bản Cloud.`
+              : `Mã ${deleting.code} thuộc dataset mẫu — không thể xóa từ đây. Để ẩn, hãy thêm bản Cloud cùng mã rồi xóa bản Cloud.`)
+            : undefined
         }
         onClose={() => setDeleting(null)}
         onConfirm={async () => {
