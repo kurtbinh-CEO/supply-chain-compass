@@ -1,33 +1,45 @@
+/**
+ * SopPage — Đồng thuận S&OP (3-layer redesign).
+ *
+ * LỚP 1 — Header 1 dòng (title + plan period + actions).
+ * LỚP 2 — Tiến trình + 4 Summary Cards (mỗi số chỉ hiện 1 lần).
+ * LỚP 3 — Pivot toggle + Table + Drill-down (ConsensusTab).
+ * SAU TABLE — SopActionBar gộp giải trình / cân đối / khóa.
+ *
+ * XÓA: subtitle "Digital Curator", status strip Day/Lock, KPI strip Σ v3/AOP/Variance,
+ * warning banner trùng, tab bar Consensus/Balance, 5 cards trùng trong tab.
+ * Mọi text tiếng Việt.
+ */
 import { useState, useCallback, useMemo } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
-import { cn } from "@/lib/utils";
 import { useTenant } from "@/components/TenantContext";
 import { ConsensusTab } from "@/components/sop/ConsensusTab";
 import { BalanceLockTab } from "@/components/sop/BalanceLockTab";
-import { SopDeadlineStepper } from "@/components/sop/SopDeadlineStepper";
-import { FileText, Loader2, PackageOpen } from "lucide-react";
+import { SopActionBar } from "@/components/sop/SopActionBar";
+import { Loader2, PackageOpen, FileDown, ChevronDown } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
 import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
 import { PlanningPeriodSelector } from "@/components/PlanningPeriodSelector";
-import { AvatarBar, AutoSaveIndicator, useCellPresence } from "@/components/CellPresence";
+import { useCellPresence } from "@/components/CellPresence";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PreLockDialog } from "@/components/BatchLockBanner";
 import { useSopConsensus } from "@/hooks/useSopConsensus";
 import { BRANCHES, DEMAND_FC, SKU_BASES, SKU_VARIANTS, AOP_PLAN, getAopMonth } from "@/data/unis-enterprise-dataset";
-import { ClickableNumber } from "@/components/ClickableNumber";
 import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
 import { VersionComparePanel } from "@/components/sop/VersionComparePanel";
 import { VersionHistoryButton } from "@/components/VersionHistoryButton";
-import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
+import { SummaryCards } from "@/components/SummaryCards";
+import { AutoSaveIndicator } from "@/components/CellPresence";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-
-const tabs = [
-  { key: "consensus", label: "Consensus" },
-  { key: "balance", label: "Cân đối & Lock" },
-];
 
 export interface ConsensusRow {
   cn: string;
@@ -53,7 +65,6 @@ export interface SkuRow {
 
 /* ─── Build 12-CN consensus from enterprise dataset ─────────────────────── */
 function buildEnterpriseConsensus(): ConsensusRow[] {
-  // Top 4 SKU bases by FC volume to keep tables readable
   const topBases = [...SKU_BASES]
     .map((b) => ({
       base: b,
@@ -63,10 +74,8 @@ function buildEnterpriseConsensus(): ConsensusRow[] {
     .slice(0, 4)
     .map((x) => x.base);
 
-  const fvaModels = ["v2 CN Input", "v0 Statistical", "v1 Sales", "v3 Consensus"];
+  const fvaModels = ["v2 CN nhập", "v0 Thống kê", "v1 Kinh doanh", "v3 Đồng thuận"];
 
-  // AOP tháng 5 phân bổ theo trọng số nhóm SKU + tỷ lệ FC theo CN.
-  // Thay cho hardcode `baseFc * 0.92` — đọc từ AOP_PLAN (M17).
   const aopMay = getAopMonth(5);
   const totalFcMay = DEMAND_FC.reduce((s, r) => s + r.fcM2, 0) || 1;
 
@@ -75,11 +84,9 @@ function buildEnterpriseConsensus(): ConsensusRow[] {
       const variants = SKU_VARIANTS.filter((v) => v.baseCode === base.code).slice(0, 1);
       const fcRow = DEMAND_FC.find((r) => r.skuBaseCode === base.code && r.cnCode === cn.code);
       const baseFc = fcRow?.fcM2 ?? 0;
-      // Trọng số nhóm SKU từ AOP_PLAN ("GA-300" / "GA-400" / "GA-600" / "Khác")
       const groupKey = AOP_PLAN.skuGroupWeights[base.code] != null ? base.code : "Khác";
       const groupWeight = (AOP_PLAN.skuGroupWeights[groupKey] ?? 0) / 100;
       const cnSkuShare = totalFcMay > 0 ? baseFc / totalFcMay : 0;
-      // AOP cho ô (CN × SKU) = AOP tháng × trọng số nhóm × tỷ lệ FC của CN trong tổng FC
       const aop = Math.round(aopMay * groupWeight * cnSkuShare * (totalFcMay / Math.max(1, baseFc * 12)));
       return variants.map((vt) => {
         const v0 = Math.round(baseFc * 0.95);
@@ -93,20 +100,17 @@ function buildEnterpriseConsensus(): ConsensusRow[] {
           v1,
           v2,
           v3,
-          aop: aop > 0 ? aop : Math.round(baseFc * 0.92),  // fallback nếu data trống
+          aop: aop > 0 ? aop : Math.round(baseFc * 0.92),
           note: "",
         };
       });
     });
 
-    // Top-down v0 deliberately differs slightly from Σ(SKU v0) for some CNs to
-    // demonstrate the >10% top-down/bottom-up variance row highlight.
     const sumV0 = skus.reduce((a, s) => a + s.v0, 0);
     const sumV1 = skus.reduce((a, s) => a + s.v1, 0);
     const sumV2 = skus.reduce((a, s) => a + s.v2, 0);
     const sumV3 = skus.reduce((a, s) => a + s.v3, 0);
     const sumAop = skus.reduce((a, s) => a + s.aop, 0);
-    // Inject 2 deliberate variance cases for the demo (CN-HCM +14%, CN-NA -12%)
     const topDownV0 =
       cn.code === "CN-HCM"
         ? Math.round(sumV0 * 0.86)
@@ -128,7 +132,6 @@ function buildEnterpriseConsensus(): ConsensusRow[] {
 }
 
 export default function SopPage() {
-  const [activeTab, setActiveTab] = useState("consensus");
   const { tenant } = useTenant();
   const { markDone } = useNextStep();
   const { current: planCycle, isReadOnly: planLocked } = usePlanningPeriod();
@@ -136,7 +139,7 @@ export default function SopPage() {
   const [locked, setLocked] = useState(false);
   const [showPreLock, setShowPreLock] = useState(false);
 
-  // Mock current S&OP day-of-cycle (Day 5/30 — Cân đối phase)
+  // Mock current S&OP day-of-cycle (Ngày 5/30 — Cân đối phase)
   const [currentDay] = useState(5);
 
   const cellPresence = useCellPresence("sop-consensus", { id: "u-me", name: "Bạn", role: "Planner", color: "bg-primary text-primary-foreground" });
@@ -191,19 +194,17 @@ export default function SopPage() {
   const totalAop = consensusData.reduce((a, r) => a + r.aop, 0);
   const totalV3 = consensusData.reduce((a, r) => a + r.v3, 0);
 
-  // G5 — S&OP Lock trigger chain: Booking v1 + NM commitment notification + advance step
+  // Trigger chain khi khóa
   const lockAndMark = useCallback(() => {
     setLocked(true);
     markDone("sop.locked");
 
     import("sonner").then(m => {
-      // 1) Toast: lock success
       m.toast.success("✅ S&OP T5/2026 đã được khóa", {
         description: `${consensusData.length} CN · v3 = ${totalV3.toLocaleString("vi-VN")} m². Chuyển sang giai đoạn cam kết NM.`,
         duration: 5000,
       });
 
-      // 2) Tạo Booking T5 v1
       const totalBooking = Math.round(totalV3 * 0.78);
       const nmCount = 5;
       setTimeout(() => {
@@ -214,7 +215,6 @@ export default function SopPage() {
         });
       }, 800);
 
-      // 3) Notification: NM cần cam kết
       setTimeout(() => {
         m.toast.warning(`🔔 ${nmCount} NM cần cam kết Net Booking`, {
           description: "Mikado, Tân Việt, Hà Anh, Phương Nam, An Lộc — pre-fill qty per SKU",
@@ -225,8 +225,7 @@ export default function SopPage() {
     });
   }, [markDone, consensusData.length, totalV3]);
 
-  // Compute unresolved variance: |Σ(SKU v3) − v0_topdown| / v0_topdown > 10%
-  // and explanation < 6 chars
+  // Variance chưa giải trình: |Σ(SKU v3) − v0_topdown| / v0_topdown > 10% & explanation < 6 chars
   const unresolvedVariance = useMemo(() => {
     return consensusData.filter((r) => {
       if (r.v0 <= 0) return false;
@@ -237,174 +236,150 @@ export default function SopPage() {
     }).length;
   }, [consensusData, varianceExplanations]);
 
+  // CN cần xem = số CN có |Δ vs AOP| > 10%
+  const cnNeedReview = useMemo(() => {
+    return consensusData.filter((r) => {
+      if (r.aop <= 0) return false;
+      return Math.abs(r.v3 - r.aop) / r.aop > 0.1;
+    }).length;
+  }, [consensusData]);
+
+  const variancePct = totalAop > 0 ? Math.round(((totalV3 - totalAop) / totalAop) * 100) : 0;
+  const varianceAbs = totalV3 - totalAop;
+
+  // Tiến trình S&OP — 4 phase
+  const phaseLabel = currentDay <= 4
+    ? "Nhập liệu"
+    : currentDay < 7
+      ? "Cân đối"
+      : currentDay < 10
+        ? "Khóa"
+        : "Tự khóa";
+  const daysToLock = Math.max(0, 7 - currentDay);
+
+  // ───────────────────────────── render ─────────────────────────────
   return (
     <AppLayout>
+      {/* LỚP 1 — Header 1 dòng */}
       <ScreenHeader
         title="Đồng thuận S&OP"
-        subtitle={planLocked ? `Chế độ chỉ xem — ${planCycle.label} đã khóa` : "Digital Curator — Consensus Planning"}
+        subtitle={planLocked ? `Chế độ chỉ xem — ${planCycle.label} đã khóa` : undefined}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             <PlanningPeriodSelector />
             <VersionHistoryButton entityType="SOP" entityId="SOP-T5" />
-            <LogicLink tab="monthly" node={1} tooltip="Logic S&OP Consensus → Lock" />
-            <button
-              disabled={planLocked}
-              className="rounded-button bg-gradient-primary text-white px-4 py-2 text-table-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <FileText className="h-4 w-4" /> Pre-meeting report
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  disabled={planLocked}
+                  className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 px-3 py-2 text-table-sm font-medium text-text-1 hover:border-primary hover:text-primary disabled:opacity-50 transition-colors"
+                >
+                  <FileDown className="h-3.5 w-3.5" /> Xuất <ChevronDown className="h-3 w-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => toast.success("Đã tạo Báo cáo trước họp (PDF)")}>
+                  📄 Báo cáo trước họp
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toast.success("Đã xuất Excel S&OP v3")}>
+                  📊 Xuất Excel S&OP v3
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toast.success("Đã copy snapshot consensus")}>
+                  📋 Copy snapshot
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <LogicLink tab="monthly" node={1} tooltip="Logic S&OP Đồng thuận → Khóa" />
           </div>
         }
       />
 
-      {/* Deadline stepper */}
-      <SopDeadlineStepper currentDay={currentDay} locked={locked} />
-
-      {/* Status strip */}
-      <div data-tour="sop-status" className="flex items-center gap-3 mb-5 flex-wrap">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-info-bg text-info text-table-sm font-medium px-3 py-1">
-          Day {currentDay}/30
-        </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-warning-bg text-warning text-table-sm font-medium px-3 py-1">
-          🔒 Lock Day 7 — còn {Math.max(0, 7 - currentDay)} ngày
-        </span>
-        {locked && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-success-bg text-success text-table-sm font-medium px-3 py-1">
-            ✅ Locked
-          </span>
-        )}
-        <div className="flex-1" />
-        <AvatarBar users={cellPresence.onlineUsers} />
-      </div>
-
-      {/* KPI strip — clickable totals */}
+      {/* LỚP 2 — Tiến trình (1 dòng nhỏ) + 4 Summary Cards */}
       {consensusData.length > 0 && (
-        <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-surface-3 bg-surface-1 px-4 py-3">
-          <div className="flex flex-col">
-            <span className="text-caption uppercase text-text-3 tracking-wider">Σ v3 Consensus</span>
-            <ClickableNumber
-              value={`${totalV3.toLocaleString()} m²`}
-              label="Σ v3 Consensus"
-              color="text-text-1 font-display text-section-header"
-              breakdown={consensusData.slice(0, 6).map((r) => ({
-                label: r.cn,
-                value: `${r.v3.toLocaleString()} m²`,
-              }))}
-              formula={`Σ v3 = ${consensusData.map((r) => r.v3.toLocaleString()).slice(0, 4).join(" + ")}${consensusData.length > 4 ? " + ..." : ""} = ${totalV3.toLocaleString()} m²`}
-              note="v3 = phiên bản consensus cuối, sẽ lock Day 7"
+        <>
+          <div className="mb-3 flex items-center gap-2 text-caption text-text-3 flex-wrap">
+            <span className="font-semibold uppercase tracking-wider">Tiến trình S&OP:</span>
+            <span className={phaseLabel === "Nhập liệu" ? "text-success font-medium" : "text-success"}>
+              Nhập liệu ✅
+            </span>
+            <span className="text-text-3">→</span>
+            <span className={phaseLabel === "Cân đối" ? "text-primary font-semibold" : "text-text-3"}>
+              {phaseLabel === "Cân đối" ? "● " : ""}Cân đối
+            </span>
+            <span className="text-text-3">→</span>
+            <span className={phaseLabel === "Khóa" ? "text-warning font-semibold" : "text-text-3"}>
+              Khóa (ngày 5–7)
+            </span>
+            <span className="text-text-3">→</span>
+            <span className={phaseLabel === "Tự khóa" ? "text-danger font-semibold" : "text-text-3"}>
+              Tự khóa (ngày 10)
+            </span>
+            <span className="mx-2 text-text-3">·</span>
+            <span className="text-text-2 font-medium">
+              Ngày {currentDay}/30 · Khóa trong {daysToLock} ngày
+            </span>
+          </div>
+
+          <div className="mb-5">
+            <SummaryCards
+              screenId="sop"
+              editable
+              cards={[
+                {
+                  key: "consensus",
+                  label: "Đồng thuận",
+                  value: totalV3.toLocaleString("vi-VN"),
+                  unit: "m²",
+                  trend: { delta: locked ? "v3 đã khóa" : "v3 đang chốt", direction: "flat", color: locked ? "green" : "gray" },
+                  severity: "ok",
+                  tooltip: "Tổng demand consensus phiên v3 — chốt ngày 7",
+                },
+                {
+                  key: "vs_aop",
+                  label: "So AOP",
+                  value: `${variancePct >= 0 ? "+" : ""}${variancePct}%`,
+                  unit: "",
+                  trend: {
+                    delta: `${varianceAbs >= 0 ? "+" : ""}${varianceAbs.toLocaleString("vi-VN")} m² ${varianceAbs >= 0 ? "vượt" : "thiếu"}`,
+                    direction: varianceAbs >= 0 ? "up" : "down",
+                    color: Math.abs(variancePct) > 10 ? "red" : "green",
+                  },
+                  severity: Math.abs(variancePct) > 10 ? "warn" : "ok",
+                  tooltip: "Chênh lệch giữa v3 đồng thuận và AOP baseline",
+                },
+                {
+                  key: "need_review",
+                  label: "CN cần xem",
+                  value: cnNeedReview,
+                  unit: "CN",
+                  trend: {
+                    delta: cnNeedReview > 0 ? "|Δ vs AOP| > 10%" : "Trong biên",
+                    direction: "flat",
+                    color: cnNeedReview > 0 ? "red" : "green",
+                  },
+                  severity: cnNeedReview > 0 ? "warn" : "ok",
+                  onClick: () => toast.info("Lọc CN có |Δ vs AOP| > ±10%", {
+                    description: "Cuộn xuống bảng — các CN này có viền đỏ.",
+                  }),
+                },
+                {
+                  key: "explained",
+                  label: "Đã giải trình",
+                  value: `${Math.max(0, consensusData.length - unresolvedVariance)}/${consensusData.length}`,
+                  unit: "CN",
+                  trend: {
+                    delta: unresolvedVariance > 0 ? "🔴 chưa đủ" : "✅ hoàn tất",
+                    direction: "flat",
+                    color: unresolvedVariance > 0 ? "red" : "green",
+                  },
+                  severity: unresolvedVariance > 0 ? "warn" : "ok",
+                  tooltip: "Số CN đã ghi giải trình cho variance > ±10%",
+                },
+              ]}
             />
           </div>
-          <div className="flex flex-col">
-            <span className="text-caption uppercase text-text-3 tracking-wider">Σ AOP</span>
-            <ClickableNumber
-              value={`${totalAop.toLocaleString()} m²`}
-              label="Σ AOP cả năm chia"
-              color="text-text-2 font-display text-section-header"
-              note="AOP = Annual Operating Plan, baseline so sánh"
-            />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-caption uppercase text-text-3 tracking-wider">Variance v3 vs AOP</span>
-            <ClickableNumber
-              value={`${totalAop > 0 ? (((totalV3 - totalAop) / totalAop) * 100).toFixed(1) : "0"}%`}
-              label="Δ v3 vs AOP"
-              color={cn(
-                "font-display text-section-header",
-                totalV3 > totalAop ? "text-warning" : "text-success",
-              )}
-              formula={`(Σ v3 − Σ AOP) / Σ AOP\n= (${totalV3.toLocaleString()} − ${totalAop.toLocaleString()}) / ${totalAop.toLocaleString()}\n= ${totalAop > 0 ? (((totalV3 - totalAop) / totalAop) * 100).toFixed(1) : "0"}%`}
-              note={
-                totalV3 > totalAop
-                  ? `Demand consensus cao hơn AOP ${((totalV3 - totalAop) / 1000).toFixed(1)}k m² vì sales tự tin Q2`
-                  : "Demand consensus thấp hơn AOP — cần kiểm tra B2B pipeline"
-              }
-            />
-          </div>
-          {unresolvedVariance > 0 && (
-            <div className="ml-auto rounded-button bg-danger-bg/50 border border-danger/20 px-3 py-1.5 text-table-sm text-danger">
-              ⚠ {unresolvedVariance} CN có variance &gt;10% chưa giải trình vì top-down ≠ Σ(SKU bottom-up)
-            </div>
-          )}
-        </div>
+        </>
       )}
-
-      {/* M20-PATCH — Summary thẻ tóm tắt */}
-      <div className="mb-5">
-        <SummaryCards
-          screenId="sop"
-          editable
-          cards={[
-            {
-              key: "consensus",
-              label: "Đồng thuận",
-              value: totalV3 > 0 ? totalV3.toLocaleString("vi-VN") : "7.650",
-              unit: "m²",
-              trend: { delta: locked ? "v3 locked" : "v3 đang chốt", direction: "flat", color: "gray" },
-              severity: "ok",
-              tooltip: "Tổng demand consensus phiên v3 — chốt Day 7",
-            },
-            {
-              key: "vs_aop",
-              label: "So AOP",
-              value: totalAop > 0
-                ? `${totalV3 >= totalAop ? "+" : ""}${(((totalV3 - totalAop) / totalAop) * 100).toFixed(0)}%`
-                : "+9%",
-              unit: "",
-              trend: {
-                delta: totalAop > 0
-                  ? `${totalV3 >= totalAop ? "+" : ""}${(totalV3 - totalAop).toLocaleString("vi-VN")} m² ${totalV3 >= totalAop ? "vượt" : "thiếu"}`
-                  : "+553 m² vượt",
-                direction: totalV3 >= totalAop ? "up" : "down",
-                color: Math.abs(totalV3 - totalAop) / Math.max(1, totalAop) > 0.1 ? "red" : "green",
-              },
-              severity: Math.abs(totalV3 - totalAop) / Math.max(1, totalAop) > 0.1 ? "warn" : "ok",
-              onClick: () => toast.info("Lọc CN có |Δ vs AOP| > ±10%", { description: "Mở tab Consensus để xem chi tiết." }),
-            },
-            {
-              key: "need_explain",
-              label: "CN cần giải trình",
-              value: unresolvedVariance || 2,
-              unit: "CN",
-              trend: { delta: "vd: CN-BD, CN-HP", direction: "up", color: "red" },
-              severity: unresolvedVariance > 0 ? "warn" : "ok",
-              onClick: () => {
-                setActiveTab("consensus");
-                toast.info("Lọc CN vượt AOP", { description: "Cần giải trình variance > ±10%." });
-              },
-            },
-            {
-              key: "fva_best",
-              label: "FVA tốt nhất",
-              value: "v2",
-              unit: "CN Input",
-              trend: { delta: "3/12 CN chọn", direction: "flat", color: "gray" },
-              severity: "ok",
-              tooltip: "Forecast Value Add — phiên bản đóng góp tốt nhất",
-            },
-          ]}
-        />
-      </div>
-
-      {/* Tab bar */}
-      <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              "px-5 py-3 text-table font-medium transition-colors relative whitespace-nowrap",
-              activeTab === tab.key
-                ? "text-primary"
-                : "text-text-2 hover:text-text-1"
-            )}
-          >
-            {tab.label}
-            {activeTab === tab.key && (
-              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t" />
-            )}
-          </button>
-        ))}
-      </div>
 
       {/* Loading */}
       {loading && consensusData.length === 0 && (
@@ -424,28 +399,39 @@ export default function SopPage() {
         </div>
       )}
 
-      {/* Content */}
+      {/* LỚP 3 — Pivot toggle + Table + Drill-down */}
       {consensusData.length > 0 && (
         <>
           <div data-tour="sop-consensus">
-            {activeTab === "consensus" && (
-              <>
-                <ConsensusTab
-                  data={consensusData}
-                  totalAop={totalAop}
-                  totalV3={totalV3}
-                  locked={locked}
-                  onUpdateV3={handleUpdateV3}
-                  onUpdateNote={handleUpdateNote}
-                  varianceExplanations={varianceExplanations}
-                  onUpdateVariance={handleUpdateVariance}
-                />
-                <VersionComparePanel />
-              </>
-            )}
+            <ConsensusTab
+              data={consensusData}
+              totalAop={totalAop}
+              totalV3={totalV3}
+              locked={locked}
+              onUpdateV3={handleUpdateV3}
+              onUpdateNote={handleUpdateNote}
+              varianceExplanations={varianceExplanations}
+              onUpdateVariance={handleUpdateVariance}
+            />
+            <VersionComparePanel />
           </div>
-          <div data-tour="sop-balance">
-            {activeTab === "balance" && (
+
+          {/* Action bar — gộp Cân đối & Khóa thay tab riêng */}
+          <SopActionBar
+            totalV3={totalV3}
+            totalAop={totalAop}
+            unresolvedVariance={unresolvedVariance}
+            totalCn={consensusData.length}
+            currentDay={currentDay}
+            locked={locked}
+            onLock={() => {
+              if (cellPresence.onlineUsers.length > 1) {
+                setShowPreLock(true);
+              } else {
+                lockAndMark();
+              }
+            }}
+            detailSlot={
               <BalanceLockTab
                 data={consensusData}
                 totalV3={totalV3}
@@ -461,8 +447,8 @@ export default function SopPage() {
                 }}
                 tenant={tenant}
               />
-            )}
-          </div>
+            }
+          />
         </>
       )}
 
@@ -474,7 +460,7 @@ export default function SopPage() {
             { name: "Sales N", cell: "CT×GA-600", duration: "45s" },
           ]}
           onNotifyWait={() => { import("sonner").then(m => m.toast.info("Đã gửi thông báo tới editors. Chờ 5 phút...")); }}
-          onForceLock={() => { lockAndMark(); setShowPreLock(false); import("sonner").then(m => m.toast.warning("S&OP đã locked. Unsaved data → Drafts.")); }}
+          onForceLock={() => { lockAndMark(); setShowPreLock(false); import("sonner").then(m => m.toast.warning("S&OP đã khóa. Unsaved data → Drafts.")); }}
           onClose={() => setShowPreLock(false)}
         />
       )}
