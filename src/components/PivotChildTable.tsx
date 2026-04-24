@@ -88,11 +88,15 @@ export function PivotChildTable({
       render: (r) =>
         r.navKind ? (
           <button
-            className="text-info hover:underline font-medium text-table-sm"
+            type="button"
+            data-testid={`pivot-${r.navKind}-${r.navValue ?? r.key}`}
+            className="text-info hover:underline font-medium text-table-sm cursor-pointer"
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               const v = r.navValue ?? r.key;
-              // Mọi click mã thực thể đều mở popup tại chỗ — không navigate.
+              // Mọi click mã thực thể đều mở popup tại chỗ — KHÔNG navigate.
               // Cross-link sang DRP/Supply chỉ khi user click [Xem ... →] trong popup.
               if (r.navKind === "sku") setSkuSheet(v);
               else if (r.navKind === "cn") setEntitySheet({ kind: "cn", code: v });
