@@ -180,25 +180,28 @@ export function PivotChildTable({
   ];
 
   return (
-    <div className={cn("rounded-lg border border-surface-3 bg-surface-0 overflow-hidden", className)}>
-      <SmartTable<PivotChildRow>
-        screenId={screenId}
-        columns={columns}
-        data={sorted}
-        defaultDensity="compact"
-        rowSeverity={(r) => {
-          const st = statusFromHstk(r.hstk, thresholds);
-          if (st.tone === "danger") return "shortage";
-          if (st.tone === "warning") return "watch";
-          return "ok";
-        }}
-        getRowId={(r) => r.key}
-        summaryRow={{
-          label: <span className="text-text-3 font-medium">TỔNG</span>,
-          qty: <span className="tabular-nums font-semibold">{totalQty.toLocaleString()}</span>,
-          hstk: <span className="tabular-nums">{avgHstk.toFixed(1)}d</span>,
-        }}
-      />
-    </div>
+    <>
+      <div className={cn("rounded-lg border border-surface-3 bg-surface-0 overflow-hidden", className)}>
+        <SmartTable<PivotChildRow>
+          screenId={screenId}
+          columns={columns}
+          data={sorted}
+          defaultDensity="compact"
+          rowSeverity={(r) => {
+            const st = statusFromHstk(r.hstk, thresholds);
+            if (st.tone === "danger") return "shortage";
+            if (st.tone === "warning") return "watch";
+            return "ok";
+          }}
+          getRowId={(r) => r.key}
+          summaryRow={{
+            label: <span className="text-text-3 font-medium">TỔNG</span>,
+            qty: <span className="tabular-nums font-semibold">{totalQty.toLocaleString()}</span>,
+            hstk: <span className="tabular-nums">{avgHstk.toFixed(1)}d</span>,
+          }}
+        />
+      </div>
+      <SkuDetailSheet open={skuSheet !== null} onClose={() => setSkuSheet(null)} sku={skuSheet} />
+    </>
   );
 }
