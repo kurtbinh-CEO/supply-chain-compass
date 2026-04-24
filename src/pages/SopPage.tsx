@@ -20,6 +20,7 @@ import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
 import { VersionComparePanel } from "@/components/sop/VersionComparePanel";
+import { VersionHistoryButton } from "@/components/VersionHistoryButton";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 import { toast } from "sonner";
 

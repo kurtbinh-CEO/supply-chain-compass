@@ -11,6 +11,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { SummaryCards } from "@/components/SummaryCards";
+import { VersionHistoryButton } from "@/components/VersionHistoryButton";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { AppLayout } from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
