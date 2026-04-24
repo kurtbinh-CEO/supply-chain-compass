@@ -45,11 +45,12 @@ import {
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Filter pills definition
+   Filter model — multi-select pills
    ═══════════════════════════════════════════════════════════════════════════ */
-type FilterKey = "all" | "todo" | "in_transit" | "completed" | "overdue";
-
 const ACTION_STAGES: LifecycleStage[] = ["approved", "sent_nm", "nm_confirmed", "delivering"];
+
+/** Drill-down popup focus, set when a summary card is clicked. */
+type DrillFocus = "todo" | "transit" | "overdue" | "done" | null;
 
 /* ═══════════════════════════════════════════════════════════════════════════
    MAIN PAGE
