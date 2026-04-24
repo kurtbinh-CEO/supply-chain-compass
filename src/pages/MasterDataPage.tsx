@@ -18,6 +18,12 @@ import {
   type FormField,
 } from "@/components/master/CrudPrimitives";
 import type { ImportField } from "@/components/master/ExcelImportWizard";
+import {
+  useMasterItems, useCreateMasterItem, useUpdateMasterItem, useDeleteMasterItem, useBulkInsertMasterItems,
+  useMasterFactories, useCreateMasterFactory, useUpdateMasterFactory, useDeleteMasterFactory, useBulkInsertMasterFactories,
+  useMasterBranches, useCreateMasterBranch, useUpdateMasterBranch, useDeleteMasterBranch, useBulkInsertMasterBranches,
+  useMasterContainers, useCreateMasterContainer, useUpdateMasterContainer, useDeleteMasterContainer, useBulkInsertMasterContainers,
+} from "@/hooks/useMasterData";
 import { Button } from "@/components/ui/button";
 import {
   SKU_BASES,
@@ -28,6 +34,15 @@ import {
   TRANSIT_LT,
   type NmId,
 } from "@/data/unis-enterprise-dataset";
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Merged row types — cloud overrides hardcode                                */
+/* ────────────────────────────────────────────────────────────────────────── */
+type RowSource = "cloud" | "hardcode";
+interface MergedItem      { id: string | null; code: string; name: string; nmId: string; category: string; unit: string; unitPrice: number; source: RowSource }
+interface MergedFactory   { id: string | null; code: string; name: string; region: string; ltDays: number; sigmaLt: number; moqM2: number; capacityM2Month: number; reliability: number; honoringPct: number; priceTier1: number; priceTier2: number; source: RowSource }
+interface MergedBranch    { id: string | null; code: string; name: string; region: string; lat: number; lng: number; zFactor: number; manager: string; source: RowSource }
+interface MergedContainer { id: string | null; code: string; name: string; capacityM2: number; palletLimit: number; weightLimitKg: number; costPerKm: number; note: string; source: RowSource }
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /* Helpers                                                                    */
