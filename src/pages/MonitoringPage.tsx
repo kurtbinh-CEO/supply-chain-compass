@@ -18,6 +18,7 @@ import { TrustScoreCnPanel } from "@/components/monitoring/TrustScoreCnPanel";
 import { PlannerOverridePanel } from "@/components/monitoring/PlannerOverridePanel";
 import { NmRiskTab } from "@/components/monitoring/NmRiskTab";
 import { RoiFlywheelTab } from "@/components/monitoring/RoiFlywheelTab";
+import { FcAccuracyTab } from "@/components/monitoring/FcAccuracyTab";
 import { TermTooltip } from "@/components/TermTooltip";
 import { SYSTEM_ACCURACY } from "@/data/unis-enterprise-dataset";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
