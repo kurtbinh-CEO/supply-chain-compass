@@ -390,56 +390,6 @@ export const SEED_PO_LIFECYCLE: PoLifecycleRow[] = [
       { stage: "completed", ts: "18/05 15:00", actor: "Thủ kho Nghệ An" },
     ],
   },
-  /* ── ORDERS-TABLE-PATCH: sibling SKU lines that share PO group (NM × CN × Week)
-     so the parent→child UI has real multi-SKU groups to demo. ────────────── */
-  // 16. Sibling of #1 — same Đồng Tâm → CN-BD W20 group
-  {
-    id: "16", kind: "RPO", poNumber: "PO-BD-W20-002",
-    sku: "GA-300", skuLabel: "GA-300 A4", qty: 400,
-    fromName: "NM Đồng Tâm", toName: "CN-BD", region: "Nam",
-    stage: "approved", hoursInStage: 1,
-    evidence: [],
-    timeline: [
-      { stage: "approved", ts: "20/05 09:00", actor: "Planner Linh", note: "Gom container cùng GA-600 B2" },
-    ],
-  },
-  // 17. Sibling of #6 — same Đồng Tâm → CN-HCM W19 group, đang pickup
-  {
-    id: "17", kind: "RPO", poNumber: "PO-HCM-W19-002",
-    sku: "GA-300", skuLabel: "GA-300 A4", qty: 600, qtyConfirmed: 600,
-    fromName: "NM Đồng Tâm", toName: "CN-HCM", region: "Nam",
-    stage: "pickup", hoursInStage: 3,
-    carrierId: "CR-01", carrierName: "Vinatrans",
-    vehiclePlate: "51C-72184",
-    pickupEta: "14/05",
-    evidence: [{ label: "Xác nhận NM", kind: "screenshot" }],
-    timeline: [
-      { stage: "approved",     ts: "12/05 08:00", actor: "Planner Linh" },
-      { stage: "sent_nm",      ts: "12/05 08:30", actor: "Planner Linh" },
-      { stage: "nm_confirmed", ts: "13/05 10:00", actor: "NM Đồng Tâm" },
-      { stage: "pickup",       ts: "14/05 06:00", actor: "Planner Linh", note: "Cùng container 40ft với PO-HCM-W19-001" },
-    ],
-  },
-  // 18. Sibling of #9 — same Toko → CN-CT W19 group, đang delivering
-  {
-    id: "18", kind: "RPO", poNumber: "PO-CT-W19-003",
-    sku: "GA-600", skuLabel: "GA-600 A4", qty: 480, qtyConfirmed: 480,
-    fromName: "NM Toko", toName: "CN-CT", region: "Nam",
-    stage: "delivering", hoursInStage: 1,
-    carrierId: "CR-03", carrierName: "Tân Cảng STC",
-    vehiclePlate: "51F-221.05",
-    driverName: "Võ Thanh Sơn", driverPhone: "0935 441 887",
-    deliveryEta: "20/05 13:00",
-    evidence: [{ label: "Phiếu xuất NM", kind: "doc" }],
-    timeline: [
-      { stage: "approved",     ts: "16/05 08:00", actor: "Planner Hà" },
-      { stage: "sent_nm",      ts: "16/05 08:30", actor: "Planner Hà" },
-      { stage: "nm_confirmed", ts: "17/05 11:00", actor: "NM Toko" },
-      { stage: "pickup",       ts: "18/05 06:00", actor: "Planner Hà" },
-      { stage: "in_transit",   ts: "19/05 09:00", actor: "Tài xế Sơn" },
-      { stage: "delivering",   ts: "20/05 13:00", actor: "CN Cần Thơ" },
-    ],
-  },
 ];
 
 /** Lookup helpers */

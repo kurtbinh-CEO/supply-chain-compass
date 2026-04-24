@@ -36,16 +36,10 @@ import {
 } from "@/lib/po-lifecycle-data";
 import { CARRIERS, CN_REGION } from "@/data/unis-enterprise-dataset";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
-import { BpoProgressSection } from "@/components/orders/BpoProgressSection";
-import {
-  BPO_DEMO_DAY_OF_MONTH, BPO_DEMO_DAYS_IN_MONTH, BPO_EXPECTED_PCT,
-  totals as bpoTotals, findBpoForPo, WEEK_STATUS_META,
-} from "@/lib/bpo-tracker";
-import { buildPoGroups, unitPriceFor, type PoGroup } from "@/lib/po-group-builder";
 import {
   Send, CheckCircle2, Truck, Package, Flag, ClipboardCheck,
-  Phone, AlertTriangle, ChevronDown, ChevronRight, ArrowRight,
-  Camera, FileText, X, Image, PenLine, ShieldAlert, Layers, Container,
+  Phone, AlertTriangle, ChevronDown, ChevronRight,
+  Camera, FileText, X, Image, PenLine, ShieldAlert,
 } from "lucide-react";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
@@ -75,8 +69,7 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<Set<LifecycleStage>>(new Set());
   const [kindFilter, setKindFilter] = useState<Set<"RPO" | "TO">>(new Set());
   const [overdueOnly, setOverdueOnly] = useState(false);
-  // (removed legacy `expanded` state — SmartTable now owns drill-down chevron.)
-  const [bpoOpen, setBpoOpen] = useState(true);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   // Drill-down popup từ summary cards
   const [drillFocus, setDrillFocus] = useState<DrillFocus>(null);
@@ -85,11 +78,7 @@ export default function OrdersPage() {
   const [actionRow, setActionRow] = useState<PoLifecycleRow | null>(null);
   const [cancelRow, setCancelRow] = useState<PoLifecycleRow | null>(null);
 
-  /* ── ORDERS-TABLE-PATCH: build PO groups (NM × CN × Week) once per rows change.
-       Filter pills sau đó được tính TRÊN GROUPS, không trên flat lines. ── */
-  const allGroups = useMemo(() => buildPoGroups(rows), [rows]);
-
-  /* ── Group-level counts cho filter pills + summary cards ── */
+  /* ── Stage counts for summary bar + filter pills ── */
   const counts = useMemo(() => {
     const stage: Record<LifecycleStage, number> = {
       approved: 0, sent_nm: 0, nm_confirmed: 0, pickup: 0,
@@ -97,37 +86,26 @@ export default function OrdersPage() {
     };
     let todo = 0, transit = 0, done = 0, overdue = 0;
     let po = 0, to = 0;
-    for (const g of allGroups) {
-      stage[g.stage]++;
-      if (g.kind === "RPO") po++; else to++;
-      if (ACTION_STAGES.includes(g.stage)) todo++;
-      if (g.stage === "pickup" || g.stage === "in_transit") transit++;
-      if (g.stage === "completed") done++;
-      if (g.anyOverdue) overdue++;
+    for (const r of rows) {
+      stage[r.stage]++;
+      if (r.kind === "RPO") po++; else to++;
+      if (ACTION_STAGES.includes(r.stage)) todo++;
+      if (r.stage === "pickup" || r.stage === "in_transit") transit++;
+      if (r.stage === "completed") done++;
+      if (isOverdue(r)) overdue++;
     }
-    return {
-      stage, todo, transit, done, overdue,
-      total: allGroups.length,
-      lineTotal: rows.length,
-      po, to,
-    };
-  }, [allGroups, rows.length]);
+    return { stage, todo, transit, done, overdue, total: rows.length, po, to };
+  }, [rows]);
 
-  /* ── Filtered groups — multi-select pills ── */
-  const visibleGroups = useMemo(() => {
-    return allGroups.filter(g => {
-      if (kindFilter.size > 0 && !kindFilter.has(g.kind)) return false;
-      if (overdueOnly && !g.anyOverdue) return false;
-      if (statusFilter.size > 0 && !statusFilter.has(g.stage)) return false;
+  /* ── Filtered list — multi-select pills ── */
+  const visibleRows = useMemo(() => {
+    return rows.filter(r => {
+      if (kindFilter.size > 0 && !kindFilter.has(r.kind as "RPO" | "TO")) return false;
+      if (overdueOnly && !isOverdue(r)) return false;
+      if (statusFilter.size > 0 && !statusFilter.has(r.stage)) return false;
       return true;
     });
-  }, [allGroups, statusFilter, kindFilter, overdueOnly]);
-
-  /** Flattened lines (giữ lại cho dialog drill-down popup). */
-  const visibleRows = useMemo(
-    () => visibleGroups.flatMap(g => g.lines),
-    [visibleGroups],
-  );
+  }, [rows, statusFilter, kindFilter, overdueOnly]);
 
   // Toggle helpers
   const toggleStatus = (s: LifecycleStage) =>
@@ -148,25 +126,14 @@ export default function OrdersPage() {
     setOverdueOnly(false);
   };
 
-  /* ── Mutations from dialogs ──
-     ORDERS-TABLE-PATCH: nếu leader có ≥1 sibling cùng group + cùng stage,
-     advance toàn bộ group cùng lúc (1 lần "Gửi NM" = gửi tất cả SKU lines). */
+  /* ── Mutations from dialogs ── */
   const advance = (id: string, patch: Partial<PoLifecycleRow>) => {
-    const leader = rows.find(r => r.id === id);
-    const siblings = leader
-      ? allGroups.find(g => g.lines.some(l => l.id === id))?.lines
-          .filter(l => l.stage === leader.stage)
-          .map(l => l.id) ?? [id]
-      : [id];
-    const idSet = new Set(siblings);
-    setRows(prev => prev.map(r => idSet.has(r.id)
-      ? { ...r, ...patch, hoursInStage: 0, overdueFlag: false }
-      : r));
+    setRows(prev => prev.map(r => r.id === id ? { ...r, ...patch, hoursInStage: 0, overdueFlag: false } : r));
 
     // G4 — ERP posting: khi PO/TO hoàn tất POD → đăng sang ERP
     if (patch.stage === "completed") {
       const row = rows.find(r => r.id === id);
-      const docNo = row?.poNumber || id;
+      const docNo = row?.id || id;
       const erpDoc = `MIGO-${Date.now().toString().slice(-6)}`;
       const t = toast.loading(`Đang đăng ERP cho ${docNo}...`, { description: "Tạo MIGO/Goods Receipt → SAP/Odoo" });
       setTimeout(() => {
@@ -176,9 +143,6 @@ export default function OrdersPage() {
           duration: 6000,
         });
       }, 1200);
-    }
-    if (idSet.size > 1) {
-      toast.message(`Đã cập nhật ${idSet.size} dòng SKU trong cùng đơn hàng`);
     }
   };
 
@@ -246,29 +210,7 @@ export default function OrdersPage() {
           counts.overdue > 0 ? "critical" : "ok";
         const urgentTodo = rows.filter(r => ACTION_STAGES.includes(r.stage) && isOverdue(r)).length;
 
-        const bpo = bpoTotals();
-        const expected = Math.round(BPO_EXPECTED_PCT);
-        const bpoSeverity: SummaryCard["severity"] =
-          bpo.pct >= expected ? "ok" :
-          bpo.pct >= expected * 0.6 ? "warn" : "critical";
         const cards: SummaryCard[] = [
-          {
-            key: "bpo", label: "Tiến độ cam kết", value: `${bpo.pct}%`,
-            severity: bpoSeverity,
-            trend: {
-              delta: `${(bpo.released / 1000).toFixed(1)}K/${(bpo.committed / 1000).toFixed(1)}K m²`,
-              direction: bpo.pct >= expected ? "up" : "down",
-              color: bpo.pct >= expected ? "green" : bpo.pct >= expected * 0.6 ? "gray" : "red",
-            },
-            tooltip: `Đã release ${bpo.released.toLocaleString()} / ${bpo.committed.toLocaleString()} m². Ngày ${BPO_DEMO_DAY_OF_MONTH}/${BPO_DEMO_DAYS_IN_MONTH} kỳ vọng ≥ ${expected}%. Click để xem phân rã theo NM.`,
-            onClick: () => {
-              setBpoOpen(true);
-              // smooth-scroll xuống section
-              setTimeout(() => {
-                document.getElementById("bpo-progress")?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }, 50);
-            },
-          },
           {
             key: "todo", label: "Cần xử lý", value: counts.todo, unit: "đơn",
             severity: todoSeverity,
@@ -305,23 +247,17 @@ export default function OrdersPage() {
         return <SummaryCards cards={cards} screenId="orders-lifecycle" editable />;
       })()}
 
-      {/* ═══ TIẾN ĐỘ CAM KẾT THÁNG (BPO ↔ RPO trừ lùi) ═══ */}
-      <div className="mt-4">
-        <BpoProgressSection open={bpoOpen} onOpenChange={setBpoOpen} />
-      </div>
-
-      {/* ═══ LỚP 2: FILTER PILLS — đếm theo PO GROUPS, kèm subcount dòng SKU ═══ */}
+      {/* ═══ LỚP 2: FILTER PILLS — gộp status + type + alert ═══ */}
       <div className="flex flex-wrap items-center gap-1.5 mt-4 mb-2">
-        {/* "Tất cả" — clear all (group count + line subcount) */}
+        {/* "Tất cả" — clear all */}
         <FilterPill
           active={noFilters}
           onClick={clearAllFilters}
           count={counts.total}
           label="Tất cả"
-          subcount={`${counts.lineTotal} dòng`}
         />
 
-        {/* Nhóm 1: Status pills (multi-select) — theo group stage */}
+        {/* Nhóm 1: Status pills (multi-select) */}
         {STAGE_ORDER.map(s => (
           <FilterPill
             key={s}
@@ -372,13 +308,14 @@ export default function OrdersPage() {
         onToggle={toggleStatus}
       />
 
-      {/* ═══ MAIN TABLE — 1 row = 1 PO GROUP (NM × CN × Tuần). Drill-down ▸ = SKU lines ═══ */}
-      <SmartTable<PoGroup>
-        data={visibleGroups}
-        getRowId={(g) => `${g.kind}|${g.groupId}`}
+      {/* ═══ MAIN TABLE ═══ */}
+      <SmartTable<PoLifecycleRow>
+        data={visibleRows}
+        getRowId={(r) => r.id}
         screenId="orders-lifecycle"
         defaultDensity="compact"
-        rowSeverity={(g) => g.anyOverdue ? "shortage" : (isNearSla(g.leader) ? "watch" : undefined)}
+        rowSeverity={(r) => isOverdue(r) ? "shortage" : isNearSla(r) ? "watch" : undefined}
+        autoExpandWhen={(r) => expanded.has(r.id)}
         emptyState={{
           icon: overdueOnly ? <CheckCircle2 /> : <ClipboardCheck />,
           title: overdueOnly ? "Không có đơn trễ hạn" : "Không có đơn nào",
@@ -386,103 +323,95 @@ export default function OrdersPage() {
             ? "Chưa có đơn trong tuần. Tải đơn mới từ DRP batch."
             : "Thử bỏ bớt bộ lọc hoặc bấm \"Tất cả\" để xem toàn bộ.",
         }}
-        drillDown={(g) => <GroupDrillDown group={g} />}
+        drillDown={(r) => <ExpandedRow row={r} />}
         columns={[
           {
-            key: "groupId", label: "Mã đơn", width: 170, sortable: true, hideable: false, priority: "high",
+            key: "expand", label: "", width: 32, hideable: false,
+            render: (r) => (
+              <button
+                aria-label={expanded.has(r.id) ? "Thu gọn" : "Mở rộng"}
+                className="text-text-3 hover:text-text-1 transition-transform"
+                onClick={(e) => { e.stopPropagation(); setExpanded(prev => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; }); }}
+              >
+                {expanded.has(r.id) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </button>
+            ),
+          },
+          {
+            key: "poNumber", label: "Mã đơn", width: 180, sortable: true, hideable: false, priority: "high",
             filter: "text",
-            accessor: (g) => g.groupId,
-            render: (g) => (
+            accessor: (r) => r.poNumber,
+            render: (r) => (
               <div className="flex flex-col">
-                <span className="font-mono text-table-sm font-semibold text-text-1">{g.groupId}</span>
-                {g.lines.some(l => l.cancelReason) && (
-                  <span className="text-[10px] text-danger">Có dòng hủy</span>
-                )}
+                <span className="font-mono text-table-sm font-semibold text-text-1">{r.poNumber}</span>
+                {r.cancelReason && <span className="text-[10px] text-danger">Hủy: {r.cancelReason}</span>}
               </div>
             ),
           },
           {
             key: "kind", label: "Loại", width: 70, align: "center",
             filter: "enum", filterOptions: [{ label: "RPO", value: "RPO" }, { label: "TO", value: "TO" }],
-            accessor: (g) => g.kind,
-            render: (g) => (
+            accessor: (r) => r.kind,
+            render: (r) => (
               <Badge variant="outline" className={cn("text-[10px] font-mono",
-                g.kind === "TO" ? "border-warning/40 text-warning bg-warning-bg/40" : "border-success/40 text-success bg-success-bg/40"
-              )}>{g.kind}</Badge>
+                r.kind === "TO" ? "border-warning/40 text-warning bg-warning-bg/40" : "border-success/40 text-success bg-success-bg/40"
+              )}>{r.kind}</Badge>
             ),
           },
           {
             key: "route", label: "Tuyến", width: 240,
             filter: "text",
-            accessor: (g) => `${g.fromName} → ${g.toName}`,
-            render: (g) => (
+            accessor: (r) => `${r.fromName} → ${r.toName}`,
+            render: (r) => (
               <div className="flex flex-col text-table-sm">
-                <span className="text-text-1 font-medium truncate">{g.fromName}</span>
-                <span className="text-text-3 text-[11px]">→ {g.toName}</span>
+                <span className="text-text-1 font-medium truncate">{r.fromName}</span>
+                <span className="text-text-3 text-[11px]">→ {r.toName}</span>
               </div>
             ),
           },
           {
-            key: "totalQty", label: "Tổng SL", width: 130, numeric: true, align: "right", sortable: true,
-            accessor: (g) => g.totalQty,
-            render: (g) => (
+            key: "sku", label: "Mã hàng", width: 130,
+            filter: "text",
+            accessor: (r) => r.skuLabel,
+            render: (r) => <span className="font-mono text-table-sm text-text-2">{r.skuLabel}</span>,
+          },
+          {
+            key: "qty", label: "Số lượng", width: 120, numeric: true, align: "right", sortable: true,
+            accessor: (r) => r.qty,
+            render: (r) => (
               <div className="text-right tabular-nums text-table-sm">
-                <div className="text-text-1 font-semibold">{g.totalQty.toLocaleString()} m²</div>
-                {g.totalQtyConfirmed < g.totalQty && (
-                  <div className="text-[10px] text-warning">NM: {g.totalQtyConfirmed.toLocaleString()}</div>
+                <div className="text-text-1 font-medium">{r.qty.toLocaleString()} m²</div>
+                {r.qtyConfirmed !== undefined && r.qtyConfirmed < r.qty && (
+                  <div className="text-[10px] text-warning">NM: {r.qtyConfirmed.toLocaleString()}</div>
+                )}
+                {r.qtyDelivered !== undefined && r.qtyDelivered < (r.qtyConfirmed ?? r.qty) && (
+                  <div className="text-[10px] text-danger">Nhận: {r.qtyDelivered.toLocaleString()}</div>
                 )}
               </div>
-            ),
-          },
-          {
-            key: "lineCount", label: "Số mã", width: 80, align: "center", sortable: true,
-            accessor: (g) => g.lineCount,
-            render: (g) => (
-              <Badge variant="outline" className="text-[10px] font-mono border-surface-3 text-text-2">
-                {g.lineCount} SKU
-              </Badge>
-            ),
-          },
-          {
-            key: "container", label: "Container", width: 110, align: "center",
-            accessor: (g) => g.container,
-            render: (g) => (
-              <span className="inline-flex items-center gap-1 text-[11px] text-text-2 font-mono">
-                <Container className="h-3 w-3 text-text-3" />
-                {g.container}
-              </span>
             ),
           },
           {
             key: "stage", label: "Trạng thái", width: 140, align: "center",
             filter: "enum",
             filterOptions: STAGE_ORDER.concat(["cancelled"]).map(s => ({ label: STAGE_META[s].short, value: s })),
-            accessor: (g) => g.stage,
-            render: (g) => (
-              <div className="flex flex-col items-center gap-0.5">
-                <Badge variant="outline" className={cn("text-[10px] font-bold tracking-wide", STAGE_META[g.stage].tone)}>
-                  {STAGE_META[g.stage].label}
-                </Badge>
-                {g.lineCount > 1 && g.lines.some(l => l.stage !== g.stage) && (
-                  <span className="text-[9px] text-text-3" title="Một số SKU đã sang stage khác">
-                    {g.lines.filter(l => l.stage === g.stage).length}/{g.lineCount} SKU
-                  </span>
-                )}
-              </div>
+            accessor: (r) => r.stage,
+            render: (r) => (
+              <Badge variant="outline" className={cn("text-[10px] font-bold tracking-wide", STAGE_META[r.stage].tone)}>
+                {STAGE_META[r.stage].label}
+              </Badge>
             ),
           },
           {
             key: "time", label: "Thời gian", width: 130, align: "center",
             sortable: true,
-            accessor: (g) => g.hoursInStage,
-            render: (g) => {
-              const r = g.leader;
-              if (g.stage === "completed" || g.stage === "cancelled") {
-                return <span className="text-text-3 text-table-sm">{fmtTimeInStage(g.hoursInStage)}</span>;
+            accessor: (r) => r.hoursInStage,
+            render: (r) => {
+              if (r.stage === "completed" || r.stage === "cancelled") {
+                return <span className="text-text-3 text-table-sm">{fmtTimeInStage(r.hoursInStage)}</span>;
               }
-              const overdue = g.anyOverdue;
+              const overdue = isOverdue(r);
               const near = isNearSla(r);
-              if ((g.stage === "in_transit" || g.stage === "pickup") && r.etaRemainingH !== undefined) {
+              if ((r.stage === "in_transit" || r.stage === "pickup") && r.etaRemainingH !== undefined) {
                 const eta = fmtEta(r.etaRemainingH);
                 return (
                   <div className="flex flex-col items-center text-table-sm">
@@ -491,7 +420,7 @@ export default function OrdersPage() {
                       eta.tone === "warning" && "text-warning",
                       eta.tone === "success" && "text-success",
                     )}>{eta.label}</span>
-                    <span className="text-[10px] text-text-3">{fmtTimeInStage(g.hoursInStage)}</span>
+                    <span className="text-[10px] text-text-3">{fmtTimeInStage(r.hoursInStage)}</span>
                   </div>
                 );
               }
@@ -501,10 +430,10 @@ export default function OrdersPage() {
                     "font-medium tabular-nums",
                     overdue ? "text-danger" : near ? "text-warning" : "text-text-2",
                   )}>
-                    {fmtTimeInStage(g.hoursInStage)} {overdue && "⚠️"}
+                    {fmtTimeInStage(r.hoursInStage)} {overdue && "⚠️"}
                   </span>
                   {overdue && (
-                    <span className="text-[10px] text-danger">SLA {STAGE_SLA_HOURS[g.stage]}h</span>
+                    <span className="text-[10px] text-danger">SLA {STAGE_SLA_HOURS[r.stage]}h</span>
                   )}
                 </div>
               );
@@ -512,16 +441,9 @@ export default function OrdersPage() {
           },
           {
             key: "action", label: "Hành động", width: 200, align: "center", hideable: false,
-            render: (g) => (
-              <RowActionButton
-                row={g.leader}
-                groupSize={g.lineCount}
-                onClick={() => setActionRow(g.leader)}
-                onCancel={() => setCancelRow(g.leader)}
-              />
-            ),
+            render: (r) => <RowActionButton row={r} onClick={() => setActionRow(r)} onCancel={() => setCancelRow(r)} />,
           },
-        ] satisfies SmartTableColumn<PoGroup>[]}
+        ] satisfies SmartTableColumn<PoLifecycleRow>[]}
       />
 
       {/* ═══ DIALOG ROUTER ═══ */}
@@ -561,7 +483,7 @@ export default function OrdersPage() {
             else if (typeof s === "object") setStatusFilter(new Set([s.stage]));
             setDrillFocus(null);
           }}
-          onOpenRow={() => { setDrillFocus(null); /* SmartTable groups: user expands manually via ▸ chevron */ }}
+          onOpenRow={(r) => { setDrillFocus(null); setExpanded(prev => new Set(prev).add(r.id)); }}
         />
       )}
     </AppLayout>
@@ -617,11 +539,9 @@ function LifecycleFlowMini({
 /* ═══════════════════════════════════════════════════════════════════════════
    Filter pill + separator
    ═══════════════════════════════════════════════════════════════════════════ */
-function FilterPill({ active, onClick, count, label, icon, tone, disabled, subcount }: {
+function FilterPill({ active, onClick, count, label, icon, tone, disabled }: {
   active: boolean; onClick: () => void; count: number; label: string;
   icon?: string; tone?: "warning" | "info" | "success" | "danger"; disabled?: boolean;
-  /** Optional secondary count (e.g. "15 dòng" beside "10 đơn"). */
-  subcount?: string;
 }) {
   const toneActive = tone === "danger"
     ? "bg-danger text-primary-foreground border-danger"
@@ -648,11 +568,6 @@ function FilterPill({ active, onClick, count, label, icon, tone, disabled, subco
       {icon && <span>{icon}</span>}
       <span>{label}</span>
       <span className="tabular-nums font-bold">{count}</span>
-      {subcount && (
-        <span className={cn("tabular-nums opacity-70 font-normal", active ? "" : "text-text-3")}>
-          ({subcount})
-        </span>
-      )}
     </button>
   );
 }
@@ -784,8 +699,8 @@ function CardDrillDownDialog({
    Per-row action button (button label depends on current stage)
    ═══════════════════════════════════════════════════════════════════════════ */
 function RowActionButton({
-  row, onClick, onCancel, groupSize = 1,
-}: { row: PoLifecycleRow; onClick: () => void; onCancel: () => void; groupSize?: number }) {
+  row, onClick, onCancel,
+}: { row: PoLifecycleRow; onClick: () => void; onCancel: () => void }) {
   const cfg = ACTION_CONFIG[row.stage];
   if (!cfg) {
     if (row.stage === "completed") {
@@ -797,11 +712,6 @@ function RowActionButton({
     // pickup / in_transit — has primary advance + cancel
   }
   const overdue = isOverdue(row);
-  const baseLabel = cfg?.label || ACTION_CONFIG_FALLBACK[row.stage]?.label || "Cập nhật";
-  // Group hint: nếu nhóm có >1 SKU lines cùng stage → action sẽ áp tất cả
-  const groupHint = groupSize > 1
-    ? ` · ${groupSize} SKU sẽ cập nhật cùng lúc`
-    : "";
   return (
     <div className="flex items-center justify-center gap-1">
       <Button
@@ -809,10 +719,10 @@ function RowActionButton({
         variant={overdue ? "destructive" : "default"}
         onClick={(e) => { e.stopPropagation(); onClick(); }}
         className="h-7 text-[11px] px-2.5 gap-1"
-        title={(overdue ? `Quá SLA ${STAGE_SLA_HOURS[row.stage]}h. Cần xử lý ngay.` : `${baseLabel} cho cả nhóm đơn`) + groupHint}
+        title={overdue ? `Quá SLA ${STAGE_SLA_HOURS[row.stage]}h. Cần xử lý ngay.` : undefined}
       >
         {cfg?.icon && <cfg.icon className="h-3.5 w-3.5" />}
-        {baseLabel}
+        {cfg?.label || ACTION_CONFIG_FALLBACK[row.stage]?.label || "Cập nhật"}
       </Button>
       {row.stage !== "completed" && row.stage !== "cancelled" && row.stage !== "in_transit" && (
         <Button
@@ -825,87 +735,6 @@ function RowActionButton({
           <X className="h-3.5 w-3.5" />
         </Button>
       )}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   ORDERS-TABLE-PATCH: Group drill-down — child SKU table + reused ExpandedRow
-   ═══════════════════════════════════════════════════════════════════════════ */
-function GroupDrillDown({ group }: { group: PoGroup }) {
-  // Đại diện 1 line để render lifecycle/transport/evidence chung (giống nhau trong group).
-  const repr = group.lines[0];
-  return (
-    <div className="bg-surface-1 border-t border-surface-3">
-      {/* ── Child SKU table ── */}
-      <div className="px-4 pt-4 pb-2">
-        <div className="flex items-baseline justify-between mb-2">
-          <div className="text-caption uppercase tracking-wide text-text-3 font-semibold">
-            {group.groupId} — {group.lineCount} mã hàng
-          </div>
-          <div className="text-[11px] text-text-3">
-            Container <span className="font-mono text-text-2">{group.container}</span>
-          </div>
-        </div>
-        <div className="rounded-card border border-surface-3 overflow-hidden bg-surface-0">
-          <table className="w-full text-table-sm">
-            <thead className="bg-surface-1 text-text-3 text-[10px] uppercase tracking-wide">
-              <tr>
-                <th className="text-left px-3 py-1.5 font-semibold">Mã PO con</th>
-                <th className="text-left px-3 py-1.5 font-semibold">Mã hàng</th>
-                <th className="text-right px-3 py-1.5 font-semibold">Số lượng</th>
-                <th className="text-right px-3 py-1.5 font-semibold">Đơn giá</th>
-                <th className="text-right px-3 py-1.5 font-semibold">Thành tiền</th>
-                <th className="text-center px-3 py-1.5 font-semibold">Stage</th>
-                <th className="text-left px-3 py-1.5 font-semibold">Ghi chú</th>
-              </tr>
-            </thead>
-            <tbody>
-              {group.lines.map(l => {
-                const unit = unitPriceFor(l.skuLabel);
-                const total = l.qty * unit;
-                const note = l.timeline.find(e => e.note)?.note ?? "";
-                return (
-                  <tr key={l.id} className="border-t border-surface-3">
-                    <td className="px-3 py-1.5 font-mono text-[11px] text-text-3">{l.poNumber}</td>
-                    <td className="px-3 py-1.5 font-mono text-text-1">{l.skuLabel}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-text-1">
-                      {l.qty.toLocaleString()} m²
-                      {l.qtyConfirmed !== undefined && l.qtyConfirmed < l.qty && (
-                        <div className="text-[10px] text-warning">NM: {l.qtyConfirmed.toLocaleString()}</div>
-                      )}
-                    </td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-text-2">{unit.toLocaleString()} ₫</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums text-text-1 font-medium">
-                      {(total / 1_000_000).toFixed(1)} triệu
-                    </td>
-                    <td className="px-3 py-1.5 text-center">
-                      <Badge variant="outline" className={cn("text-[10px]", STAGE_META[l.stage].tone)}>
-                        {STAGE_META[l.stage].short}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-1.5 text-[11px] text-text-3 truncate max-w-[200px]">{note}</td>
-                  </tr>
-                );
-              })}
-              <tr className="border-t-2 border-surface-3 bg-surface-1/60 font-semibold">
-                <td className="px-3 py-1.5 text-text-3 text-[10px] uppercase">Tổng</td>
-                <td className="px-3 py-1.5 text-text-3 text-[11px]">{group.lineCount} SKU</td>
-                <td className="px-3 py-1.5 text-right tabular-nums text-text-1">
-                  {group.totalQty.toLocaleString()} m²
-                </td>
-                <td />
-                <td className="px-3 py-1.5 text-right tabular-nums text-text-1">
-                  {(group.totalValue / 1_000_000).toFixed(1)} triệu
-                </td>
-                <td colSpan={2} />
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-      {/* ── Reuse single-line ExpandedRow for lifecycle / transport / evidence / BPO link ── */}
-      <ExpandedRow row={repr} />
     </div>
   );
 }
@@ -924,93 +753,8 @@ const ACTION_CONFIG_FALLBACK = ACTION_CONFIG;
    Expanded drill-down
    ═══════════════════════════════════════════════════════════════════════════ */
 function ExpandedRow({ row }: { row: PoLifecycleRow }) {
-  const navigate = useNavigate();
-  // Tra cứu BPO cha (cam kết tháng) — nếu PO này thuộc 1 BPO trong tracker
-  const bpoLink = row.kind === "RPO" ? findBpoForPo(row.poNumber) : null;
-
-  const goToCommitment = () => {
-    if (!bpoLink) return;
-    const params = new URLSearchParams({
-      tab: "commitment",
-      nm: bpoLink.tracker.nmId,
-      sku: bpoLink.tracker.skuBaseCode,
-    });
-    navigate(`/hub?${params.toString()}`);
-  };
-
-  // PO này là release thứ mấy (đếm theo thứ tự tuần trong tracker)
-  const releaseIndex = bpoLink
-    ? bpoLink.tracker.weeklyBreakdown
-        .filter(w => w.qty > 0)
-        .findIndex(w => w.poNumber === row.poNumber) + 1
-    : 0;
-
   return (
     <div className="bg-surface-1 border-t border-surface-3 p-4 space-y-4">
-      {/* ═══ BPO link (cam kết tháng cha) ═══ */}
-      {bpoLink && (
-        <div className="rounded border border-info/30 bg-info-bg/40 p-3">
-          <div className="flex items-start gap-2 mb-2">
-            <Layers className="h-4 w-4 text-info shrink-0 mt-0.5" />
-            <div className="flex-1 text-table-sm">
-              <div className="text-text-1 flex items-center gap-1.5 flex-wrap">
-                <span className="text-text-3">Cam kết gốc:</span>
-                <button
-                  type="button"
-                  onClick={goToCommitment}
-                  className="inline-flex items-center gap-1 rounded border border-info/40 bg-surface-0 hover:bg-info/10 hover:border-info px-1.5 py-0.5 font-medium text-info transition-colors"
-                  title="Mở Hub Cam kết & cuộn tới dòng tương ứng"
-                >
-                  {bpoLink.tracker.nmName} {bpoLink.tracker.skuBaseCode} T{bpoLink.tracker.month}
-                  <ArrowRight className="h-3 w-3" />
-                </button>
-                <span className="text-text-3">—</span>
-                <span className="font-semibold tabular-nums">
-                  {bpoLink.tracker.committedQty.toLocaleString()} m²
-                </span>
-                <span className="text-text-3">
-                  · Đã release{" "}
-                  <span className="font-semibold text-text-1 tabular-nums">
-                    {bpoLink.tracker.releasedQty.toLocaleString()}/{bpoLink.tracker.committedQty.toLocaleString()}
-                  </span>
-                  {" "}({bpoLink.tracker.releasePct}%)
-                </span>
-                {releaseIndex > 0 && (
-                  <span className="text-text-3">
-                    · Release{" "}
-                    <span className="text-text-1 font-semibold">#{releaseIndex}</span>
-                    : {bpoLink.week.qty.toLocaleString()}m²
-                  </span>
-                )}
-              </div>
-              <div className="text-caption text-text-3 mt-0.5">
-                PO này release tuần W{bpoLink.week.week} ·{" "}
-                {WEEK_STATUS_META[bpoLink.week.status].emoji} {WEEK_STATUS_META[bpoLink.week.status].label}
-                {bpoLink.tracker.remainingQty > 0 && (
-                  <> · Còn chưa đặt: <span className="text-warning font-medium">{bpoLink.tracker.remainingQty.toLocaleString()} m²</span></>
-                )}
-              </div>
-              {/* mini progress */}
-              <div className="mt-2 flex items-center gap-2">
-                <div className="flex-1 h-1.5 rounded-full bg-surface-3 overflow-hidden">
-                  <div
-                    className={cn(
-                      "h-full",
-                      bpoLink.tracker.releasePct >= BPO_EXPECTED_PCT
-                        ? "bg-success" : bpoLink.tracker.releasePct >= BPO_EXPECTED_PCT * 0.6
-                        ? "bg-warning" : "bg-danger",
-                    )}
-                    style={{ width: `${Math.min(100, bpoLink.tracker.releasePct)}%` }}
-                  />
-                </div>
-                <span className="text-[11px] tabular-nums font-semibold text-text-1 w-10 text-right">
-                  {bpoLink.tracker.releasePct}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Lifecycle timeline */}
       <div>
         <div className="text-caption uppercase tracking-wide text-text-3 mb-2 font-semibold">Lifecycle</div>

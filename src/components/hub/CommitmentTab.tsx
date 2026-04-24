@@ -12,33 +12,17 @@
  *   M+2 = FIRM ±15% (cam) — kế hoạch chắc, còn điều chỉnh
  *   M+3 = SOFT ±30% (xám) — định hướng, chưa cam kết cứng
  */
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import {
   Phone, Clock, CheckCircle2, AlertTriangle, Camera, Upload,
-  X, Image as ImageIcon, Lock, Filter, Play, ArrowRight, EyeOff, Eye,
+  X, Image as ImageIcon, Lock, Filter,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useSearchParams, useNavigate } from "react-router-dom";
 import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
 import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
-import {
-  BPO_TRACKER, BPO_DEMO_DAY_OF_MONTH, BPO_DEMO_DAYS_IN_MONTH, BPO_EXPECTED_PCT,
-} from "@/lib/bpo-tracker";
-
-/** Extract SKU base code from "GA-300 A4" → "GA-300" */
-function skuBase(sku: string): string {
-  return sku.split(/\s+/)[0];
-}
-
-/** Released qty cho 1 NM + SKU base — tổng từ BPO_TRACKER mock */
-function releasedFor(nmName: string, sku: string): number {
-  const base = skuBase(sku);
-  const match = BPO_TRACKER.find(t => t.nmName === nmName && t.skuBaseCode === base);
-  return match?.releasedQty ?? 0;
-}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    §  Types
@@ -189,44 +173,6 @@ export function CommitmentTab({ scale, onTotalsChange }: {
   const [evidenceModal, setEvidenceModal] = useState<{ rowId: string; files: EvidenceFile[] } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<string | null>(null);
   const [pivot, setPivot] = usePivotMode("hub-commitment");
-  const [monthLocked, setMonthLocked] = useState(false);
-  const [columnPreset, setColumnPreset] = useState<"simple" | "full">("simple");
-  const [highlightId, setHighlightId] = useState<string | null>(null);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-
-  /* ── Deep-link from Orders: ?nm=Mikado&sku=GA-300 → highlight + scroll ── */
-  useEffect(() => {
-    const nm = searchParams.get("nm");
-    const sku = searchParams.get("sku");
-    if (!nm && !sku) return;
-    // Map nm short id → name (NM-MKD/Mikado, hoặc dùng plain name)
-    const nmName = nm
-      ? (BPO_TRACKER.find(t => t.nmId === nm)?.nmName ?? nm)
-      : null;
-    const target = rows.find(r =>
-      (!nmName || r.nmName === nmName) &&
-      (!sku || skuBase(r.sku) === sku)
-    );
-    if (target) {
-      // Show full preset so the released/% columns are visible after deep-link
-      setColumnPreset("full");
-      setHighlightId(target.id);
-      // wait for layout, then scroll
-      requestAnimationFrame(() => {
-        const el = document.getElementById(`commit-row-${target.id}`);
-        el?.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
-      // Auto-clear highlight after 4s
-      const t = window.setTimeout(() => setHighlightId(null), 4000);
-      // Strip params so refresh doesn't re-trigger
-      const next = new URLSearchParams(searchParams);
-      next.delete("nm"); next.delete("sku");
-      setSearchParams(next, { replace: true });
-      return () => window.clearTimeout(t);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   /* Totals */
   const totals = useMemo(() => {
@@ -269,63 +215,25 @@ export function CommitmentTab({ scale, onTotalsChange }: {
   };
 
   const confirmRow = (id: string) => {
-    const row = rows.find(r => r.id === id);
     setRows(prev => prev.map(r => r.id === id ? { ...r, locked: true } : r));
     setConfirmDialog(null);
-    if (!row) {
-      toast.success("Đã xác nhận cam kết");
-      return;
-    }
-    // Check if THIS confirm push tổng SKU đã lock vượt 80% → toast lớn
-    const willLockedCount = rows.filter(r => r.locked).length + (row.locked ? 0 : 1);
-    const newProgress = (willLockedCount / rows.length) * 100;
-    const newConfirmedM2 =
-      rows.filter(r => (r.status === "confirmed" || r.status === "counter") && r.id !== id)
-          .reduce((s, r) => s + r.committed, 0) + row.committed;
-
-    if (newProgress >= 80 && totals.progress < 80) {
-      toast.success(
-        `✅ ${Math.round(newProgress)}% cam kết hoàn tất! Hub Available: ${newConfirmedM2.toLocaleString()}m². DRP đêm nay sẽ tạo PO cho 12 CN.`,
-        { duration: 7000 }
-      );
-    } else {
-      toast.success(
-        `✅ Cam kết ${row.nmName} ${row.sku} đã lưu. Hub Available tăng ${row.committed.toLocaleString()}m². DRP đêm nay sẽ tạo PO từ cam kết này.`,
-        { duration: 6000 }
-      );
-    }
+    toast.success("Đã xác nhận cam kết — row đã khóa");
   };
 
   const batchConfirm = () => {
     let count = 0;
-    let added = 0;
     setRows(prev => prev.map(r => {
       if (!r.locked && (r.status === "confirmed" || r.status === "counter") && r.evidence.length > 0) {
         count++;
-        added += r.committed;
         return { ...r, locked: true };
       }
       return r;
     }));
-    toast.success(
-      `✅ Đã xác nhận ${count} cam kết. Hub Available tăng thêm ${added.toLocaleString()}m². DRP đêm nay sẽ release PO.`,
-      { duration: 6000 }
-    );
+    toast.success(`Đã xác nhận ${count} cam kết có evidence`);
   };
 
   const lockMonth = () => {
-    setMonthLocked(true);
-    toast.success("🔒 Cam kết T5 đã khóa — chuyển sang Hub ảo. DRP đêm nay 23:00 sẽ tạo PO nháp.", {
-      duration: 6000,
-    });
-  };
-
-  const runDrpNow = () => {
-    toast.loading("⚙️ Đang chạy DRP — phân bổ Hub Available cho 12 CN…", { id: "drp-run" });
-    setTimeout(() => {
-      toast.success("✅ DRP xong — đã tạo PO nháp. Mở Đơn hàng để duyệt.", { id: "drp-run", duration: 5000 });
-      navigate("/orders");
-    }, 1500);
+    toast.success("🔒 Đã khóa cam kết Tháng 5/2026 — chuyển sang Hub ảo");
   };
 
   /* Status counts for filter chips */
@@ -473,96 +381,12 @@ export function CommitmentTab({ scale, onTotalsChange }: {
         </div>
       </div>
 
-      {/* ═══ "SẴN SÀNG CHO DRP" — khi ≥80% nhưng chưa lock ═══ */}
-      {totals.progress >= 80 && !monthLocked && (
-        <div className="rounded-card border border-success/40 bg-success-bg p-3 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 text-success">
-            <CheckCircle2 className="h-5 w-5 shrink-0" />
-            <div>
-              <div className="font-semibold text-table-sm">Sẵn sàng cho DRP ✅</div>
-              <div className="text-caption text-text-2">
-                Hub Available <span className="font-semibold text-text-1 tabular-nums">{totals.confirmedM2.toLocaleString()} m²</span>
-                {" "}· DRP chạy 23:00 đêm nay
-              </div>
-            </div>
-          </div>
-          <button onClick={lockMonth}
-            className="inline-flex items-center gap-1.5 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1.5 text-table-sm font-semibold hover:shadow-md transition-shadow">
-            <Lock className="h-4 w-4" /> Khóa & sẵn sàng DRP
-          </button>
-        </div>
-      )}
-
-      {/* ═══ NEXT-STEP BANNER — sau khi LOCK ═══ */}
-      {monthLocked && (
-        <div className="rounded-card border border-success/40 bg-gradient-to-br from-success-bg to-info-bg/40 p-4">
-          <div className="flex items-start gap-3">
-            <div className="h-9 w-9 rounded-full bg-success text-success-foreground flex items-center justify-center shrink-0">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-display font-semibold text-text-1">
-                Cam kết T5 đã khóa · <span className="tabular-nums">{totals.confirmedM2.toLocaleString()} m²</span> Hub Available
-              </div>
-              <div className="mt-2 text-table-sm text-text-2 space-y-1">
-                <div className="font-medium text-text-1">Bước tiếp:</div>
-                <ol className="list-decimal pl-5 space-y-0.5">
-                  <li>DRP chạy <span className="font-semibold text-text-1">23:00 đêm nay</span> → tạo PO nháp từ cam kết</li>
-                  <li>Sáng mai mở <button onClick={() => navigate("/drp")} className="text-primary font-medium hover:underline">Kết quả DRP →</button> xem phân bổ</li>
-                  <li>Duyệt PO trong <button onClick={() => navigate("/orders")} className="text-primary font-medium hover:underline">Đơn hàng →</button></li>
-                </ol>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button onClick={runDrpNow}
-                  className="inline-flex items-center gap-1.5 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1.5 text-table-sm font-semibold hover:shadow-md transition-shadow">
-                  <Play className="h-4 w-4" /> Chạy DRP ngay
-                </button>
-                <button onClick={() => navigate("/orders")}
-                  className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 hover:border-primary/40 px-3 py-1.5 text-table-sm font-medium text-text-2">
-                  Mở Đơn hàng <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ PIVOT TOGGLE + COLUMN PRESET ═══ */}
+      {/* ═══ PIVOT TOGGLE ═══ */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <PivotToggle mode={pivot} onChange={setPivot} cnLabel="Nhà máy" skuLabel="Mã hàng" />
-        <div className="flex items-center gap-3">
-          {pivot === "cn" && (
-            <div className="inline-flex items-center rounded-button border border-surface-3 bg-surface-1 p-0.5 text-caption">
-              <button
-                onClick={() => setColumnPreset("simple")}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded px-2 py-0.5 transition-colors",
-                  columnPreset === "simple"
-                    ? "bg-primary/10 text-primary font-semibold"
-                    : "text-text-3 hover:text-text-1",
-                )}
-                title="Ẩn FC/Δ/Tier/Đã release/Còn lại/% — chỉ hiện cột cốt lõi"
-              >
-                <EyeOff className="h-3 w-3" /> Đơn giản
-              </button>
-              <button
-                onClick={() => setColumnPreset("full")}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded px-2 py-0.5 transition-colors",
-                  columnPreset === "full"
-                    ? "bg-primary/10 text-primary font-semibold"
-                    : "text-text-3 hover:text-text-1",
-                )}
-                title="Hiện toàn bộ — bao gồm Đã release / Còn lại / %"
-              >
-                <Eye className="h-3 w-3" /> Đầy đủ
-              </button>
-            </div>
-          )}
-          <span className="text-caption text-text-3">
-            {pivot === "cn" ? "Quản lý cam kết per NM × SKU" : "Tổng hợp cam kết per Mã hàng → từng NM"}
-          </span>
-        </div>
+        <span className="text-caption text-text-3">
+          {pivot === "cn" ? "Quản lý cam kết per NM × SKU" : "Tổng hợp cam kết per Mã hàng → từng NM"}
+        </span>
       </div>
 
       {pivot === "cn" ? (
@@ -603,25 +427,10 @@ export function CommitmentTab({ scale, onTotalsChange }: {
                   <tr className="bg-surface-1/60 border-b border-surface-3">
                     <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">NM</th>
                     <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Mã hàng</th>
-                    {columnPreset === "full" && (
-                      <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">FC gửi NM</th>
-                    )}
+                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">FC gửi NM</th>
                     <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Cam kết NM ✏️</th>
-                    {columnPreset === "full" && (
-                      <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Δ</th>
-                    )}
-                    {columnPreset === "full" && (
-                      <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30" title="Tổng PO đã release tính đến hiện tại">Đã release</th>
-                    )}
-                    {columnPreset === "full" && (
-                      <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30" title="Cam kết − Đã release">Còn lại</th>
-                    )}
-                    {columnPreset === "full" && (
-                      <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30">% Release</th>
-                    )}
-                    {columnPreset === "full" && (
-                      <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Tier</th>
-                    )}
+                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Δ</th>
+                    <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Tier</th>
                     <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden md:table-cell">Nguồn</th>
                     <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden lg:table-cell">Ngày liên hệ</th>
                     <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Minh chứng</th>
@@ -631,7 +440,7 @@ export function CommitmentTab({ scale, onTotalsChange }: {
                 </thead>
                 <tbody>
                   {filteredRows.length === 0 && (
-                    <tr><td colSpan={columnPreset === "full" ? 14 : 8} className="text-center py-8 text-text-3 text-table-sm">
+                    <tr><td colSpan={11} className="text-center py-8 text-text-3 text-table-sm">
                       Không có cam kết nào khớp bộ lọc.
                     </td></tr>
                   )}
@@ -639,8 +448,6 @@ export function CommitmentTab({ scale, onTotalsChange }: {
                     <CommitmentRow
                       key={row.id}
                       row={row}
-                      preset={columnPreset}
-                      highlight={highlightId === row.id}
                       onUpdate={(patch) => updateRow(row.id, patch)}
                       onOpenEvidence={() => setEvidenceModal({ rowId: row.id, files: row.evidence })}
                       onConfirm={() => setConfirmDialog(row.id)}
@@ -763,10 +570,8 @@ export function CommitmentTab({ scale, onTotalsChange }: {
 /* ═══════════════════════════════════════════════════════════════════════════
    §  Row component
    ═══════════════════════════════════════════════════════════════════════════ */
-function CommitmentRow({ row, preset, highlight, onUpdate, onOpenEvidence, onConfirm }: {
+function CommitmentRow({ row, onUpdate, onOpenEvidence, onConfirm }: {
   row: CommitRow;
-  preset: "simple" | "full";
-  highlight?: boolean;
   onUpdate: (patch: Partial<CommitRow>) => void;
   onOpenEvidence: () => void;
   onConfirm: () => void;
@@ -774,27 +579,14 @@ function CommitmentRow({ row, preset, highlight, onUpdate, onOpenEvidence, onCon
   const delta = row.committed - row.fcSent;
   const deltaPct = row.fcSent > 0 ? (delta / row.fcSent) * 100 : 0;
   const tierMeta = TIER_META[row.tier];
-  const released = releasedFor(row.nmName, row.sku);
-  const remaining = Math.max(0, row.committed - released);
-  const releasePct = row.committed > 0 ? Math.round((released / row.committed) * 100) : 0;
-  const expectedPct = Math.round(BPO_EXPECTED_PCT);
-  const lateRelease = row.committed > 0 && releasePct < expectedPct && remaining > 0;
-  const full = preset === "full";
 
   return (
-    <tr
-      id={`commit-row-${row.id}`}
-      className={cn(
-        "border-b border-surface-3 transition-colors scroll-mt-32",
-        row.locked ? "bg-success-bg/20" : "hover:bg-surface-1/40",
-        highlight && "ring-2 ring-primary ring-inset bg-primary/10 animate-pulse",
-      )}
-    >
+    <tr className={cn("border-b border-surface-3 transition-colors",
+      row.locked ? "bg-success-bg/20" : "hover:bg-surface-1/40"
+    )}>
       <td className="px-3 py-2 text-table-sm text-text-1 font-medium">{row.nmName}</td>
       <td className="px-3 py-2 text-table-sm text-text-2 font-mono">{row.sku}</td>
-      {full && (
-        <td className="px-3 py-2 text-right text-table-sm text-text-2 tabular-nums">{row.fcSent.toLocaleString()}</td>
-      )}
+      <td className="px-3 py-2 text-right text-table-sm text-text-2 tabular-nums">{row.fcSent.toLocaleString()}</td>
 
       {/* COMMITTED INPUT */}
       <td className="px-3 py-2 text-right">
@@ -814,69 +606,24 @@ function CommitmentRow({ row, preset, highlight, onUpdate, onOpenEvidence, onCon
       </td>
 
       {/* DELTA */}
-      {full && (
-        <td className="px-3 py-2 text-right text-table-sm tabular-nums">
-          {row.committed > 0 ? (
-            <span className={cn("font-medium",
-              delta >= 0 ? "text-success" : "text-danger"
-            )}>
-              {delta > 0 ? "+" : ""}{delta.toLocaleString()}
-              <span className="text-caption text-text-3 ml-0.5">({deltaPct >= 0 ? "+" : ""}{deltaPct.toFixed(0)}%)</span>
-            </span>
-          ) : <span className="text-text-3">—</span>}
-        </td>
-      )}
-
-      {/* ĐÃ RELEASE */}
-      {full && (
-        <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
-          {released > 0 ? (
-            <span className="font-medium text-text-1">{released.toLocaleString()}</span>
-          ) : <span className="text-text-3">—</span>}
-        </td>
-      )}
-
-      {/* CÒN LẠI */}
-      {full && (
-        <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
-          {row.committed > 0 ? (
-            remaining > 0 ? (
-              <span className={cn("font-medium", lateRelease ? "text-danger" : "text-warning")}>
-                {remaining.toLocaleString()}
-              </span>
-            ) : <span className="text-success font-medium">0</span>
-          ) : <span className="text-text-3">—</span>}
-        </td>
-      )}
-
-      {/* % RELEASE */}
-      {full && (
-        <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
-          {row.committed > 0 && released > 0 ? (
-            <span
-              title={lateRelease ? `Cần release nhanh — kỳ vọng ≥ ${expectedPct}% tại ngày ${BPO_DEMO_DAY_OF_MONTH}/${BPO_DEMO_DAYS_IN_MONTH}` : undefined}
-              className={cn(
-                "inline-flex items-center gap-1 font-semibold",
-                lateRelease ? "text-danger" :
-                releasePct >= expectedPct ? "text-success" : "text-warning",
-              )}
-            >
-              {releasePct}%
-              {lateRelease && <span title="Cần release nhanh">🔴</span>}
-            </span>
-          ) : <span className="text-text-3">—</span>}
-        </td>
-      )}
+      <td className="px-3 py-2 text-right text-table-sm tabular-nums">
+        {row.committed > 0 ? (
+          <span className={cn("font-medium",
+            delta >= 0 ? "text-success" : "text-danger"
+          )}>
+            {delta > 0 ? "+" : ""}{delta.toLocaleString()}
+            <span className="text-caption text-text-3 ml-0.5">({deltaPct >= 0 ? "+" : ""}{deltaPct.toFixed(0)}%)</span>
+          </span>
+        ) : <span className="text-text-3">—</span>}
+      </td>
 
       {/* TIER */}
-      {full && (
-        <td className="px-3 py-2">
-          <span title={tierMeta.tol}
-            className={cn("inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold tracking-wide", tierMeta.cls)}>
-            {tierMeta.label}
-          </span>
-        </td>
-      )}
+      <td className="px-3 py-2">
+        <span title={tierMeta.tol}
+          className={cn("inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold tracking-wide", tierMeta.cls)}>
+          {tierMeta.label}
+        </span>
+      </td>
 
       {/* CONTACT METHOD */}
       <td className="px-3 py-2 hidden md:table-cell">
