@@ -42,19 +42,19 @@ export function HubOverviewTab({ scale, totals }: Props) {
   const [hoveredSku, setHoveredSku] = useState<string>("GA-300");
 
   const nmCards: NmCard[] = useMemo(() => [
-    { id: "mikado",   name: "Mikado",   confirmed: Math.round(2400 * scale), honoring: 98, risk: "low",  note: "On-time 12/12. Stable." },
-    { id: "toko",     name: "Toko",     confirmed: Math.round(1500 * scale), honoring: 72, risk: "high", note: "Counter 80%. Avg −26%." },
-    { id: "anpha",    name: "An Pha",   confirmed: Math.round(1300 * scale), honoring: 91, risk: "med",  note: "LT +2d gần đây." },
-    { id: "vinakraft",name: "Vinakraft",confirmed: Math.round(1100 * scale), honoring: 95, risk: "low",  note: "Capacity dư." },
-    { id: "saigonpaper",name:"SG Paper", confirmed: Math.round(900 * scale),  honoring: 84, risk: "med",  note: "Honoring giảm 2 tháng." },
+    { id: "mikado",   name: "Mikado",   confirmed: Math.round(2400 * scale), honoring: 98, risk: "low",  note: "Đúng hẹn 12/12. Ổn định." },
+    { id: "toko",     name: "Toko",     confirmed: Math.round(1500 * scale), honoring: 72, risk: "high", note: "Đề xuất khác 80%. TB −26%." },
+    { id: "anpha",    name: "An Pha",   confirmed: Math.round(1300 * scale), honoring: 91, risk: "med",  note: "LT +2 ngày gần đây." },
+    { id: "vinakraft",name: "Vinakraft",confirmed: Math.round(1100 * scale), honoring: 95, risk: "low",  note: "Năng lực còn dư." },
+    { id: "saigonpaper",name:"SG Paper", confirmed: Math.round(900 * scale),  honoring: 84, risk: "med",  note: "Tỷ lệ giữ giảm 2 tháng." },
   ], [scale]);
 
   const compareRows: CommitmentRow[] = [
-    { nm: "Toko",     sku: "GA-600", prev: 6500, curr: 4080, reason: "Counter 80%" },
+    { nm: "Toko",     sku: "GA-600", prev: 6500, curr: 4080, reason: "Đề xuất khác 80%" },
     { nm: "Mikado",   sku: "GA-300", prev: 12000,curr: 12500 },
     { nm: "An Pha",   sku: "GA-450", prev: 8200, curr: 7900 },
     { nm: "Vinakraft",sku: "GA-300", prev: 6800, curr: 7200 },
-    { nm: "SG Paper", sku: "GA-600", prev: 8600, curr: 11100,reason: "Cover Toko shortage" },
+    { nm: "SG Paper", sku: "GA-600", prev: 8600, curr: 11100,reason: "Bù thiếu Toko" },
   ];
   const totalPrev = compareRows.reduce((s, r) => s + r.prev, 0);
   const totalCurr = compareRows.reduce((s, r) => s + r.curr, 0);
@@ -62,9 +62,9 @@ export function HubOverviewTab({ scale, totals }: Props) {
 
   const skuBases = ["GA-300", "GA-450", "GA-600"];
   const timelineEvents: Record<string, Record<number, string>> = {
-    "GA-300": { 3: "+2,000 m² Mikado confirm", 12: "−1,400 Toko counter", 22: "+800 Vinakraft top-up" },
-    "GA-450": { 5: "+1,200 An Pha confirm", 18: "−600 BPO released" },
-    "GA-600": { 7: "−2,420 Toko counter", 14: "+2,500 SG Paper cover" },
+    "GA-300": { 3: "+2.000 m² Mikado xác nhận", 12: "−1.400 Toko đề xuất khác", 22: "+800 Vinakraft bổ sung" },
+    "GA-450": { 5: "+1.200 An Pha xác nhận", 18: "−600 BPO đã phát hành" },
+    "GA-600": { 7: "−2.420 Toko đề xuất khác", 14: "+2.500 SG Paper bù" },
   };
   const timeline = useMemo(() => {
     const days = Array.from({ length: 30 }, (_, i) => i + 1);
@@ -93,11 +93,11 @@ export function HubOverviewTab({ scale, totals }: Props) {
   }, [scale, hoveredSku]);
 
   const changeLog: ChangeLog[] = [
-    { time: "12/05 14:30", who: "DRP Bot",  change: "Released 1,200 m² GA-300 → CN-BD", source: "drp" },
+    { time: "12/05 14:30", who: "DRP tự động",  change: "Đã phát hành 1.200 m² GA-300 → CN-BD", source: "drp" },
     { time: "12/05 11:15", who: "Toko",     change: "Đề xuất khác GA-600: 6.500 → 4.080 (−37%)", source: "nm" },
-    { time: "12/05 09:42", who: "Mikado",   change: "Confirm GA-300: +2,000 m²", source: "nm" },
-    { time: "11/05 16:20", who: "Lan (PM)", change: "Adjust SS Hub: 380 → 420 m²", source: "manual" },
-    { time: "11/05 08:00", who: "System",   change: "S&OP v3 Lock T5: 7,650 m²", source: "sop" },
+    { time: "12/05 09:42", who: "Mikado",   change: "Xác nhận GA-300: +2.000 m²", source: "nm" },
+    { time: "11/05 16:20", who: "Lan (PM)", change: "Điều chỉnh SS Hub: 380 → 420 m²", source: "manual" },
+    { time: "11/05 08:00", who: "Hệ thống",   change: "S&OP v3 khóa T5: 7.650 m²", source: "sop" },
   ];
 
   const ssAlert = totals.available < totals.ssHub;
@@ -262,7 +262,7 @@ export function HubOverviewTab({ scale, totals }: Props) {
                   return ev ? `${label} — ${ev}` : label;
                 }}
               />
-              <ReferenceLine y={totals.ssHub} stroke="hsl(var(--danger))" strokeDasharray="4 4" label={{ value: "SS Hub", fill: "hsl(var(--danger))", fontSize: 10, position: "right" }} />
+          <ReferenceLine y={totals.ssHub} stroke="hsl(var(--danger))" strokeDasharray="4 4" label={{ value: "SS Hub", fill: "hsl(var(--danger))", fontSize: 10, position: "right" }} />
               <Line type="stepAfter" dataKey={hoveredSku} stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3, fill: "hsl(var(--primary))" }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
@@ -273,7 +273,7 @@ export function HubOverviewTab({ scale, totals }: Props) {
         <div className="px-5 py-3 border-b border-surface-3 flex items-center gap-2">
           <Info className="h-4 w-4 text-text-3" />
           <h2 className="font-display text-section-header text-text-1">Change Log — Hub Stock</h2>
-          <span className="text-caption text-text-3">entityType="hub_stock"</span>
+          <span className="text-caption text-text-3">Hub stock</span>
         </div>
         <table className="w-full text-table-sm">
           <thead>
@@ -281,7 +281,7 @@ export function HubOverviewTab({ scale, totals }: Props) {
               <th className="px-5 py-2 font-medium">Thời gian</th>
               <th className="px-5 py-2 font-medium">Người / Nguồn</th>
               <th className="px-5 py-2 font-medium">Thay đổi</th>
-              <th className="px-5 py-2 font-medium">Source</th>
+              <th className="px-5 py-2 font-medium">Nguồn</th>
             </tr>
           </thead>
           <tbody>
@@ -304,9 +304,9 @@ export function HubOverviewTab({ scale, totals }: Props) {
 
 function RiskBadge({ tier }: { tier: NmRiskTier }) {
   const map = {
-    low:  { label: "Low",  cls: "bg-success-bg text-success border-success/30",  emoji: "🟢" },
-    med:  { label: "Med",  cls: "bg-warning-bg text-warning border-warning/30",  emoji: "🟡" },
-    high: { label: "High", cls: "bg-danger-bg  text-danger  border-danger/30",   emoji: "🔴" },
+    low:  { label: "Thấp",  cls: "bg-success-bg text-success border-success/30",  emoji: "🟢" },
+    med:  { label: "TB",  cls: "bg-warning-bg text-warning border-warning/30",  emoji: "🟡" },
+    high: { label: "Cao", cls: "bg-danger-bg  text-danger  border-danger/30",   emoji: "🔴" },
   } as const;
   const v = map[tier];
   return (

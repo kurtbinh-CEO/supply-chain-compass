@@ -196,7 +196,7 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
             <table className="w-full text-table-sm">
               <thead>
                 <tr className="border-b border-surface-3 bg-surface-1/50">
-                  {["CN", "v0 Statistical", "v1 Sales", "v2 CN Input", "v3 Consensus", "AOP", "vs AOP", "FVA best"].map(h => (
+                  {["CN", "v0 Thống kê", "v1 Kinh doanh", "v2 CN nhập", "v3 Đồng thuận", "AOP", "vs AOP", "FVA tốt nhất"].map(h => (
                     <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -254,7 +254,7 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
             <table className="w-full text-table-sm">
               <thead>
                 <tr className="border-b border-surface-3 bg-surface-1/50">
-                  {["Item", "Variant", "v0 Statistical", "v1 Sales", "v2 CN Input", "v3 Consensus", "Δ v0→v3", "AOP", "Note"].map(h => (
+                  {["Mã hàng", "Mẫu", "v0 Thống kê", "v1 Kinh doanh", "v2 CN nhập", "v3 Đồng thuận", "Δ v0→v3", "AOP", "Ghi chú"].map(h => (
                     <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -317,9 +317,9 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
                 <tr className="border-b border-surface-3 bg-surface-1/50">
                   <th className="w-8 px-2 py-2.5"></th>
                   {[
-                    { h: "CN" }, { h: "v0 Statistical" }, { h: "v1 Sales" }, { h: "v2 CN Input" }, { h: "v3 Consensus ★" },
-                    { h: "AOP target" }, { h: "vs AOP" },
-                    { h: "FVA best", logic: { tab: "forecast" as const, node: 4, tip: "FVA — Ai dự báo chính xác nhất?" } },
+                    { h: "CN" }, { h: "v0 Thống kê" }, { h: "v1 Kinh doanh" }, { h: "v2 CN nhập" }, { h: "v3 Đồng thuận ★" },
+                    { h: "AOP mục tiêu" }, { h: "vs AOP" },
+                    { h: "FVA tốt nhất", logic: { tab: "forecast" as const, node: 4, tip: "FVA — Ai dự báo chính xác nhất?" } },
                     { h: "" },
                   ].map((col, i) => (
                     <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">
