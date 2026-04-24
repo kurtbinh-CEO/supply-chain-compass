@@ -148,14 +148,25 @@ export default function OrdersPage() {
     setOverdueOnly(false);
   };
 
-  /* ── Mutations from dialogs ── */
+  /* ── Mutations from dialogs ──
+     ORDERS-TABLE-PATCH: nếu leader có ≥1 sibling cùng group + cùng stage,
+     advance toàn bộ group cùng lúc (1 lần "Gửi NM" = gửi tất cả SKU lines). */
   const advance = (id: string, patch: Partial<PoLifecycleRow>) => {
-    setRows(prev => prev.map(r => r.id === id ? { ...r, ...patch, hoursInStage: 0, overdueFlag: false } : r));
+    const leader = rows.find(r => r.id === id);
+    const siblings = leader
+      ? allGroups.find(g => g.lines.some(l => l.id === id))?.lines
+          .filter(l => l.stage === leader.stage)
+          .map(l => l.id) ?? [id]
+      : [id];
+    const idSet = new Set(siblings);
+    setRows(prev => prev.map(r => idSet.has(r.id)
+      ? { ...r, ...patch, hoursInStage: 0, overdueFlag: false }
+      : r));
 
     // G4 — ERP posting: khi PO/TO hoàn tất POD → đăng sang ERP
     if (patch.stage === "completed") {
       const row = rows.find(r => r.id === id);
-      const docNo = row?.id || id;
+      const docNo = row?.poNumber || id;
       const erpDoc = `MIGO-${Date.now().toString().slice(-6)}`;
       const t = toast.loading(`Đang đăng ERP cho ${docNo}...`, { description: "Tạo MIGO/Goods Receipt → SAP/Odoo" });
       setTimeout(() => {
@@ -165,6 +176,9 @@ export default function OrdersPage() {
           duration: 6000,
         });
       }, 1200);
+    }
+    if (idSet.size > 1) {
+      toast.message(`Đã cập nhật ${idSet.size} dòng SKU trong cùng đơn hàng`);
     }
   };
 
