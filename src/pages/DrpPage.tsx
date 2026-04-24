@@ -644,8 +644,18 @@ export default function DrpPage() {
       <div className="flex items-center justify-between mb-3">
         <div>
           <h1 className="text-h2 font-display font-bold text-text-1">Kết quả DRP — Tuần 20</h1>
-          <p className="text-table-sm text-text-3 mt-0.5">
-            {batchStatus === "released" ? "Đã release sang Đơn hàng" : "Chạy lúc 23:02 đêm qua"}
+          <p className="text-table-sm text-text-3 mt-0.5 flex items-center gap-1.5 flex-wrap">
+            <span>{batchStatus === "released" ? "Đã release sang Đơn hàng" : "Chạy lúc 23:02 đêm qua"}</span>
+            <span>·</span>
+            <span>Trong kỳ KH:</span>
+            <button
+              type="button"
+              onClick={() => navigate("/demand")}
+              className="inline-flex items-center gap-1 rounded-full bg-info-bg text-info border border-info/30 px-2 py-0.5 text-caption font-medium hover:bg-info/15 transition-colors"
+              title="Mở rà soát nhu cầu của kỳ này"
+            >
+              {planCycle.label}
+            </button>
           </p>
         </div>
         {isPlanLocked ? (
