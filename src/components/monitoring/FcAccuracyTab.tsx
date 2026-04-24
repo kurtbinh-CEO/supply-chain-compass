@@ -255,6 +255,15 @@ export function FcAccuracyTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DataSourceSelector
+        open={actualOpen}
+        onClose={() => setActualOpen(false)}
+        title="Cập nhật doanh thu thực tế"
+        description="Chọn nguồn cập nhật. MAPE 12 tuần và FC vs Actual sẽ tính lại tự động."
+        sources={ACTUAL_SOURCES}
+        onSelect={handleActualSelect}
+      />
     </div>
   );
 }
