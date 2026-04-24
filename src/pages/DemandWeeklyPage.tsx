@@ -555,6 +555,8 @@ interface ScSummaryRow {
   totalDuKien: number;
   totalAdjust: number;
   totalPct: number;
+  actualPrev: number;       // tổng thực tế T4 (weekly-equivalent)
+  fcVsActualPct: number;    // (FC - actual) / actual × 100
   skuCount: number;       // số SKU adjust ≠ 0
   pendingCount: number;
   overCount: number;
