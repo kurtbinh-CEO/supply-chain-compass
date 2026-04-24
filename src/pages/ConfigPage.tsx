@@ -676,26 +676,20 @@ export default function ConfigPage() {
           totalDirty > 0 ? ` · ${totalDirty} đang chỉnh` : ""
         }`}
         actions={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9"
-              onClick={() => setAuditOpen(true)}
-            >
-              <History className="h-3.5 w-3.5 mr-1.5" />
-              Nhật ký
-              {audit.length > 0 && (
-                <span className="ml-1.5 inline-flex items-center justify-center h-4 min-w-4 rounded-full bg-surface-2 text-text-2 text-[10px] font-semibold px-1">
-                  {audit.length}
-                </span>
-              )}
-            </Button>
-            <Button variant="outline" size="sm" className="h-9" onClick={() => toast("Đã xuất config (demo)")}>
-              <Download className="h-3.5 w-3.5 mr-1.5" />
-              Xuất
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            onClick={() => setAuditOpen(true)}
+          >
+            <History className="h-3.5 w-3.5 mr-1.5" />
+            Nhật ký
+            {audit.length > 0 && (
+              <span className="ml-1.5 inline-flex items-center justify-center h-4 min-w-4 rounded-full bg-surface-2 text-text-2 text-[10px] font-semibold px-1">
+                {audit.length}
+              </span>
+            )}
+          </Button>
         }
       />
 
