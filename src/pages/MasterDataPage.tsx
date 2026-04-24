@@ -549,7 +549,7 @@ function SuppliersTab() {
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{fmtVnd(f.priceTier1)}</td>
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{fmtVnd(f.priceTier2)}</td>
                 <td className="px-4 py-2.5">
-                  <RowActions onEdit={() => setEditing(f)} onDelete={() => setDeleting(f)} />
+                  <RowActions onEdit={() => setEditing(f)} onDelete={() => setDeleting(f)} onHistory={() => setHistoryCode(f.code)} />
                 </td>
               </tr>
             ))}
