@@ -40,6 +40,7 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
 import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
+import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
