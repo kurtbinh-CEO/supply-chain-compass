@@ -305,15 +305,15 @@ const buyerFlows: RoleFlows = {
     },
   ],
   tips: [
-    { icon: <Target className="h-4 w-4" />, text: "NM Score transparent — hover = breakdown" },
-    { icon: <ShieldCheck className="h-4 w-4" />, text: "Dual-source: 80% primary + 20% backup" },
-    { icon: <AlertTriangle className="h-4 w-4" />, text: "HSTK<3d → SHIP · >14d → HOLD gộp" },
+    { icon: <Target className="h-4 w-4" />, text: "Điểm NM minh bạch — di chuột để xem chi tiết" },
+    { icon: <ShieldCheck className="h-4 w-4" />, text: "Hai nguồn: 80% chính + 20% dự phòng" },
+    { icon: <AlertTriangle className="h-4 w-4" />, text: "HSTK<3 ngày → XUẤT · >14 ngày → GIỮ gộp" },
   ],
   formulas: [
     {
-      title: "NM Grade & ATP",
+      title: "Hạng NM & ATP",
       visual: <NmGradeViz />,
-      detail: "Grade C → ATP discount. Grade D → xem xét thay NM.",
+      detail: "Hạng C → giảm ATP. Hạng D → xem xét thay NM.",
     },
   ],
 };
@@ -452,9 +452,9 @@ function NmScoreViz() {
         );
       })}
       <div className="flex items-center gap-4 mt-1 text-[10px] text-text-3">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#004AC6]" />LT ×50%</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#00714d]" />Cost ×30%</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#b45309]" />Rel ×20%</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#004AC6]" />Thời gian ×50%</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#00714d]" />Giá ×30%</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#b45309]" />Tin cậy ×20%</span>
       </div>
     </div>
   );
@@ -482,7 +482,7 @@ function ScoreBar({ label, value, max, color, animate, delay }: { label: string;
 /* Trust Score tiers */
 function TrustScoreViz() {
   const tiers = [
-    { range: ">85%", label: "Auto-approve", tolerance: "±40%", color: "bg-status-success", textColor: "text-status-success" },
+    { range: ">85%", label: "Tự duyệt", tolerance: "±40%", color: "bg-status-success", textColor: "text-status-success" },
     { range: "60-85%", label: "SC duyệt", tolerance: "±30%", color: "bg-status-warning", textColor: "text-status-warning" },
     { range: "<60%", label: "Giải trình", tolerance: "±15%", color: "bg-status-danger", textColor: "text-status-danger" },
   ];
@@ -493,7 +493,7 @@ function TrustScoreViz() {
           <div className={cn("h-2 rounded-full mb-2 mx-auto w-16", t.color)} />
           <div className="font-mono text-body font-bold text-text-1">{t.range}</div>
           <div className="text-table-sm text-text-2 mt-0.5">{t.label}</div>
-          <div className={cn("text-caption font-medium mt-1", t.textColor)}>Tolerance {t.tolerance}</div>
+          <div className={cn("text-caption font-medium mt-1", t.textColor)}>Dung sai {t.tolerance}</div>
         </div>
       ))}
     </div>
@@ -503,11 +503,11 @@ function TrustScoreViz() {
 /* Probability pipeline viz */
 function ProbabilityViz() {
   const stages = [
-    { pct: "10%", label: "Lead", included: false },
-    { pct: "30%", label: "Qualified", included: true },
-    { pct: "70%", label: "Proposal", included: true },
-    { pct: "85%", label: "Committed", included: true },
-    { pct: "100%", label: "PO Signed", included: true },
+    { pct: "10%", label: "Tiềm năng", included: false },
+    { pct: "30%", label: "Đủ điều kiện", included: true },
+    { pct: "70%", label: "Đề xuất", included: true },
+    { pct: "85%", label: "Cam kết", included: true },
+    { pct: "100%", label: "Đã ký PO", included: true },
   ];
   return (
     <div className="flex items-center gap-0 py-3">
@@ -532,9 +532,9 @@ function ProbabilityViz() {
 /* NM Grade viz */
 function NmGradeViz() {
   const grades = [
-    { grade: "A", min: "≥90%", action: "Full ATP ×1.0", color: "text-status-success", bg: "bg-status-success" },
-    { grade: "B", min: "≥80%", action: "Standard ×0.9", color: "text-primary", bg: "bg-primary" },
-    { grade: "C", min: "≥60%", action: "Discount ×honoring", color: "text-status-warning", bg: "bg-status-warning" },
+    { grade: "A", min: "≥90%", action: "ATP đầy đủ ×1.0", color: "text-status-success", bg: "bg-status-success" },
+    { grade: "B", min: "≥80%", action: "Tiêu chuẩn ×0.9", color: "text-primary", bg: "bg-primary" },
+    { grade: "C", min: "≥60%", action: "Giảm theo đúng hạn", color: "text-status-warning", bg: "bg-status-warning" },
     { grade: "D", min: "<60%", action: "Xem xét thay NM", color: "text-status-danger", bg: "bg-status-danger" },
   ];
   return (
@@ -608,7 +608,7 @@ function FlowTimeline({ nodes, accentColor, onNavigate }: { nodes: FlowNode[]; a
                   {/* KPI badge */}
                   {node.kpi && (
                     <div className="text-right shrink-0">
-                      <div className="text-[10px] text-text-3 uppercase tracking-wider">Target</div>
+                      <div className="text-[10px] text-text-3 uppercase tracking-wider">Mục tiêu</div>
                       <div className="font-mono text-table font-bold text-primary">{node.kpi}</div>
                     </div>
                   )}
@@ -723,15 +723,15 @@ const demoSteps: DemoStep[] = [
     icon: <ShieldCheck className="h-5 w-5" />,
     color: "#7c3aed",
     highlights: [
-      "v0 (Stat) → v1 (Sales) → v2 (CN) → v3 (Consensus) → v4 (Final)",
-      "Variance bar: chênh lệch giữa các version → FVA chọn best",
-      "FormulaBar 6 ô: D − S − P = Net + SS = FC Min → [🔒 Lock]",
+      "v0 (Thống kê) → v1 (Sales) → v2 (CN) → v3 (Đồng thuận) → v4 (Chốt)",
+      "Thanh chênh lệch giữa các phiên bản → FVA chọn tốt nhất",
+      "Thanh công thức 6 ô: D − S − P = Net + SS = FC Min → [🔒 Khoá]",
     ],
     keyAction: "Lock S&OP → mở /supply",
     metric: [
-      { label: "Versions", value: "v0 → v4" },
-      { label: "Best FVA", value: "+5,9%" },
-      { label: "Status", value: "🔒 Lock" },
+      { label: "Phiên bản", value: "v0 → v4" },
+      { label: "FVA tốt nhất", value: "+5,9%" },
+      { label: "Trạng thái", value: "🔒 Đã khoá" },
     ],
   },
   {
@@ -750,8 +750,8 @@ const demoSteps: DemoStep[] = [
     keyAction: "Booking xong → mở /hub",
     metric: [
       { label: "NM tổng", value: "5" },
-      { label: "Booking", value: "4.500 m²" },
-      { label: "Fresh", value: "<24h" },
+      { label: "Đặt mua", value: "4.500 m²" },
+      { label: "Mới", value: "<24h" },
     ],
   },
   {
@@ -769,9 +769,9 @@ const demoSteps: DemoStep[] = [
     ],
     keyAction: "Quyết định Scenario C → mở /drp",
     metric: [
-      { label: "Toko gap", value: "31,7%" },
-      { label: "Best", value: "Scenario C" },
-      { label: "Savings", value: "9,2tr ₫" },
+      { label: "Toko thiếu", value: "31,7%" },
+      { label: "Tốt nhất", value: "Kịch bản C" },
+      { label: "Tiết kiệm", value: "9,2tr ₫" },
     ],
   },
   {
@@ -810,8 +810,8 @@ const demoSteps: DemoStep[] = [
     keyAction: "PO posted → mở /monitoring",
     metric: [
       { label: "Container", value: "53%" },
-      { label: "Action", value: "HOLD" },
-      { label: "PO posted", value: "8" },
+      { label: "Hành động", value: "GIỮ" },
+      { label: "PO đã đẩy", value: "8" },
     ],
   },
   {
@@ -830,8 +830,8 @@ const demoSteps: DemoStep[] = [
     keyAction: "Closed loop — chu kỳ mới quay về /demand",
     metric: [
       { label: "ROI", value: "507tr ₫/th" },
-      { label: "Trust", value: "82% 🟢" },
-      { label: "Flywheel", value: "▶ chạy" },
+      { label: "Tin cậy", value: "82% 🟢" },
+      { label: "Bánh đà", value: "▶ chạy" },
     ],
   },
 ];
@@ -1271,7 +1271,7 @@ export default function GuidePage() {
               <div className="flex items-center gap-3">
                 <Zap className="h-5 w-5 text-[#b45309]" />
                 <div>
-                  <p className="text-table font-semibold text-[#b45309]">Key Insight</p>
+                  <p className="text-table font-semibold text-[#b45309]">Điểm nhấn quan trọng</p>
                   <p className="text-table-sm text-text-2">
                     SS dùng <span className="font-mono font-bold text-text-1">σ_fc_error</span> → tiết kiệm <span className="font-mono font-bold text-primary">54% vốn</span> so với σ_demand
                   </p>

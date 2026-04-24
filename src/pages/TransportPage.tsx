@@ -359,17 +359,17 @@ function OverrideDialog({
         <DialogHeader>
           <DialogTitle className="font-display flex items-center gap-2">
             <Shield className="h-5 w-5 text-warning" />
-            Override quyết định
+            Ghi đè quyết định
           </DialogTitle>
           <DialogDescription>
             Container <strong className="text-text-1">{plan.id}</strong> đang ở trạng thái{" "}
-            <DecisionBadge d={currentDecision} />. Override sang{" "}
+            <DecisionBadge d={currentDecision} />. Ghi đè sang{" "}
             <DecisionBadge d={targetIsShip ? "SHIP" : "HOLD"} />?
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-2 py-2">
-          <div className="text-table-sm font-medium text-text-1">Lý do override:</div>
+          <div className="text-table-sm font-medium text-text-1">Lý do ghi đè:</div>
           {reasons.map((r) => (
             <button
               key={r}
@@ -506,7 +506,7 @@ export function PackingTab() {
                           <button
                             onClick={() => setOverridePlan(p)}
                             className="rounded-button border border-warning/30 bg-warning-bg px-2 py-1 text-caption font-medium text-warning hover:bg-warning/20 transition-colors"
-                            title="Override (SC Manager)"
+                            title="Ghi đè (SC Manager)"
                           >
                             <Shield className="h-3 w-3" />
                           </button>
@@ -563,8 +563,8 @@ export function PackingTab() {
           onOpenChange={(v) => !v && setOverridePlan(null)}
           onOverride={(newD, reason) => {
             setActioned((s) => ({ ...s, [overridePlan.id]: newD }));
-            toast.success(`Đã override ${overridePlan.id} → ${newD}`, {
-              description: `Lý do: ${reason} · Ghi log audit.`,
+            toast.success(`Đã ghi đè ${overridePlan.id} → ${newD}`, {
+              description: `Lý do: ${reason} · Đã ghi log audit.`,
             });
           }}
         />

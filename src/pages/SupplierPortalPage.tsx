@@ -417,10 +417,10 @@ export default function SupplierPortalPage() {
                   ? "bg-warning-bg text-warning"
                   : "bg-danger-bg text-danger",
             )}
-            title="Honoring rate"
+            title="Tỉ lệ giao đúng hạn"
           >
             <TermTooltip term="HonoringRate">
-              <span>Honoring {portalFactory.honoringPct}%</span>
+              <span>Đúng hạn {portalFactory.honoringPct}%</span>
             </TermTooltip>
           </span>
         </header>
@@ -512,24 +512,24 @@ export default function SupplierPortalPage() {
                         Yêu cầu:{" "}
                         <ClickableNumber
                           value={`${c.requestedM2.toLocaleString()} m²`}
-                          label={`${c.skuBaseCode} requested`}
+                          label={`${c.skuBaseCode} yêu cầu`}
                           color="text-text-1 font-medium"
-                          formula={`Requested = Hub gửi xuống = ${c.requestedM2.toLocaleString()} m²\nTier ${meta.vnLabel} (${meta.windowLabel})`}
-                          note="Số m² Hub yêu cầu NM cam kết — phản hồi trước SLA"
+                          formula={`Yêu cầu = Hub gửi xuống = ${c.requestedM2.toLocaleString()} m²\nMức ${meta.vnLabel} (${meta.windowLabel})`}
+                          note="Số m² Hub yêu cầu NM cam kết — phản hồi trước hạn"
                         />
                         {" · "}Cam kết hiện tại:{" "}
                         <ClickableNumber
                           value={`${c.committedM2.toLocaleString()} m²`}
-                          label={`${c.skuBaseCode} committed`}
+                          label={`${c.skuBaseCode} cam kết`}
                           color={cn(
                             "font-medium",
                             c.committedM2 >= c.requestedM2 ? "text-success" : "text-warning",
                           )}
-                          formula={`Committed = ${c.committedM2.toLocaleString()} m²\nHonoring = committed/requested = ${((c.committedM2 / Math.max(1, c.requestedM2)) * 100).toFixed(0)}%`}
+                          formula={`Cam kết = ${c.committedM2.toLocaleString()} m²\nĐúng hạn = cam kết/yêu cầu = ${((c.committedM2 / Math.max(1, c.requestedM2)) * 100).toFixed(0)}%`}
                           note={
                             c.committedM2 < c.requestedM2
-                              ? `Honoring ${((c.committedM2 / c.requestedM2) * 100).toFixed(0)}% vì capacity NM thiếu — counter ${(c.requestedM2 - c.committedM2).toLocaleString()} m²`
-                              : "Honoring 100% — cam kết đầy đủ"
+                              ? `Đúng hạn ${((c.committedM2 / c.requestedM2) * 100).toFixed(0)}% vì NM thiếu năng lực — đề xuất khác ${(c.requestedM2 - c.committedM2).toLocaleString()} m²`
+                              : "Đúng hạn 100% — cam kết đầy đủ"
                           }
                         />
                       </p>
