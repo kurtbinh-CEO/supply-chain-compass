@@ -704,6 +704,24 @@ function BranchesTab({ rows }: { rows: BranchRow[] }) {
 
   return (
     <div className="space-y-3">
+      <SummaryCards screenId="inv-cn" cards={cnSummary} />
+
+      {cardFilter !== "all" && (
+        <div className="flex items-center gap-2 rounded-lg border border-info/30 bg-info-bg/40 px-3 py-1.5 text-table-sm">
+          <span className="text-text-2">
+            Đang lọc: <span className="font-semibold text-info">
+              {cardFilter === "critical" ? "🔴 CN nguy hiểm" : "🟡 CN sắp thiếu"}
+            </span> ({filteredRows.length} CN)
+          </span>
+          <button
+            className="ml-auto text-info hover:underline text-caption"
+            onClick={() => setCardFilter("all")}
+          >
+            ✕ Xoá lọc
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <PivotToggle mode={pivot} onChange={setPivot} cnLabel="Chi nhánh" skuLabel="Mã hàng" />
         <span className="text-caption text-text-3">
@@ -717,7 +735,7 @@ function BranchesTab({ rows }: { rows: BranchRow[] }) {
           title="Chi nhánh"
           exportFilename="ton-kho-chi-nhanh"
           columns={cnColumns}
-          data={rows}
+          data={filteredRows}
           defaultDensity="normal"
           rowSeverity={(r) => r.tone === "block" ? "shortage" : r.tone === "watch" ? "watch" : "ok"}
           getRowId={(r) => r.cnCode}
