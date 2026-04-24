@@ -17,6 +17,7 @@ import { AuthProvider, useAuth } from "@/components/AuthContext";
 import { ZoomProvider } from "@/components/ZoomControls";
 import { CommandPaletteProvider } from "@/components/CommandPalette";
 import { NextStepProvider } from "@/components/NextStepContext";
+import { PlanningPeriodProvider } from "@/components/PlanningPeriodContext";
 import { useEffect, useCallback } from "react";
 import { dispatchExpandAll } from "@/hooks/useExpandableRows";
 import { useIdleNudge } from "@/hooks/useIdleNudge";
