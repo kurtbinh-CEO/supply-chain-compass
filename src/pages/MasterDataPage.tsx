@@ -511,8 +511,15 @@ function SuppliersTab() {
           </thead>
           <tbody>
             {rows.map((f, i) => (
-              <tr key={f.id} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
-                <td className="px-4 py-2.5 font-mono font-medium text-text-1">{f.code}</td>
+              <tr key={`${f.code}-${f.source}`} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
+                <td className="px-4 py-2.5 font-mono font-medium text-text-1">
+                  <div className="flex items-center gap-1.5">
+                    {f.code}
+                    {f.source === "cloud" && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-4 py-2.5 text-text-2">{f.name}</td>
                 <td className="px-4 py-2.5 text-text-2">{f.region}</td>
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{f.ltDays}</td>
@@ -539,7 +546,9 @@ function SuppliersTab() {
           </tbody>
         </table>
       </div>
-      <p className="text-table-sm text-text-3">{rows.length} / {FACTORIES.length} nhà máy</p>
+      <p className="text-table-sm text-text-3">
+        {rows.length} nhà máy · <span className="text-success">{cloudFactories.length} từ cloud</span> + {FACTORIES.length} từ dataset mẫu
+      </p>
 
       <EntityFormDialog
         open={adding}
@@ -547,8 +556,18 @@ function SuppliersTab() {
         entityName="nhà máy"
         fields={SUPPLIER_FIELDS}
         onClose={() => setAdding(false)}
-        onSave={(v) => {
-          toast.success(`Đã tạo NM ${v.name} (demo)`);
+        onSave={async (v) => {
+          await createFactory.mutateAsync({
+            code: v.code, name: v.name, region: v.region,
+            lt_days: Number(v.ltDays || 0),
+            sigma_lt: Number(v.sigmaLt || 0),
+            moq_m2: Number(v.moqM2 || 0),
+            capacity_m2_month: Number(v.capacityM2Month || 0),
+            honoring_pct: Number(v.honoringPct || 80),
+            price_tier1: Number(v.priceTier1 || 0),
+            price_tier2: Number(v.priceTier2 || 0),
+          });
+          toast.success(`Đã tạo NM ${v.name}`);
           setAdding(false);
         }}
       />
@@ -565,8 +584,23 @@ function SuppliersTab() {
           priceTier1: editing.priceTier1, priceTier2: editing.priceTier2,
         } : undefined}
         onClose={() => setEditing(null)}
-        onSave={(v) => {
-          toast.success(`Đã cập nhật NM ${v.name} (demo)`);
+        onSave={async (v) => {
+          const payload = {
+            name: v.name, region: v.region,
+            lt_days: Number(v.ltDays || 0),
+            sigma_lt: Number(v.sigmaLt || 0),
+            moq_m2: Number(v.moqM2 || 0),
+            capacity_m2_month: Number(v.capacityM2Month || 0),
+            honoring_pct: Number(v.honoringPct || 80),
+            price_tier1: Number(v.priceTier1 || 0),
+            price_tier2: Number(v.priceTier2 || 0),
+          };
+          if (editing?.source === "cloud" && editing.id) {
+            await updateFactory.mutateAsync({ id: editing.id, ...payload });
+          } else {
+            await createFactory.mutateAsync({ code: v.code, ...payload });
+          }
+          toast.success(`Đã cập nhật NM ${v.name}`);
           setEditing(null);
         }}
       />
@@ -575,12 +609,19 @@ function SuppliersTab() {
         entityLabel={deleting ? `NM ${deleting.name}` : ""}
         description={
           deleting
-            ? `NM ${deleting.name} đang gắn với mã hàng và PO. Xóa sẽ làm gãy data link — cân nhắc kỹ.`
+            ? (deleting.source === "cloud"
+              ? `NM ${deleting.name} (Cloud) đang gắn với mã hàng và PO. Xóa sẽ làm gãy data link.`
+              : `NM ${deleting.name} thuộc dataset mẫu — không xóa được. Tạo bản Cloud cùng mã rồi xóa bản Cloud.`)
             : undefined
         }
         onClose={() => setDeleting(null)}
-        onConfirm={() => {
-          toast.success(`Đã xóa NM ${deleting?.name} (demo)`);
+        onConfirm={async () => {
+          if (deleting?.source === "cloud" && deleting.id) {
+            await deleteFactory.mutateAsync(deleting.id);
+            toast.success(`Đã xóa NM ${deleting.name}`);
+          } else {
+            toast.warning("Không xóa được dataset mẫu");
+          }
           setDeleting(null);
         }}
       />
