@@ -1529,6 +1529,42 @@ export default function DrpPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── LCNB TO DETAIL POPUP ── */}
+      <Dialog open={lcnbToDetail !== null} onOpenChange={(v) => !v && setLcnbToDetail(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-mono text-base">{lcnbToDetail?.code}</DialogTitle>
+          </DialogHeader>
+          {lcnbToDetail && (
+            <div className="space-y-2 text-table-sm">
+              <div className="text-text-2">
+                <span className="text-text-3">Tuyến: </span>
+                <span className="font-medium">{lcnbToDetail.fromCn} → {lcnbToDetail.toCn}</span>
+              </div>
+              <div className="text-text-2">
+                <span className="text-text-3">Mã hàng: </span>
+                <span className="font-medium">{lcnbToDetail.sku}</span>
+                <span className="text-text-3"> · </span>
+                <span className="tabular-nums font-medium">{lcnbToDetail.qty} m²</span>
+                <span className="text-text-3"> · </span>
+                <span className="tabular-nums">{lcnbToDetail.costM.toFixed(1).replace(".", ",")}M₫</span>
+              </div>
+              <div className="text-text-2">
+                <span className="text-text-3">Trạng thái: </span>
+                <span className="inline-block rounded-full bg-warning-bg text-warning border border-warning/30 px-1.5 py-0.5 text-[10px] font-medium">Nháp</span>
+                <span className="text-text-3"> · ETA 1-2 ngày</span>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLcnbToDetail(null)}>Đóng</Button>
+            <Button onClick={() => { setLcnbToDetail(null); navigate("/orders?tab=approval&filter=TO"); }}>
+              Duyệt TO <ArrowRight className="h-3.5 w-3.5 ml-1" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
