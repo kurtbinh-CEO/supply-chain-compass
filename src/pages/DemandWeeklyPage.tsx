@@ -878,6 +878,14 @@ export default function DemandWeeklyPage() {
   const [persona, setPersonaState] = useState<Persona>(() => loadPersona());
   const setPersona = (p: Persona) => { setPersonaState(p); savePersona(p); };
   const [importerOpen, setImporterOpen] = useState(false);
+  const [phasingOpen, setPhasingOpen] = useState(false);
+  const { current: planCycle } = usePlanningPeriod();
+
+  // M19 GAP 1 — FC tháng tổng (scale theo tenant)
+  const monthlyFcTotal = useMemo(
+    () => Math.round(DEMAND_FC.reduce((s, r) => s + r.fcM2, 0) * scale),
+    [scale],
+  );
 
   const cnConfigs = useMemo(buildCnConfigs, []);
 
