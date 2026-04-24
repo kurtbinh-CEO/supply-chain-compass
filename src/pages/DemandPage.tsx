@@ -19,6 +19,7 @@ import { AopPlanDialog } from "@/components/AopPlanDialog";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
+import { VersionHistoryButton } from "@/components/VersionHistoryButton";
 
 const tabs = [
   { key: "total", label: "Demand tổng" },
