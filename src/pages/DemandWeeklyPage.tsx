@@ -864,6 +864,7 @@ export default function DemandWeeklyPage() {
 
   const [persona, setPersonaState] = useState<Persona>(() => loadPersona());
   const setPersona = (p: Persona) => { setPersonaState(p); savePersona(p); };
+  const [importerOpen, setImporterOpen] = useState(false);
 
   const cnConfigs = useMemo(buildCnConfigs, []);
 
