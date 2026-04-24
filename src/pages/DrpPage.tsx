@@ -880,13 +880,17 @@ export default function DrpPage() {
                           {r.fillRate}%
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 hidden md:table-cell">
-                        <div className="flex flex-wrap gap-1">
-                          {cnTotals.onHand > 0 && <SourceBadge kind="onHand" qty={cnTotals.onHand} hideLabelMobile />}
-                          {cnTotals.pipeline > 0 && <SourceBadge kind="pipeline" qty={cnTotals.pipeline} hideLabelMobile />}
-                          {cnTotals.hubPo > 0 && <SourceBadge kind="hubPo" qty={cnTotals.hubPo} hideLabelMobile />}
-                          {cnTotals.lcnb > 0 && <SourceBadge kind="lcnb" qty={cnTotals.lcnb} hideLabelMobile />}
-                          {r.gap > 0 && <SourceBadge kind="shortage" qty={r.gap} hideLabelMobile />}
+                      <td className="px-3 py-2.5">
+                        <div className="text-table-sm text-text-2 leading-relaxed">
+                          {cnTotals.onHand > 0 && <span className="tabular-nums">Tồn <span className="text-text-1 font-medium">{cnTotals.onHand.toLocaleString()}</span></span>}
+                          {cnTotals.pipeline > 0 && <span className="tabular-nums"><span className="text-text-3 mx-1">·</span>Về <span className="text-text-1 font-medium">{cnTotals.pipeline.toLocaleString()}</span></span>}
+                          {cnTotals.hubPo > 0 && <span className="tabular-nums"><span className="text-text-3 mx-1">·</span>NM <span className="text-text-1 font-medium">{cnTotals.hubPo.toLocaleString()}</span></span>}
+                          {cnTotals.lcnb > 0 && <span className="tabular-nums"><span className="text-text-3 mx-1">·</span>↔ <span className="text-warning font-medium">{cnTotals.lcnb.toLocaleString()}</span></span>}
+                          {r.gap > 0 && (
+                            <span className="ml-2 inline-flex items-center gap-0.5 rounded-full border border-danger/30 bg-danger-bg px-1.5 py-0.5 text-[11px] font-semibold text-danger tabular-nums align-middle">
+                              ⚠️ {r.gap.toLocaleString()}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-3 py-2.5 text-right">
