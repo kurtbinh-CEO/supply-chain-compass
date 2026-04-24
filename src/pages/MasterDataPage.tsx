@@ -1579,6 +1579,7 @@ export default function MasterDataPage() {
         <TabsContent value="carriers"><CarriersTab /></TabsContent>
         <TabsContent value="distances"><DistancesTab /></TabsContent>
         <TabsContent value="containers"><ContainersTab /></TabsContent>
+        <TabsContent value="aop"><AopSummaryPanel /></TabsContent>
         <TabsContent value="quality"><QualityTab /></TabsContent>
       </Tabs>
 
