@@ -95,6 +95,7 @@ function ProtectedRoutes() {
       <SafetyStockProvider>
       <WalkthroughProvider>
       <NextStepProvider>
+      <PlanningPeriodProvider>
       <CommandPaletteProvider>
         <IdleNudgeMount />
         <Routes>
