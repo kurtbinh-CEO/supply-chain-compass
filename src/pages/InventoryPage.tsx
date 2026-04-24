@@ -217,7 +217,7 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
     },
   ];
 
-  const skuPivotRows = useMemo(() => buildFactorySkuPivot(rows), [rows]);
+  const skuPivotRows = useMemo(() => buildFactorySkuPivot(filteredRows), [filteredRows]);
 
   const columns: SmartTableColumn<FactoryRow>[] = [
     {
