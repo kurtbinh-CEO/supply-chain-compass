@@ -178,14 +178,14 @@ export function EntityDetailSheet({ open, onClose, entity }: Props) {
             <>
               <button
                 className="w-full flex items-center justify-between rounded-md border border-surface-3 bg-surface-0 px-3 py-2 text-table-sm text-text-1 hover:border-primary hover:text-primary transition-colors"
-                onClick={() => { onClose(); navigate(`/drp?cn=${encodeURIComponent(entity.code)}`); }}
+                onClick={() => { if (!entity) return; onClose(); navigate(`/drp?cn=${encodeURIComponent(entity.code)}`); }}
               >
-                <span>Xem DRP cho {entity.code}</span>
+                <span>Xem DRP cho {entity?.code}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </button>
               <button
                 className="w-full flex items-center justify-between rounded-md border border-surface-3 bg-surface-0 px-3 py-2 text-table-sm text-text-1 hover:border-primary hover:text-primary transition-colors"
-                onClick={() => { onClose(); navigate(`/demand-weekly?cn=${encodeURIComponent(entity.code)}`); }}
+                onClick={() => { if (!entity) return; onClose(); navigate(`/demand-weekly?cn=${encodeURIComponent(entity.code)}`); }}
               >
                 <span>Xem Demand tuần</span>
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -195,14 +195,14 @@ export function EntityDetailSheet({ open, onClose, entity }: Props) {
             <>
               <button
                 className="w-full flex items-center justify-between rounded-md border border-surface-3 bg-surface-0 px-3 py-2 text-table-sm text-text-1 hover:border-primary hover:text-primary transition-colors"
-                onClick={() => { onClose(); navigate(`/supply?nm=${encodeURIComponent(entity.code)}`); }}
+                onClick={() => { if (!entity) return; onClose(); navigate(`/supply?nm=${encodeURIComponent(entity.code)}`); }}
               >
-                <span>Xem NM Supply cho {entity.code}</span>
+                <span>Xem NM Supply cho {entity?.code}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </button>
               <button
                 className="w-full flex items-center justify-between rounded-md border border-surface-3 bg-surface-0 px-3 py-2 text-table-sm text-text-1 hover:border-primary hover:text-primary transition-colors"
-                onClick={() => { onClose(); navigate(`/hub?nm=${encodeURIComponent(entity.code)}`); }}
+                onClick={() => { if (!entity) return; onClose(); navigate(`/hub?nm=${encodeURIComponent(entity.code)}`); }}
               >
                 <span>Xem Hub & Cam kết</span>
                 <ArrowRight className="h-3.5 w-3.5" />
