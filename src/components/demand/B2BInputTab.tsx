@@ -87,7 +87,7 @@ function DealModal({
               </select>
             </div>
             <div>
-              <label className="text-table-header uppercase text-text-3 mb-1 block">SKU base</label>
+              <label className="text-table-header uppercase text-text-3 mb-1 block">SKU gốc</label>
               <select value={form.skuBaseCode} onChange={(e) => set("skuBaseCode", e.target.value)}
                 className="w-full h-9 rounded-button border border-surface-3 bg-surface-0 px-3 text-table text-text-1 focus:outline-none focus:ring-2 focus:ring-primary">
                 {skuOptions.map((s) => <option key={s}>{s}</option>)}
@@ -96,12 +96,12 @@ function DealModal({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-table-header uppercase text-text-3 mb-1 block">Qty (m²)</label>
+              <label className="text-table-header uppercase text-text-3 mb-1 block">SL (m²)</label>
               <input type="number" value={form.qtyM2} onChange={(e) => set("qtyM2", Number(e.target.value))}
                 className="w-full h-9 rounded-button border border-surface-3 bg-surface-0 px-3 text-table text-text-1 tabular-nums focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
             <div>
-              <label className="text-table-header uppercase text-text-3 mb-1 block">Stage</label>
+              <label className="text-table-header uppercase text-text-3 mb-1 block">Giai đoạn</label>
               <select value={form.stage} onChange={(e) => set("stage", e.target.value as B2bStage)}
                 className="w-full h-9 rounded-button border border-surface-3 bg-surface-0 px-3 text-table text-text-1 focus:outline-none focus:ring-2 focus:ring-primary">
                 {STAGES.map((s) => (
@@ -120,9 +120,9 @@ function DealModal({
                 className="w-full h-9 rounded-button border border-surface-3 bg-surface-0 px-3 text-table text-text-1 focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
             <div>
-              <label className="text-table-header uppercase text-text-3 mb-1 block">Owner</label>
+              <label className="text-table-header uppercase text-text-3 mb-1 block">Phụ trách</label>
               <input value={form.owner} onChange={(e) => set("owner", e.target.value)}
-                placeholder="Tên Sales..."
+                placeholder="Tên Kinh doanh..."
                 className="w-full h-9 rounded-button border border-surface-3 bg-surface-0 px-3 text-table text-text-1 focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
           </div>
@@ -206,8 +206,8 @@ export function B2BInputTab({ deals, setDeals }: Props) {
   const confirmCascade = () => {
     if (!cascadeConfirm) return;
     applyEdit(cascadeConfirm.form, cascadeConfirm.editId);
-    toast.warning("Cascade đã trigger", {
-      description: `${cascadeConfirm.form.customer}: S&OP v3 → DRP rerun → NM commitment refresh.`,
+    toast.warning("Đã trigger cascade", {
+      description: `${cascadeConfirm.form.customer}: S&OP v3 → DRP chạy lại → cam kết NM cập nhật.`,
     });
     setCascadeConfirm(null);
   };
@@ -226,17 +226,17 @@ export function B2BInputTab({ deals, setDeals }: Props) {
         <div className="flex items-center gap-4 flex-wrap">
           <h2 className="font-display text-screen-title text-text-1">B2B nhập liệu</h2>
           <span className="text-table text-text-2">
-            <span className="font-semibold text-text-1 tabular-nums">{deals.length}</span> deals · Weighted:{" "}
+            <span className="font-semibold text-text-1 tabular-nums">{deals.length}</span> deal · Trọng số:{" "}
             <span className="font-semibold text-text-1 tabular-nums">{totals.totalWeighted.toLocaleString()} m²</span> · Đã ký:{" "}
             <span className="font-semibold text-success tabular-nums">{totals.signed.toLocaleString()} m²</span>
           </span>
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => toast.info("Upload Excel: Drag & drop file .xlsx")}
+            onClick={() => toast.info("Tải lên Excel: Kéo thả file .xlsx")}
             className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 px-4 py-2 text-table-sm text-text-2 hover:bg-surface-3 transition-colors"
           >
-            <Upload className="h-3.5 w-3.5" /> Upload Excel
+            <Upload className="h-3.5 w-3.5" /> Tải lên Excel
           </button>
           <button
             onClick={() => setModalDeal({ deal: { ...emptyDeal } })}
@@ -306,16 +306,16 @@ export function B2BInputTab({ deals, setDeals }: Props) {
           <table className="w-full text-table-sm">
             <thead className="sticky top-0 z-10 bg-surface-2">
               <tr className="border-b border-surface-3">
-                <th className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">Deal ID</th>
+                <th className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">Mã Deal</th>
                 <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Khách hàng</th>
                 <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">CN</th>
-                <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">SKU base</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Qty (m²)</th>
-                <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Stage</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-1 font-semibold">Weighted</th>
+                <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">SKU gốc</th>
+                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">SL (m²)</th>
+                <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Giai đoạn</th>
+                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-1 font-semibold">Trọng số</th>
                 <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Dự kiến chốt</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Owner</th>
-                <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Actions</th>
+                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Phụ trách</th>
+                <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Hành động</th>
               </tr>
             </thead>
             <tbody>

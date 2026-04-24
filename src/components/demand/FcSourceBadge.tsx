@@ -308,7 +308,7 @@ export function FcSourceBadge() {
               {view === "menu" && (
                 <>
                   <p className="text-table-sm text-text-2">
-                    Chọn nguồn nhập FC tháng tiếp theo. Mỗi lần nhập tạo 1 entry trong FC Import Log.
+                    Chọn nguồn nhập FC tháng tiếp theo. Mỗi lần nhập tạo 1 entry trong nhật ký nhập FC.
                   </p>
 
                   <div className="space-y-3">

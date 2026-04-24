@@ -43,7 +43,7 @@ export function FcVsActualTab() {
       {/* Summary strip */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="rounded-card border border-surface-3 bg-surface-2 p-4">
-          <p className="text-caption text-text-3 uppercase tracking-wide mb-1">MAPE 12M trung bình</p>
+          <p className="text-caption text-text-3 uppercase tracking-wide mb-1">MAPE 12T trung bình</p>
           <p className={cn("font-display text-kpi-md tabular-nums", avgMape > target ? "text-danger" : "text-success")}>
             {avgMape}%
           </p>
@@ -64,7 +64,7 @@ export function FcVsActualTab() {
           })()}
         </div>
         <div className="rounded-card border border-surface-3 bg-surface-2 p-4">
-          <p className="text-caption text-text-3 uppercase tracking-wide mb-1">Bias 12M</p>
+          <p className="text-caption text-text-3 uppercase tracking-wide mb-1">Bias 12T</p>
           {(() => {
             const bias = closed.reduce((a, r) => a + (r.delta ?? 0), 0);
             const biasPct = closed.reduce((a, r) => a + (r.delta ?? 0), 0) / closed.reduce((a, r) => a + r.fc, 0);
@@ -73,13 +73,13 @@ export function FcVsActualTab() {
                 <p className={cn("font-display text-kpi-md tabular-nums", bias >= 0 ? "text-success" : "text-danger")}>
                   {bias >= 0 ? "+" : ""}{Math.round(bias / 1000)}K
                 </p>
-                <p className="text-caption text-text-3 mt-1">{(biasPct * 100).toFixed(1)}% (+ = under-forecast)</p>
+                <p className="text-caption text-text-3 mt-1">{(biasPct * 100).toFixed(1)}% (+ = dự báo thấp)</p>
               </>
             );
           })()}
         </div>
         <div className="rounded-card border border-surface-3 bg-surface-2 p-4">
-          <p className="text-caption text-text-3 uppercase tracking-wide mb-1">Model dùng nhiều nhất</p>
+          <p className="text-caption text-text-3 uppercase tracking-wide mb-1">Mô hình dùng nhiều nhất</p>
           <p className="font-display text-kpi-md text-text-1">HW+XGB</p>
           <p className="text-caption text-text-3 mt-1">5/12 tháng gần đây</p>
         </div>
@@ -87,7 +87,7 @@ export function FcVsActualTab() {
 
       {/* Chart */}
       <div className="rounded-card border border-surface-3 bg-surface-2 p-5">
-        <h3 className="font-display text-body font-semibold text-text-1 mb-3">Forecast vs Actual — 12 tháng</h3>
+        <h3 className="font-display text-body font-semibold text-text-1 mb-3">Dự báo vs Thực tế — 12 tháng</h3>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={series}>
@@ -97,11 +97,11 @@ export function FcVsActualTab() {
               <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <ReferenceLine y={47000} stroke="var(--color-text-3)" strokeDasharray="4 3" />
-              <Line type="monotone" dataKey="fc" name="Forecast" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="fc" name="Dự báo" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
               <Line
                 type="monotone"
                 dataKey="actual"
-                name="Actual"
+                name="Thực tế"
                 stroke="var(--color-success-text)"
                 strokeWidth={2}
                 dot={{ r: 3 }}
@@ -121,7 +121,7 @@ export function FcVsActualTab() {
         <table className="w-full text-table-sm">
           <thead>
             <tr className="border-b border-surface-3 bg-surface-1/50">
-              {["Tháng", "FC (m²)", "Actual (m²)", "Δ", "MAPE", "Model"].map((h, i) => (
+              {["Tháng", "Dự báo (m²)", "Thực tế (m²)", "Δ", "MAPE", "Mô hình"].map((h, i) => (
                 <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
                   {h}
                 </th>
@@ -172,7 +172,7 @@ export function FcVsActualTab() {
         <table className="w-full text-table-sm">
           <thead>
             <tr className="border-b border-surface-3 bg-surface-1/50">
-              {["CN", "Tên", "MAPE", "Model"].map((h, i) => (
+              {["CN", "Tên", "MAPE", "Mô hình"].map((h, i) => (
                 <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
                   {h}
                 </th>
