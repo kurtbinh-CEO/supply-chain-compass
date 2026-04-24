@@ -2,7 +2,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { StatusChip } from "@/components/StatusChip";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { ArrowRight, Zap, Shield, Target, Box, DollarSign } from "lucide-react";
+import { ArrowRight, Zap, Shield, Target, Box, DollarSign, BarChart3, Truck, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { TermTooltip } from "@/components/TermTooltip";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
@@ -228,6 +228,11 @@ export function AuditFeedbackTab() {
             defaultDensity="normal"
             getRowId={(r) => r.category}
             rowSeverity={(r) => Math.abs(parseFloat(r.bias)) > 5 ? "watch" : "ok"}
+            emptyState={{
+              icon: <BarChart3 />,
+              title: "Chưa có dữ liệu audit dự báo",
+              description: "Bias & MAPE sẽ được tính sau mỗi kỳ đóng FC. Cần tối thiểu 1 kỳ Actual để bắt đầu so sánh.",
+            }}
           />
         </div>
         <div className="col-span-2 space-y-4">
@@ -293,6 +298,11 @@ export function AuditFeedbackTab() {
             defaultDensity="normal"
             getRowId={(r) => r.node}
             rowSeverity={(r) => r.grade.startsWith("C") ? "shortage" : r.grade.startsWith("B") ? "watch" : "ok"}
+            emptyState={{
+              icon: <Truck />,
+              title: "Chưa có dữ liệu hiệu suất NM",
+              description: "Honoring rate & on-time sẽ điền sau khi có ít nhất 1 chu kỳ giao hàng được hoàn tất từ NM.",
+            }}
           />
         </div>
       </div>
@@ -371,6 +381,11 @@ export function AuditFeedbackTab() {
             defaultDensity="normal"
             getRowId={(r) => r.channel}
             rowSeverity={(r) => r.stockout === "Cao" ? "shortage" : r.stockout === "Trung bình" ? "watch" : "ok"}
+            emptyState={{
+              icon: <ShieldCheck />,
+              title: "Chưa có dữ liệu sức khỏe tồn kho",
+              description: "HSTK theo kênh phân phối sẽ tổng hợp sau mỗi chu kỳ inventory snapshot (mặc định mỗi sáng).",
+            }}
           />
         </div>
         <div className="col-span-2 space-y-4">

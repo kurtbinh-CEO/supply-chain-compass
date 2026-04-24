@@ -453,6 +453,11 @@ function CnManagerTab({
           ),
           final: <span className="tabular-nums font-semibold">{totals.final.toLocaleString("vi-VN")}</span>,
         }}
+        emptyState={{
+          icon: <Inbox />,
+          title: "Chi nhánh chưa có SKU nào tuần này",
+          description: "Có thể chi nhánh chưa được kích hoạt FC hoặc chưa có nhu cầu phát sinh. Liên hệ SC Manager để mở quyền.",
+        }}
       />
 
       {/* Submit action */}
@@ -734,6 +739,11 @@ function ScManagerTab({
             onOverrideRow={onOverrideRow}
           />
         )}
+        emptyState={{
+          icon: <Inbox />,
+          title: "Chưa có CN nào gửi điều chỉnh",
+          description: "Bảng tổng hợp 12 CN sẽ điền dần khi mỗi CN Manager submit điều chỉnh tuần. Cutoff: 18:00 hàng ngày.",
+        }}
       />
     </div>
   );

@@ -445,7 +445,27 @@ export function B2BInputTab({ deals, setDeals }: Props) {
             columns={cols}
             data={filtered}
             getRowId={(r) => r.id}
-            emptyMessage="Không có deal phù hợp với bộ lọc."
+            emptyState={
+              deals.length === 0
+                ? {
+                    icon: <Plus />,
+                    title: "Chưa có deal B2B nào",
+                    description: "Thêm deal đầu tiên để pipeline cộng dồn vào nhu cầu Demand. Hoặc import từ file Excel.",
+                    action: {
+                      label: "Thêm deal mới",
+                      onClick: () => setModalDeal({ deal: { ...emptyDeal } }),
+                    },
+                  }
+                : {
+                    icon: <Search />,
+                    title: "Không có deal phù hợp",
+                    description: `Bộ lọc hiện đang ẩn ${deals.length} deal. Xoá lọc Stage / từ khoá để xem lại danh sách đầy đủ.`,
+                    action: {
+                      label: "Xoá bộ lọc",
+                      onClick: () => { setStageFilter("all"); setSearch(""); },
+                    },
+                  }
+            }
             summaryRow={{
               customer: <span className="font-semibold text-text-1">TỔNG · {filtered.length}/{deals.length}</span>,
               qtyM2: <span className="tabular-nums font-semibold text-text-1">{totalQty.toLocaleString()}</span>,
