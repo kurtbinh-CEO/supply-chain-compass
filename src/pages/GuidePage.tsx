@@ -24,7 +24,7 @@ const roleMeta: RoleMeta[] = [
   {
     key: "SC_MANAGER", icon: <Target className="h-6 w-6" />, label: "SC Manager", sub: "Điều phối toàn chuỗi",
     color: "#004AC6", colorLight: "#004AC6", colorText: "#004AC6",
-    heroDesc: "Điều phối toàn bộ chuỗi cung ứng", timeDaily: "30'", timeMonthly: "1h",
+    heroDesc: "Điều phối toàn bộ chuỗi cung ứng", timeDaily: "22'", timeMonthly: "2h",
   },
   {
     key: "CN_MANAGER", icon: <Building2 className="h-6 w-6" />, label: "CN Manager", sub: "Quản lý chi nhánh",
