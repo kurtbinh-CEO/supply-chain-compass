@@ -48,6 +48,16 @@ Phase 5 — Excel Wizard 5 bước (DONE):
 - `CrudToolbar` thêm prop `excelImport={ entityName, fields: ImportField[], onCommit }`. Khi user chọn "Excel/CSV" trong DataSourceSelector → mở wizard thay vì gọi `onImport`
 - Wired vào 4 tab Master Data: Mã hàng, NM, CN, Container — mỗi tab có `*_IMPORT_FIELDS` riêng với aliases tiếng Việt
 
-Còn lại — out of scope:
-- Persist data vào Lovable Cloud (defer Phase 6)
-- Audit log Master Data CRUD (defer Phase 7)
+Phase 6 — Persist Master Data vào Lovable Cloud (PARTIAL):
+- Migration tạo 4 bảng: `master_items`, `master_factories`, `master_branches`, `master_containers`
+  - Mỗi bảng: id UUID, code (UNIQUE per tenant), updated_at trigger, RLS public read + auth write + admin delete
+- **`src/hooks/useMasterData.ts`**: 5 hook/entity (list, create, update, delete, bulkInsert) dùng React Query, invalidate cache
+- **MasterDataPage Items tab** đã wire full Cloud (DONE):
+  - Merged view: cloud rows override hardcode SKU_BASES theo `code`, badge "Cloud" cho rows từ DB
+  - Add/Edit/Delete/Bulk-import-Excel đều gọi mutation thật
+  - Edit hardcoded row → tạo Cloud override; Delete chỉ cho cloud rows (admin)
+- 3 tab còn lại (NM/CN/Container) — hooks sẵn sàng, chưa wire UI (next turn)
+
+Còn lại:
+- Wire Cloud cho NM/CN/Container tabs (lặp pattern Items)
+- Phase 7: Audit log Master Data CRUD

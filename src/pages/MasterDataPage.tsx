@@ -18,6 +18,12 @@ import {
   type FormField,
 } from "@/components/master/CrudPrimitives";
 import type { ImportField } from "@/components/master/ExcelImportWizard";
+import {
+  useMasterItems, useCreateMasterItem, useUpdateMasterItem, useDeleteMasterItem, useBulkInsertMasterItems,
+  useMasterFactories, useCreateMasterFactory, useUpdateMasterFactory, useDeleteMasterFactory, useBulkInsertMasterFactories,
+  useMasterBranches, useCreateMasterBranch, useUpdateMasterBranch, useDeleteMasterBranch, useBulkInsertMasterBranches,
+  useMasterContainers, useCreateMasterContainer, useUpdateMasterContainer, useDeleteMasterContainer, useBulkInsertMasterContainers,
+} from "@/hooks/useMasterData";
 import { Button } from "@/components/ui/button";
 import {
   SKU_BASES,
@@ -28,6 +34,15 @@ import {
   TRANSIT_LT,
   type NmId,
 } from "@/data/unis-enterprise-dataset";
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Merged row types — cloud overrides hardcode                                */
+/* ────────────────────────────────────────────────────────────────────────── */
+type RowSource = "cloud" | "hardcode";
+interface MergedItem      { id: string | null; code: string; name: string; nmId: string; category: string; unit: string; unitPrice: number; source: RowSource }
+interface MergedFactory   { id: string | null; code: string; name: string; region: string; ltDays: number; sigmaLt: number; moqM2: number; capacityM2Month: number; reliability: number; honoringPct: number; priceTier1: number; priceTier2: number; source: RowSource }
+interface MergedBranch    { id: string | null; code: string; name: string; region: string; lat: number; lng: number; zFactor: number; manager: string; source: RowSource }
+interface MergedContainer { id: string | null; code: string; name: string; capacityM2: number; palletLimit: number; weightLimitKg: number; costPerKm: number; note: string; source: RowSource }
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /* Helpers                                                                    */
@@ -141,18 +156,52 @@ const ITEM_IMPORT_FIELDS: ImportField[] = [
 function ItemsTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState<typeof SKU_BASES[number] | null>(null);
-  const [deleting, setDeleting] = useState<typeof SKU_BASES[number] | null>(null);
+  const [editing, setEditing] = useState<MergedItem | null>(null);
+  const [deleting, setDeleting] = useState<MergedItem | null>(null);
+
+  const { data: cloudItems = [] } = useMasterItems();
+  const createItem = useCreateMasterItem();
+  const updateItem = useUpdateMasterItem();
+  const deleteItem = useDeleteMasterItem();
+  const bulkInsertItems = useBulkInsertMasterItems();
+
+  // Merge cloud (override) + hardcode (fallback) by code
+  const merged: MergedItem[] = useMemo(() => {
+    const cloudByCode = new Map(cloudItems.map((c) => [c.code, c]));
+    const fromHardcode: MergedItem[] = SKU_BASES
+      .filter((b) => !cloudByCode.has(b.code))
+      .map((b) => ({
+        id: null,
+        code: b.code,
+        name: b.name,
+        nmId: b.nmId,
+        category: b.category,
+        unit: b.unit,
+        unitPrice: b.unitPrice,
+        source: "hardcode" as const,
+      }));
+    const fromCloud: MergedItem[] = cloudItems.map((c) => ({
+      id: c.id,
+      code: c.code,
+      name: c.name,
+      nmId: c.nm_id,
+      category: c.category ?? "",
+      unit: c.unit,
+      unitPrice: Number(c.unit_price),
+      source: "cloud" as const,
+    }));
+    return [...fromCloud, ...fromHardcode].sort((a, b) => a.code.localeCompare(b.code));
+  }, [cloudItems]);
 
   const rows = useMemo(() => {
     const q = search.toLowerCase();
-    return SKU_BASES.filter(
+    return merged.filter(
       (b) =>
         b.code.toLowerCase().includes(q) ||
         b.name.toLowerCase().includes(q) ||
-        NM_BY_ID[b.nmId].toLowerCase().includes(q),
+        (NM_BY_ID[b.nmId as NmId] ?? "").toLowerCase().includes(q),
     );
-  }, [search]);
+  }, [search, merged]);
 
   return (
     <div className="space-y-3">
@@ -163,9 +212,19 @@ function ItemsTab() {
         excelImport={{
           entityName: "mã hàng",
           fields: ITEM_IMPORT_FIELDS,
-          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} mã hàng (chưa persist)`),
+          onCommit: async (importedRows) => {
+            await bulkInsertItems.mutateAsync(
+              importedRows.map((r) => ({
+                code: String(r.code),
+                name: String(r.name),
+                nm_id: String(r.nmId),
+                category: r.category ? String(r.category) : null,
+                unit: r.unit ? String(r.unit) : "m²",
+                unit_price: Number(r.unitPrice ?? 0),
+              })),
+            );
+          },
         }}
-        onImport={(src) => toast.success(`Nhập mã hàng qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "ma_hang",
@@ -203,14 +262,21 @@ function ItemsTab() {
           <tbody>
             {rows.map((b, i) => (
               <tr
-                key={b.code}
+                key={`${b.code}-${b.source}`}
                 className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}
               >
-                <td className="px-4 py-2.5 font-mono font-medium text-text-1">{b.code}</td>
+                <td className="px-4 py-2.5 font-mono font-medium text-text-1">
+                  <div className="flex items-center gap-1.5">
+                    {b.code}
+                    {b.source === "cloud" && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-4 py-2.5 text-text-2">{b.name}</td>
                 <td className="px-4 py-2.5">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-info-bg text-info text-table-sm font-medium">
-                    {NM_BY_ID[b.nmId]}
+                    {NM_BY_ID[b.nmId as NmId] ?? b.nmId}
                   </span>
                 </td>
                 <td className="px-4 py-2.5 text-text-2">{b.category}</td>
@@ -229,7 +295,9 @@ function ItemsTab() {
           </tbody>
         </table>
       </div>
-      <p className="text-table-sm text-text-3">{rows.length} / {SKU_BASES.length} mã gốc</p>
+      <p className="text-table-sm text-text-3">
+        {rows.length} mã gốc · <span className="text-success">{cloudItems.length} từ cloud</span> + {SKU_BASES.length} từ dataset mẫu
+      </p>
 
       <EntityFormDialog
         open={adding}
@@ -237,8 +305,16 @@ function ItemsTab() {
         entityName="mã hàng"
         fields={ITEM_FIELDS}
         onClose={() => setAdding(false)}
-        onSave={(v) => {
-          toast.success(`Đã tạo ${v.code} → ${NM_BY_ID[v.nmId as NmId] ?? v.nmId} (demo)`);
+        onSave={async (v) => {
+          await createItem.mutateAsync({
+            code: v.code,
+            name: v.name,
+            nm_id: v.nmId,
+            category: v.category || null,
+            unit: v.unit || "m²",
+            unit_price: Number(v.unitPrice || 0),
+          });
+          toast.success(`Đã tạo ${v.code} → ${NM_BY_ID[v.nmId as NmId] ?? v.nmId}`);
           setAdding(false);
         }}
       />
@@ -257,8 +333,28 @@ function ItemsTab() {
           unitPrice: editing.unitPrice,
         } : undefined}
         onClose={() => setEditing(null)}
-        onSave={(v) => {
-          toast.success(`Đã cập nhật ${v.code} (demo)`);
+        onSave={async (v) => {
+          if (editing?.source === "cloud" && editing.id) {
+            await updateItem.mutateAsync({
+              id: editing.id,
+              name: v.name,
+              nm_id: v.nmId,
+              category: v.category || null,
+              unit: v.unit || "m²",
+              unit_price: Number(v.unitPrice || 0),
+            });
+          } else {
+            // Hardcoded → tạo bản cloud override
+            await createItem.mutateAsync({
+              code: v.code,
+              name: v.name,
+              nm_id: v.nmId,
+              category: v.category || null,
+              unit: v.unit || "m²",
+              unit_price: Number(v.unitPrice || 0),
+            });
+          }
+          toast.success(`Đã cập nhật ${v.code}`);
           setEditing(null);
         }}
       />
@@ -268,12 +364,19 @@ function ItemsTab() {
         entityLabel={deleting ? `mã ${deleting.code}` : ""}
         description={
           deleting
-            ? `Mã ${deleting.code} đang có ${variantCount(deleting.code)} variants. Xóa sẽ ảnh hưởng forecast & PO.`
+            ? (deleting.source === "cloud"
+              ? `Mã ${deleting.code} (Cloud) đang có ${variantCount(deleting.code)} variants. Xóa sẽ ảnh hưởng forecast & PO. Yêu cầu quyền admin.`
+              : `Mã ${deleting.code} thuộc dataset mẫu — không thể xóa từ đây. Để ẩn, hãy thêm bản Cloud cùng mã rồi xóa bản Cloud.`)
             : undefined
         }
         onClose={() => setDeleting(null)}
-        onConfirm={() => {
-          toast.success(`Đã xóa ${deleting?.code} (demo)`);
+        onConfirm={async () => {
+          if (deleting?.source === "cloud" && deleting.id) {
+            await deleteItem.mutateAsync(deleting.id);
+            toast.success(`Đã xóa ${deleting.code}`);
+          } else {
+            toast.warning("Không xóa được dataset mẫu — chỉ xóa được bản Cloud");
+          }
           setDeleting(null);
         }}
       />

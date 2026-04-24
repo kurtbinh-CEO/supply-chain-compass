@@ -271,6 +271,195 @@ export type Database = {
         }
         Relationships: []
       }
+      master_branches: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          lat: number
+          lng: number
+          manager: string | null
+          name: string
+          region: string
+          tenant: string
+          updated_at: string
+          z_factor: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lat?: number
+          lng?: number
+          manager?: string | null
+          name: string
+          region: string
+          tenant?: string
+          updated_at?: string
+          z_factor?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lat?: number
+          lng?: number
+          manager?: string | null
+          name?: string
+          region?: string
+          tenant?: string
+          updated_at?: string
+          z_factor?: number
+        }
+        Relationships: []
+      }
+      master_containers: {
+        Row: {
+          capacity_m2: number
+          code: string
+          cost_per_km: number
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          note: string | null
+          pallet_limit: number
+          tenant: string
+          updated_at: string
+          weight_limit_kg: number
+        }
+        Insert: {
+          capacity_m2?: number
+          code: string
+          cost_per_km?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          note?: string | null
+          pallet_limit?: number
+          tenant?: string
+          updated_at?: string
+          weight_limit_kg?: number
+        }
+        Update: {
+          capacity_m2?: number
+          code?: string
+          cost_per_km?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          note?: string | null
+          pallet_limit?: number
+          tenant?: string
+          updated_at?: string
+          weight_limit_kg?: number
+        }
+        Relationships: []
+      }
+      master_factories: {
+        Row: {
+          capacity_m2_month: number
+          code: string
+          created_at: string
+          created_by: string | null
+          honoring_pct: number
+          id: string
+          lt_days: number
+          moq_m2: number
+          name: string
+          price_tier1: number
+          price_tier2: number
+          region: string
+          reliability: number
+          sigma_lt: number
+          tenant: string
+          updated_at: string
+        }
+        Insert: {
+          capacity_m2_month?: number
+          code: string
+          created_at?: string
+          created_by?: string | null
+          honoring_pct?: number
+          id?: string
+          lt_days?: number
+          moq_m2?: number
+          name: string
+          price_tier1?: number
+          price_tier2?: number
+          region: string
+          reliability?: number
+          sigma_lt?: number
+          tenant?: string
+          updated_at?: string
+        }
+        Update: {
+          capacity_m2_month?: number
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          honoring_pct?: number
+          id?: string
+          lt_days?: number
+          moq_m2?: number
+          name?: string
+          price_tier1?: number
+          price_tier2?: number
+          region?: string
+          reliability?: number
+          sigma_lt?: number
+          tenant?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      master_items: {
+        Row: {
+          category: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          nm_id: string
+          tenant: string
+          unit: string
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          nm_id: string
+          tenant?: string
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          nm_id?: string
+          tenant?: string
+          unit?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       nm_performance: {
         Row: {
           created_at: string
