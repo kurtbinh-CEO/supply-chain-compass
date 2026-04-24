@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { ArrowLeftRight, ChevronDown, ChevronRight } from "lucide-react";
+import { ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TO_DRAFT, BRANCHES, SKU_BASES, type ToDraftRow } from "@/data/unis-enterprise-dataset";
 import { PoLifecycleStepper, stageFromStatus } from "./PoLifecycleStepper";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 
 const STATUS_META: Record<ToDraftRow["status"], { label: string; tone: string }> = {
   draft:     { label: "NHÁP",         tone: "bg-surface-2 text-text-2 border-surface-3" },
@@ -28,7 +29,6 @@ function variantTail(toNumber: string): string {
 
 export function TransferOrdersTab() {
   const [statusFilter, setStatusFilter] = useState<"all" | ToDraftRow["status"]>("all");
-  const [expanded, setExpanded] = useState<string | null>(null);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: TO_DRAFT.length, draft: 0, confirmed: 0, shipped: 0, received: 0 };
@@ -42,6 +42,78 @@ export function TransferOrdersTab() {
   );
 
   const totalQty = rows.reduce((s, r) => s + r.qtyM2, 0);
+
+  const columns: SmartTableColumn<ToDraftRow>[] = [
+    {
+      key: "toNumber", label: "Số TO", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 180,
+      render: (r) => <span className="font-mono text-text-1">{r.toNumber}</span>,
+    },
+    {
+      key: "fromCn", label: "CN nguồn", sortable: true, hideable: true, priority: "high",
+      width: 160, accessor: (r) => cnName(r.fromCn),
+      filter: "text",
+      render: (r) => (
+        <span className="text-text-2">
+          {cnName(r.fromCn)} <span className="text-text-3">({r.fromCn})</span>
+        </span>
+      ),
+    },
+    {
+      key: "toCn", label: "CN đích", sortable: true, hideable: true, priority: "high",
+      width: 160, accessor: (r) => cnName(r.toCn),
+      filter: "text",
+      render: (r) => (
+        <span className="text-text-2">
+          {cnName(r.toCn)} <span className="text-text-3">({r.toCn})</span>
+        </span>
+      ),
+    },
+    {
+      key: "skuBaseCode", label: "Mã hàng + đuôi", sortable: true, hideable: true, priority: "medium",
+      filter: "text", width: 170,
+      render: (r) => (
+        <span>
+          <span className="font-mono text-text-1">{r.skuBaseCode}</span>
+          <span className="text-text-3"> · {variantTail(r.toNumber)}</span>
+        </span>
+      ),
+    },
+    {
+      key: "qtyM2", label: "Số lượng", sortable: true, hideable: false, priority: "high",
+      numeric: true, align: "right", width: 130,
+      render: (r) => <span className="tabular-nums text-text-1">{fmt(r.qtyM2)}</span>,
+    },
+    {
+      key: "status", label: "Trạng thái", sortable: true, hideable: false, priority: "high",
+      align: "center", width: 140, accessor: (r) => r.status,
+      filter: "enum",
+      filterOptions: [
+        { value: "draft", label: "Nháp" },
+        { value: "confirmed", label: "Đã xác nhận" },
+        { value: "shipped", label: "Đã gửi" },
+        { value: "received", label: "Đã nhận" },
+      ],
+      render: (r) => {
+        const meta = STATUS_META[r.status];
+        return (
+          <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-caption font-semibold", meta.tone)}>
+            {meta.label}
+          </span>
+        );
+      },
+    },
+    {
+      key: "distanceKm", label: "Khoảng cách", sortable: true, hideable: true, priority: "low",
+      numeric: true, align: "center", width: 120,
+      render: (r) => <span className="text-text-2 tabular-nums">{r.distanceKm} km</span>,
+    },
+    {
+      key: "expectedDate", label: "ETA", sortable: true, hideable: true, priority: "medium",
+      align: "center", width: 100, accessor: (r) => r.expectedDate,
+      render: (r) => <span className="text-text-2">{fmtDate(r.expectedDate)}</span>,
+    },
+  ];
 
   return (
     <div className="animate-fade-in space-y-3">
@@ -69,95 +141,53 @@ export function TransferOrdersTab() {
         </div>
       </div>
 
-      <div className="rounded-card border border-surface-3 bg-surface-0 overflow-hidden">
-        <table className="w-full text-table-sm">
-          <thead className="bg-surface-2 text-text-3 text-caption uppercase tracking-wider">
-            <tr>
-              <th className="w-8" />
-              <th className="text-left px-3 py-2 font-semibold">Số TO</th>
-              <th className="text-left px-3 py-2 font-semibold">CN nguồn</th>
-              <th className="text-left px-3 py-2 font-semibold">CN đích</th>
-              <th className="text-left px-3 py-2 font-semibold">Mã hàng + đuôi</th>
-              <th className="text-right px-3 py-2 font-semibold">Số lượng</th>
-              <th className="text-center px-3 py-2 font-semibold">Trạng thái</th>
-              <th className="text-center px-3 py-2 font-semibold">Khoảng cách</th>
-              <th className="text-center px-3 py-2 font-semibold">ETA</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const meta = STATUS_META[r.status];
-              const isOpen = expanded === r.toNumber;
-              const tail = variantTail(r.toNumber);
-              const base = SKU_BASES.find((b) => b.code === r.skuBaseCode);
-              return (
-                <>
-                  <tr
-                    key={r.toNumber}
-                    className="border-t border-surface-3 hover:bg-surface-1 cursor-pointer transition-colors"
-                    onClick={() => setExpanded(isOpen ? null : r.toNumber)}
-                  >
-                    <td className="px-2 py-2 text-center text-text-3">
-                      {isOpen ? <ChevronDown className="h-3.5 w-3.5 inline" /> : <ChevronRight className="h-3.5 w-3.5 inline" />}
-                    </td>
-                    <td className="px-3 py-2 font-mono text-text-1">{r.toNumber}</td>
-                    <td className="px-3 py-2 text-text-2">{cnName(r.fromCn)} <span className="text-text-3">({r.fromCn})</span></td>
-                    <td className="px-3 py-2 text-text-2">{cnName(r.toCn)} <span className="text-text-3">({r.toCn})</span></td>
-                    <td className="px-3 py-2">
-                      <span className="font-mono text-text-1">{r.skuBaseCode}</span>
-                      <span className="text-text-3"> · {tail}</span>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums text-text-1">{fmt(r.qtyM2)}</td>
-                    <td className="px-3 py-2 text-center">
-                      <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-caption font-semibold", meta.tone)}>
-                        {meta.label}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-center text-text-2 tabular-nums">{r.distanceKm} km</td>
-                    <td className="px-3 py-2 text-center text-text-2">{fmtDate(r.expectedDate)}</td>
-                  </tr>
-                  {isOpen && (
-                    <tr className="bg-surface-1 border-t border-surface-3">
-                      <td />
-                      <td colSpan={8} className="px-4 py-4">
-                        <div className="space-y-3">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-table-sm">
-                            <div>
-                              <p className="text-caption text-text-3 uppercase tracking-wider">Sản phẩm</p>
-                              <p className="text-text-1 font-medium">{base?.name ?? r.skuBaseCode}</p>
-                            </div>
-                            <div>
-                              <p className="text-caption text-text-3 uppercase tracking-wider">LT vận chuyển</p>
-                              <p className="text-text-1 font-medium">{r.ltDays} ngày</p>
-                            </div>
-                            <div>
-                              <p className="text-caption text-text-3 uppercase tracking-wider">Loại điều chuyển</p>
-                              <p className="text-text-1 font-medium">LCNB · L0 (ưu tiên)</p>
-                            </div>
-                            <div>
-                              <p className="text-caption text-text-3 uppercase tracking-wider">Ngày dự kiến nhận</p>
-                              <p className="text-text-1 font-medium">{fmtDate(r.expectedDate)}</p>
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-caption text-text-3 uppercase tracking-wider mb-2">Vòng đời TO</p>
-                            <PoLifecycleStepper currentStage={stageFromStatus(r.status)} />
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </>
-              );
-            })}
-            {rows.length === 0 && (
-              <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-text-3">Không có TO nào ở trạng thái này.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <SmartTable<ToDraftRow>
+        screenId="orders-transfer-list"
+        title="Danh sách lệnh điều chuyển (TO)"
+        exportFilename="lenh-dieu-chuyen-to"
+        columns={columns}
+        data={rows}
+        defaultDensity="normal"
+        getRowId={(r) => r.toNumber}
+        rowSeverity={(r) =>
+          r.status === "received" ? "ok" :
+          r.status === "shipped" ? "watch" :
+          r.status === "draft" ? "overdue" : undefined
+        }
+        emptyState={{
+          title: "Không có TO nào",
+          description: "Không có lệnh điều chuyển nào ở trạng thái này.",
+        }}
+        drillDown={(r) => {
+          const base = SKU_BASES.find((b) => b.code === r.skuBaseCode);
+          return (
+            <div className="space-y-3 px-2 py-1">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-table-sm">
+                <div>
+                  <p className="text-caption text-text-3 uppercase tracking-wider">Sản phẩm</p>
+                  <p className="text-text-1 font-medium">{base?.name ?? r.skuBaseCode}</p>
+                </div>
+                <div>
+                  <p className="text-caption text-text-3 uppercase tracking-wider">LT vận chuyển</p>
+                  <p className="text-text-1 font-medium">{r.ltDays} ngày</p>
+                </div>
+                <div>
+                  <p className="text-caption text-text-3 uppercase tracking-wider">Loại điều chuyển</p>
+                  <p className="text-text-1 font-medium">LCNB · L0 (ưu tiên)</p>
+                </div>
+                <div>
+                  <p className="text-caption text-text-3 uppercase tracking-wider">Ngày dự kiến nhận</p>
+                  <p className="text-text-1 font-medium">{fmtDate(r.expectedDate)}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-caption text-text-3 uppercase tracking-wider mb-2">Vòng đời TO</p>
+                <PoLifecycleStepper currentStage={stageFromStatus(r.status)} />
+              </div>
+            </div>
+          );
+        }}
+      />
     </div>
   );
 }
