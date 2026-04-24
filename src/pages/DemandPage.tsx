@@ -19,6 +19,7 @@ import { AopPlanDialog } from "@/components/AopPlanDialog";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
+import { VersionHistoryButton } from "@/components/VersionHistoryButton";
 
 const tabs = [
   { key: "total", label: "Demand tổng" },
@@ -239,6 +240,7 @@ export default function DemandPage() {
           actions={
             <div className="flex items-center gap-2 flex-wrap">
               <PlanningPeriodSelector />
+              <VersionHistoryButton entityType="FC" entityId="FC-T5" />
               <Button
                 size="sm"
                 variant="outline"

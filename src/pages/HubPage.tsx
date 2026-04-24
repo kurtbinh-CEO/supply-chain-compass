@@ -11,6 +11,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { SummaryCards } from "@/components/SummaryCards";
+import { VersionHistoryButton } from "@/components/VersionHistoryButton";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { AppLayout } from "@/components/AppLayout";
 import { cn } from "@/lib/utils";
@@ -114,7 +115,12 @@ export default function HubPage() {
       <ScreenHeader
         title="Hub & Cam kết NM"
         subtitle={planLocked ? `Chế độ chỉ xem — ${planCycle.label} đã khóa` : `S&OP locked v${planCycle.version} · Planner gõ cam kết NM trực tiếp`}
-        actions={<PlanningPeriodSelector />}
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <PlanningPeriodSelector />
+            <VersionHistoryButton entityType="BOOKING" entityId="COMMIT-T5" />
+          </div>
+        }
       />
 
       {/* Hub KPI strip — clickable totals */}

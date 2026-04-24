@@ -17,6 +17,10 @@ import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
 import { supabase } from "@/integrations/supabase/client";
 import { BRANCHES, DRP_RESULTS } from "@/data/unis-enterprise-dataset";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
+import { BRANCHES as _BR2, DRP_RESULTS as _DRP2, PLAN_VERSIONS } from "@/data/unis-enterprise-dataset";
+import { VersionHistoryPanel } from "@/components/VersionHistoryPanel";
+import { VersionCompareInline } from "@/components/VersionCompareInline";
+import { VersionLockDialog, ViewingVersionBanner } from "@/components/VersionLockDialog";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -509,6 +513,31 @@ export default function DrpPage() {
   const [batchDbId, setBatchDbId] = useState<string | null>(null);
   const isPlanLocked = batchStatus === "approved" || batchStatus === "released";
 
+  /* ── Version History / Compare / Lock state ── */
+  const drpVersions = useMemo(
+    () => PLAN_VERSIONS.filter((v) => v.planType === "DRP"),
+    []
+  );
+  const drpW20 = useMemo(
+    () => drpVersions.filter((v) => v.entityId === "DRP-W20"),
+    [drpVersions]
+  );
+  // Version "thực tế đang chạy" = ACTIVE hoặc LOCKED mới nhất của DRP-W20
+  const activeDrpVersion = useMemo(() => {
+    const live = drpW20.find((v) => v.status === "ACTIVE" || v.status === "LOCKED");
+    return live?.versionNumber ?? 3;
+  }, [drpW20]);
+  const [viewingVersion, setViewingVersion] = useState<number>(activeDrpVersion);
+  const [viewingEntityId, setViewingEntityId] = useState<string>("DRP-W20");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareRightVersion, setCompareRightVersion] = useState<number | null>(null);
+  const [lockDialogOpen, setLockDialogOpen] = useState(false);
+  const [drpLocked, setDrpLocked] = useState<{ by: string; at: string; reason: string } | null>(null);
+  const isViewingOldVersion = viewingVersion !== activeDrpVersion || viewingEntityId !== "DRP-W20";
+  // Mọi action UI bị chặn nếu đang xem cũ HOẶC đã khóa
+  const actionsDisabled = isViewingOldVersion || isPlanLocked || drpLocked != null;
+
   const drpBatch = useBatchLock({
     batchType: "DRP", status: "info",
     resultSummary: "DRP đêm qua 23:02. 142 dòng, 3 ngoại lệ, 5 đơn mua.",
@@ -711,13 +740,17 @@ export default function DrpPage() {
             </button>
           </p>
         </div>
-        {isPlanLocked ? (
+        {isPlanLocked || drpLocked ? (
           <div className="flex items-center gap-2 rounded-button bg-surface-2 text-text-3 px-4 py-2 border border-surface-3">
             <LockIcon className="h-4 w-4" /> Đã khoá plan
           </div>
         ) : (
-          <button onClick={handleRunDrp}
-            className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow">
+          <button
+            onClick={handleRunDrp}
+            disabled={isViewingOldVersion}
+            title={isViewingOldVersion ? "Phiên bản cũ — chỉ xem" : ""}
+            className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-3"
+          >
             <Play className="h-4 w-4" /> Chạy lại DRP
           </button>
         )}
@@ -725,26 +758,102 @@ export default function DrpPage() {
 
       {/* ── VERSION ROW ── */}
       <div className="flex flex-wrap items-center gap-2 mb-4 text-table-sm">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-success-bg text-success border border-success/30 px-2.5 py-0.5 font-medium">
-          <span className="h-1.5 w-1.5 rounded-full bg-success" />
-          DRP W20 v3 · Active
+        <span className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-medium",
+          drpLocked
+            ? "bg-warning-bg text-warning border-warning/30"
+            : isViewingOldVersion
+            ? "bg-warning-bg text-warning border-warning/30"
+            : "bg-success-bg text-success border-success/30"
+        )}>
+          <span className={cn(
+            "h-1.5 w-1.5 rounded-full",
+            drpLocked || isViewingOldVersion ? "bg-warning" : "bg-success"
+          )} />
+          DRP W20 v{viewingVersion}
+          {drpLocked && ` · 🔒 Đã khóa · ${drpLocked.by} ${drpLocked.at}`}
+          {!drpLocked && !isViewingOldVersion && " · Active"}
+          {!drpLocked && isViewingOldVersion && " · Đã lưu trữ"}
         </span>
+
+        {drpLocked ? (
+          <button
+            onClick={() => setLockDialogOpen(true)}
+            disabled={!canApprove}
+            className="inline-flex items-center gap-1 rounded-button border border-info/30 bg-info-bg/50 px-2.5 py-1 text-info hover:text-info disabled:opacity-50 disabled:cursor-not-allowed"
+            title={!canApprove ? "Chỉ SC Manager mở khóa được" : "Mở khóa phiên bản"}
+          >
+            <LockIcon className="h-3 w-3" /> Mở khóa
+          </button>
+        ) : (
+          <button
+            onClick={() => setLockDialogOpen(true)}
+            disabled={isViewingOldVersion}
+            className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2 px-2.5 py-1 text-text-2 hover:text-text-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            title={isViewingOldVersion ? "Không khóa được phiên cũ" : "Khóa phiên bản hiện tại"}
+          >
+            <LockIcon className="h-3 w-3" /> Khóa
+          </button>
+        )}
+
         <button
-          onClick={() => toast.info(isPlanLocked ? "Plan đã khoá" : "Khoá plan để bảo vệ kết quả DRP")}
-          className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2 px-2.5 py-1 text-text-2 hover:text-text-1">
-          <LockIcon className="h-3 w-3" /> Khoá
-        </button>
-        <button
-          onClick={() => toast.info("So sánh với v2 — sẽ mở panel")}
-          className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2 px-2.5 py-1 text-text-2 hover:text-text-1">
+          onClick={() => {
+            // Mở compare với phiên kế (current − 1)
+            const candidate = drpW20.find((v) => v.versionNumber === viewingVersion - 1)
+              ?? drpW20.find((v) => v.versionNumber !== viewingVersion);
+            if (!candidate) {
+              toast.info("Chưa có phiên bản để so sánh.");
+              return;
+            }
+            setCompareRightVersion(candidate.versionNumber);
+            setCompareMode((m) => !m);
+          }}
+          className={cn(
+            "inline-flex items-center gap-1 rounded-button border px-2.5 py-1 transition-colors",
+            compareMode
+              ? "border-primary/40 bg-primary/10 text-primary"
+              : "border-surface-3 bg-surface-2 text-text-2 hover:text-text-1"
+          )}
+        >
           So sánh <ChevronDown className="h-3 w-3" />
         </button>
         <button
-          onClick={() => toast.info("Lịch sử v1, v2, v3 — sẽ mở panel")}
-          className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2 px-2.5 py-1 text-text-2 hover:text-text-1">
+          onClick={() => setHistoryOpen(true)}
+          className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2 px-2.5 py-1 text-text-2 hover:text-text-1"
+        >
           Lịch sử <ChevronDown className="h-3 w-3" />
         </button>
       </div>
+
+      {/* Banner xem phiên cũ */}
+      {isViewingOldVersion && (
+        <ViewingVersionBanner
+          versionNumber={viewingVersion}
+          activeVersion={activeDrpVersion}
+          entityLabel={`DRP ${viewingEntityId}`}
+          onReturn={() => {
+            setViewingVersion(activeDrpVersion);
+            setViewingEntityId("DRP-W20");
+            setCompareMode(false);
+          }}
+        />
+      )}
+
+      {/* Compare inline */}
+      {compareMode && compareRightVersion != null && (
+        <VersionCompareInline
+          versions={drpW20}
+          leftVersion={viewingVersion}
+          rightVersion={compareRightVersion}
+          onChangeRight={setCompareRightVersion}
+          onClose={() => setCompareMode(false)}
+          onSwitchTo={(v) => {
+            setViewingVersion(v);
+            setCompareMode(false);
+            toast.info(`Đã chuyển sang DRP W20 v${v}`);
+          }}
+        />
+      )}
 
       {/* ── DRP progress ── */}
       {drpRunning && (
@@ -1146,6 +1255,54 @@ export default function DrpPage() {
           Click bất kỳ bước nào ở trên để xem chi tiết tính toán.
         </span>
       </div>
+
+      {/* ── VERSION HISTORY PANEL (Sheet 420px slide-from-right) ── */}
+      <VersionHistoryPanel
+        entityType="DRP"
+        entityId="DRP-W20"
+        versions={drpVersions}
+        currentVersion={viewingVersion}
+        activeVersion={activeDrpVersion}
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        onSwitchVersion={(v, eid) => {
+          setViewingVersion(v);
+          setViewingEntityId(eid);
+          setHistoryOpen(false);
+          if (v !== activeDrpVersion || eid !== "DRP-W20") {
+            toast.info(`Đang xem snapshot ${eid} v${v}`, {
+              description: "Mọi thay đổi đã khóa cho đến khi quay về phiên hiện hành.",
+            });
+          }
+        }}
+        onCompare={(v1, v2, eid) => {
+          setViewingEntityId(eid);
+          setViewingVersion(v1);
+          setCompareRightVersion(v2);
+          setCompareMode(true);
+          setHistoryOpen(false);
+        }}
+      />
+
+      {/* ── LOCK / UNLOCK DIALOG ── */}
+      <VersionLockDialog
+        open={lockDialogOpen}
+        onClose={() => setLockDialogOpen(false)}
+        mode={drpLocked ? "unlock" : "lock"}
+        entityLabel="DRP W20"
+        versionNumber={viewingVersion}
+        onConfirm={(reason) => {
+          if (drpLocked) {
+            setDrpLocked(null);
+            toast.success(`Đã mở khóa DRP W20 v${viewingVersion}`, { description: reason || undefined });
+          } else {
+            const now = new Date();
+            const at = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+            setDrpLocked({ by: "Thùy", at, reason });
+            toast.success(`Đã khóa DRP W20 v${viewingVersion}`, { description: `Bởi Thùy lúc ${at}${reason ? ` · ${reason}` : ""}` });
+          }
+        }}
+      />
     </AppLayout>
   );
 }
