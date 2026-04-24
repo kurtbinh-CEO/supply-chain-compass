@@ -69,9 +69,9 @@ export function FcSourceBadge() {
     .slice(0, 1);
 
   const sourceLabel: Record<FcSource, string> = {
-    api: "API Sync",
-    excel: "Excel Upload",
-    baseline: "Baseline",
+    api: "Đồng bộ API",
+    excel: "Tải Excel",
+    baseline: "Dự báo gốc",
   };
   const sourceIcon: Record<FcSource, string> = {
     api: "🔌",
@@ -103,7 +103,7 @@ export function FcSourceBadge() {
       setBusy(false);
       setActiveSource("baseline");
       setDialogOpen(false);
-      toast.success("Đã generate baseline FC", {
+      toast.success("Đã sinh dự báo gốc FC", {
         description: "Holt-Winters baseline · 180 records · MAPE ~22%",
       });
     }, 700);
@@ -124,7 +124,7 @@ export function FcSourceBadge() {
     a.download = "FC_Template_2025-05.csv";
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Đã tải template FC");
+    toast.success("Đã tải mẫu FC");
     setStep(2);
   };
 
@@ -199,7 +199,7 @@ export function FcSourceBadge() {
           resetWizard();
         }, 200);
         toast.success("Đã áp dụng FC từ Excel", {
-          description: `${validation?.validRows ?? 0} records · model ${
+          description: `${validation?.validRows ?? 0} bản ghi · mô hình ${
             validation?.detectedModel
           } · MAPE ${validation?.detectedMape}%`,
         });
@@ -207,7 +207,7 @@ export function FcSourceBadge() {
     }, 1800);
   };
 
-  const stepLabels = ["Template", "Chọn file", "Validate", "Xem trước", "Áp dụng"];
+  const stepLabels = ["Mẫu", "Chọn file", "Kiểm tra", "Xem trước", "Áp dụng"];
 
   return (
     <>
@@ -291,7 +291,7 @@ export function FcSourceBadge() {
                   </button>
                 )}
                 <h3 className="font-display text-section-header text-text-1">
-                  {view === "menu" ? "Nhập FC" : "Excel Upload — Nhập FC"}
+                  {view === "menu" ? "Nhập FC" : "Tải Excel — Nhập FC"}
                 </h3>
               </div>
               <button
@@ -321,13 +321,13 @@ export function FcSourceBadge() {
                         <Zap className="h-5 w-5 text-text-3 shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <div className="font-display text-body font-semibold text-text-1">
-                            API Sync{" "}
+                            Đồng bộ API{" "}
                             <span className="rounded-full bg-surface-3 text-text-3 px-2 py-0.5 text-caption font-medium ml-1">
-                              Coming soon
+                              Sắp có
                             </span>
                           </div>
                           <p className="text-table-sm text-text-3 mt-0.5">
-                            Đồng bộ trực tiếp từ DSS / SAP. Cần thiết lập connector.
+                            Đồng bộ trực tiếp từ DSS / SAP. Cần thiết lập kết nối.
                           </p>
                         </div>
                       </div>
@@ -345,13 +345,13 @@ export function FcSourceBadge() {
                         <FileSpreadsheet className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <div className="font-display text-body font-semibold text-text-1 flex items-center gap-2">
-                            Excel Upload
+                            Tải Excel
                             <span className="rounded-full bg-success-bg text-success px-2 py-0.5 text-caption font-medium">
                               Khuyến nghị
                             </span>
                           </div>
                           <p className="text-table-sm text-text-2 mt-0.5">
-                            Upload file .xlsx theo template. Wizard 5 bước: tải template → validate → áp dụng.
+                            Tải file .xlsx theo mẫu. Trợ giúp 5 bước: tải mẫu → kiểm tra → áp dụng.
                           </p>
                         </div>
                         <ArrowRight className="h-4 w-4 text-primary mt-1" />
@@ -368,10 +368,10 @@ export function FcSourceBadge() {
                         <Database className="h-5 w-5 text-text-2 shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <div className="font-display text-body font-semibold text-text-1">
-                            Generate Baseline
+                            Sinh dự báo gốc
                           </div>
                           <p className="text-table-sm text-text-2 mt-0.5">
-                            Sinh FC bằng Holt-Winters từ history 12 tháng. Dùng khi không có file Excel.
+                            Sinh FC bằng Holt-Winters từ lịch sử 12 tháng. Dùng khi không có file Excel.
                           </p>
                         </div>
                       </div>

@@ -273,7 +273,7 @@ export function HubOverviewTab({ scale, totals }: Props) {
         <div className="px-5 py-3 border-b border-surface-3 flex items-center gap-2">
           <Info className="h-4 w-4 text-text-3" />
           <h2 className="font-display text-section-header text-text-1">Change Log — Hub Stock</h2>
-          <span className="text-caption text-text-3">entityType="hub_stock"</span>
+          <span className="text-caption text-text-3">Hub stock</span>
         </div>
         <table className="w-full text-table-sm">
           <thead>
