@@ -352,7 +352,11 @@ export default function ConfigPage() {
   const [configs, setConfigs] = useState<RuntimeConfig[]>(() => CONFIG_KEYS.map(toRuntime));
   const [audit, setAudit] = useState<AuditEntry[]>(SEED_AUDIT);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState(TABS[0].v);
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === "undefined") return TABS[0].v;
+    const param = new URLSearchParams(window.location.search).get("tab");
+    return TABS.find((t) => t.v === param)?.v ?? TABS[0].v;
+  });
 
   /** Filter rows by tab + search. */
   const visibleByTab = useMemo(() => {
