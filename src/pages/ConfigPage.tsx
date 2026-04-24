@@ -467,7 +467,7 @@ export default function ConfigPage() {
             ) : t.v === "kpi_targets" ? (
               <KpiTargetsTab />
             ) : t.v === "aop" ? (
-              <AopConfigPanel />
+              <AopSummaryPanel />
             ) : (
               <ConfigTable rows={visibleByTab[t.v] ?? []} onUpdate={handleUpdate} />
             )}
