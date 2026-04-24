@@ -106,6 +106,22 @@ export default function OrdersPage() {
   /* ── Mutations from dialogs ── */
   const advance = (id: string, patch: Partial<PoLifecycleRow>) => {
     setRows(prev => prev.map(r => r.id === id ? { ...r, ...patch, hoursInStage: 0, overdueFlag: false } : r));
+
+    // G4 — ERP posting: khi PO/TO hoàn tất POD → đăng sang ERP
+    if (patch.stage === "completed") {
+      const row = rows.find(r => r.id === id);
+      const docNo = row?.id || id;
+      const erpDoc = `MIGO-${Date.now().toString().slice(-6)}`;
+      // Mock async post — 1s delay then success
+      const t = toast.loading(`Đang đăng ERP cho ${docNo}...`, { description: "Tạo MIGO/Goods Receipt → SAP/Odoo" });
+      setTimeout(() => {
+        toast.success(`✅ Đã đăng ERP: ${erpDoc}`, {
+          id: t,
+          description: `${docNo} → ERP. Tồn kho CN cập nhật. (Coming soon: kết nối thật)`,
+          duration: 6000,
+        });
+      }, 1200);
+    }
   };
 
   const cancelPo = (id: string, reason: string, note: string) => {
