@@ -445,6 +445,9 @@ export function CommitmentTab({ scale, onTotalsChange }: {
                     <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">FC gửi NM</th>
                     <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Cam kết NM ✏️</th>
                     <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Δ</th>
+                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30" title="Tổng PO đã release tính đến hiện tại">Đã release</th>
+                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30" title="Cam kết − Đã release">Còn lại</th>
+                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30">% Release</th>
                     <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Tier</th>
                     <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden md:table-cell">Nguồn</th>
                     <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden lg:table-cell">Ngày liên hệ</th>
@@ -455,7 +458,7 @@ export function CommitmentTab({ scale, onTotalsChange }: {
                 </thead>
                 <tbody>
                   {filteredRows.length === 0 && (
-                    <tr><td colSpan={11} className="text-center py-8 text-text-3 text-table-sm">
+                    <tr><td colSpan={14} className="text-center py-8 text-text-3 text-table-sm">
                       Không có cam kết nào khớp bộ lọc.
                     </td></tr>
                   )}
