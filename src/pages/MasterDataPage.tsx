@@ -137,6 +137,11 @@ const ITEM_IMPORT_FIELDS: ImportField[] = [
   { key: "unit", label: "Đơn vị", aliases: ["don_vi", "uom", "unit"] },
   { key: "unitPrice", label: "Đơn giá", type: "number", aliases: ["don_gia", "gia", "price"] },
 ];
+
+function ItemsTab() {
+  const [search, setSearch] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<typeof SKU_BASES[number] | null>(null);
   const [deleting, setDeleting] = useState<typeof SKU_BASES[number] | null>(null);
 
   const rows = useMemo(() => {
