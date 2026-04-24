@@ -347,43 +347,81 @@ export default function WorkspacePage() {
           </div>
 
           <div className="divide-y divide-surface-3/50">
-            {visible.map((item) => (
-              <div key={item.id} className="px-5 py-3 flex items-center gap-3 hover:bg-surface-1/30 transition-colors">
-                <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", dotColor[item.priority])} />
-                <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium shrink-0", typeBadge[item.type].cls)}>
-                  {typeBadge[item.type].label}
-                </span>
-                <span className="flex-1 text-table text-text-1 truncate">{item.description}</span>
-                <span className="text-caption text-text-3 shrink-0">{item.time}</span>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {item.type === "approve" && (
-                    <>
-                      <button onClick={() => handleApprove(item)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">Duyệt</button>
-                      <button onClick={() => handleReject(item)} className="rounded-button border border-surface-3 text-text-2 px-2.5 py-1 text-caption font-medium hover:text-danger hover:border-danger">Từ chối</button>
-                      {rejectingId === item.id && (
-                        <div className="flex items-center gap-1 ml-1">
-                          <input value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") handleReject(item); }}
-                            placeholder="Lý do..." autoFocus
-                            className="w-28 h-6 rounded border border-surface-3 bg-surface-0 px-2 text-caption text-text-1 focus:outline-none focus:ring-1 focus:ring-primary" />
-                          <VoiceInput onTranscript={(t) => setRejectReason((p) => p + t)} />
-                        </div>
+            {visible.map((item) => {
+              const ctx = WORKSPACE_CONTEXTS[item.id];
+              const isExpanded = expandedId === item.id;
+              const hasContext = !!ctx;
+              return (
+                <div key={item.id} className={cn("transition-colors", isExpanded && "bg-surface-1/30")}>
+                  <div
+                    className={cn(
+                      "px-5 py-3 flex items-center gap-3 transition-colors",
+                      hasContext ? "cursor-pointer hover:bg-surface-1/40" : "hover:bg-surface-1/30"
+                    )}
+                    onClick={() => hasContext && setExpandedId(isExpanded ? null : item.id)}
+                  >
+                    {hasContext ? (
+                      isExpanded
+                        ? <ChevronDown className="h-3.5 w-3.5 text-text-3 shrink-0" />
+                        : <ChevronRight className="h-3.5 w-3.5 text-text-3 shrink-0" />
+                    ) : (
+                      <span className="w-3.5 shrink-0" />
+                    )}
+                    <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", dotColor[item.priority])} />
+                    <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium shrink-0", typeBadge[item.type].cls)}>
+                      {typeBadge[item.type].label}
+                    </span>
+                    <span className="flex-1 text-table text-text-1 truncate">{item.description}</span>
+                    <span className="text-caption text-text-3 shrink-0">{item.time}</span>
+                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {item.type === "approve" && !isExpanded && (
+                        <>
+                          <button onClick={() => handleApprove(item)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">Duyệt</button>
+                          <button onClick={() => handleReject(item)} className="rounded-button border border-surface-3 text-text-2 px-2.5 py-1 text-caption font-medium hover:text-danger hover:border-danger">Từ chối</button>
+                          {rejectingId === item.id && (
+                            <div className="flex items-center gap-1 ml-1">
+                              <input value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") handleReject(item); }}
+                                placeholder="Lý do..." autoFocus
+                                className="w-28 h-6 rounded border border-surface-3 bg-surface-0 px-2 text-caption text-text-1 focus:outline-none focus:ring-1 focus:ring-primary" />
+                              <VoiceInput onTranscript={(t) => setRejectReason((p) => p + t)} />
+                            </div>
+                          )}
+                        </>
                       )}
-                    </>
-                  )}
-                  {item.type === "exception" && (
-                    <button onClick={() => handleAction(item)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">
-                      {item.actionLabel} →
-                    </button>
-                  )}
-                  {item.type === "notify" && (
-                    <button onClick={() => handleAction(item)} className="rounded-button border border-surface-3 text-text-2 px-2.5 py-1 text-caption font-medium hover:text-text-1">
-                      {item.actionLabel} {item.navigateTo ? "→" : ""}
-                    </button>
+                      {item.type === "exception" && !isExpanded && (
+                        <button onClick={() => handleAction(item)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">
+                          {item.actionLabel} →
+                        </button>
+                      )}
+                      {item.type === "notify" && !isExpanded && (
+                        <button onClick={() => handleAction(item)} className="rounded-button border border-surface-3 text-text-2 px-2.5 py-1 text-caption font-medium hover:text-text-1">
+                          {item.actionLabel} {item.navigateTo ? "→" : ""}
+                        </button>
+                      )}
+                      {hasContext && (
+                        <button
+                          onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                          className="rounded-button border border-surface-3 text-text-2 px-2.5 py-1 text-caption font-medium hover:text-text-1"
+                        >
+                          {isExpanded ? "Thu gọn" : "Xem"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {isExpanded && ctx && (
+                    <WorkspaceItemDetail
+                      ctx={ctx}
+                      onAction={(label) => {
+                        toast.success(`${item.description.slice(0, 32)}… → ${label}`);
+                        if (item.type === "approve") removeItem(item.id);
+                        setExpandedId(null);
+                      }}
+                    />
                   )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {filtered.length > 5 && !showAll && (
