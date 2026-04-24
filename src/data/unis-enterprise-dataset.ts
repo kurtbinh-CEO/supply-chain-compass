@@ -1441,3 +1441,230 @@ export const NM_COMMITMENT_EVIDENCE: NmCommitmentEvidence[] = [
   { commitmentId: "TOKO-GA-600-A4",     fileUrl: "https://placehold.co/600x400/b45309/ffffff?text=Zalo+Toko",   fileType: "image", fileName: "zalo_toko_20042026.jpg",      uploadedBy: "Planner Hùng",  uploadedAt: "20/04 16:20", note: "Toko counter 400m² thay vì 600" },
   { commitmentId: "VIGRACERA-GA-400-B2",fileUrl: "https://placehold.co/600x400/7c3aed/ffffff?text=Photo+Visit", fileType: "image", fileName: "visit_vigracera_19042026.jpg",uploadedBy: "Planner Thùy",  uploadedAt: "19/04 11:00", note: "Ảnh ghé thăm nhà máy + biên bản" },
 ];
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §M17  ANNUAL OPERATING PLAN (AOP) — Kế hoạch năm
+ * ════════════════════════════════════════════════════════════════════════════
+ * AOP_PLAN là single-source-of-truth cho tổng mục tiêu năm + phân bổ tháng.
+ * SOP, DRP, Demand Review, Executive đều đọc từ đây — không hardcode.
+ */
+export interface AopPlan {
+  year: number;
+  totalTarget: number;                        // m² / năm
+  monthlyWeights: number[];                   // 12 phần tử, Σ = 100
+  skuGroupWeights: Record<string, number>;    // {"GA-300":42, ...}, Σ = 100
+  regionWeights: Record<string, number>;      // {"Nam":45, "Bắc":35, "Trung":20}, Σ = 100
+  source: string;
+  locked: boolean;
+  lockedBy: string;
+  updatedAt: string;
+}
+
+export const AOP_PLAN: AopPlan = {
+  year: 2026,
+  totalTarget: 560000,
+  monthlyWeights:   [6, 6, 9, 10, 11, 10, 9, 9, 8, 8, 7, 7],
+  skuGroupWeights:  { "GA-300": 42, "GA-400": 25, "GA-600": 18, "Khác": 15 },
+  regionWeights:    { "Nam": 45, "Bắc": 35, "Trung": 20 },
+  source: "Board meeting 12/2025",
+  locked: true,
+  lockedBy: "CEO Kurt",
+  updatedAt: "15/01/2026",
+};
+
+export const AOP_MONTH_LABELS = [
+  "T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10", "T11", "T12",
+];
+export const AOP_MONTH_NOTES: Record<number, string> = {
+  3: "Mùa xây dựng",
+  5: "Peak",
+  11: "Mùa mưa",
+};
+
+/** Phân bổ AOP cho tháng (1–12). Trả về số m². */
+export function getAopMonth(month: number, plan: AopPlan = AOP_PLAN): number {
+  if (month < 1 || month > 12) return 0;
+  return Math.round((plan.totalTarget * plan.monthlyWeights[month - 1]) / 100);
+}
+
+/** Phân bổ AOP cho 1 nhóm SKU. */
+export function getAopSkuGroup(group: string, plan: AopPlan = AOP_PLAN): number {
+  const w = plan.skuGroupWeights[group] ?? 0;
+  return Math.round((plan.totalTarget * w) / 100);
+}
+
+/** YTD AOP từ T1 → currentMonth (inclusive). */
+export function getAopYtd(currentMonth: number, plan: AopPlan = AOP_PLAN): number {
+  let total = 0;
+  for (let m = 1; m <= Math.min(12, Math.max(0, currentMonth)); m += 1) {
+    total += getAopMonth(m, plan);
+  }
+  return total;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §M17  CARRIERS — Nhà xe (5 NVT)
+ * ════════════════════════════════════════════════════════════════════════════ */
+export type CarrierType = "Đối tác" | "Nội bộ";
+export type CarrierStatus = "Hoạt động" | "Tạm ngưng";
+
+export interface Carrier {
+  id: string;
+  code: string;
+  name: string;
+  type: CarrierType;
+  regions: string;          // "Bắc, Trung" / "Toàn quốc"
+  contactName: string;
+  contactPhone: string;
+  slaPct: number;           // 0–100
+  status: CarrierStatus;
+  note: string;
+}
+
+export const CARRIERS: Carrier[] = [
+  { id: "VINATRANS",  code: "NVT-VNT", name: "Vinatrans",       type: "Đối tác", regions: "Toàn quốc",  contactName: "Nguyễn Văn Khôi", contactPhone: "0903 111 222", slaPct: 96, status: "Hoạt động",  note: "Đối tác chính, đầy đủ container" },
+  { id: "GIANGTRUONG",code: "NVT-GTR", name: "Giang Trường",     type: "Đối tác", regions: "Nam, Tây Nam", contactName: "Trần Thị Hằng",   contactPhone: "0912 345 100", slaPct: 92, status: "Hoạt động",  note: "Mạnh ở khu vực Mekong" },
+  { id: "TANCANG",    code: "NVT-TC",  name: "Tân Cảng Logistics", type: "Đối tác", regions: "Toàn quốc",  contactName: "Lê Quốc Đạt",     contactPhone: "0987 765 432", slaPct: 94, status: "Hoạt động",  note: "Mạnh container 20/40ft" },
+  { id: "INTERNAL",   code: "NVT-NB",  name: "Đội xe nội bộ UNIS", type: "Nội bộ", regions: "Nam",        contactName: "Phạm Minh Tùng",  contactPhone: "0908 222 333", slaPct: 98, status: "Hoạt động",  note: "10 xe 10T + 5 xe 15T" },
+  { id: "BACVIET",    code: "NVT-BV",  name: "Bắc Việt",          type: "Đối tác", regions: "Bắc, Trung", contactName: "Hoàng Anh Tuấn",  contactPhone: "0966 888 111", slaPct: 84, status: "Tạm ngưng", note: "Tạm ngưng do tranh chấp giá" },
+];
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §M17  TRANSPORT_RATES — Cước vận chuyển per (carrier × route × vehicle)
+ * ════════════════════════════════════════════════════════════════════════════ */
+export type VehicleType = "truck_10t" | "truck_15t" | "20ft" | "40ft";
+
+export const VEHICLE_LABELS: Record<VehicleType, string> = {
+  truck_10t: "Xe 10T",
+  truck_15t: "Xe 15T",
+  "20ft":    "Cont 20FT",
+  "40ft":    "Cont 40FT",
+};
+
+export interface TransportRate {
+  carrierId: string;
+  routeKey: string;          // "MKD→CN-HN"
+  routeLabel: string;        // hiển thị
+  vehicleType: VehicleType;
+  ratePerTrip: number;       // VND
+  surcharges: { loadUnload: number; bot: number; port: number; returnEmpty: number };
+  validFrom: string;         // dd/mm/yyyy
+  validTo: string;
+}
+
+const STD_SURCHARGE = { loadUnload: 500_000, bot: 200_000, port: 0, returnEmpty: 1_500_000 };
+const CONT_SURCHARGE = { loadUnload: 500_000, bot: 200_000, port: 800_000, returnEmpty: 1_500_000 };
+
+function makeRoute(carrierId: string, routeKey: string, routeLabel: string, prices: Record<VehicleType, number>): TransportRate[] {
+  return (Object.keys(prices) as VehicleType[]).map((v) => ({
+    carrierId,
+    routeKey,
+    routeLabel,
+    vehicleType: v,
+    ratePerTrip: prices[v],
+    surcharges: v === "20ft" || v === "40ft" ? CONT_SURCHARGE : STD_SURCHARGE,
+    validFrom: "01/01/2026",
+    validTo: "30/06/2026",
+  }));
+}
+
+export const TRANSPORT_RATES: TransportRate[] = [
+  // VINATRANS — toàn quốc
+  ...makeRoute("VINATRANS", "MKD→CN-HN",  "Mikado → CN Hà Nội",     { truck_10t: 5_200_000, truck_15t: 7_800_000, "20ft": 8_500_000,  "40ft": 14_200_000 }),
+  ...makeRoute("VINATRANS", "DTM→CN-HCM", "Đồng Tâm → CN TP.HCM",   { truck_10t: 3_800_000, truck_15t: 5_500_000, "20ft": 6_200_000,  "40ft": 10_800_000 }),
+  ...makeRoute("VINATRANS", "TKO→CN-DN",  "Toko → CN Đà Nẵng",      { truck_10t: 4_500_000, truck_15t: 6_800_000, "20ft": 7_200_000,  "40ft": 12_500_000 }),
+  ...makeRoute("VINATRANS", "MKD→CN-DN",  "Mikado → CN Đà Nẵng",    { truck_10t: 6_800_000, truck_15t: 9_500_000, "20ft": 10_200_000, "40ft": 17_500_000 }),
+  // GIANGTRUONG — Nam, Tây Nam
+  ...makeRoute("GIANGTRUONG", "DTM→CN-CT", "Đồng Tâm → CN Cần Thơ", { truck_10t: 2_800_000, truck_15t: 4_200_000, "20ft": 4_800_000,  "40ft": 8_200_000 }),
+  ...makeRoute("GIANGTRUONG", "DTM→CN-LA", "Đồng Tâm → CN Long An", { truck_10t: 1_900_000, truck_15t: 2_900_000, "20ft": 3_500_000,  "40ft": 6_200_000 }),
+  // TANCANG — container chuyên dụng
+  ...makeRoute("TANCANG", "PMY→CN-HCM", "Phú Mỹ → CN TP.HCM",       { truck_10t: 2_200_000, truck_15t: 3_300_000, "20ft": 3_800_000,  "40ft": 6_800_000 }),
+  ...makeRoute("TANCANG", "VGC→CN-HN",  "Vigracera → CN Hà Nội",    { truck_10t: 4_800_000, truck_15t: 7_200_000, "20ft": 7_800_000,  "40ft": 13_500_000 }),
+  // INTERNAL — chỉ Nam
+  ...makeRoute("INTERNAL", "DTM→CN-BD", "Đồng Tâm → CN Bình Dương", { truck_10t: 1_500_000, truck_15t: 2_300_000, "20ft": 2_800_000,  "40ft": 4_900_000 }),
+];
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §M17  FC_ACTUAL — Thực tế bán hàng theo CN × SKU base × tháng
+ * ════════════════════════════════════════════════════════════════════════════ */
+export type FcActualSource = "bravo" | "excel" | "manual";
+
+export interface FcActualRow {
+  cnCode: string;
+  skuBaseCode: string;
+  month: number;          // 1–12
+  year: number;
+  actualQtyM2: number;
+  actualRevenue: number;  // VND
+  source: FcActualSource;
+  importedAt: string;     // dd/mm/yyyy
+}
+
+// Mock — top 4 SKU bases × 12 CN × 4 tháng (T1–T4 2026), deterministic via DEMAND_FC
+const TOP_BASES = ["GA-300", "GA-400", "GA-600", "PK-001"];
+const MONTH_NOISE = [0.97, 1.04, 0.95, 1.06];
+
+export const FC_ACTUAL: FcActualRow[] = (() => {
+  const out: FcActualRow[] = [];
+  // We need DEMAND_FC + SKU_BASES; use code-level lookup (already declared above).
+  for (let mIdx = 0; mIdx < MONTH_NOISE.length; mIdx += 1) {
+    for (const baseCode of TOP_BASES) {
+      const base = SKU_BASES.find((b) => b.code === baseCode);
+      if (!base) continue;
+      const fcRows = DEMAND_FC.filter((r) => r.skuBaseCode === baseCode);
+      for (const fc of fcRows) {
+        const fcQty = fc.fcM2;
+        // Slight per-month variation to simulate realism
+        const noise = MONTH_NOISE[mIdx] * (1 + ((fc.cnCode.charCodeAt(3) % 5) - 2) * 0.01);
+        const actual = Math.round(fcQty * noise);
+        out.push({
+          cnCode: fc.cnCode,
+          skuBaseCode: baseCode,
+          month: mIdx + 1,
+          year: 2026,
+          actualQtyM2: actual,
+          actualRevenue: actual * base.unitPrice,
+          source: mIdx === 0 ? "bravo" : "excel",
+          importedAt: `0${mIdx + 2}/02/2026`,
+        });
+      }
+    }
+  }
+  return out;
+})();
+
+/** YTD actual qty (m²) cho năm. Mặc định 2026. */
+export function getFcActualYtd(year = 2026): number {
+  return FC_ACTUAL.filter((r) => r.year === year).reduce((s, r) => s + r.actualQtyM2, 0);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §M17  KPI_TARGETS — Mục tiêu KPI lãnh đạo
+ * ════════════════════════════════════════════════════════════════════════════ */
+export type KpiDirection = "higher_better" | "lower_better";
+
+export interface KpiTarget {
+  kpiKey: string;
+  label: string;
+  target: number;
+  unit: string;
+  direction: KpiDirection;
+  warningThreshold: number;
+  setBy: string;
+  setDate: string;
+}
+
+export const KPI_TARGETS: KpiTarget[] = [
+  { kpiKey: "fill_rate",          label: "Tỷ lệ lấp đầy",       target: 95,    unit: "%",        direction: "higher_better", warningThreshold: 90,    setBy: "CEO",  setDate: "15/01/2026" },
+  { kpiKey: "days_of_inventory",  label: "Ngày tồn kho TB",     target: 35,    unit: "ngày",     direction: "lower_better",  warningThreshold: 40,    setBy: "CSCO", setDate: "15/01/2026" },
+  { kpiKey: "working_capital",    label: "Vốn lưu động",        target: 4500,  unit: "triệu ₫",  direction: "lower_better",  warningThreshold: 5000,  setBy: "CFO",  setDate: "15/01/2026" },
+  { kpiKey: "forecast_accuracy",  label: "Độ CX dự báo",        target: 85,    unit: "%",        direction: "higher_better", warningThreshold: 80,    setBy: "CSCO", setDate: "15/01/2026" },
+  { kpiKey: "on_time_delivery",   label: "Đúng hẹn giao hàng",  target: 95,    unit: "%",        direction: "higher_better", warningThreshold: 90,    setBy: "COO",  setDate: "15/01/2026" },
+  { kpiKey: "supplier_fill_rate", label: "NM đáp ứng",          target: 90,    unit: "%",        direction: "higher_better", warningThreshold: 85,    setBy: "CSCO", setDate: "15/01/2026" },
+  { kpiKey: "inventory_turnover", label: "Vòng quay tồn kho",   target: 10,    unit: "lần/năm",  direction: "higher_better", warningThreshold: 8,     setBy: "CFO",  setDate: "15/01/2026" },
+  { kpiKey: "transport_cost_m2",  label: "Chi phí vận tải/m²",  target: 10000, unit: "₫/m²",     direction: "lower_better",  warningThreshold: 12000, setBy: "COO",  setDate: "15/01/2026" },
+];
+
+export function getKpiTarget(key: string): KpiTarget | undefined {
+  return KPI_TARGETS.find((k) => k.kpiKey === key);
+}
