@@ -20,6 +20,8 @@ import { HubOverviewTab } from "@/components/hub/HubOverviewTab";
 import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
+import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
+import { PlanningPeriodSelector } from "@/components/PlanningPeriodSelector";
 import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
 import { Button } from "@/components/ui/button";
 import { Inbox, Zap, FileSpreadsheet, PenLine } from "lucide-react";
