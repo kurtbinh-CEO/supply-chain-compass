@@ -1,34 +1,55 @@
-import { useState, useMemo, useEffect } from "react";
+/**
+ * DemandWeeklyPage (/demand-weekly) — Nhu cầu tuần (Tuần 20).
+ *
+ * 2 persona views (toggle persist localStorage):
+ *  - 👤 CN Manager: 1 CN duy nhất, edit per-SKU adjust + lý do, gửi cho SC.
+ *  - 🏢 SC Manager: list 12 CN, drill-down per-SKU, batch approve in-band.
+ *
+ * Cutoff 18:00 local — quá giờ inputs readonly, button disabled.
+ * Tolerance: default ±30%, trust < 60% → ±15%, trust ≥ 85% → auto-approve.
+ */
+import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { useTenant } from "@/components/TenantContext";
-import { useRbac } from "@/components/RbacContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
-  ChevronRight, ChevronDown, Bell, Clock, Filter,
-  AlertTriangle, ShieldAlert, CheckCircle2, Lock, Unlock,
+  User, Building2, Clock, Lock, Send, ShieldCheck, AlertTriangle,
+  CheckCircle2, XCircle, Scissors, FileWarning, RefreshCw,
 } from "lucide-react";
-import { ClickableNumber } from "@/components/ClickableNumber";
-import { LogicLink } from "@/components/LogicLink";
-import { LogicTooltip } from "@/components/LogicTooltip";
-import { ViewPivotToggle, usePivotMode, CnGapBadge } from "@/components/ViewPivotToggle";
-import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
+import { Button } from "@/components/ui/button";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
 import { TermTooltip } from "@/components/TermTooltip";
+import { ClickableNumber } from "@/components/ClickableNumber";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { BRANCHES, TRUST_BY_CN } from "@/data/unis-enterprise-dataset";
 
-const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
+const tenantScales: Record<string, number> = {
+  "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35,
+};
 
-/* ────────────────────────────────────────────────────────────────────────── */
-/* CN trust → tolerance bands                                                */
-/* Default ±30%. Trust < 60 → ±15% (low-trust band). Trust > 85 → auto-approve.
-/* CN-PK is hand-clamped to 58% so the demo always has 1 low-trust branch.   */
-/* ────────────────────────────────────────────────────────────────────────── */
-const TRUST_OVERRIDES: Record<string, number> = { "CN-PK": 58 };
+const PERSONA_KEY = "scp-demand-weekly-persona";
+type Persona = "cn" | "sc";
+
+/* ────────────── Trust → tolerance config ────────────── */
+
+const TRUST_OVERRIDES: Record<string, number> = {
+  "CN-PK":  58,
+  "CN-BD":  65,
+  "CN-HN":  70,
+  "CN-HCM": 82,
+  "CN-DN":  91,
+};
 
 interface CnConfig {
   trustPct: number;
-  tolerancePct: number;       // 15 | 30
+  tolerancePct: number;
   band: "low" | "normal" | "auto";
   autoApprove: boolean;
 }
@@ -39,58 +60,15 @@ function buildCnConfigs(): Record<string, CnConfig> {
     const trust = TRUST_OVERRIDES[row.cnCode] ?? row.trustPct;
     let band: CnConfig["band"] = "normal";
     let tol = 30;
-    if (trust < 60) { band = "low"; tol = 15; }
-    else if (trust > 85) { band = "auto"; tol = 30; }
-    out[row.cnCode] = { trustPct: trust, tolerancePct: tol, band, autoApprove: trust > 85 };
+    if (trust < 60) { band = "low";  tol = 15; }
+    else if (trust >= 85) { band = "auto"; tol = 30; }
+    out[row.cnCode] = { trustPct: trust, tolerancePct: tol, band, autoApprove: trust >= 85 };
   });
   return out;
 }
 
-/* ────────────────────────────────────────────────────────────────────────── */
-/* Demo seed data per CN — duKien (forecast) only; adjust starts editable    */
-/* ────────────────────────────────────────────────────────────────────────── */
-interface SkuRow { item: string; variant: string; duKien: number; po: number }
-interface CnSeed { cn: string; duKien: number; po: number; skus: SkuRow[] }
+/* ────────────── Cutoff countdown ────────────── */
 
-const PER_CN_SEED: Record<string, { duKien: number; po: number }> = {
-  "CN-HN":  { duKien: 1764, po: 500 },
-  "CN-HP":  { duKien:  980, po: 280 },
-  "CN-NA":  { duKien:  720, po: 180 },
-  "CN-DN":  { duKien: 1512, po: 400 },
-  "CN-QN":  { duKien:  640, po: 160 },
-  "CN-NT":  { duKien:  840, po: 220 },
-  "CN-BMT": { duKien:  520, po: 140 },
-  "CN-PK":  { duKien:  460, po: 120 },
-  "CN-BD":  { duKien: 2142, po: 757 },
-  "CN-HCM": { duKien: 2580, po: 820 },
-  "CN-CT":  { duKien: 1008, po: 300 },
-  "CN-LA":  { duKien:  690, po: 200 },
-};
-
-function seedSkus(cnDuKien: number, cnPo: number): SkuRow[] {
-  // Distribute across 4 typical SKUs to reuse the SKU-pivot table.
-  const split = [0.32, 0.28, 0.18, 0.22];
-  const skus = [
-    { item: "GA-300", variant: "A4" },
-    { item: "GA-300", variant: "B2" },
-    { item: "GA-400", variant: "A4" },
-    { item: "GA-600", variant: "A4" },
-  ];
-  return skus.map((s, i) => ({
-    ...s,
-    duKien: Math.round(cnDuKien * split[i]),
-    po: Math.round(cnPo * split[i]),
-  }));
-}
-
-const baseCnSeeds: CnSeed[] = BRANCHES.map((b) => {
-  const seed = PER_CN_SEED[b.code] ?? { duKien: 600, po: 150 };
-  return { cn: b.code, duKien: seed.duKien, po: seed.po, skus: seedSkus(seed.duKien, seed.po) };
-});
-
-/* ────────────────────────────────────────────────────────────────────────── */
-/* Cutoff countdown (18:00 local)                                            */
-/* ────────────────────────────────────────────────────────────────────────── */
 function useCutoffCountdown(hour = 18, minute = 0) {
   const [now, setNow] = useState<Date>(() => new Date());
   useEffect(() => {
@@ -104,523 +82,1058 @@ function useCutoffCountdown(hour = 18, minute = 0) {
   const totalMin = Math.max(0, Math.floor(diffMs / 60_000));
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
-  return { closed, hoursLeft: h, minutesLeft: m, label: closed ? "ĐÃ ĐÓNG" : `còn ${h}h ${m}m` };
+  return { closed, hoursLeft: h, minutesLeft: m };
 }
 
-/* ────────────────────────────────────────────────────────────────────────── */
-/* Adjustment status helpers                                                 */
-/* ────────────────────────────────────────────────────────────────────────── */
-type AdjustStatus = "none" | "auto" | "pending" | "over" | "approved" | "rejected" | "override";
+/* ────────────── SKU mock data per CN ────────────── */
 
-function classifyAdjust(deltaPct: number, tolerancePct: number, autoApprove: boolean): AdjustStatus {
-  if (Math.abs(deltaPct) < 0.01) return "none";
-  if (Math.abs(deltaPct) > tolerancePct) return "over";
-  if (autoApprove) return "auto";
+interface SkuSeed {
+  item: string;
+  variant: string;
+  duKien: number;
+  /** Pre-filled CN adjustment (positive = tăng, negative = giảm). */
+  preAdjust?: number;
+  /** Pre-filled lý do for pre-adjusted rows. */
+  preReason?: string;
+}
+
+const REASONS = [
+  "Nhà thầu mới",
+  "Dự án chậm",
+  "Đối thủ",
+  "Thời tiết",
+  "Khuyến mãi",
+  "Khác",
+] as const;
+type Reason = typeof REASONS[number] | "";
+
+/** SKU seeds per CN (~4 SKUs each, scaled by tenant). Pre-filled adjustments
+ *  illustrate the 4 demo cases described in spec. */
+const CN_SKUS: Record<string, SkuSeed[]> = {
+  "CN-HN": [
+    { item: "GA-300", variant: "A4", duKien: 564, preAdjust: 100, preReason: "Nhà thầu mới" },
+    { item: "GA-300", variant: "B2", duKien: 494 },
+    { item: "GA-400", variant: "A4", duKien: 318, preAdjust: 50, preReason: "Khuyến mãi" },
+    { item: "GA-600", variant: "A4", duKien: 388 },
+  ],
+  "CN-HP":  [
+    { item: "GA-300", variant: "A4", duKien: 314 },
+    { item: "GA-400", variant: "A4", duKien: 274 },
+    { item: "GA-600", variant: "A4", duKien: 196 },
+    { item: "GA-300", variant: "B2", duKien: 196 },
+  ],
+  "CN-NA":  [
+    { item: "GA-300", variant: "A4", duKien: 230 },
+    { item: "GA-400", variant: "A4", duKien: 202 },
+    { item: "GA-600", variant: "A4", duKien: 130 },
+    { item: "GA-300", variant: "B2", duKien: 158 },
+  ],
+  "CN-DN":  [
+    { item: "GA-300", variant: "A4", duKien: 484, preAdjust:  60, preReason: "Nhà thầu mới" },
+    { item: "GA-300", variant: "B2", duKien: 423, preAdjust:  40, preReason: "Khuyến mãi" },
+    { item: "GA-400", variant: "A4", duKien: 272, preAdjust:  30, preReason: "Nhà thầu mới" },
+    { item: "GA-600", variant: "A4", duKien: 333 },
+  ],
+  "CN-QN":  [
+    { item: "GA-300", variant: "A4", duKien: 205 },
+    { item: "GA-400", variant: "A4", duKien: 179 },
+    { item: "GA-600", variant: "A4", duKien: 115 },
+    { item: "GA-300", variant: "B2", duKien: 141 },
+  ],
+  "CN-NT":  [
+    { item: "GA-300", variant: "A4", duKien: 269 },
+    { item: "GA-400", variant: "A4", duKien: 235 },
+    { item: "GA-600", variant: "A4", duKien: 151 },
+    { item: "GA-300", variant: "B2", duKien: 185 },
+  ],
+  "CN-BMT": [
+    { item: "GA-300", variant: "A4", duKien: 166 },
+    { item: "GA-400", variant: "A4", duKien: 145 },
+    { item: "GA-600", variant: "A4", duKien:  93 },
+    { item: "GA-300", variant: "B2", duKien: 116 },
+  ],
+  "CN-PK":  [
+    { item: "GA-300", variant: "A4", duKien: 147 },
+    { item: "GA-400", variant: "A4", duKien: 128 },
+    { item: "GA-600", variant: "A4", duKien:  82 },
+    { item: "GA-300", variant: "B2", duKien: 103 },
+  ],
+  "CN-BD":  [
+    { item: "GA-300", variant: "A4", duKien: 685, preAdjust: 600, preReason: "Khác" },
+    { item: "GA-300", variant: "B2", duKien: 600 },
+    { item: "GA-400", variant: "A4", duKien: 386 },
+    { item: "GA-600", variant: "A4", duKien: 471 },
+  ],
+  "CN-HCM": [
+    { item: "GA-300", variant: "A4", duKien: 826, preAdjust: 120, preReason: "Nhà thầu mới" },
+    { item: "GA-300", variant: "B2", duKien: 722, preAdjust:  80, preReason: "Khuyến mãi" },
+    { item: "GA-400", variant: "A4", duKien: 464 },
+    { item: "GA-600", variant: "A4", duKien: 568 },
+  ],
+  "CN-CT":  [
+    { item: "GA-300", variant: "A4", duKien: 322 },
+    { item: "GA-400", variant: "A4", duKien: 282 },
+    { item: "GA-600", variant: "A4", duKien: 181 },
+    { item: "GA-300", variant: "B2", duKien: 223 },
+  ],
+  "CN-LA":  [
+    { item: "GA-300", variant: "A4", duKien: 220 },
+    { item: "GA-400", variant: "A4", duKien: 193 },
+    { item: "GA-600", variant: "A4", duKien: 124 },
+    { item: "GA-300", variant: "B2", duKien: 153 },
+  ],
+};
+
+/* ────────────── Working state shape ────────────── */
+
+interface SkuRow {
+  cnCode: string;
+  key: string;            // unique row id "<cn>-<item>-<variant>"
+  item: string;
+  variant: string;
+  duKien: number;         // scaled forecast
+  adjust: number;         // signed delta in m²
+  reason: Reason;
+  reasonOther: string;
+  /** Per-row override decision from SC: undefined = not yet decided. */
+  decision?: "approved" | "rejected" | "override" | "trimmed";
+  submitted: boolean;     // CN sent for review
+}
+
+type RowSeverity = "ok" | "auto" | "pending" | "over";
+
+function classifyRow(row: SkuRow, cfg: CnConfig | undefined): RowSeverity {
+  const tol = cfg?.tolerancePct ?? 30;
+  const auto = cfg?.autoApprove ?? false;
+  if (row.adjust === 0) return "ok";
+  const deltaPct = row.duKien > 0 ? (row.adjust / row.duKien) * 100 : 0;
+  if (Math.abs(deltaPct) > tol) return "over";
+  if (auto) return "auto";
   return "pending";
 }
 
-const STATUS_META: Record<AdjustStatus, { label: string; color: string; bg: string }> = {
-  none:     { label: "Chưa adjust",      color: "text-text-3",   bg: "bg-surface-2" },
-  auto:     { label: "Tự duyệt ✅",      color: "text-success",  bg: "bg-success-bg" },
-  pending:  { label: "Chờ duyệt",        color: "text-warning",  bg: "bg-warning-bg" },
-  over:     { label: "Vượt biên ⚠",      color: "text-danger",   bg: "bg-danger-bg"  },
-  approved: { label: "Đã duyệt ✅",      color: "text-success",  bg: "bg-success-bg" },
-  rejected: { label: "Đã từ chối ❌",    color: "text-danger",   bg: "bg-danger-bg"  },
-  override: { label: "Override khẩn cấp",color: "text-primary",  bg: "bg-info-bg"    },
-};
+/* ────────────── Persistence helpers ────────────── */
+
+function loadPersona(): Persona {
+  if (typeof window === "undefined") return "cn";
+  const v = window.localStorage.getItem(PERSONA_KEY);
+  return v === "sc" ? "sc" : "cn";
+}
+
+function savePersona(p: Persona) {
+  try { window.localStorage.setItem(PERSONA_KEY, p); } catch { /* ignore */ }
+}
+
+/* ────────────── CN Manager view ────────────── */
+
+interface CnManagerTabProps {
+  cnCode: string;
+  setCnCode: (c: string) => void;
+  rows: SkuRow[];
+  config: CnConfig | undefined;
+  closed: boolean;
+  onChangeRow: (key: string, patch: Partial<SkuRow>) => void;
+  onSubmit: () => void;
+}
+
+function CnManagerTab({
+  cnCode, setCnCode, rows, config, closed, onChangeRow, onSubmit,
+}: CnManagerTabProps) {
+  const tol = config?.tolerancePct ?? 30;
+
+  const totals = useMemo(() => {
+    const duKien = rows.reduce((s, r) => s + r.duKien, 0);
+    const adjust = rows.reduce((s, r) => s + r.adjust, 0);
+    const final  = duKien + adjust;
+    const pct    = duKien > 0 ? (adjust / duKien) * 100 : 0;
+    return { duKien, adjust, final, pct };
+  }, [rows]);
+
+  const adjustedCount = rows.filter((r) => r.adjust !== 0).length;
+  const allSubmitted  = rows.every((r) => r.adjust === 0 || r.submitted);
+
+  const columns: SmartTableColumn<SkuRow>[] = [
+    {
+      key: "item", label: "Mã hàng", sortable: true, hideable: false, priority: "high",
+      width: 130,
+      render: (r) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-text-1 text-table-sm">{r.item}</span>
+          <span className="text-[10px] text-text-3">{r.variant}</span>
+        </div>
+      ),
+    },
+    {
+      key: "duKien", label: "Dự kiến (m²)", sortable: true, numeric: true, align: "right",
+      hideable: false, priority: "high", width: 110,
+      render: (r) => <span className="tabular-nums text-text-2">{r.duKien.toLocaleString("vi-VN")}</span>,
+    },
+    {
+      key: "adjust", label: "Điều chỉnh", hideable: false, priority: "high", width: 130, align: "right",
+      render: (r) => {
+        const sev = classifyRow(r, config);
+        const overTolerance = sev === "over";
+        return (
+          <div className="flex items-center justify-end gap-1.5">
+            <input
+              type="number"
+              disabled={closed || r.submitted}
+              value={r.adjust === 0 ? "" : r.adjust}
+              onChange={(e) => {
+                const v = e.target.value === "" ? 0 : parseInt(e.target.value, 10);
+                if (Number.isNaN(v)) return;
+                onChangeRow(r.key, { adjust: v });
+              }}
+              placeholder="0"
+              className={cn(
+                "w-20 rounded border bg-surface-0 px-1.5 py-1 text-table-sm text-right tabular-nums outline-none transition-colors",
+                overTolerance
+                  ? "border-danger text-danger focus:border-danger"
+                  : r.adjust !== 0
+                    ? "border-primary text-text-1 focus:border-primary"
+                    : "border-surface-3 text-text-1 focus:border-primary",
+                (closed || r.submitted) && "opacity-60 cursor-not-allowed",
+              )}
+              title={overTolerance ? `Vượt biên ±${tol}%. SC Manager sẽ duyệt.` : undefined}
+            />
+            {overTolerance && (
+              <span title={`Vượt biên ±${tol}%. SC Manager sẽ duyệt.`}>
+                <AlertTriangle className="h-3.5 w-3.5 text-danger" />
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "reason", label: "Lý do", hideable: false, priority: "medium", width: 160,
+      render: (r) => {
+        if (r.adjust === 0) return <span className="text-text-3 text-table-sm">—</span>;
+        return (
+          <div className="flex flex-col gap-1">
+            <Select
+              value={r.reason || undefined}
+              disabled={closed || r.submitted}
+              onValueChange={(v) => onChangeRow(r.key, { reason: v as Reason })}
+            >
+              <SelectTrigger className="h-7 text-table-sm">
+                <SelectValue placeholder="Chọn lý do…" />
+              </SelectTrigger>
+              <SelectContent>
+                {REASONS.map((reason) => (
+                  <SelectItem key={reason} value={reason}>{reason}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {r.reason === "Khác" && (
+              <input
+                type="text"
+                disabled={closed || r.submitted}
+                value={r.reasonOther}
+                onChange={(e) => onChangeRow(r.key, { reasonOther: e.target.value })}
+                placeholder="Mô tả ngắn…"
+                className="h-7 rounded border border-surface-3 bg-surface-0 px-1.5 text-[11px] outline-none focus:border-primary"
+              />
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "final", label: "Sau chỉnh", numeric: true, align: "right", hideable: true,
+      priority: "high", width: 110, sortable: true,
+      accessor: (r) => r.duKien + r.adjust,
+      render: (r) => {
+        const final = r.duKien + r.adjust;
+        return (
+          <span className={cn(
+            "tabular-nums font-semibold",
+            r.adjust > 0 ? "text-success" : r.adjust < 0 ? "text-danger" : "text-text-1",
+          )}>
+            {final.toLocaleString("vi-VN")}
+          </span>
+        );
+      },
+    },
+    {
+      key: "status", label: "Trạng thái", hideable: false, priority: "high", width: 130,
+      render: (r) => {
+        const sev = classifyRow(r, config);
+        if (r.adjust === 0) {
+          return <span className="text-table-sm text-text-3">—</span>;
+        }
+        if (r.submitted) {
+          return (
+            <span className="inline-flex items-center gap-1 text-table-sm text-info">
+              <Send className="h-3 w-3" /> Đã gửi
+            </span>
+          );
+        }
+        const meta = {
+          auto:    { icon: CheckCircle2, label: "Sẽ tự duyệt", cls: "text-success" },
+          pending: { icon: Clock,        label: "Chờ duyệt",    cls: "text-warning" },
+          over:    { icon: AlertTriangle,label: `Vượt biên`,    cls: "text-danger"  },
+          ok:      { icon: CheckCircle2, label: "—",            cls: "text-text-3"  },
+        }[sev];
+        const Icon = meta.icon;
+        return (
+          <span className={cn("inline-flex items-center gap-1 text-table-sm", meta.cls)}>
+            <Icon className="h-3 w-3" /> {meta.label}
+          </span>
+        );
+      },
+    },
+  ];
+
+  const trustBadge = config && (
+    <span className={cn(
+      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+      config.band === "low"  && "bg-warning-bg text-warning border-warning/40",
+      config.band === "auto" && "bg-success-bg text-success border-success/40",
+      config.band === "normal" && "bg-info-bg text-info border-info/40",
+    )}>
+      <ShieldCheck className="h-3 w-3" />
+      Trust {config.trustPct}% · biên ±{config.tolerancePct}%
+      {config.autoApprove && " · auto"}
+    </span>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* CN selector + trust chip */}
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="text-table-sm text-text-2">Chọn chi nhánh:</label>
+        <Select value={cnCode} onValueChange={setCnCode}>
+          <SelectTrigger className="w-56 h-9">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {BRANCHES.map((b) => (
+              <SelectItem key={b.code} value={b.code}>
+                {b.code} — {b.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {trustBadge}
+      </div>
+
+      {/* SmartTable per-SKU */}
+      <SmartTable<SkuRow>
+        screenId={`demand-weekly-cn-${cnCode}`}
+        title={`SKU của ${cnCode}`}
+        exportFilename={`demand-weekly-${cnCode}`}
+        columns={columns}
+        data={rows}
+        defaultDensity="normal"
+        getRowId={(r) => r.key}
+        rowSeverity={(r) => {
+          const sev = classifyRow(r, config);
+          if (sev === "over") return "shortage";
+          if (sev === "pending") return "watch";
+          return "ok";
+        }}
+        summaryRow={{
+          item: <span className="font-semibold text-text-1">TỔNG</span>,
+          duKien: <span className="tabular-nums font-semibold">{totals.duKien.toLocaleString("vi-VN")}</span>,
+          adjust: (
+            <span className={cn(
+              "tabular-nums font-semibold",
+              totals.adjust > 0 ? "text-success" : totals.adjust < 0 ? "text-danger" : "text-text-2",
+            )}>
+              {totals.adjust > 0 ? "+" : ""}{totals.adjust.toLocaleString("vi-VN")}
+              {totals.adjust !== 0 && (
+                <span className="text-text-3 ml-1 text-[11px]">
+                  ({totals.pct > 0 ? "+" : ""}{totals.pct.toFixed(1).replace(".", ",")}%)
+                </span>
+              )}
+            </span>
+          ),
+          final: <span className="tabular-nums font-semibold">{totals.final.toLocaleString("vi-VN")}</span>,
+        }}
+      />
+
+      {/* Submit action */}
+      <button
+        onClick={onSubmit}
+        disabled={closed || adjustedCount === 0 || allSubmitted}
+        className={cn(
+          "w-full rounded-button px-4 py-3 text-table font-semibold inline-flex items-center justify-center gap-2 transition-all",
+          (closed || adjustedCount === 0 || allSubmitted)
+            ? "bg-surface-2 text-text-3 cursor-not-allowed"
+            : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
+        )}
+      >
+        {closed ? (
+          <><Lock className="h-4 w-4" /> Đã đóng nhập</>
+        ) : allSubmitted ? (
+          <><CheckCircle2 className="h-4 w-4" /> Đã gửi — chờ SC Manager</>
+        ) : (
+          <><Send className="h-4 w-4" /> Gửi điều chỉnh ({adjustedCount} mã)</>
+        )}
+      </button>
+    </div>
+  );
+}
+
+/* ────────────── SC Manager view ────────────── */
+
+interface ScSummaryRow {
+  cnCode: string;
+  cnName: string;
+  trust: number;
+  totalDuKien: number;
+  totalAdjust: number;
+  totalPct: number;
+  skuCount: number;       // số SKU adjust ≠ 0
+  pendingCount: number;
+  overCount: number;
+  autoCount: number;
+  rows: SkuRow[];
+  config: CnConfig | undefined;
+  status: "none" | "auto" | "pending" | "over";
+}
+
+function buildScRows(
+  allRows: SkuRow[],
+  configs: Record<string, CnConfig>,
+): ScSummaryRow[] {
+  const byCn: Record<string, SkuRow[]> = {};
+  allRows.forEach((r) => {
+    (byCn[r.cnCode] ??= []).push(r);
+  });
+  return BRANCHES.map((b) => {
+    const rows = byCn[b.code] ?? [];
+    const cfg = configs[b.code];
+    const totalDuKien = rows.reduce((s, r) => s + r.duKien, 0);
+    const totalAdjust = rows.reduce((s, r) => s + r.adjust, 0);
+    const totalPct = totalDuKien > 0 ? (totalAdjust / totalDuKien) * 100 : 0;
+    const adjustedRows = rows.filter((r) => r.adjust !== 0);
+    let pendingCount = 0, overCount = 0, autoCount = 0;
+    adjustedRows.forEach((r) => {
+      const sev = classifyRow(r, cfg);
+      if (sev === "over") overCount++;
+      else if (sev === "pending") pendingCount++;
+      else if (sev === "auto") autoCount++;
+    });
+    let status: ScSummaryRow["status"] = "none";
+    if (overCount > 0) status = "over";
+    else if (pendingCount > 0) status = "pending";
+    else if (autoCount > 0) status = "auto";
+    return {
+      cnCode: b.code,
+      cnName: b.name,
+      trust: cfg?.trustPct ?? 0,
+      totalDuKien,
+      totalAdjust,
+      totalPct,
+      skuCount: adjustedRows.length,
+      pendingCount,
+      overCount,
+      autoCount,
+      rows,
+      config: cfg,
+      status,
+    };
+  });
+}
+
+interface ScManagerTabProps {
+  scRows: ScSummaryRow[];
+  onApproveCn: (cnCode: string) => void;
+  onRejectCn: (cnCode: string) => void;
+  onApproveRow: (key: string) => void;
+  onRejectRow: (key: string) => void;
+  onTrimRow: (key: string) => void;
+  onOverrideRow: (key: string) => void;
+  onApproveAllInBand: () => void;
+}
+
+function ScManagerTab({
+  scRows, onApproveCn, onRejectCn,
+  onApproveRow, onRejectRow, onTrimRow, onOverrideRow, onApproveAllInBand,
+}: ScManagerTabProps) {
+  const adjustedCns = scRows.filter((r) => r.skuCount > 0).length;
+  const totalPending = scRows.reduce((s, r) => s + r.pendingCount, 0);
+  const totalOver    = scRows.reduce((s, r) => s + r.overCount, 0);
+
+  const columns: SmartTableColumn<ScSummaryRow>[] = [
+    {
+      key: "cnName", label: "Chi nhánh", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 180,
+      render: (r) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-text-1 text-table-sm">{r.cnName}</span>
+          <span className="text-[10px] text-text-3 font-mono">{r.cnCode}</span>
+        </div>
+      ),
+    },
+    {
+      key: "trust", label: "Trust", numeric: true, align: "right", sortable: true,
+      hideable: true, priority: "medium", width: 90,
+      render: (r) => (
+        <span className={cn(
+          "tabular-nums text-table-sm font-medium",
+          r.trust >= 85 ? "text-success" : r.trust < 60 ? "text-danger" : "text-warning",
+        )}>
+          {r.trust}%
+        </span>
+      ),
+    },
+    {
+      key: "totalAdjust", label: "Tổng adjust", numeric: true, align: "right",
+      sortable: true, hideable: true, priority: "high", width: 130,
+      render: (r) => {
+        if (r.skuCount === 0) return <span className="text-text-3 text-table-sm">—</span>;
+        return (
+          <div className="flex flex-col items-end">
+            <span className={cn(
+              "tabular-nums font-medium",
+              r.totalAdjust > 0 ? "text-success" : r.totalAdjust < 0 ? "text-danger" : "text-text-2",
+            )}>
+              {r.totalAdjust > 0 ? "+" : ""}{r.totalAdjust.toLocaleString("vi-VN")}
+            </span>
+            <span className="text-[10px] text-text-3 tabular-nums">
+              {r.totalPct > 0 ? "+" : ""}{r.totalPct.toFixed(1).replace(".", ",")}%
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      key: "skuCount", label: "Số SKU", numeric: true, align: "right",
+      sortable: true, hideable: true, priority: "medium", width: 80,
+      render: (r) => (
+        <span className="tabular-nums text-text-2">{r.skuCount}</span>
+      ),
+    },
+    {
+      key: "status", label: "Trạng thái", hideable: false, priority: "high", width: 200,
+      accessor: (r) => r.status,
+      filter: "enum",
+      filterOptions: [
+        { value: "none",    label: "Chưa adjust" },
+        { value: "auto",    label: "✅ Tự duyệt" },
+        { value: "pending", label: "⏳ Chờ duyệt" },
+        { value: "over",    label: "⚠️ Vượt biên" },
+      ],
+      render: (r) => {
+        if (r.status === "none") {
+          return <span className="text-table-sm text-text-3">Chưa adjust</span>;
+        }
+        if (r.status === "over") {
+          return (
+            <span className="inline-flex items-center gap-1 text-table-sm text-danger font-medium">
+              <AlertTriangle className="h-3 w-3" /> Vượt biên ({r.overCount} SKU)
+            </span>
+          );
+        }
+        if (r.status === "pending") {
+          return (
+            <span className="inline-flex items-center gap-1 text-table-sm text-warning font-medium">
+              <Clock className="h-3 w-3" /> Chờ duyệt ({r.pendingCount} SKU)
+            </span>
+          );
+        }
+        return (
+          <span className="inline-flex items-center gap-1 text-table-sm text-success font-medium">
+            <CheckCircle2 className="h-3 w-3" /> Tự duyệt
+          </span>
+        );
+      },
+    },
+    {
+      key: "actions", label: "Hành động", hideable: false, align: "right",
+      priority: "high", width: 160,
+      render: (r) => {
+        if (r.skuCount === 0 || r.status === "auto") {
+          return <span className="text-table-sm text-text-3">—</span>;
+        }
+        return (
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              size="sm" variant="outline"
+              onClick={() => onApproveCn(r.cnCode)}
+              className="h-7 px-2 text-[11px]"
+            >
+              <CheckCircle2 className="h-3 w-3 mr-1" /> Duyệt CN
+            </Button>
+            <Button
+              size="sm" variant="outline"
+              onClick={() => onRejectCn(r.cnCode)}
+              className="h-7 px-2 text-[11px]"
+            >
+              <XCircle className="h-3 w-3" />
+            </Button>
+          </div>
+        );
+      },
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Summary banner */}
+      <div className="rounded-card border border-surface-3 bg-surface-1 px-4 py-3 flex flex-wrap items-center gap-3">
+        <Lock className="h-4 w-4 text-text-3 shrink-0" />
+        <span className="text-table-sm text-text-1 font-medium">Đã đóng cutoff 18:00</span>
+        <span className="text-text-3">·</span>
+        <span className="text-table-sm text-text-2 tabular-nums">
+          {adjustedCns}/{BRANCHES.length} CN adjust
+        </span>
+        {totalPending > 0 && (
+          <>
+            <span className="text-text-3">·</span>
+            <span className="text-table-sm text-warning font-medium tabular-nums">
+              {totalPending} chờ duyệt
+            </span>
+          </>
+        )}
+        {totalOver > 0 && (
+          <>
+            <span className="text-text-3">·</span>
+            <span className="text-table-sm text-danger font-medium tabular-nums">
+              {totalOver} vượt biên
+            </span>
+          </>
+        )}
+        <Button
+          size="sm" variant="default"
+          onClick={onApproveAllInBand}
+          disabled={totalPending === 0}
+          className="ml-auto"
+        >
+          <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+          Duyệt tất cả trong biên
+          {totalPending > 0 && <span className="ml-1 opacity-70">({totalPending})</span>}
+        </Button>
+      </div>
+
+      {/* SC Manager table — 12 CN with drilldown */}
+      <SmartTable<ScSummaryRow>
+        screenId="demand-weekly-sc"
+        title="12 chi nhánh"
+        exportFilename="demand-weekly-sc-summary"
+        columns={columns}
+        data={scRows}
+        defaultDensity="normal"
+        getRowId={(r) => r.cnCode}
+        rowSeverity={(r) =>
+          r.status === "over" ? "shortage" :
+          r.status === "pending" ? "watch" : "ok"
+        }
+        autoExpandWhen={(r) => r.status === "over" || r.status === "pending"}
+        drillDown={(r) => (
+          <ScCnDrillDown
+            row={r}
+            onApproveRow={onApproveRow}
+            onRejectRow={onRejectRow}
+            onTrimRow={onTrimRow}
+            onOverrideRow={onOverrideRow}
+          />
+        )}
+      />
+    </div>
+  );
+}
+
+/* ─── SC drill-down per-CN: per-SKU action row ─── */
+
+interface DrillProps {
+  row: ScSummaryRow;
+  onApproveRow: (key: string) => void;
+  onRejectRow: (key: string) => void;
+  onTrimRow: (key: string) => void;
+  onOverrideRow: (key: string) => void;
+}
+
+function ScCnDrillDown({ row, onApproveRow, onRejectRow, onTrimRow, onOverrideRow }: DrillProps) {
+  const adjusted = row.rows.filter((r) => r.adjust !== 0);
+  if (adjusted.length === 0) {
+    return (
+      <div className="text-table-sm text-text-3 italic px-2 py-1">
+        CN này chưa gửi điều chỉnh.
+      </div>
+    );
+  }
+  return (
+    <table className="w-full text-table-sm">
+      <thead>
+        <tr className="text-[10px] uppercase text-text-3 border-b border-surface-3">
+          <th className="text-left  px-2 py-1.5 font-medium">Mã hàng</th>
+          <th className="text-right px-2 py-1.5 font-medium">Dự kiến</th>
+          <th className="text-right px-2 py-1.5 font-medium">Adjust</th>
+          <th className="text-left  px-2 py-1.5 font-medium">Lý do</th>
+          <th className="text-right px-2 py-1.5 font-medium">Δ%</th>
+          <th className="text-right px-2 py-1.5 font-medium">Hành động</th>
+        </tr>
+      </thead>
+      <tbody>
+        {adjusted.map((r) => {
+          const sev = classifyRow(r, row.config);
+          const pct = r.duKien > 0 ? (r.adjust / r.duKien) * 100 : 0;
+          const reasonLabel = r.reason === "Khác" && r.reasonOther
+            ? `Khác: ${r.reasonOther}` : (r.reason || "—");
+          const decided = r.decision !== undefined;
+          return (
+            <tr key={r.key} className="border-b border-surface-3/50 hover:bg-surface-2/40">
+              <td className="px-2 py-1.5 text-text-1">
+                <span className="font-medium">{r.item}</span>{" "}
+                <span className="text-text-3">{r.variant}</span>
+              </td>
+              <td className="px-2 py-1.5 text-right tabular-nums text-text-2">
+                {r.duKien.toLocaleString("vi-VN")}
+              </td>
+              <td className="px-2 py-1.5 text-right tabular-nums">
+                <span className={cn(
+                  "font-medium",
+                  r.adjust > 0 ? "text-success" : "text-danger",
+                )}>
+                  {r.adjust > 0 ? "+" : ""}{r.adjust.toLocaleString("vi-VN")}
+                </span>
+              </td>
+              <td className="px-2 py-1.5 text-text-2 truncate max-w-[160px]" title={reasonLabel}>
+                {reasonLabel}
+              </td>
+              <td className="px-2 py-1.5 text-right tabular-nums">
+                <span className={cn(
+                  "inline-flex items-center gap-0.5 font-medium",
+                  sev === "over" ? "text-danger" :
+                  sev === "pending" ? "text-warning" : "text-success",
+                )}>
+                  {sev === "over" ? "🔴" : sev === "pending" ? "🟡" : "🟢"}
+                  {pct > 0 ? "+" : ""}{pct.toFixed(1).replace(".", ",")}%
+                </span>
+              </td>
+              <td className="px-2 py-1.5 text-right">
+                {decided ? (
+                  <span className={cn(
+                    "inline-flex items-center gap-1 text-[11px] font-medium",
+                    r.decision === "approved" || r.decision === "override" ? "text-success" :
+                    r.decision === "trimmed" ? "text-warning" : "text-danger",
+                  )}>
+                    {r.decision === "approved" && <><CheckCircle2 className="h-3 w-3" />Duyệt</>}
+                    {r.decision === "override" && <><FileWarning className="h-3 w-3" />Override</>}
+                    {r.decision === "trimmed" && <><Scissors className="h-3 w-3" />Đã cắt 30%</>}
+                    {r.decision === "rejected" && <><XCircle className="h-3 w-3" />Từ chối</>}
+                  </span>
+                ) : sev === "over" ? (
+                  <div className="inline-flex items-center gap-1">
+                    <Button size="sm" variant="default" onClick={() => onOverrideRow(r.key)}
+                      className="h-6 px-1.5 text-[10px]" title="Nhận vượt biên (yêu cầu lý do)">
+                      <CheckCircle2 className="h-3 w-3" /> Nhận
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => onTrimRow(r.key)}
+                      className="h-6 px-1.5 text-[10px]" title="Cắt còn 30% dự kiến">
+                      <Scissors className="h-3 w-3" /> Cắt 30%
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => onRejectRow(r.key)}
+                      className="h-6 px-1.5 text-[10px]">
+                      <XCircle className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-1">
+                    <Button size="sm" variant="default" onClick={() => onApproveRow(r.key)}
+                      className="h-6 px-1.5 text-[10px]">
+                      <CheckCircle2 className="h-3 w-3" /> Duyệt
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => onRejectRow(r.key)}
+                      className="h-6 px-1.5 text-[10px]">
+                      <XCircle className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+/* ────────────── Page ────────────── */
 
 export default function DemandWeeklyPage() {
   const { tenant } = useTenant();
-  const { user } = useRbac();
-  const s = tenantScales[tenant] || 1;
-  const isScManager = user.role === "SC_MANAGER";
-
-  const cnConfigs = useMemo(buildCnConfigs, []);
+  const scale = tenantScales[tenant] || 1;
   const cutoff = useCutoffCountdown(18, 0);
 
-  const [expandedCns, setExpandedCns] = useState<Set<string>>(new Set());
-  const [expandedSkus, setExpandedSkus] = useState<Set<string>>(new Set());
-  const [pivotMode, setPivotMode] = usePivotMode("demand-weekly");
+  const [persona, setPersonaState] = useState<Persona>(() => loadPersona());
+  const setPersona = (p: Persona) => { setPersonaState(p); savePersona(p); };
 
-  // Per-CN current adjustment in m² (raw, post-scale).
-  const [adjustments, setAdjustments] = useState<Record<string, number>>({});
-  const [statusOverrides, setStatusOverrides] = useState<Record<string, AdjustStatus>>({});
-  const [overrideOpen, setOverrideOpen] = useState<string | null>(null);
-  const [overrideReason, setOverrideReason] = useState("");
+  const cnConfigs = useMemo(buildCnConfigs, []);
 
-  const dwBatch = useBatchLock({
-    batchType: "DRP",
-    status: "info",
-    resultSummary: "DRP đêm qua 23:18. Demand cutoff 18:00.",
-    startedAt: "23:18",
-  });
-
-  // Apply tenant scale + per-CN adjust on top of seeds.
-  const data = baseCnSeeds.map((r) => {
-    const duKien = Math.round(r.duKien * s);
-    const po = Math.round(r.po * s);
-    const adjustDelta = adjustments[r.cn] ?? 0;
-    const config = cnConfigs[r.cn];
-    const deltaPct = duKien > 0 ? (adjustDelta / duKien) * 100 : 0;
-    const baseStatus = classifyAdjust(deltaPct, config?.tolerancePct ?? 30, config?.autoApprove ?? false);
-    const status = statusOverrides[r.cn] ?? baseStatus;
-    const final = duKien + adjustDelta + po; // simplified
-    return {
-      cn: r.cn,
-      duKien,
-      po,
-      adjustDelta,
-      deltaPct,
-      status,
-      final,
-      config,
-      skus: r.skus.map((sk) => ({
-        ...sk,
-        duKien: Math.round(sk.duKien * s),
-        po: Math.round(sk.po * s),
-        cnAdjust: null as number | null,
-        adjustNote: "",
-        adjustStatus: "none" as const,
-        final: Math.round(sk.duKien * s) + Math.round(sk.po * s),
-      })),
-    };
-  });
-
-  const totalDuKien = data.reduce((a, r) => a + r.duKien, 0);
-  const totalDelta  = data.reduce((a, r) => a + r.adjustDelta, 0);
-  const totalPo     = data.reduce((a, r) => a + r.po, 0);
-  const totalFinal  = data.reduce((a, r) => a + r.final, 0);
-  const adjustedCn  = data.filter((r) => r.adjustDelta !== 0).length;
-  const overCn      = data.filter((r) => r.status === "over").length;
-
-  // SKU-first aggregation (kept for pivot view)
-  const skuAgg = useMemo(() => {
-    const map: Record<string, { item: string; variant: string; totalDuKien: number; totalAdjust: number; totalPo: number; totalFinal: number; cnRows: { cn: string; duKien: number; po: number; final: number; status: AdjustStatus }[] }> = {};
-    data.forEach((cnRow) => {
-      cnRow.skus.forEach((sk) => {
-        const key = `${sk.item}-${sk.variant}`;
-        if (!map[key]) map[key] = { item: sk.item, variant: sk.variant, totalDuKien: 0, totalAdjust: 0, totalPo: 0, totalFinal: 0, cnRows: [] };
-        map[key].totalDuKien += sk.duKien;
-        map[key].totalPo += sk.po;
-        map[key].totalFinal += sk.final;
-        map[key].cnRows.push({ cn: cnRow.cn, duKien: sk.duKien, po: sk.po, final: sk.final, status: cnRow.status });
+  /* Build initial flat row list (12 CN × 4 SKUs = 48 rows). */
+  const initialRows = useMemo<SkuRow[]>(() => {
+    const out: SkuRow[] = [];
+    BRANCHES.forEach((b) => {
+      const seeds = CN_SKUS[b.code] ?? [];
+      seeds.forEach((s) => {
+        const duKien = Math.round(s.duKien * scale);
+        const adjust = s.preAdjust ? Math.round(s.preAdjust * scale) : 0;
+        out.push({
+          cnCode: b.code,
+          key: `${b.code}-${s.item}-${s.variant}`,
+          item: s.item,
+          variant: s.variant,
+          duKien,
+          adjust,
+          reason: (s.preReason as Reason) ?? "",
+          reasonOther: "",
+          submitted: false,
+        });
       });
     });
-    return Object.values(map).sort((a, b) => b.totalFinal - a.totalFinal);
-  }, [data]);
+    return out;
+  }, [scale]);
 
-  /* ─── Handlers ─── */
-  const setAdjust = (cnCode: string, raw: string) => {
-    if (cutoff.closed && !isScManager) {
-      toast.error("Đã quá cutoff 18:00 — chỉ SC Manager có thể override.");
+  const [rows, setRows] = useState<SkuRow[]>(initialRows);
+  // Reset rows when scale changes (tenant switch).
+  useEffect(() => { setRows(initialRows); }, [initialRows]);
+
+  const [cnCode, setCnCode] = useState<string>("CN-HN");
+
+  const [overrideTarget, setOverrideTarget] = useState<string | null>(null);
+  const [overrideReason, setOverrideReason] = useState("");
+
+  /* ── Mutators ── */
+  const updateRow = (key: string, patch: Partial<SkuRow>) => {
+    setRows((all) => all.map((r) => r.key === key ? { ...r, ...patch } : r));
+  };
+
+  const submitCn = () => {
+    const cnRows = rows.filter((r) => r.cnCode === cnCode && r.adjust !== 0);
+    if (cnRows.length === 0) return;
+    // Validation: every adjusted row needs a reason.
+    const missingReason = cnRows.find((r) => !r.reason);
+    if (missingReason) {
+      toast.error(`Thiếu lý do cho ${missingReason.item} ${missingReason.variant}`);
       return;
     }
-    const v = raw === "" || raw === "-" ? 0 : parseInt(raw, 10);
-    if (isNaN(v)) return;
-    setAdjustments((s) => ({ ...s, [cnCode]: v }));
-    setStatusOverrides((s) => {
-      const next = { ...s };
-      delete next[cnCode]; // re-derive from delta
-      return next;
-    });
+    setRows((all) => all.map((r) =>
+      r.cnCode === cnCode && r.adjust !== 0 ? { ...r, submitted: true } : r,
+    ));
+    const cfg = cnConfigs[cnCode];
+    if (cfg?.autoApprove) {
+      toast.success(`Đã gửi ${cnRows.length} mã hàng cho ${cnCode}.`, {
+        description: `Trust ${cfg.trustPct}% ≥ 85% → Tự duyệt.`,
+      });
+    } else {
+      toast.success(`Đã gửi ${cnRows.length} mã hàng cho ${cnCode}.`, {
+        description: "Đang chờ SC Manager duyệt.",
+      });
+    }
   };
 
-  const handleApprove = (cnCode: string) => {
-    setStatusOverrides((s) => ({ ...s, [cnCode]: "approved" }));
-    toast.success(`Đã duyệt điều chỉnh cho ${cnCode}`);
+  const approveCn = (cn: string) => {
+    setRows((all) => all.map((r) =>
+      r.cnCode === cn && r.adjust !== 0 && r.decision === undefined
+        ? { ...r, decision: "approved" } : r,
+    ));
+    toast.success(`Đã duyệt toàn bộ điều chỉnh ${cn}`);
   };
-  const handleReject = (cnCode: string) => {
-    setStatusOverrides((s) => ({ ...s, [cnCode]: "rejected" }));
-    setAdjustments((a) => ({ ...a, [cnCode]: 0 }));
-    toast(`Đã từ chối điều chỉnh ${cnCode}`);
+  const rejectCn = (cn: string) => {
+    setRows((all) => all.map((r) =>
+      r.cnCode === cn && r.adjust !== 0 && r.decision === undefined
+        ? { ...r, decision: "rejected" } : r,
+    ));
+    toast(`Đã từ chối điều chỉnh ${cn}`);
+  };
+
+  const approveRow = (key: string) => {
+    updateRow(key, { decision: "approved" });
+    toast.success("Đã duyệt 1 SKU");
+  };
+  const rejectRow = (key: string) => {
+    updateRow(key, { decision: "rejected" });
+    toast("Đã từ chối 1 SKU");
+  };
+  const trimRow = (key: string) => {
+    setRows((all) => all.map((r) => {
+      if (r.key !== key) return r;
+      const trimmed = Math.round(r.duKien * 0.3) * (r.adjust > 0 ? 1 : -1);
+      return { ...r, adjust: trimmed, decision: "trimmed" };
+    }));
+    toast.success("Đã cắt còn ±30% dự kiến");
+  };
+  const openOverride = (key: string) => {
+    setOverrideTarget(key);
+    setOverrideReason("");
   };
   const submitOverride = () => {
-    if (!overrideOpen) return;
+    if (!overrideTarget) return;
     if (overrideReason.trim().length < 6) {
-      toast.error("Vui lòng nhập lý do override (≥ 6 ký tự).");
+      toast.error("Vui lòng nhập lý do (≥ 6 ký tự).");
       return;
     }
-    setStatusOverrides((s) => ({ ...s, [overrideOpen]: "override" }));
-    toast.success(`Override khẩn cấp ghi nhận cho ${overrideOpen}`, {
+    updateRow(overrideTarget, { decision: "override" });
+    toast.success("Override đã ghi nhận", {
       description: `Lý do: ${overrideReason}. Audit logged.`,
     });
-    setOverrideOpen(null);
+    setOverrideTarget(null);
     setOverrideReason("");
   };
 
+  const approveAllInBand = () => {
+    let count = 0;
+    setRows((all) => all.map((r) => {
+      if (r.adjust === 0 || r.decision !== undefined) return r;
+      const cfg = cnConfigs[r.cnCode];
+      const sev = classifyRow(r, cfg);
+      if (sev === "pending") {
+        count++;
+        return { ...r, decision: "approved" };
+      }
+      return r;
+    }));
+    if (count > 0) {
+      toast.success(`Đã duyệt ${count} SKU trong biên`);
+    } else {
+      toast("Không có SKU nào trong biên cần duyệt");
+    }
+  };
+
+  /* ── Derived ── */
+  const cnRows = useMemo(
+    () => rows.filter((r) => r.cnCode === cnCode),
+    [rows, cnCode],
+  );
+
+  const scRows = useMemo(
+    () => buildScRows(rows, cnConfigs),
+    [rows, cnConfigs],
+  );
+
+  const cutoffLabel = cutoff.closed
+    ? "🔒 Đã đóng nhập"
+    : cutoff.hoursLeft > 0
+      ? `⏳ Cutoff 18:00 — còn ${cutoff.hoursLeft}h ${cutoff.minutesLeft}m`
+      : `⏳ Cutoff 18:00 — còn ${cutoff.minutesLeft}m`;
+
   return (
     <AppLayout>
-      <ScreenHeader title="Nhu cầu tuần" subtitle="Điều chỉnh nhu cầu CN — 12 chi nhánh" />
-
-      {/* Batch info banner */}
-      {dwBatch.batch && (
-        <div className="mb-4">
-          <BatchLockBanner
-            batch={dwBatch.batch}
-            dismissed={dwBatch.dismissed}
-            onDismiss={dwBatch.dismiss}
-            showQueue={dwBatch.showQueue}
-            onToggleQueue={() => dwBatch.setShowQueue(!dwBatch.showQueue)}
-          />
-        </div>
-      )}
-
-      {/* Header strip — cutoff countdown + filters */}
-      <div className="flex items-center gap-3 mb-5 flex-wrap">
-        <span
-          className={cn(
-            "flex items-center gap-1.5 rounded-full border px-3 py-1 text-table-sm font-medium",
-            cutoff.closed
-              ? "border-danger bg-danger-bg text-danger"
-              : cutoff.hoursLeft < 1
-              ? "border-warning bg-warning-bg text-warning"
-              : "border-info-fg bg-info-bg text-primary"
-          )}
-        >
-          {cutoff.closed ? <Lock className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
-          <TermTooltip term="Cutoff">
-            <span>
-              Đóng nhập 18:00 — {cutoff.label}
-              {cutoff.closed && !isScManager && " (chỉ SC Manager override)"}
+      <ScreenHeader
+        title="Nhu cầu tuần — Tuần 20"
+        subtitle="CN điều chỉnh dự báo tuần · SC Manager duyệt theo biên trust"
+        actions={
+          <div className="flex items-center gap-2">
+            {/* Persona toggle */}
+            <div className="inline-flex rounded-button border border-surface-3 bg-surface-1 p-0.5">
+              <button
+                onClick={() => setPersona("cn")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-button px-3 py-1.5 text-table-sm font-medium transition-all",
+                  persona === "cn"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-text-2 hover:text-text-1",
+                )}
+              >
+                <User className="h-3.5 w-3.5" /> CN Manager
+              </button>
+              <button
+                onClick={() => setPersona("sc")}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-button px-3 py-1.5 text-table-sm font-medium transition-all",
+                  persona === "sc"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-text-2 hover:text-text-1",
+                )}
+              >
+                <Building2 className="h-3.5 w-3.5" /> SC Manager
+              </button>
+            </div>
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-1 px-2.5 py-1.5 text-table-sm text-text-2">
+              <RefreshCw className="h-3.5 w-3.5 text-info" />
+              Demand W20 v2 — 18:00 hôm nay
+              <span className="inline-flex items-center gap-1 rounded-full bg-info-bg text-info px-1.5 py-0.5 text-[10px] font-medium">
+                Locked
+              </span>
             </span>
-          </TermTooltip>
-        </span>
-        <span className="flex items-center gap-1.5 rounded-full border border-surface-3 bg-surface-1 px-3 py-1 text-table-sm text-text-2">
-          <TermTooltip term="Tolerance" />
-          <span>Biên mặc định ±30% · Uy tín thấp ±15%</span>
-        </span>
-        <span className="flex items-center gap-1.5 rounded-full border border-surface-3 bg-surface-1 px-3 py-1 text-table-sm text-text-2">
-          {adjustedCn}/{data.length} CN đã điều chỉnh
-          {overCn > 0 && <span className="ml-1 text-danger font-semibold">· {overCn} vượt biên</span>}
-        </span>
-        <button className="ml-auto flex items-center gap-1.5 rounded-full border border-surface-3 bg-surface-2 px-3 py-1 text-table-sm text-text-2 hover:bg-surface-1">
-          <Filter className="h-3.5 w-3.5" /> CN: Tất cả ▼
-        </button>
-      </div>
-
-      {/* Pivot toggle */}
-      <div className="flex items-center gap-3 mb-4">
-        <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setExpandedCns(new Set()); setExpandedSkus(new Set()); }} />
-      </div>
-
-      {pivotMode === "sku" ? (
-        /* ═══ SKU-FIRST — kept simple, reuses old layout ═══ */
-        <div className="rounded-card border border-surface-3 bg-surface-2 animate-fade-in">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-surface-3 bg-surface-1/50">
-                  {["", "Item", "Variant", "Dự kiến total", "Total PO", "Final total", "# CN"].map((h) => (
-                    <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {skuAgg.map((sk) => {
-                  const key = `${sk.item}-${sk.variant}`;
-                  const isExpanded = expandedSkus.has(key);
-                  return (
-                    <>
-                      <tr
-                        key={key}
-                        className={cn("border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer", isExpanded && "bg-primary/5")}
-                        onClick={() => setExpandedSkus((prev) => { const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next; })}
-                      >
-                        <td className="px-4 py-3 text-text-3 w-8">{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</td>
-                        <td className="px-4 py-3 text-table font-medium text-text-1">{sk.item}</td>
-                        <td className="px-4 py-3 text-table text-text-2">{sk.variant}</td>
-                        <td className="px-4 py-3 text-table tabular-nums text-text-2">{sk.totalDuKien.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-table tabular-nums text-text-2">{sk.totalPo.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-table tabular-nums font-semibold text-text-1">{sk.totalFinal.toLocaleString()}</td>
-                        <td className="px-4 py-3"><CnGapBadge count={sk.cnRows.length} /></td>
-                      </tr>
-                      {isExpanded && sk.cnRows.map((c) => (
-                        <tr key={`${key}-${c.cn}`} className="border-b border-surface-3/30 bg-surface-0 animate-fade-in">
-                          <td className="px-4 py-2" />
-                          <td colSpan={2} className="px-4 py-2 text-table text-text-2 pl-8">↳ {c.cn}</td>
-                          <td className="px-4 py-2 text-table tabular-nums text-text-3">{c.duKien.toLocaleString()}</td>
-                          <td className="px-4 py-2 text-table tabular-nums text-text-3">{c.po.toLocaleString()}</td>
-                          <td className="px-4 py-2 text-table tabular-nums text-text-2">{c.final.toLocaleString()}</td>
-                          <td className="px-4 py-2 text-table text-text-3">{STATUS_META[c.status].label}</td>
-                        </tr>
-                      ))}
-                    </>
-                  );
-                })}
-                <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
-                  <td />
-                  <td className="px-4 py-3 text-table text-text-1" colSpan={2}>TOTAL</td>
-                  <td className="px-4 py-3 text-table tabular-nums">{skuAgg.reduce((a, s) => a + s.totalDuKien, 0).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-table tabular-nums">{skuAgg.reduce((a, s) => a + s.totalPo, 0).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-table tabular-nums">{skuAgg.reduce((a, s) => a + s.totalFinal, 0).toLocaleString()}</td>
-                  <td />
-                </tr>
-              </tbody>
-            </table>
           </div>
-        </div>
+        }
+      />
+
+      {/* Cutoff banner */}
+      <div className={cn(
+        "mb-4 rounded-card border px-4 py-2.5 flex flex-wrap items-center gap-2",
+        cutoff.closed
+          ? "border-danger/40 bg-danger-bg text-danger"
+          : cutoff.hoursLeft < 1
+            ? "border-warning/40 bg-warning-bg text-warning"
+            : "border-info/30 bg-info-bg text-info",
+      )}>
+        {cutoff.closed
+          ? <Lock className="h-4 w-4" />
+          : <Clock className="h-4 w-4" />}
+        <TermTooltip term="Cutoff">
+          <span className="text-table-sm font-medium">{cutoffLabel}</span>
+        </TermTooltip>
+        {!cutoff.closed && (
+          <span className="text-table-sm text-text-2 ml-2">
+            Sau giờ này, mọi điều chỉnh phải qua SC Manager override.
+          </span>
+        )}
+      </div>
+
+      {/* Body — switch by persona */}
+      {persona === "cn" ? (
+        <CnManagerTab
+          cnCode={cnCode}
+          setCnCode={setCnCode}
+          rows={cnRows}
+          config={cnConfigs[cnCode]}
+          closed={cutoff.closed}
+          onChangeRow={updateRow}
+          onSubmit={submitCn}
+        />
       ) : (
-        /* ═══ CN-FIRST with full tolerance enforcement ═══ */
-        <div className="rounded-card border border-surface-3 bg-surface-2 animate-fade-in">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-surface-3 bg-surface-1/50">
-                  <th className="w-8 px-3 py-2.5"></th>
-                  <th className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">CN</th>
-                  <th className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
-                    <span className="flex items-center gap-1">
-                      <TermTooltip term="TrustScore">Uy tín</TermTooltip>
-                    </span>
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
-                    <span className="flex items-center gap-1">
-                      <TermTooltip term="Tolerance">Biên</TermTooltip>
-                    </span>
-                  </th>
-                  <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3">Dự kiến (m²)</th>
-                  <th className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">
-                    CN điều chỉnh <LogicLink tab="daily" node={1} tooltip="Logic CN điều chỉnh & tolerance" />
-                  </th>
-                  <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3">PO xác nhận</th>
-                  <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3">Final</th>
-                  <th className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">Trạng thái / Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((r) => {
-                  const isExpanded = expandedCns.has(r.cn);
-                  const config = r.config;
-                  const trust = config?.trustPct ?? 75;
-                  const tol = config?.tolerancePct ?? 30;
-                  const meta = STATUS_META[r.status];
-                  const branch = BRANCHES.find((b) => b.code === r.cn);
-                  const inputDisabled = (cutoff.closed && !isScManager) || r.status === "rejected";
-                  const isOver = r.status === "over";
-                  const adjustZeroWarning = r.adjustDelta === 0 && r.status === "rejected";
-
-                  return (
-                    <>
-                      <tr
-                        key={r.cn}
-                        className={cn(
-                          "border-b border-surface-3/50 hover:bg-surface-1/30 cursor-pointer transition-colors",
-                          isExpanded && "bg-primary/5",
-                          isOver && "bg-danger-bg/30"
-                        )}
-                        onClick={() => setExpandedCns((prev) => { const next = new Set(prev); next.has(r.cn) ? next.delete(r.cn) : next.add(r.cn); return next; })}
-                      >
-                        <td className="px-3 py-3 text-text-3">{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</td>
-                        <td className="px-4 py-3">
-                          <p className="text-table font-medium text-text-1">{r.cn}</p>
-                          <p className="text-caption text-text-3">{branch?.name ?? ""}</p>
-                        </td>
-                        <td className="px-4 py-3 text-table">
-                          <span
-                            className={cn(
-                              "inline-flex items-center rounded-full border px-2 py-0.5 text-caption font-semibold",
-                              trust < 60
-                                ? "bg-danger-bg text-danger border-danger/30"
-                                : trust > 85
-                                ? "bg-success-bg text-success border-success/30"
-                                : "bg-surface-1 text-text-2 border-surface-3"
-                            )}
-                          >
-                            {trust}%
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-table">
-                          <span className={cn("font-mono", config?.band === "low" ? "text-danger font-semibold" : "text-text-2")}>
-                            ±{tol}%
-                          </span>
-                          {config?.autoApprove && (
-                            <span className="ml-1 inline-flex items-center rounded-full bg-success-bg text-success border border-success/30 px-1.5 py-0.5 text-caption font-semibold">
-                              Tự duyệt
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right text-table tabular-nums text-text-2">{r.duKien.toLocaleString()}</td>
-                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-1.5">
-                            <input
-                              type="number"
-                              value={adjustments[r.cn] ?? ""}
-                              placeholder="0"
-                              disabled={inputDisabled}
-                              onChange={(e) => setAdjust(r.cn, e.target.value)}
-                              className={cn(
-                                "w-24 rounded-button border px-2 py-1 text-table tabular-nums outline-none transition-colors",
-                                isOver
-                                  ? "border-danger bg-danger-bg/40 text-danger font-semibold focus:border-danger"
-                                  : "border-surface-3 bg-surface-0 text-text-1 focus:border-primary",
-                                inputDisabled && "opacity-60 cursor-not-allowed"
-                              )}
-                            />
-                            <span
-                              className={cn(
-                                "text-caption tabular-nums",
-                                Math.abs(r.deltaPct) > tol ? "text-danger font-semibold" : "text-text-3"
-                              )}
-                            >
-                              {r.adjustDelta !== 0 ? `${r.deltaPct > 0 ? "+" : ""}${r.deltaPct.toFixed(1)}%` : ""}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-right text-table tabular-nums text-text-2">{r.po.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-right text-table tabular-nums font-semibold text-text-1">
-                          <ClickableNumber
-                            value={r.final}
-                            label={`Final ${r.cn}`}
-                            color="font-semibold text-text-1"
-                            formula={`Dự kiến ${r.duKien.toLocaleString()} + adjust ${r.adjustDelta >= 0 ? "+" : ""}${r.adjustDelta} + PO ${r.po.toLocaleString()} = ${r.final.toLocaleString()}`}
-                          />
-                        </td>
-                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-caption font-semibold border-current", meta.color, meta.bg)}>
-                              {meta.label}
-                            </span>
-                            {r.status === "pending" && isScManager && (
-                              <>
-                                <button onClick={() => handleApprove(r.cn)} className="rounded-button bg-success/10 text-success px-2 py-1 text-caption font-medium hover:bg-success/20">Duyệt</button>
-                                <button onClick={() => handleReject(r.cn)} className="rounded-button bg-danger-bg text-danger px-2 py-1 text-caption font-medium hover:bg-danger/20">Từ chối</button>
-                              </>
-                            )}
-                            {(r.status === "over" || (cutoff.closed && r.status !== "approved")) && isScManager && (
-                              <button
-                                onClick={() => { setOverrideOpen(r.cn); setOverrideReason(""); }}
-                                className="rounded-button border border-primary text-primary bg-info-bg px-2 py-1 text-caption font-semibold hover:bg-primary/10 inline-flex items-center gap-1"
-                              >
-                                <Unlock className="h-3 w-3" /> Override khẩn cấp
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-
-                      {/* Inline warnings band */}
-                      {(isOver || config?.band === "low" || adjustZeroWarning) && (
-                        <tr className="bg-surface-0/60">
-                          <td />
-                          <td colSpan={8} className="px-4 py-2 space-y-1">
-                            {isOver && (
-                              <div className="flex items-center gap-2 text-caption text-danger">
-                                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                                <span>
-                                  Vượt biên ±{tol}% (hiện {Math.abs(r.deltaPct).toFixed(1)}%). SC Manager phải duyệt hoặc dùng <span className="font-semibold">Override khẩn cấp</span>.
-                                </span>
-                              </div>
-                            )}
-                            {config?.band === "low" && (
-                              <div className="flex items-center gap-2 text-caption text-warning">
-                                <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
-                                <span>
-                                  Uy tín thấp ({trust}%) — biên giảm còn ±15%. CN cần cải thiện độ chính xác để mở lại biên ±30%.
-                                </span>
-                              </div>
-                            )}
-                            {r.adjustDelta === 0 && r.status === "none" && (
-                              <div className="flex items-center gap-2 text-caption text-text-3 italic">
-                                <span>Nhu cầu = 0. Nếu có bán thực tế, điểm uy tín CN sẽ giảm.</span>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      )}
-
-                      {/* Expanded SKU rows */}
-                      {isExpanded && r.skus.map((sk, si) => (
-                        <tr key={`${r.cn}-${si}`} className="border-b border-surface-3/30 bg-surface-0 animate-fade-in">
-                          <td className="px-3 py-2" />
-                          <td colSpan={3} className="px-4 py-2 text-table text-text-2 pl-6">↳ {sk.item} {sk.variant}</td>
-                          <td className="px-4 py-2 text-right text-table tabular-nums text-text-3">{sk.duKien.toLocaleString()}</td>
-                          <td className="px-4 py-2 text-table text-text-3">—</td>
-                          <td className="px-4 py-2 text-right text-table tabular-nums text-text-3">{sk.po > 0 ? sk.po.toLocaleString() : "—"}</td>
-                          <td className="px-4 py-2 text-right text-table tabular-nums text-text-2">{sk.final.toLocaleString()}</td>
-                          <td className="px-4 py-2" />
-                        </tr>
-                      ))}
-                    </>
-                  );
-                })}
-
-                <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
-                  <td />
-                  <td className="px-4 py-3 text-table text-text-1" colSpan={3}>TOTAL · {data.length} CN</td>
-                  <td className="px-4 py-3 text-right text-table tabular-nums">{totalDuKien.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-table">
-                    <span className={cn("font-semibold", totalDelta > 0 ? "text-success" : totalDelta < 0 ? "text-danger" : "text-text-3")}>
-                      {totalDelta >= 0 ? "+" : ""}{totalDelta.toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right text-table tabular-nums text-text-2">{totalPo.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right text-table tabular-nums text-text-1">{totalFinal.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-table text-text-2">{adjustedCn}/{data.length} CN done</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {adjustedCn < data.length && (
-            <div className="px-5 py-3 border-t border-surface-3">
-              <button
-                onClick={() => toast.success("Đã nhắc CN chưa adjust", { description: "Notification gửi tới CN Manager qua Zalo." })}
-                className="flex items-center gap-1.5 rounded-button border border-warning text-warning px-3 py-1.5 text-table-sm font-medium hover:bg-warning/10"
-              >
-                <Bell className="h-3.5 w-3.5" /> Nhắc CN chưa adjust ({data.length - adjustedCn})
-              </button>
-            </div>
-          )}
-        </div>
+        <ScManagerTab
+          scRows={scRows}
+          onApproveCn={approveCn}
+          onRejectCn={rejectCn}
+          onApproveRow={approveRow}
+          onRejectRow={rejectRow}
+          onTrimRow={trimRow}
+          onOverrideRow={openOverride}
+          onApproveAllInBand={approveAllInBand}
+        />
       )}
 
-      {/* Override modal */}
-      {overrideOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 animate-fade-in"
-          onClick={() => setOverrideOpen(null)}
-        >
-          <div
-            className="rounded-card border border-surface-3 bg-surface-0 w-full max-w-md p-5 space-y-3"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-2">
-              <Unlock className="h-4 w-4 text-primary" />
-              <p className="text-body font-semibold text-text-1">Override khẩn cấp — {overrideOpen}</p>
-            </div>
-            <p className="text-caption text-text-3">
-              SC Manager cho phép đặt điều chỉnh ngoài biên hoặc sau cutoff 18:00. Thao tác này sẽ
-              được ghi vào audit log và gửi notification cho CEO.
-            </p>
-            <div className="space-y-2">
-              <label className="text-caption text-text-2">Lý do override (bắt buộc, ≥ 6 ký tự)</label>
-              <textarea
-                value={overrideReason}
-                onChange={(e) => setOverrideReason(e.target.value)}
-                rows={3}
-                placeholder="VD: Khách hàng VIP huỷ đơn đột xuất, cần điều chỉnh -45% gấp."
-                className="w-full rounded-button border border-surface-3 bg-surface-1 px-3 py-2 text-table-sm text-text-1 outline-none focus:border-primary"
-              />
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <button
-                onClick={() => setOverrideOpen(null)}
-                className="rounded-button border border-surface-3 px-3 py-1.5 text-table-sm text-text-2 hover:bg-surface-1"
-              >
-                Huỷ
-              </button>
-              <button
-                onClick={submitOverride}
-                className="rounded-button bg-gradient-primary text-primary-foreground px-3 py-1.5 text-table-sm font-medium inline-flex items-center gap-1"
-              >
-                <CheckCircle2 className="h-3.5 w-3.5" /> Xác nhận override
-              </button>
-            </div>
+      {/* Override-reason dialog (SC Manager) */}
+      <Dialog open={overrideTarget !== null} onOpenChange={(open) => !open && setOverrideTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileWarning className="h-4 w-4 text-warning" />
+              Nhận điều chỉnh vượt biên
+            </DialogTitle>
+            <DialogDescription>
+              SC Manager xác nhận chấp nhận điều chỉnh ngoài biên ±tolerance.
+              Thao tác này được ghi vào audit log.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-caption text-text-2">Lý do (bắt buộc, ≥ 6 ký tự)</label>
+            <textarea
+              value={overrideReason}
+              onChange={(e) => setOverrideReason(e.target.value)}
+              rows={3}
+              placeholder="VD: Khách VIP CN-BD — dự án 50.000m² mới ký hôm nay"
+              className="w-full rounded-button border border-surface-3 bg-surface-1 px-3 py-2 text-table-sm outline-none focus:border-primary"
+            />
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOverrideTarget(null)}>Huỷ</Button>
+            <Button onClick={submitOverride}>
+              <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Xác nhận nhận
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <ScreenFooter actionCount={7} />
+      <ScreenFooter actionCount={6} />
     </AppLayout>
   );
 }
