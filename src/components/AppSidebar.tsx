@@ -113,6 +113,7 @@ const navGroups: NavGroup[] = [
       { kind: "item", titleKey: "nav.logicOps", icon: BookOpen, url: "/logic" },
       { kind: "item", titleKey: "nav.guide", icon: GraduationCap, url: "/guide" },
       { kind: "item", titleKey: "nav.scenarios", icon: FlaskConical, url: "/scenarios" },
+      { kind: "item", titleKey: "nav.compare", icon: GitCompare, url: "/compare" },
     ],
   },
 ];
