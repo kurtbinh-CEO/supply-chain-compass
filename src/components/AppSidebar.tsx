@@ -1,8 +1,8 @@
 import { NavLink } from "@/components/NavLink";
 import {
   ClipboardCheck, Activity, BarChart3, Handshake, Boxes,
-  Package, CalendarDays, GitBranch, Layers,
-  Truck, Users, Database, FileBarChart, Settings,
+  Package, CalendarDays, GitBranch,
+  Truck, Database, FileBarChart, Settings,
   ChevronLeft, Play, BookOpen, Building, GraduationCap, LayoutDashboard,
   AlertTriangle, RefreshCw,
 } from "lucide-react";
@@ -15,80 +15,138 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useI18n } from "@/components/i18n/I18nContext";
 import smartlogIcon from "@/assets/smartlog-icon.png";
 
+/* M1 — Sidebar restructure
+ *  - Daily ops: 4 items split bởi 3 phase labels (Chuẩn bị / Kết quả / Thực thi)
+ *  - Bỏ: Phân bổ (gộp /drp), Cổng NM (UNIS gõ tay), Vận chuyển (gộp /orders)
+ *  - Thêm Đồng bộ vào Quản trị
+ *  - Mỗi item daily ops có badge dynamic
+ */
+
+type DailyBadgeKey = "nm_cn_fresh" | "cn_adjust" | "exceptions" | "po_pending";
+
 interface NavItem {
+  kind: "item";
   titleKey: string;
   icon: React.ElementType;
   url: string;
   roles?: UserRole[];
+  badgeKey?: DailyBadgeKey;
 }
+
+interface PhaseLabel {
+  kind: "phase";
+  label: string;
+}
+
+type NavEntry = NavItem | PhaseLabel;
 
 interface NavGroup {
   labelKey: string;
-  items: NavItem[];
+  items: NavEntry[];
 }
 
 const navGroups: NavGroup[] = [
   {
     labelKey: "nav.overview",
     items: [
-      { titleKey: "nav.dashboard", icon: LayoutDashboard, url: "/" },
+      { kind: "item", titleKey: "nav.dashboard", icon: LayoutDashboard, url: "/" },
     ],
   },
   {
     labelKey: "nav.workplace",
     items: [
-      { titleKey: "nav.workspace", icon: ClipboardCheck, url: "/workspace" },
+      { kind: "item", titleKey: "nav.workspace", icon: ClipboardCheck, url: "/workspace" },
     ],
   },
   {
     labelKey: "nav.monitoring",
     items: [
-      { titleKey: "nav.monitoringItem", icon: Activity, url: "/monitoring" },
+      { kind: "item", titleKey: "nav.monitoringItem", icon: Activity, url: "/monitoring" },
     ],
   },
   {
     labelKey: "nav.monthlyPlan",
     items: [
-      { titleKey: "nav.demandReview", icon: BarChart3, url: "/demand" },
-      { titleKey: "nav.sopConsensus", icon: Handshake, url: "/sop" },
-      { titleKey: "nav.hubCommitment", icon: Boxes, url: "/hub" },
-      { titleKey: "nav.gapScenario", icon: AlertTriangle, url: "/gap-scenario" },
+      { kind: "item", titleKey: "nav.demandReview", icon: BarChart3, url: "/demand" },
+      { kind: "item", titleKey: "nav.sopConsensus", icon: Handshake, url: "/sop" },
+      { kind: "item", titleKey: "nav.hubCommitment", icon: Boxes, url: "/hub" },
+      { kind: "item", titleKey: "nav.gapScenario", icon: AlertTriangle, url: "/gap-scenario" },
     ],
   },
   {
     labelKey: "nav.dailyOps",
     items: [
-      { titleKey: "nav.nmSupply",      icon: Package,      url: "/supply" },          // F2-B1
-      { titleKey: "nav.demandWeekly",  icon: CalendarDays, url: "/demand-weekly" },   // F2-B2
-      { titleKey: "nav.drpAllocation", icon: GitBranch,    url: "/drp" },             // F2-B3
-      { titleKey: "nav.allocation",    icon: Layers,       url: "/allocation" },      // F2-B4
-      { titleKey: "nav.orders",        icon: Truck,        url: "/orders" },          // F2-B5/B6/B7
+      { kind: "phase", label: "Chuẩn bị" },
+      { kind: "item", titleKey: "nav.inventory",    icon: Package,      url: "/inventory",     badgeKey: "nm_cn_fresh" },
+      { kind: "item", titleKey: "nav.demandWeekly", icon: CalendarDays, url: "/demand-weekly", badgeKey: "cn_adjust" },
+      { kind: "phase", label: "Kết quả" },
+      { kind: "item", titleKey: "nav.drpResult",    icon: GitBranch,    url: "/drp",           badgeKey: "exceptions" },
+      { kind: "phase", label: "Thực thi" },
+      { kind: "item", titleKey: "nav.orders",       icon: Truck,        url: "/orders",        badgeKey: "po_pending" },
     ],
   },
   {
     labelKey: "nav.partners",
     items: [
-      { titleKey: "nav.cnPortal", icon: Building, url: "/cn-portal", roles: ["CN_MANAGER", "SC_MANAGER", "SALES"] },
-      { titleKey: "nav.supplierPortal", icon: Users, url: "/supplier-portal", roles: ["SC_MANAGER"] },
+      { kind: "item", titleKey: "nav.cnPortal", icon: Building, url: "/cn-portal", roles: ["CN_MANAGER", "SC_MANAGER", "SALES"] },
     ],
   },
   {
     labelKey: "nav.config",
     items: [
-      { titleKey: "nav.masterData", icon: Database,     url: "/master-data" },
-      { titleKey: "nav.sync",       icon: RefreshCw,    url: "/sync" },         // chuyển từ vận hành về quản trị
-      { titleKey: "nav.reports",    icon: FileBarChart, url: "/reports" },
-      { titleKey: "nav.configItem", icon: Settings,     url: "/config", roles: ["SC_MANAGER"] },
+      { kind: "item", titleKey: "nav.masterData", icon: Database,     url: "/master-data" },
+      { kind: "item", titleKey: "nav.sync",       icon: RefreshCw,    url: "/sync" },
+      { kind: "item", titleKey: "nav.reports",    icon: FileBarChart, url: "/reports" },
+      { kind: "item", titleKey: "nav.configItem", icon: Settings,     url: "/config", roles: ["SC_MANAGER"] },
     ],
   },
   {
     labelKey: "nav.support",
     items: [
-      { titleKey: "nav.logicOps", icon: BookOpen, url: "/logic" },
-      { titleKey: "nav.guide", icon: GraduationCap, url: "/guide" },
+      { kind: "item", titleKey: "nav.logicOps", icon: BookOpen, url: "/logic" },
+      { kind: "item", titleKey: "nav.guide", icon: GraduationCap, url: "/guide" },
     ],
   },
 ];
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Badge value resolver
+ *
+ * Tạm thời dùng dữ liệu giả lập từ WorkspaceContext (exceptions, approvals).
+ * Khi data thật có sẵn (M0: NM/CN freshness, /demand-weekly adjust progress,
+ * /orders pending PO list) sẽ wire vào đây.
+ * ─────────────────────────────────────────────────────────────────────────── */
+interface BadgeData { text: string; tone: "success" | "warning" | "danger" }
+
+function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
+  const { exceptions, approvals } = useWorkspace();
+
+  // Số PO/CN-adjust pending (mock: derive từ approvals)
+  const poPending = approvals.filter(a => a.type === "PO Release" || a.type === "Force-release").length;
+  const cnAdjustPending = approvals.filter(a => a.type === "CN Adjust").length;
+  const drpExceptions = exceptions.filter(e => e.type === "SHORTAGE").length;
+
+  return {
+    nm_cn_fresh:  { text: "5/5 · 12 CN", tone: "success" },
+    cn_adjust:    cnAdjustPending > 0
+      ? { text: `${4 + cnAdjustPending}/12`, tone: cnAdjustPending > 3 ? "danger" : "warning" }
+      : { text: "12/12", tone: "success" },
+    exceptions:   drpExceptions > 0
+      ? { text: String(drpExceptions), tone: drpExceptions > 3 ? "danger" : "warning" }
+      : { text: "✓", tone: "success" },
+    po_pending:   poPending > 0
+      ? { text: String(poPending), tone: poPending > 3 ? "danger" : "warning" }
+      : { text: "✓", tone: "success" },
+  };
+}
+
+function badgeClasses(tone: BadgeData["tone"]) {
+  switch (tone) {
+    case "success": return "bg-success-bg text-success";
+    case "warning": return "bg-warning-bg text-warning";
+    case "danger":  return "bg-danger-bg text-danger";
+  }
+}
 
 export function AppSidebar() {
   const { collapsed, toggle } = useSidebarState();
@@ -98,10 +156,11 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useI18n();
+  const dailyBadges = useDailyBadges();
 
   const handleStartWorkflow = (type: "daily" | "monthly") => {
     startWorkflow(type);
-    navigate(type === "daily" ? "/supply" : "/demand");
+    navigate(type === "daily" ? "/inventory" : "/demand");
   };
 
   return (
@@ -139,10 +198,14 @@ export function AppSidebar() {
       {/* Nav groups */}
       <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
         {navGroups.map((group) => {
-          const visibleItems = group.items.filter((item) =>
-            !item.roles || item.roles.includes(user.role)
-          );
-          if (visibleItems.length === 0) return null;
+          // Filter ra items hiển thị (theo role) — phase labels luôn hiện
+          const visibleEntries = group.items.filter((entry) => {
+            if (entry.kind === "phase") return true;
+            return !entry.roles || entry.roles.includes(user.role);
+          });
+          // Nếu group không còn item nào thì ẩn
+          const hasItems = visibleEntries.some(e => e.kind === "item");
+          if (!hasItems) return null;
 
           return (
             <div key={group.labelKey}>
@@ -152,7 +215,31 @@ export function AppSidebar() {
                 </p>
               )}
               <div className="space-y-0.5">
-                {visibleItems.map((item) => {
+                {visibleEntries.map((entry, idx) => {
+                  // ── Phase label ──
+                  if (entry.kind === "phase") {
+                    if (collapsed) {
+                      // Trong mini mode: chỉ vẽ separator mỏng
+                      return (
+                        <div
+                          key={`phase-${idx}`}
+                          className="mx-2 my-1.5 h-px bg-surface-3/60"
+                          aria-hidden
+                        />
+                      );
+                    }
+                    return (
+                      <div
+                        key={`phase-${idx}`}
+                        className="px-3 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-[0.3px] text-text-3/70"
+                      >
+                        {entry.label}
+                      </div>
+                    );
+                  }
+
+                  // ── Nav item ──
+                  const item = entry;
                   const isActive = location.pathname === item.url;
                   const handleNavClick = (e: React.MouseEvent) => {
                     if (isBarVisible && !isRouteInWorkflow(item.url) && item.url !== "/workspace" && item.url !== "/") {
@@ -160,6 +247,8 @@ export function AppSidebar() {
                       requestLeave(item.url);
                     }
                   };
+                  const badge = item.badgeKey ? dailyBadges[item.badgeKey] : null;
+
                   return (
                     <NavLink
                       key={item.url}
@@ -180,9 +269,21 @@ export function AppSidebar() {
                       {!collapsed && (
                         <>
                           <span className="flex-1 truncate">{t(item.titleKey)}</span>
+                          {/* Workspace pending count */}
                           {item.url === "/workspace" && pendingCount > 0 && (
                             <span className="rounded-full bg-danger-bg text-danger text-caption font-semibold px-1.5 py-0.5 min-w-[20px] text-center">
                               {pendingCount}
+                            </span>
+                          )}
+                          {/* Daily-ops dynamic badge */}
+                          {badge && (
+                            <span
+                              className={cn(
+                                "rounded-full text-[10px] font-semibold px-1.5 py-0.5 leading-tight tabular-nums",
+                                badgeClasses(badge.tone),
+                              )}
+                            >
+                              {badge.text}
                             </span>
                           )}
                         </>

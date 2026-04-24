@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { useActivityLog } from "@/components/ActivityLogContext";
 
 export type WorkflowType = "daily" | "monthly" | null;
@@ -11,27 +11,26 @@ export interface WorkflowStep {
   completedAt?: number; // timestamp
 }
 
+/* M1 — Daily 4 bước (gộp Đồng bộ → Tồn kho; bỏ Phân bổ/Đóng hàng/Phản hồi) */
 const dailySteps: Omit<WorkflowStep, "status" | "completedAt">[] = [
-  { label: "Đồng bộ",       routes: ["/sync"],       description: "F2-B1: Bravo + NM upload" },
-  { label: "CN điều chỉnh", routes: ["/cn-portal"],  description: "F2-B2: ±30% trước cutoff" },
-  { label: "DRP Netting",   routes: ["/drp"],        description: "F2-B3: Net req per CN×SKU" },
-  { label: "Phân bổ",       routes: ["/allocation"], description: "F2-B4: 6-layer LCNB first" },
-  { label: "Đóng hàng",     routes: ["/transport"],  description: "F2-B5: Container+Hold/Ship" },
-  { label: "Duyệt PO/TO",   routes: ["/orders"],     description: "F2-B6/B7: ATP+Confirm→ERP" },
-  { label: "Phản hồi",      routes: ["/monitoring"], description: "F2-B8: MAPE→SS→Capital" },
+  { label: "Kiểm tra data",  routes: ["/inventory", "/supply"], description: "Tồn NM + CN tươi (< 24h)" },
+  { label: "CN điều chỉnh",  routes: ["/demand-weekly"],        description: "SC Manager duyệt ±30%" },
+  { label: "Xem DRP",        routes: ["/drp"],                  description: "0 exception còn pending" },
+  { label: "Duyệt PO",       routes: ["/orders"],               description: "0 PO chờ duyệt" },
 ];
 
+/* M1 — Monthly 6 bước */
 const monthlySteps: Omit<WorkflowStep, "status" | "completedAt">[] = [
-  { label: "Nhập FC",         routes: ["/demand"],       description: "F1-B1: FC 2 cấp + B2B" },
-  { label: "S&OP Consensus",  routes: ["/sop"],          description: "F1-B2: Lock demand" },
-  { label: "Booking Netting", routes: ["/supply"],       description: "F1-B3: Hub+Pipeline−FC−SS" },
-  { label: "Cam kết NM",      routes: ["/hub"],          description: "F1-B4/B5: Hard/Firm/Soft" },
-  { label: "Hub ảo",          routes: ["/hub"],          description: "F1-B6: Available formula" },
-  { label: "Gap & Kịch bản",  routes: ["/gap-scenario"], description: "F1-B7: 4 scenarios" },
+  { label: "Nhập nhu cầu",   routes: ["/demand"],       description: "FC 2 cấp + B2B" },
+  { label: "Đồng thuận S&OP", routes: ["/sop"],          description: "Lock demand tháng" },
+  { label: "Cam kết NM",     routes: ["/hub"],          description: "Hard / Firm / Soft" },
+  { label: "Hub ảo",         routes: ["/hub"],          description: "Available formula" },
+  { label: "Gap",            routes: ["/gap-scenario"], description: "Khoảng cách cung/cầu" },
+  { label: "Kịch bản",       routes: ["/gap-scenario"], description: "4 kịch bản đối phó" },
 ];
 
 export const feedbackLoops = [
-  { from: "/monitoring", to: "/supply",       label: "MAPE → SS Hub recalc" },
+  { from: "/monitoring", to: "/inventory",    label: "MAPE → SS Hub recalc" },
   { from: "/monitoring", to: "/drp",          label: "Trust → SS CN adjust" },
   { from: "/orders",     to: "/hub",          label: "PO released → Hub ảo" },
   { from: "/orders",     to: "/gap-scenario", label: "Released → Gap update" },
@@ -125,7 +124,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     setSessionStartTime(Date.now());
     addEntry({
       type: "workflow",
-      route: type === "daily" ? "/supply" : "/demand",
+      route: type === "daily" ? "/inventory" : "/demand",
       user: "Người dùng",
       message: `Bắt đầu phiên ${type === "daily" ? "Vận hành ngày" : "Kế hoạch tháng"}`,
     });
