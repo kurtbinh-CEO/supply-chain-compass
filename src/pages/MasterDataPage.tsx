@@ -159,6 +159,7 @@ function ItemsTab() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<MergedItem | null>(null);
   const [deleting, setDeleting] = useState<MergedItem | null>(null);
+  const [historyCode, setHistoryCode] = useState<string | null>(null);
 
   const { data: cloudItems = [] } = useMasterItems();
   const createItem = useCreateMasterItem();
