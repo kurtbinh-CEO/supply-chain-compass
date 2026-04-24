@@ -212,9 +212,19 @@ function ItemsTab() {
         excelImport={{
           entityName: "mã hàng",
           fields: ITEM_IMPORT_FIELDS,
-          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} mã hàng (chưa persist)`),
+          onCommit: async (importedRows) => {
+            await bulkInsertItems.mutateAsync(
+              importedRows.map((r) => ({
+                code: String(r.code),
+                name: String(r.name),
+                nm_id: String(r.nmId),
+                category: r.category ? String(r.category) : null,
+                unit: r.unit ? String(r.unit) : "m²",
+                unit_price: Number(r.unitPrice ?? 0),
+              })),
+            );
+          },
         }}
-        onImport={(src) => toast.success(`Nhập mã hàng qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "ma_hang",
