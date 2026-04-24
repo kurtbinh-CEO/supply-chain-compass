@@ -220,7 +220,6 @@ export default function DemandPage() {
         <ScreenHeader
           title="Rà soát nhu cầu"
           subtitle={planLocked ? `Chế độ chỉ xem — ${planCycle.label} đã khóa` : ""}
-          actions={<PlanningPeriodSelector />}
           badges={
             <>
               <button
@@ -238,18 +237,25 @@ export default function DemandPage() {
             </>
           }
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <PlanningPeriodSelector />
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setActualOpen(true)}
+                disabled={planLocked}
                 className="h-8 gap-1.5"
-                title="Cập nhật doanh thu thực tế (Bravo / Excel / Tay)"
+                title={planLocked ? "Kỳ đã khóa — chỉ xem" : "Cập nhật doanh thu thực tế (Bravo / Excel / Tay)"}
               >
                 <Inbox className="h-3.5 w-3.5" />
                 Nhập thực tế
               </Button>
-              <Button size="sm" onClick={() => setImporterOpen(true)} className="h-8 gap-1.5">
+              <Button
+                size="sm"
+                onClick={() => setImporterOpen(true)}
+                disabled={planLocked}
+                className="h-8 gap-1.5"
+              >
                 <Inbox className="h-3.5 w-3.5" />
                 {activeTab === "b2b" ? "Nhập B2B" : "Nhập FC"}
               </Button>
