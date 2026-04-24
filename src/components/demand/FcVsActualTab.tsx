@@ -255,6 +255,26 @@ export function FcVsActualTab() {
             ],
             accessor: (r) => r.model,
           },
+          {
+            key: "source",
+            label: "Nguồn",
+            sortable: true,
+            width: 110,
+            filter: "enum",
+            filterOptions: [
+              { value: "real", label: "Thực tế" },
+              { value: "mock", label: "Lịch sử (mock)" },
+            ],
+            accessor: (r) => r.source,
+            render: (r) =>
+              r.source === "real" ? (
+                <span className="inline-flex items-center gap-1 text-table-sm font-medium text-success">
+                  <Database className="h-3 w-3" /> Thực tế
+                </span>
+              ) : (
+                <span className="text-table-sm text-text-3">Lịch sử</span>
+              ),
+          },
         ];
         return (
           <SmartTable<MonthRow>
