@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
+import { ExcelImportWizard, type ImportField } from "@/components/master/ExcelImportWizard";
 
 /* ════════════════════════════════════════════════════════════════════════ */
 /* CrudToolbar                                                              */
