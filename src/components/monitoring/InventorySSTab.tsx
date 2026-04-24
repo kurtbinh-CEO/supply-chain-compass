@@ -13,6 +13,7 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useSafetyStock } from "@/components/SafetyStockContext";
+import { SkuDetailSheet } from "@/components/SkuDetailSheet";
 
 /* ═══ DATA ═══ */
 const invTrendBase = Array.from({ length: 30 }, (_, i) => {
@@ -94,6 +95,7 @@ export function InventorySSTab({ scale: s }: Props) {
   const [simOpen, setSimOpen] = useState(false);
   const [simSku, setSimSku] = useState<typeof ssSkuData[0] | null>(null);
   const [simZ, setSimZ] = useState(1.65);
+  const [skuSheet, setSkuSheet] = useState<string | null>(null);
 
   const cnData = baseCnData.map((r) => ({
     ...r,
@@ -365,7 +367,14 @@ export function InventorySSTab({ scale: s }: Props) {
                           <>
                             <tr key={key} className={cn("border-b border-surface-3/30 bg-surface-0 animate-fade-in", sk.ssGap < 0 && "bg-danger-bg/10")}>
                               <td />
-                              <td className="px-3 py-2 text-table text-text-2 pl-6">↳ {sk.item} {sk.variant}</td>
+                              <td className="px-3 py-2 text-table text-text-2 pl-6">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setSkuSheet(`${sk.item} ${sk.variant}`); }}
+                                  className="font-mono text-primary hover:underline"
+                                >
+                                  ↳ {sk.item} {sk.variant}
+                                </button>
+                              </td>
                               <td className="px-3 py-2 text-table tabular-nums text-text-3">{sk.ton.toLocaleString()}</td>
                               <td className="px-3 py-2 text-table tabular-nums text-text-3">{sk.pipeline > 0 ? sk.pipeline.toLocaleString() : "—"}</td>
                               <td className="px-3 py-2 text-table tabular-nums text-text-3">{sk.ssTarget.toLocaleString()}</td>
@@ -557,6 +566,7 @@ export function InventorySSTab({ scale: s }: Props) {
           )}
         </DialogContent>
       </Dialog>
+      <SkuDetailSheet open={skuSheet !== null} onClose={() => setSkuSheet(null)} sku={skuSheet} />
     </div>
   );
 }
