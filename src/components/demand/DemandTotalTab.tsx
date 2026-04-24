@@ -6,7 +6,7 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 import { toast } from "sonner";
 import { ViewPivotToggle, usePivotMode, CnGapBadge } from "@/components/ViewPivotToggle";
 import type { DemandCnSummary } from "@/hooks/useDemandForecasts";
-import { BRANCHES, DEMAND_FC, SKU_BASES } from "@/data/unis-enterprise-dataset";
+import { BRANCHES, DEMAND_FC, SKU_BASES, SKU_VARIANTS } from "@/data/unis-enterprise-dataset";
 import { FcSourceBadge } from "@/components/demand/FcSourceBadge";
 
 /* ────────────────────────────────────────────────────────────────────── */
@@ -192,6 +192,10 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
   const [view, setView] = useState<View>("12m");
   const [expandedCns, setExpandedCns] = useState<Set<string>>(new Set());
   const [expandedSkus, setExpandedSkus] = useState<Set<string>>(new Set());
+  /** L3 — variants opened under a CN→SKU pair, keyed by `${cnCode}::${skuBase}`. */
+  const [expandedCnSkus, setExpandedCnSkus] = useState<Set<string>>(new Set());
+  /** L3 (SKU-first) — CN→variant breakdown opened under a SKU→CN pair. */
+  const [expandedSkuCns, setExpandedSkuCns] = useState<Set<string>>(new Set());
   const [overrideModal, setOverrideModal] = useState<{ sku: string; value: number } | null>(null);
   const [pivotMode, setPivotMode] = usePivotMode("demand");
   const [fcVersion, setFcVersion] = useState<FcVersion>("v3");
@@ -217,6 +221,29 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
       if (next.has(skuKey)) next.delete(skuKey); else next.add(skuKey);
       return next;
     });
+  };
+
+  const toggleCnSku = (key: string) => {
+    setExpandedCnSkus(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleSkuCn = (key: string) => {
+    setExpandedSkuCns(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  /** Variant split per SKU base. Phú Mỹ bases ship only A4+B2 (see dataset). */
+  const variantSplit = (baseCode: string): Array<{ tag: "A4" | "B2" | "C1"; share: number }> => {
+    const variants = SKU_VARIANTS.filter(v => v.baseCode === baseCode);
+    if (variants.length === 2) return [{ tag: "A4", share: 0.62 }, { tag: "B2", share: 0.38 }];
+    return [{ tag: "A4", share: 0.50 }, { tag: "B2", share: 0.30 }, { tag: "C1", share: 0.20 }];
   };
 
   /* ── Single source of truth: DEMAND_FC (12 CN × 15 SKU bases ≈ 47 000 m²) ── */
