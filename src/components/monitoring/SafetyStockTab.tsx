@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { StatusChip } from "@/components/StatusChip";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { Pencil } from "lucide-react";
+import { Pencil, Shield, History } from "lucide-react";
 import { toast } from "sonner";
 import { TermTooltip } from "@/components/TermTooltip";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
@@ -242,6 +242,11 @@ export function SafetyStockTab() {
             defaultDensity="normal"
             getRowId={(r) => `${r.node}-${r.sku}`}
             rowSeverity={(r) => r.status === "Thiếu hàng" ? "shortage" : r.status === "Thủ công" ? "watch" : "ok"}
+            emptyState={{
+              icon: <Shield />,
+              title: "Chưa có mục tiêu SS nào",
+              description: "Mục tiêu Safety Stock sẽ tự sinh từ FC + LT + service level (mặc định 95%) cho từng node × SKU.",
+            }}
           />
         </div>
 
@@ -309,6 +314,11 @@ export function SafetyStockTab() {
         data={changeLogs}
         defaultDensity="normal"
         getRowId={(r, i) => `${r.date}-${r.sku}-${i}`}
+        emptyState={{
+          icon: <History />,
+          title: "Chưa có thay đổi SS nào",
+          description: "Mọi điều chỉnh Safety Stock (manual override, AI suggest, batch update) sẽ được log tại đây.",
+        }}
       />
 
       {/* D: Biểu đồ xu hướng FC→SS→WC */}

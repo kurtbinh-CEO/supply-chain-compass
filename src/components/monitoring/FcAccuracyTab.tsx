@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { StatusChip } from "@/components/StatusChip";
-import { Shield, TrendingDown, TrendingUp, ArrowRight } from "lucide-react";
+import { Shield, TrendingDown, TrendingUp, ArrowRight, Brain } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useFcAccuracy } from "@/hooks/useMonitoringData";
@@ -132,6 +132,11 @@ export function FcAccuracyTab() {
           defaultDensity="normal"
           getRowId={(r) => r.name}
           rowSeverity={(r) => (r.optimal ? "ok" : "watch")}
+          emptyState={{
+            icon: <Brain />,
+            title: "Chưa có mô hình nào để so sánh",
+            description: "Cần ít nhất 12 tuần dữ liệu FC + Actual để hệ thống đánh giá MAPE và đề xuất mô hình tối ưu.",
+          }}
         />
       </div>
 
