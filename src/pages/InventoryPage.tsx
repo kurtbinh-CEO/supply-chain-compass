@@ -454,6 +454,7 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
           )}
         />
       )}
+      <SkuDetailSheet open={skuSheet !== null} onClose={() => setSkuSheet(null)} sku={skuSheet} />
     </div>
   );
 }
@@ -867,6 +868,7 @@ function BranchesTab({ rows }: { rows: BranchRow[] }) {
           )}
         />
       )}
+      <SkuDetailSheet open={skuSheet !== null} onClose={() => setSkuSheet(null)} sku={skuSheet} />
     </div>
   );
 }
