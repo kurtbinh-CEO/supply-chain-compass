@@ -16,6 +16,7 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { TERMS } from "@/components/i18n/terms";
 import { toast } from "sonner";
 import { CONFIG_KEYS, type ConfigGroup, type ConfigKey as DsConfigKey } from "@/data/unis-enterprise-dataset";
+import { KpiTargetsTab } from "@/components/config/KpiTargetsTab";
 
 /* ── Tab structure (8 functional groupings) ── */
 type TabDef = {
@@ -30,6 +31,11 @@ const TABS: TabDef[] = [
   {
     v: "integration",
     l: "Tích hợp",
+    groups: [],
+  },
+  {
+    v: "kpi_targets",
+    l: "Mục tiêu KPI",
     groups: [],
   },
   {
@@ -429,24 +435,31 @@ export default function ConfigPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-surface-1 border border-surface-3 mb-4 flex-wrap h-auto">
-          {TABS.map((t) => (
-            <TabsTrigger
-              key={t.v}
-              value={t.v}
-              className="data-[state=active]:bg-surface-2 data-[state=active]:text-text-1 text-text-2 text-table"
-            >
-              {t.l}
-              <span className="ml-1.5 text-caption text-text-3">
-                ({visibleByTab[t.v]?.length ?? 0})
-              </span>
-            </TabsTrigger>
-          ))}
+          {TABS.map((t) => {
+            const isMeta = t.v === "integration" || t.v === "kpi_targets";
+            return (
+              <TabsTrigger
+                key={t.v}
+                value={t.v}
+                className="data-[state=active]:bg-surface-2 data-[state=active]:text-text-1 text-text-2 text-table"
+              >
+                {t.l}
+                {!isMeta && (
+                  <span className="ml-1.5 text-caption text-text-3">
+                    ({visibleByTab[t.v]?.length ?? 0})
+                  </span>
+                )}
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
 
         {TABS.map((t) => (
           <TabsContent key={t.v} value={t.v}>
             {t.v === "integration" ? (
               <IntegrationsTab />
+            ) : t.v === "kpi_targets" ? (
+              <KpiTargetsTab />
             ) : (
               <ConfigTable rows={visibleByTab[t.v] ?? []} onUpdate={handleUpdate} />
             )}
