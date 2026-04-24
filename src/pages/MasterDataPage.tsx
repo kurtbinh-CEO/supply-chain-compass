@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Search, Plus, Upload, X, AlertTriangle, CheckCircle2, Wrench, Inbox, Zap, FileSpreadsheet, PenLine } from "lucide-react";
+import { Search, Plus, Upload, X, AlertTriangle, CheckCircle2, Wrench, Inbox, Zap, FileSpreadsheet, PenLine, History } from "lucide-react";
+import { MasterAuditPanel } from "@/components/master/MasterAuditPanel";
 import { toast } from "sonner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PriceListsTab } from "@/components/master/PriceListsTab";
@@ -158,6 +159,7 @@ function ItemsTab() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<MergedItem | null>(null);
   const [deleting, setDeleting] = useState<MergedItem | null>(null);
+  const [historyCode, setHistoryCode] = useState<string | null>(null);
 
   const { data: cloudItems = [] } = useMasterItems();
   const createItem = useCreateMasterItem();
@@ -288,7 +290,7 @@ function ItemsTab() {
                   </span>
                 </td>
                 <td className="px-4 py-2.5">
-                  <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} />
+                  <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} onHistory={() => setHistoryCode(b.code)} />
                 </td>
               </tr>
             ))}
@@ -380,6 +382,13 @@ function ItemsTab() {
           setDeleting(null);
         }}
       />
+
+      <MasterAuditPanel
+        open={historyCode !== null}
+        onOpenChange={(v) => !v && setHistoryCode(null)}
+        entity="item"
+        entityCode={historyCode ?? undefined}
+      />
     </div>
   );
 }
@@ -424,6 +433,7 @@ function SuppliersTab() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<MergedFactory | null>(null);
   const [deleting, setDeleting] = useState<MergedFactory | null>(null);
+  const [historyCode, setHistoryCode] = useState<string | null>(null);
 
   const { data: cloudFactories = [] } = useMasterFactories();
   const createFactory = useCreateMasterFactory();
@@ -539,7 +549,7 @@ function SuppliersTab() {
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{fmtVnd(f.priceTier1)}</td>
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{fmtVnd(f.priceTier2)}</td>
                 <td className="px-4 py-2.5">
-                  <RowActions onEdit={() => setEditing(f)} onDelete={() => setDeleting(f)} />
+                  <RowActions onEdit={() => setEditing(f)} onDelete={() => setDeleting(f)} onHistory={() => setHistoryCode(f.code)} />
                 </td>
               </tr>
             ))}
@@ -625,11 +635,16 @@ function SuppliersTab() {
           setDeleting(null);
         }}
       />
+
+      <MasterAuditPanel
+        open={historyCode !== null}
+        onOpenChange={(v) => !v && setHistoryCode(null)}
+        entity="factory"
+        entityCode={historyCode ?? undefined}
+      />
     </div>
   );
 }
-
-/* ────────────────────────────────────────────────────────────────────────── */
 /* TAB 3 — CN (12 branches) with region, lat/lng, z-factor, SS               */
 /* ────────────────────────────────────────────────────────────────────────── */
 const BRANCH_FIELDS: FormField[] = [
@@ -663,6 +678,7 @@ function BranchesTab() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<MergedBranch | null>(null);
   const [deleting, setDeleting] = useState<MergedBranch | null>(null);
+  const [historyCode, setHistoryCode] = useState<string | null>(null);
 
   const { data: cloudBranches = [] } = useMasterBranches();
   const createBranch = useCreateMasterBranch();
@@ -757,7 +773,7 @@ function BranchesTab() {
                   <td className="px-4 py-2.5 text-text-2">{sl}</td>
                   <td className="px-4 py-2.5 text-text-2">{b.manager}</td>
                   <td className="px-4 py-2.5">
-                    <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} />
+                    <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} onHistory={() => setHistoryCode(b.code)} />
                   </td>
                 </tr>
               );
@@ -832,6 +848,13 @@ function BranchesTab() {
           }
           setDeleting(null);
         }}
+      />
+
+      <MasterAuditPanel
+        open={historyCode !== null}
+        onOpenChange={(v) => !v && setHistoryCode(null)}
+        entity="branch"
+        entityCode={historyCode ?? undefined}
       />
     </div>
   );
@@ -1041,6 +1064,7 @@ function ContainersTab() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<MergedContainer | null>(null);
   const [deleting, setDeleting] = useState<MergedContainer | null>(null);
+  const [historyCode, setHistoryCode] = useState<string | null>(null);
 
   const { data: cloudContainers = [] } = useMasterContainers();
   const createContainer = useCreateMasterContainer();
@@ -1139,7 +1163,7 @@ function ContainersTab() {
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.costPerKm.toLocaleString("vi-VN")}</td>
                 <td className="px-4 py-2.5 text-text-3">{c.note}</td>
                 <td className="px-4 py-2.5">
-                  <RowActions onEdit={() => setEditing(c)} onDelete={() => setDeleting(c)} />
+                  <RowActions onEdit={() => setEditing(c)} onDelete={() => setDeleting(c)} onHistory={() => setHistoryCode(c.code)} />
                 </td>
               </tr>
             ))}
@@ -1220,12 +1244,16 @@ function ContainersTab() {
           setDeleting(null);
         }}
       />
+
+      <MasterAuditPanel
+        open={historyCode !== null}
+        onOpenChange={(v) => !v && setHistoryCode(null)}
+        entity="container"
+        entityCode={historyCode ?? undefined}
+      />
     </div>
   );
 }
-
-/* ────────────────────────────────────────────────────────────────────────── */
-/* TAB 7 — Chất lượng dữ liệu                                                 */
 /* ────────────────────────────────────────────────────────────────────────── */
 interface DataIssue {
   id: string;
@@ -1453,12 +1481,20 @@ export default function MasterDataPage() {
   const { conflict: mdConflict, clearConflict: clearMdConflict } = useVersionConflict();
   const [activeTab, setActiveTab] = useState("items");
   const [importerOpen, setImporterOpen] = useState<null | "price" | "freight">(null);
+  const [auditOpen, setAuditOpen] = useState(false);
 
   const importerLabel: Record<string, { title: string; sources: DataSource[] }> = {
     price: { title: "Nhập bảng giá NM", sources: PRICE_SOURCES },
     freight: { title: "Nhập cước vận chuyển", sources: FREIGHT_SOURCES },
   };
   const current = importerOpen ? importerLabel[importerOpen] : null;
+
+  // Map active tab → audit entity filter
+  const auditEntity = activeTab === "items" ? "item"
+    : activeTab === "suppliers" ? "factory"
+    : activeTab === "branches" ? "branch"
+    : activeTab === "containers" ? "container"
+    : undefined;
 
   return (
     <AppLayout>
@@ -1487,6 +1523,12 @@ export default function MasterDataPage() {
         />
       )}
 
+      <MasterAuditPanel
+        open={auditOpen}
+        onOpenChange={setAuditOpen}
+        entity={auditEntity}
+      />
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex items-center justify-between mb-4 gap-3">
           <TabsList className="bg-surface-1 border border-surface-3 flex flex-wrap h-auto">
@@ -1501,18 +1543,30 @@ export default function MasterDataPage() {
             ))}
           </TabsList>
 
-          {activeTab === "pricelists" && (
-            <Button size="sm" onClick={() => setImporterOpen("price")} className="h-8 gap-1.5 shrink-0">
-              <Inbox className="h-3.5 w-3.5" />
-              Nhập bảng giá
+          <div className="flex items-center gap-2 shrink-0">
+            {activeTab === "pricelists" && (
+              <Button size="sm" onClick={() => setImporterOpen("price")} className="h-8 gap-1.5">
+                <Inbox className="h-3.5 w-3.5" />
+                Nhập bảng giá
+              </Button>
+            )}
+            {activeTab === "routes" && (
+              <Button size="sm" onClick={() => setImporterOpen("freight")} className="h-8 gap-1.5">
+                <Inbox className="h-3.5 w-3.5" />
+                Nhập cước
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setAuditOpen(true)}
+              className="h-8 gap-1.5"
+              title={auditEntity ? `Lịch sử thay đổi tab này` : "Lịch sử thay đổi Master Data"}
+            >
+              <History className="h-3.5 w-3.5" />
+              Lịch sử
             </Button>
-          )}
-          {activeTab === "routes" && (
-            <Button size="sm" onClick={() => setImporterOpen("freight")} className="h-8 gap-1.5 shrink-0">
-              <Inbox className="h-3.5 w-3.5" />
-              Nhập cước
-            </Button>
-          )}
+          </div>
         </div>
 
         <TabsContent value="items"><ItemsTab /></TabsContent>
