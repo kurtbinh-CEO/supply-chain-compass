@@ -1151,7 +1151,7 @@ function ContainersTab() {
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.costPerKm.toLocaleString("vi-VN")}</td>
                 <td className="px-4 py-2.5 text-text-3">{c.note}</td>
                 <td className="px-4 py-2.5">
-                  <RowActions onEdit={() => setEditing(c)} onDelete={() => setDeleting(c)} />
+                  <RowActions onEdit={() => setEditing(c)} onDelete={() => setDeleting(c)} onHistory={() => setHistoryCode(c.code)} />
                 </td>
               </tr>
             ))}
