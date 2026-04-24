@@ -175,49 +175,31 @@ export function HubOverviewTab({ scale, totals }: Props) {
 
         {compareOpen && (
           <div className="px-5 py-4">
-            <table className="w-full text-table-sm">
-              <thead>
-                <tr className="text-left text-caption uppercase text-text-3 tracking-wider border-b border-surface-3">
-                  <th className="py-2 font-medium">NM</th>
-                  <th className="py-2 font-medium">SKU</th>
-                  <th className="py-2 font-medium text-right">T4 (m²)</th>
-                  <th className="py-2 font-medium text-right">T5 (m²)</th>
-                  <th className="py-2 font-medium text-right">Δ%</th>
-                  <th className="py-2 font-medium">Lý do</th>
-                </tr>
-              </thead>
-              <tbody>
-                {compareRows.map((r, i) => {
-                  const delta = ((r.curr - r.prev) / r.prev) * 100;
-                  const big = Math.abs(delta) >= 30;
-                  return (
-                    <tr key={i} className="border-b border-surface-3/40 hover:bg-surface-2/40">
-                      <td className="py-2 text-text-1 font-medium">{r.nm}</td>
-                      <td className="py-2 text-text-2 font-mono">{r.sku}</td>
-                      <td className="py-2 text-right text-text-2 tabular-nums">{r.prev.toLocaleString()}</td>
-                      <td className="py-2 text-right text-text-1 tabular-nums">{r.curr.toLocaleString()}</td>
-                      <td className={cn("py-2 text-right tabular-nums font-medium", delta >= 0 ? "text-success" : "text-danger")}>
-                        <span className="inline-flex items-center gap-1">
-                          {delta >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                          {delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
-                          {big && delta < 0 && <span className="ml-1">🔴</span>}
-                        </span>
-                      </td>
-                      <td className="py-2 text-text-3 text-caption">{r.reason || "—"}</td>
-                    </tr>
-                  );
-                })}
-                <tr className="font-semibold bg-surface-2/40">
-                  <td className="py-2 text-text-1" colSpan={2}>Tổng</td>
-                  <td className="py-2 text-right text-text-1 tabular-nums">{totalPrev.toLocaleString()}</td>
-                  <td className="py-2 text-right text-text-1 tabular-nums">{totalCurr.toLocaleString()}</td>
-                  <td className={cn("py-2 text-right tabular-nums", totalDelta >= 0 ? "text-success" : "text-danger")}>
+            <SmartTable<CommitmentRow>
+              screenId="hub-overview-compare"
+              title="Cam kết NM — T5 vs T4"
+              exportFilename="hub-nm-commitment-compare"
+              defaultDensity="compact"
+              columns={compareColumns}
+              data={compareRows}
+              getRowId={(r) => `${r.nm}-${r.sku}`}
+              rowSeverity={(r) => {
+                const d = ((r.curr - r.prev) / r.prev) * 100;
+                return d <= -30 ? "shortage" : d < 0 ? "watch" : undefined;
+              }}
+              summaryRow={{
+                nm: <span className="font-semibold text-text-1">Tổng</span>,
+                sku: "",
+                prev: <span className="tabular-nums font-semibold text-text-1">{totalPrev.toLocaleString()}</span>,
+                curr: <span className="tabular-nums font-semibold text-text-1">{totalCurr.toLocaleString()}</span>,
+                delta: (
+                  <span className={cn("tabular-nums font-semibold", totalDelta >= 0 ? "text-success" : "text-danger")}>
                     {totalDelta >= 0 ? "+" : ""}{totalDelta.toFixed(1)}%
-                  </td>
-                  <td />
-                </tr>
-              </tbody>
-            </table>
+                  </span>
+                ),
+                reason: "",
+              }}
+            />
           </div>
         )}
       </section>
