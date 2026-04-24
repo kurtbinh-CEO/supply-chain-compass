@@ -92,10 +92,11 @@ export function PivotChildTable({
             onClick={(e) => {
               e.stopPropagation();
               const v = r.navValue ?? r.key;
-              // SKU click → popup detail tại chỗ (không navigate)
+              // Mọi click mã thực thể đều mở popup tại chỗ — không navigate.
+              // Cross-link sang DRP/Supply chỉ khi user click [Xem ... →] trong popup.
               if (r.navKind === "sku") setSkuSheet(v);
-              else if (r.navKind === "cn") navigate(`/drp?cn=${encodeURIComponent(v)}`);
-              else if (r.navKind === "nm") navigate(`/supply?nm=${encodeURIComponent(v)}`);
+              else if (r.navKind === "cn") setEntitySheet({ kind: "cn", code: v });
+              else if (r.navKind === "nm") setEntitySheet({ kind: "nm", code: v });
             }}
           >
             {r.label}
