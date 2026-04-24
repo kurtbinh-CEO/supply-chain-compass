@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
 import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    §  Types
