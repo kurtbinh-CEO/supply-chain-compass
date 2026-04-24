@@ -1622,6 +1622,20 @@ export function getFcActualYtd(year = 2026): number {
   return FC_ACTUAL.filter((r) => r.year === year).reduce((s, r) => s + r.actualQtyM2, 0);
 }
 
+/** Tổng actual qty per (year, month). */
+export function getFcActualByMonth(year: number, month: number): number {
+  return FC_ACTUAL
+    .filter((r) => r.year === year && r.month === month)
+    .reduce((s, r) => s + r.actualQtyM2, 0);
+}
+
+/** Số tháng đã có actual data cho năm (dùng để biết "tháng đang chạy"). */
+export function getFcActualMonthsClosed(year = 2026): number[] {
+  const months = new Set<number>();
+  FC_ACTUAL.filter((r) => r.year === year).forEach((r) => months.add(r.month));
+  return Array.from(months).sort((a, b) => a - b);
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
  * §M17  KPI_TARGETS — Mục tiêu KPI lãnh đạo
  * ════════════════════════════════════════════════════════════════════════════ */
