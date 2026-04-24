@@ -422,10 +422,38 @@ const SUPPLIER_IMPORT_FIELDS: ImportField[] = [
 function SuppliersTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState<typeof FACTORIES[number] | null>(null);
-  const [deleting, setDeleting] = useState<typeof FACTORIES[number] | null>(null);
+  const [editing, setEditing] = useState<MergedFactory | null>(null);
+  const [deleting, setDeleting] = useState<MergedFactory | null>(null);
 
-  const rows = FACTORIES.filter(
+  const { data: cloudFactories = [] } = useMasterFactories();
+  const createFactory = useCreateMasterFactory();
+  const updateFactory = useUpdateMasterFactory();
+  const deleteFactory = useDeleteMasterFactory();
+  const bulkInsertFactories = useBulkInsertMasterFactories();
+
+  const merged: MergedFactory[] = useMemo(() => {
+    const cloudByCode = new Map(cloudFactories.map((c) => [c.code, c]));
+    const fromHardcode: MergedFactory[] = FACTORIES
+      .filter((f) => !cloudByCode.has(f.code))
+      .map((f) => ({
+        id: null, code: f.code, name: f.name, region: f.region,
+        ltDays: f.ltDays, sigmaLt: f.sigmaLt, moqM2: f.moqM2,
+        capacityM2Month: f.capacityM2Month, reliability: f.reliability,
+        honoringPct: f.honoringPct, priceTier1: f.priceTier1, priceTier2: f.priceTier2,
+        source: "hardcode" as const,
+      }));
+    const fromCloud: MergedFactory[] = cloudFactories.map((c) => ({
+      id: c.id, code: c.code, name: c.name, region: c.region,
+      ltDays: c.lt_days, sigmaLt: Number(c.sigma_lt), moqM2: Number(c.moq_m2),
+      capacityM2Month: Number(c.capacity_m2_month), reliability: Number(c.reliability),
+      honoringPct: Number(c.honoring_pct), priceTier1: Number(c.price_tier1),
+      priceTier2: Number(c.price_tier2),
+      source: "cloud" as const,
+    }));
+    return [...fromCloud, ...fromHardcode].sort((a, b) => a.code.localeCompare(b.code));
+  }, [cloudFactories]);
+
+  const rows = merged.filter(
     (f) => f.name.toLowerCase().includes(search.toLowerCase()) || f.code.toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -438,9 +466,21 @@ function SuppliersTab() {
         excelImport={{
           entityName: "nhà máy",
           fields: SUPPLIER_IMPORT_FIELDS,
-          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} NM (chưa persist)`),
+          onCommit: async (importedRows) => {
+            await bulkInsertFactories.mutateAsync(
+              importedRows.map((r) => ({
+                code: String(r.code), name: String(r.name), region: String(r.region),
+                lt_days: Number(r.ltDays ?? 0),
+                sigma_lt: Number(r.sigmaLt ?? 0),
+                moq_m2: Number(r.moqM2 ?? 0),
+                capacity_m2_month: Number(r.capacityM2Month ?? 0),
+                honoring_pct: Number(r.honoringPct ?? 80),
+                price_tier1: Number(r.priceTier1 ?? 0),
+                price_tier2: Number(r.priceTier2 ?? 0),
+              })),
+            );
+          },
         }}
-        onImport={(src) => toast.success(`Nhập NM qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "nha_may",
@@ -471,8 +511,15 @@ function SuppliersTab() {
           </thead>
           <tbody>
             {rows.map((f, i) => (
-              <tr key={f.id} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
-                <td className="px-4 py-2.5 font-mono font-medium text-text-1">{f.code}</td>
+              <tr key={`${f.code}-${f.source}`} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
+                <td className="px-4 py-2.5 font-mono font-medium text-text-1">
+                  <div className="flex items-center gap-1.5">
+                    {f.code}
+                    {f.source === "cloud" && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-4 py-2.5 text-text-2">{f.name}</td>
                 <td className="px-4 py-2.5 text-text-2">{f.region}</td>
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{f.ltDays}</td>
@@ -499,7 +546,9 @@ function SuppliersTab() {
           </tbody>
         </table>
       </div>
-      <p className="text-table-sm text-text-3">{rows.length} / {FACTORIES.length} nhà máy</p>
+      <p className="text-table-sm text-text-3">
+        {rows.length} nhà máy · <span className="text-success">{cloudFactories.length} từ cloud</span> + {FACTORIES.length} từ dataset mẫu
+      </p>
 
       <EntityFormDialog
         open={adding}
@@ -507,8 +556,18 @@ function SuppliersTab() {
         entityName="nhà máy"
         fields={SUPPLIER_FIELDS}
         onClose={() => setAdding(false)}
-        onSave={(v) => {
-          toast.success(`Đã tạo NM ${v.name} (demo)`);
+        onSave={async (v) => {
+          await createFactory.mutateAsync({
+            code: v.code, name: v.name, region: v.region,
+            lt_days: Number(v.ltDays || 0),
+            sigma_lt: Number(v.sigmaLt || 0),
+            moq_m2: Number(v.moqM2 || 0),
+            capacity_m2_month: Number(v.capacityM2Month || 0),
+            honoring_pct: Number(v.honoringPct || 80),
+            price_tier1: Number(v.priceTier1 || 0),
+            price_tier2: Number(v.priceTier2 || 0),
+          });
+          toast.success(`Đã tạo NM ${v.name}`);
           setAdding(false);
         }}
       />
@@ -525,8 +584,23 @@ function SuppliersTab() {
           priceTier1: editing.priceTier1, priceTier2: editing.priceTier2,
         } : undefined}
         onClose={() => setEditing(null)}
-        onSave={(v) => {
-          toast.success(`Đã cập nhật NM ${v.name} (demo)`);
+        onSave={async (v) => {
+          const payload = {
+            name: v.name, region: v.region,
+            lt_days: Number(v.ltDays || 0),
+            sigma_lt: Number(v.sigmaLt || 0),
+            moq_m2: Number(v.moqM2 || 0),
+            capacity_m2_month: Number(v.capacityM2Month || 0),
+            honoring_pct: Number(v.honoringPct || 80),
+            price_tier1: Number(v.priceTier1 || 0),
+            price_tier2: Number(v.priceTier2 || 0),
+          };
+          if (editing?.source === "cloud" && editing.id) {
+            await updateFactory.mutateAsync({ id: editing.id, ...payload });
+          } else {
+            await createFactory.mutateAsync({ code: v.code, ...payload });
+          }
+          toast.success(`Đã cập nhật NM ${v.name}`);
           setEditing(null);
         }}
       />
@@ -535,12 +609,19 @@ function SuppliersTab() {
         entityLabel={deleting ? `NM ${deleting.name}` : ""}
         description={
           deleting
-            ? `NM ${deleting.name} đang gắn với mã hàng và PO. Xóa sẽ làm gãy data link — cân nhắc kỹ.`
+            ? (deleting.source === "cloud"
+              ? `NM ${deleting.name} (Cloud) đang gắn với mã hàng và PO. Xóa sẽ làm gãy data link.`
+              : `NM ${deleting.name} thuộc dataset mẫu — không xóa được. Tạo bản Cloud cùng mã rồi xóa bản Cloud.`)
             : undefined
         }
         onClose={() => setDeleting(null)}
-        onConfirm={() => {
-          toast.success(`Đã xóa NM ${deleting?.name} (demo)`);
+        onConfirm={async () => {
+          if (deleting?.source === "cloud" && deleting.id) {
+            await deleteFactory.mutateAsync(deleting.id);
+            toast.success(`Đã xóa NM ${deleting.name}`);
+          } else {
+            toast.warning("Không xóa được dataset mẫu");
+          }
           setDeleting(null);
         }}
       />
@@ -580,10 +661,34 @@ const BRANCH_IMPORT_FIELDS: ImportField[] = [
 function BranchesTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState<typeof BRANCHES[number] | null>(null);
-  const [deleting, setDeleting] = useState<typeof BRANCHES[number] | null>(null);
+  const [editing, setEditing] = useState<MergedBranch | null>(null);
+  const [deleting, setDeleting] = useState<MergedBranch | null>(null);
 
-  const rows = BRANCHES.filter(
+  const { data: cloudBranches = [] } = useMasterBranches();
+  const createBranch = useCreateMasterBranch();
+  const updateBranch = useUpdateMasterBranch();
+  const deleteBranch = useDeleteMasterBranch();
+  const bulkInsertBranches = useBulkInsertMasterBranches();
+
+  const merged: MergedBranch[] = useMemo(() => {
+    const cloudByCode = new Map(cloudBranches.map((c) => [c.code, c]));
+    const fromHardcode: MergedBranch[] = BRANCHES
+      .filter((b) => !cloudByCode.has(b.code))
+      .map((b) => ({
+        id: null, code: b.code, name: b.name, region: b.region,
+        lat: b.lat, lng: b.lng, zFactor: b.zFactor, manager: b.manager,
+        source: "hardcode" as const,
+      }));
+    const fromCloud: MergedBranch[] = cloudBranches.map((c) => ({
+      id: c.id, code: c.code, name: c.name, region: c.region,
+      lat: Number(c.lat), lng: Number(c.lng), zFactor: Number(c.z_factor),
+      manager: c.manager ?? "",
+      source: "cloud" as const,
+    }));
+    return [...fromCloud, ...fromHardcode].sort((a, b) => a.code.localeCompare(b.code));
+  }, [cloudBranches]);
+
+  const rows = merged.filter(
     (b) => b.name.toLowerCase().includes(search.toLowerCase()) || b.code.toLowerCase().includes(search.toLowerCase()),
   );
 
@@ -596,9 +701,17 @@ function BranchesTab() {
         excelImport={{
           entityName: "chi nhánh",
           fields: BRANCH_IMPORT_FIELDS,
-          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} CN (chưa persist)`),
+          onCommit: async (importedRows) => {
+            await bulkInsertBranches.mutateAsync(
+              importedRows.map((r) => ({
+                code: String(r.code), name: String(r.name), region: String(r.region),
+                manager: r.manager ? String(r.manager) : null,
+                lat: Number(r.lat ?? 0), lng: Number(r.lng ?? 0),
+                z_factor: Number(r.zFactor ?? 1.65),
+              })),
+            );
+          },
         }}
-        onImport={(src) => toast.success(`Nhập CN qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "chi_nhanh",
@@ -627,8 +740,15 @@ function BranchesTab() {
             {rows.map((b, i) => {
               const sl = b.zFactor >= 1.96 ? "97.5%" : b.zFactor >= 1.65 ? "95%" : b.zFactor >= 1.5 ? "93.3%" : "90%";
               return (
-                <tr key={b.code} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
-                  <td className="px-4 py-2.5 font-mono font-medium text-text-1">{b.code}</td>
+                <tr key={`${b.code}-${b.source}`} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
+                  <td className="px-4 py-2.5 font-mono font-medium text-text-1">
+                    <div className="flex items-center gap-1.5">
+                      {b.code}
+                      {b.source === "cloud" && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-2.5 text-text-2">{b.name}</td>
                   <td className="px-4 py-2.5"><span className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-1 border border-surface-3 text-text-2 text-table-sm">{b.region}</span></td>
                   <td className="px-4 py-2.5 text-text-2 tabular-nums">{b.lat.toFixed(4)}</td>
@@ -645,7 +765,9 @@ function BranchesTab() {
           </tbody>
         </table>
       </div>
-      <p className="text-table-sm text-text-3">{rows.length} / {BRANCHES.length} chi nhánh</p>
+      <p className="text-table-sm text-text-3">
+        {rows.length} chi nhánh · <span className="text-success">{cloudBranches.length} từ cloud</span> + {BRANCHES.length} từ dataset mẫu
+      </p>
 
       <EntityFormDialog
         open={adding}
@@ -653,8 +775,14 @@ function BranchesTab() {
         entityName="chi nhánh"
         fields={BRANCH_FIELDS}
         onClose={() => setAdding(false)}
-        onSave={(v) => {
-          toast.success(`Đã tạo CN ${v.name} (demo)`);
+        onSave={async (v) => {
+          await createBranch.mutateAsync({
+            code: v.code, name: v.name, region: v.region,
+            manager: v.manager || null,
+            lat: Number(v.lat || 0), lng: Number(v.lng || 0),
+            z_factor: Number(v.zFactor || 1.65),
+          });
+          toast.success(`Đã tạo CN ${v.name}`);
           setAdding(false);
         }}
       />
@@ -668,8 +796,19 @@ function BranchesTab() {
           manager: editing.manager, lat: editing.lat, lng: editing.lng, zFactor: editing.zFactor,
         } : undefined}
         onClose={() => setEditing(null)}
-        onSave={(v) => {
-          toast.success(`Đã cập nhật CN ${v.name} (demo)`);
+        onSave={async (v) => {
+          const payload = {
+            name: v.name, region: v.region,
+            manager: v.manager || null,
+            lat: Number(v.lat || 0), lng: Number(v.lng || 0),
+            z_factor: Number(v.zFactor || 1.65),
+          };
+          if (editing?.source === "cloud" && editing.id) {
+            await updateBranch.mutateAsync({ id: editing.id, ...payload });
+          } else {
+            await createBranch.mutateAsync({ code: v.code, ...payload });
+          }
+          toast.success(`Đã cập nhật CN ${v.name}`);
           setEditing(null);
         }}
       />
@@ -678,12 +817,19 @@ function BranchesTab() {
         entityLabel={deleting ? `CN ${deleting.name}` : ""}
         description={
           deleting
-            ? `Xóa CN ${deleting.name} sẽ ảnh hưởng allocation, transit LT và tồn kho liên quan.`
+            ? (deleting.source === "cloud"
+              ? `CN ${deleting.name} (Cloud) sẽ ảnh hưởng allocation, transit LT và tồn kho liên quan.`
+              : `CN ${deleting.name} thuộc dataset mẫu — không xóa được. Tạo bản Cloud cùng mã rồi xóa bản Cloud.`)
             : undefined
         }
         onClose={() => setDeleting(null)}
-        onConfirm={() => {
-          toast.success(`Đã xóa CN ${deleting?.name} (demo)`);
+        onConfirm={async () => {
+          if (deleting?.source === "cloud" && deleting.id) {
+            await deleteBranch.mutateAsync(deleting.id);
+            toast.success(`Đã xóa CN ${deleting.name}`);
+          } else {
+            toast.warning("Không xóa được dataset mẫu");
+          }
           setDeleting(null);
         }}
       />
@@ -893,10 +1039,36 @@ const CONTAINER_IMPORT_FIELDS: ImportField[] = [
 function ContainersTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState<typeof CONTAINER_TYPES[number] | null>(null);
-  const [deleting, setDeleting] = useState<typeof CONTAINER_TYPES[number] | null>(null);
+  const [editing, setEditing] = useState<MergedContainer | null>(null);
+  const [deleting, setDeleting] = useState<MergedContainer | null>(null);
 
-  const rows = CONTAINER_TYPES.filter(
+  const { data: cloudContainers = [] } = useMasterContainers();
+  const createContainer = useCreateMasterContainer();
+  const updateContainer = useUpdateMasterContainer();
+  const deleteContainer = useDeleteMasterContainer();
+  const bulkInsertContainers = useBulkInsertMasterContainers();
+
+  const merged: MergedContainer[] = useMemo(() => {
+    const cloudByCode = new Map(cloudContainers.map((c) => [c.code, c]));
+    const fromHardcode: MergedContainer[] = CONTAINER_TYPES
+      .filter((c) => !cloudByCode.has(c.code))
+      .map((c) => ({
+        id: null, code: c.code, name: c.name,
+        capacityM2: c.capacityM2, palletLimit: c.palletLimit,
+        weightLimitKg: c.weightLimitKg, costPerKm: c.costPerKm, note: c.note,
+        source: "hardcode" as const,
+      }));
+    const fromCloud: MergedContainer[] = cloudContainers.map((c) => ({
+      id: c.id, code: c.code, name: c.name,
+      capacityM2: Number(c.capacity_m2), palletLimit: c.pallet_limit,
+      weightLimitKg: Number(c.weight_limit_kg), costPerKm: Number(c.cost_per_km),
+      note: c.note ?? "",
+      source: "cloud" as const,
+    }));
+    return [...fromCloud, ...fromHardcode].sort((a, b) => a.code.localeCompare(b.code));
+  }, [cloudContainers]);
+
+  const rows = merged.filter(
     (c) =>
       c.code.toLowerCase().includes(search.toLowerCase()) ||
       c.name.toLowerCase().includes(search.toLowerCase()),
@@ -911,9 +1083,19 @@ function ContainersTab() {
         excelImport={{
           entityName: "loại container",
           fields: CONTAINER_IMPORT_FIELDS,
-          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} loại container (chưa persist)`),
+          onCommit: async (importedRows) => {
+            await bulkInsertContainers.mutateAsync(
+              importedRows.map((r) => ({
+                code: String(r.code), name: String(r.name),
+                capacity_m2: Number(r.capacityM2 ?? 0),
+                pallet_limit: Number(r.palletLimit ?? 0),
+                weight_limit_kg: Number(r.weightLimitKg ?? 0),
+                cost_per_km: Number(r.costPerKm ?? 0),
+                note: r.note ? String(r.note) : null,
+              })),
+            );
+          },
         }}
-        onImport={(src) => toast.success(`Nhập loại container qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "container",
@@ -941,8 +1123,15 @@ function ContainersTab() {
           </thead>
           <tbody>
             {rows.map((c, i) => (
-              <tr key={c.code} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
-                <td className="px-4 py-2.5 font-mono font-medium text-text-1">{c.code}</td>
+              <tr key={`${c.code}-${c.source}`} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
+                <td className="px-4 py-2.5 font-mono font-medium text-text-1">
+                  <div className="flex items-center gap-1.5">
+                    {c.code}
+                    {c.source === "cloud" && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-4 py-2.5 text-text-2">{c.name}</td>
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.capacityM2.toLocaleString("vi-VN")}</td>
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.palletLimit}</td>
@@ -957,7 +1146,9 @@ function ContainersTab() {
           </tbody>
         </table>
       </div>
-      <p className="text-table-sm text-text-3">{rows.length} / {CONTAINER_TYPES.length} loại container</p>
+      <p className="text-table-sm text-text-3">
+        {rows.length} loại container · <span className="text-success">{cloudContainers.length} từ cloud</span> + {CONTAINER_TYPES.length} từ dataset mẫu
+      </p>
 
       <EntityFormDialog
         open={adding}
@@ -965,8 +1156,16 @@ function ContainersTab() {
         entityName="loại container"
         fields={CONTAINER_FIELDS}
         onClose={() => setAdding(false)}
-        onSave={(v) => {
-          toast.success(`Đã tạo loại container ${v.code} (demo)`);
+        onSave={async (v) => {
+          await createContainer.mutateAsync({
+            code: v.code, name: v.name,
+            capacity_m2: Number(v.capacityM2 || 0),
+            pallet_limit: Number(v.palletLimit || 0),
+            weight_limit_kg: Number(v.weightLimitKg || 0),
+            cost_per_km: Number(v.costPerKm || 0),
+            note: v.note || null,
+          });
+          toast.success(`Đã tạo loại container ${v.code}`);
           setAdding(false);
         }}
       />
@@ -975,10 +1174,28 @@ function ContainersTab() {
         mode="edit"
         entityName="loại container"
         fields={CONTAINER_FIELDS}
-        initialValues={editing ?? undefined}
+        initialValues={editing ? {
+          code: editing.code, name: editing.name,
+          capacityM2: editing.capacityM2, palletLimit: editing.palletLimit,
+          weightLimitKg: editing.weightLimitKg, costPerKm: editing.costPerKm,
+          note: editing.note,
+        } : undefined}
         onClose={() => setEditing(null)}
-        onSave={(v) => {
-          toast.success(`Đã cập nhật ${v.code} (demo)`);
+        onSave={async (v) => {
+          const payload = {
+            name: v.name,
+            capacity_m2: Number(v.capacityM2 || 0),
+            pallet_limit: Number(v.palletLimit || 0),
+            weight_limit_kg: Number(v.weightLimitKg || 0),
+            cost_per_km: Number(v.costPerKm || 0),
+            note: v.note || null,
+          };
+          if (editing?.source === "cloud" && editing.id) {
+            await updateContainer.mutateAsync({ id: editing.id, ...payload });
+          } else {
+            await createContainer.mutateAsync({ code: v.code, ...payload });
+          }
+          toast.success(`Đã cập nhật ${v.code}`);
           setEditing(null);
         }}
       />
@@ -987,12 +1204,19 @@ function ContainersTab() {
         entityLabel={deleting ? `loại ${deleting.code}` : ""}
         description={
           deleting
-            ? `Xóa loại ${deleting.code} sẽ ảnh hưởng tính cước & gom hàng các tuyến đang dùng.`
+            ? (deleting.source === "cloud"
+              ? `Loại ${deleting.code} (Cloud) sẽ ảnh hưởng tính cước & gom hàng các tuyến đang dùng.`
+              : `Loại ${deleting.code} thuộc dataset mẫu — không xóa được. Tạo bản Cloud cùng mã rồi xóa bản Cloud.`)
             : undefined
         }
         onClose={() => setDeleting(null)}
-        onConfirm={() => {
-          toast.success(`Đã xóa ${deleting?.code} (demo)`);
+        onConfirm={async () => {
+          if (deleting?.source === "cloud" && deleting.id) {
+            await deleteContainer.mutateAsync(deleting.id);
+            toast.success(`Đã xóa ${deleting.code}`);
+          } else {
+            toast.warning("Không xóa được dataset mẫu");
+          }
           setDeleting(null);
         }}
       />
