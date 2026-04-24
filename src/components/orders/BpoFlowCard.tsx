@@ -122,7 +122,7 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
           )}
           {data.earliestEta !== undefined && (
             <div className="text-right">
-              <p className="text-caption text-text-3 uppercase">ETA gần</p>
+              <p className="text-caption text-text-3 uppercase">Sớm nhất</p>
               <p className={cn(
                 "font-semibold",
                 data.earliestEta === null ? "text-text-3"
@@ -136,12 +136,12 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
           )}
           {data.revenueAtRisk !== undefined && data.revenueAtRisk > 0 && (
             <div className="text-right">
-              <p className="text-caption text-text-3 uppercase">Risk ₫</p>
+              <p className="text-caption text-text-3 uppercase">Rủi ro ₫</p>
               <p className="font-semibold text-danger">{fmtVndShort(data.revenueAtRisk)}</p>
             </div>
           )}
           <div className="text-right w-14">
-            <p className="text-caption text-text-3 uppercase">Done</p>
+            <p className="text-caption text-text-3 uppercase">Hoàn tất</p>
             <p className="font-semibold text-text-1">{data.completionPct}%</p>
           </div>
         </div>
@@ -162,14 +162,14 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
                 <span className="text-text-3 font-normal"> ({cancelPct}% so với gốc {originalTotal.toLocaleString()})</span>
               </p>
               <p className="text-caption text-text-3 tabular-nums mt-0.5">
-                BPO {data.bpoTotal.toLocaleString()} − Delivered {data.delivered.toLocaleString()} = Còn lại {data.remaining.toLocaleString()}
+                BPO {data.bpoTotal.toLocaleString()} − Đã nhận {data.delivered.toLocaleString()} = Còn lại {data.remaining.toLocaleString()}
               </p>
             </div>
             <Popover>
               <PopoverTrigger asChild>
                 <button
                   className="rounded-button border border-warning/40 bg-surface-0 px-2.5 py-1.5 text-caption font-medium text-text-1 hover:bg-warning-bg flex items-center gap-1.5 shrink-0 transition-colors"
-                  aria-label="Giải thích reconciliation"
+                  aria-label="Giải thích đối chiếu"
                 >
                   <Info className="h-3.5 w-3.5 text-warning" /> Giải thích
                 </button>
@@ -190,8 +190,8 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
                   <div>
                     <p className="text-caption uppercase tracking-wide text-text-3 mb-1">Quy tắc</p>
                     <p className="text-text-2 leading-relaxed">
-                      Dòng PO ở trạng thái <span className="font-medium text-danger">Cancelled</span> bị loại khỏi
-                      <span className="font-medium text-text-1"> tất cả các bucket funnel</span> (Created, Approved, Released, Shipped, Received)
+                      Dòng PO ở trạng thái <span className="font-medium text-danger">Đã hủy</span> bị loại khỏi
+                      <span className="font-medium text-text-1"> tất cả các bước của phễu</span> (Đã tạo, Đã duyệt, Đã phát hành, Đã giao, Đã nhận)
                       để tránh thổi phồng tỉ lệ hoàn thành.
                     </p>
                   </div>
@@ -205,11 +205,11 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
                       <span className="font-medium">−{data.cancelled.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between border-t border-surface-3 pt-1.5 text-text-1 font-semibold">
-                      <span>= BPO total (active)</span>
+                      <span>= BPO tổng (đang hoạt động)</span>
                       <span>{data.bpoTotal.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-success pt-1">
-                      <span>− Delivered</span>
+                      <span>− Đã nhận</span>
                       <span className="font-medium">−{data.delivered.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between border-t border-surface-3 pt-1.5 text-warning font-semibold">
@@ -221,7 +221,7 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
                     <Info className="h-3.5 w-3.5 text-info shrink-0 mt-0.5" />
                     <p className="text-caption text-text-2 leading-relaxed">
                       Số lượng đã hủy <span className="font-medium">không tính vào "Còn lại"</span> vì không cần phải giao thêm.
-                      Nếu muốn xem ảnh hưởng kinh doanh, dùng cột <span className="font-medium text-text-1">Risk ₫</span>.
+                      Nếu muốn xem ảnh hưởng kinh doanh, dùng cột <span className="font-medium text-text-1">Rủi ro ₫</span>.
                     </p>
                   </div>
                 </div>
@@ -313,7 +313,7 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
 
         {/* Waterfall summary line */}
         <div className="mt-3 pt-3 border-t border-surface-3/50 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-text-3">
-          <span>Waterfall:</span>
+          <span>Dòng chảy:</span>
           {stageDefs.map((s, i) => (
             <span key={s.key} className="flex items-center gap-1">
               <span className={cn(
@@ -336,7 +336,7 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
           ))}
           <span className="ml-auto flex items-center gap-3">
             {data.cancelled !== undefined && data.cancelled > 0 && (
-              <span title="Hủy: đã loại khỏi tất cả các bucket funnel — không tính vào Created/Approved/Released/Shipped/Received">
+              <span title="Hủy: đã loại khỏi tất cả các bước trong phễu — không tính vào Đã tạo/Đã duyệt/Đã phát hành/Đã giao/Đã nhận">
                 Hủy: <span className="text-danger tabular-nums font-medium">−{data.cancelled.toLocaleString()}</span>
               </span>
             )}
@@ -352,14 +352,14 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
         const rows = childrenForStage(expandedStage);
         const stageLabel = stageDefs.find((s) => s.key === expandedStage)?.label ?? expandedStage;
         const cols: ExportColumn<BpoFlowRpo>[] = [
-          { header: "RPO#",      accessor: (r) => r.rpo },
-          { header: "Item",      accessor: (r) => r.item },
-          { header: "Qty",       accessor: (r) => r.qty },
-          { header: "ASN#",      accessor: (r) => r.asn ?? "" },
-          { header: "Ship date", accessor: (r) => r.shipDate },
-          { header: "ETA",       accessor: (r) => r.eta },
-          { header: "Actual",    accessor: (r) => (r.actual > 0 ? r.actual : "") },
-          { header: "Status",    accessor: (r) => stageLabels[r.status] ?? r.status },
+          { header: "Mã RPO",       accessor: (r) => r.rpo },
+          { header: "Mã hàng",      accessor: (r) => r.item },
+          { header: "SL (m²)",      accessor: (r) => r.qty },
+          { header: "Mã ASN",       accessor: (r) => r.asn ?? "" },
+          { header: "Ngày giao",    accessor: (r) => r.shipDate },
+          { header: "Dự kiến đến",  accessor: (r) => r.eta },
+          { header: "Thực tế",      accessor: (r) => (r.actual > 0 ? r.actual : "") },
+          { header: "Trạng thái",   accessor: (r) => stageLabels[r.status] ?? r.status },
         ];
         const ts = new Date().toISOString().slice(0, 10);
         const baseName = `${data.bpo}_${data.nm}_${stageLabel}_${ts}`;
@@ -377,7 +377,7 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
         <div className="border-t border-surface-3 bg-surface-1/40 animate-fade-in">
           <div className="px-4 py-2 border-b border-surface-3/50 flex items-center justify-between gap-3">
             <p className="text-caption text-text-2 uppercase tracking-wide">
-              Stage <span className="text-text-1 font-semibold">{stageLabel}</span> · {rows.length} record
+              Bước <span className="text-text-1 font-semibold">{stageLabel}</span> · {rows.length} dòng
             </p>
             <div className="flex items-center gap-1.5">
               <button
@@ -414,7 +414,7 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-surface-3/50 bg-surface-2/50">
-                  {["RPO#", "Item", "Qty", "ASN#", "Ship date", "ETA", "Actual", "Status"].map((h) => (
+                  {["Mã RPO", "Mã hàng", "SL (m²)", "Mã ASN", "Ngày giao", "Dự kiến đến", "Thực tế", "Trạng thái"].map((h) => (
                     <th key={h} className="px-3 py-1.5 text-left text-table-header uppercase text-text-3">{h}</th>
                   ))}
                 </tr>
@@ -452,7 +452,7 @@ export function BpoFlowCard({ data }: { data: BpoFlowData }) {
                   );
                 })}
                 {rows.length === 0 && (
-                  <tr><td colSpan={8} className="px-3 py-4 text-center text-text-3 text-caption">Chưa có record nào ở stage này.</td></tr>
+                  <tr><td colSpan={8} className="px-3 py-4 text-center text-text-3 text-caption">Chưa có dòng nào ở bước này.</td></tr>
                 )}
               </tbody>
             </table>
