@@ -754,26 +754,102 @@ export default function DrpPage() {
 
       {/* ── VERSION ROW ── */}
       <div className="flex flex-wrap items-center gap-2 mb-4 text-table-sm">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-success-bg text-success border border-success/30 px-2.5 py-0.5 font-medium">
-          <span className="h-1.5 w-1.5 rounded-full bg-success" />
-          DRP W20 v3 · Active
+        <span className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-medium",
+          drpLocked
+            ? "bg-warning-bg text-warning border-warning/30"
+            : isViewingOldVersion
+            ? "bg-warning-bg text-warning border-warning/30"
+            : "bg-success-bg text-success border-success/30"
+        )}>
+          <span className={cn(
+            "h-1.5 w-1.5 rounded-full",
+            drpLocked || isViewingOldVersion ? "bg-warning" : "bg-success"
+          )} />
+          DRP W20 v{viewingVersion}
+          {drpLocked && ` · 🔒 Đã khóa · ${drpLocked.by} ${drpLocked.at}`}
+          {!drpLocked && !isViewingOldVersion && " · Active"}
+          {!drpLocked && isViewingOldVersion && " · Đã lưu trữ"}
         </span>
+
+        {drpLocked ? (
+          <button
+            onClick={() => setLockDialogOpen(true)}
+            disabled={!rbac.is("sc_manager") && !rbac.is("admin")}
+            className="inline-flex items-center gap-1 rounded-button border border-info/30 bg-info-bg/50 px-2.5 py-1 text-info hover:text-info disabled:opacity-50 disabled:cursor-not-allowed"
+            title={!rbac.is("sc_manager") && !rbac.is("admin") ? "Chỉ SC Manager mở khóa được" : "Mở khóa phiên bản"}
+          >
+            <LockIcon className="h-3 w-3" /> Mở khóa
+          </button>
+        ) : (
+          <button
+            onClick={() => setLockDialogOpen(true)}
+            disabled={isViewingOldVersion}
+            className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2 px-2.5 py-1 text-text-2 hover:text-text-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            title={isViewingOldVersion ? "Không khóa được phiên cũ" : "Khóa phiên bản hiện tại"}
+          >
+            <LockIcon className="h-3 w-3" /> Khóa
+          </button>
+        )}
+
         <button
-          onClick={() => toast.info(isPlanLocked ? "Plan đã khoá" : "Khoá plan để bảo vệ kết quả DRP")}
-          className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2 px-2.5 py-1 text-text-2 hover:text-text-1">
-          <LockIcon className="h-3 w-3" /> Khoá
-        </button>
-        <button
-          onClick={() => toast.info("So sánh với v2 — sẽ mở panel")}
-          className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2 px-2.5 py-1 text-text-2 hover:text-text-1">
+          onClick={() => {
+            // Mở compare với phiên kế (current − 1)
+            const candidate = drpW20.find((v) => v.versionNumber === viewingVersion - 1)
+              ?? drpW20.find((v) => v.versionNumber !== viewingVersion);
+            if (!candidate) {
+              toast.info("Chưa có phiên bản để so sánh.");
+              return;
+            }
+            setCompareRightVersion(candidate.versionNumber);
+            setCompareMode((m) => !m);
+          }}
+          className={cn(
+            "inline-flex items-center gap-1 rounded-button border px-2.5 py-1 transition-colors",
+            compareMode
+              ? "border-primary/40 bg-primary/10 text-primary"
+              : "border-surface-3 bg-surface-2 text-text-2 hover:text-text-1"
+          )}
+        >
           So sánh <ChevronDown className="h-3 w-3" />
         </button>
         <button
-          onClick={() => toast.info("Lịch sử v1, v2, v3 — sẽ mở panel")}
-          className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2 px-2.5 py-1 text-text-2 hover:text-text-1">
+          onClick={() => setHistoryOpen(true)}
+          className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2 px-2.5 py-1 text-text-2 hover:text-text-1"
+        >
           Lịch sử <ChevronDown className="h-3 w-3" />
         </button>
       </div>
+
+      {/* Banner xem phiên cũ */}
+      {isViewingOldVersion && (
+        <ViewingVersionBanner
+          versionNumber={viewingVersion}
+          activeVersion={activeDrpVersion}
+          entityLabel={`DRP ${viewingEntityId}`}
+          onReturn={() => {
+            setViewingVersion(activeDrpVersion);
+            setViewingEntityId("DRP-W20");
+            setCompareMode(false);
+          }}
+        />
+      )}
+
+      {/* Compare inline */}
+      {compareMode && compareRightVersion != null && (
+        <VersionCompareInline
+          versions={drpW20}
+          leftVersion={viewingVersion}
+          rightVersion={compareRightVersion}
+          onChangeRight={setCompareRightVersion}
+          onClose={() => setCompareMode(false)}
+          onSwitchTo={(v) => {
+            setViewingVersion(v);
+            setCompareMode(false);
+            toast.info(`Đã chuyển sang DRP W20 v${v}`);
+          }}
+        />
+      )}
 
       {/* ── DRP progress ── */}
       {drpRunning && (
