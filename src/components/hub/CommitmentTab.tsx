@@ -23,6 +23,21 @@ import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
 import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
+import {
+  BPO_TRACKER, BPO_DEMO_DAY_OF_MONTH, BPO_DEMO_DAYS_IN_MONTH, BPO_EXPECTED_PCT,
+} from "@/lib/bpo-tracker";
+
+/** Extract SKU base code from "GA-300 A4" → "GA-300" */
+function skuBase(sku: string): string {
+  return sku.split(/\s+/)[0];
+}
+
+/** Released qty cho 1 NM + SKU base — tổng từ BPO_TRACKER mock */
+function releasedFor(nmName: string, sku: string): number {
+  const base = skuBase(sku);
+  const match = BPO_TRACKER.find(t => t.nmName === nmName && t.skuBaseCode === base);
+  return match?.releasedQty ?? 0;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    §  Types
@@ -430,6 +445,9 @@ export function CommitmentTab({ scale, onTotalsChange }: {
                     <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">FC gửi NM</th>
                     <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Cam kết NM ✏️</th>
                     <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Δ</th>
+                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30" title="Tổng PO đã release tính đến hiện tại">Đã release</th>
+                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30" title="Cam kết − Đã release">Còn lại</th>
+                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3 bg-info-bg/30">% Release</th>
                     <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Tier</th>
                     <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden md:table-cell">Nguồn</th>
                     <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden lg:table-cell">Ngày liên hệ</th>
@@ -440,7 +458,7 @@ export function CommitmentTab({ scale, onTotalsChange }: {
                 </thead>
                 <tbody>
                   {filteredRows.length === 0 && (
-                    <tr><td colSpan={11} className="text-center py-8 text-text-3 text-table-sm">
+                    <tr><td colSpan={14} className="text-center py-8 text-text-3 text-table-sm">
                       Không có cam kết nào khớp bộ lọc.
                     </td></tr>
                   )}
@@ -579,6 +597,11 @@ function CommitmentRow({ row, onUpdate, onOpenEvidence, onConfirm }: {
   const delta = row.committed - row.fcSent;
   const deltaPct = row.fcSent > 0 ? (delta / row.fcSent) * 100 : 0;
   const tierMeta = TIER_META[row.tier];
+  const released = releasedFor(row.nmName, row.sku);
+  const remaining = Math.max(0, row.committed - released);
+  const releasePct = row.committed > 0 ? Math.round((released / row.committed) * 100) : 0;
+  const expectedPct = Math.round(BPO_EXPECTED_PCT);
+  const lateRelease = row.committed > 0 && releasePct < expectedPct && remaining > 0;
 
   return (
     <tr className={cn("border-b border-surface-3 transition-colors",
@@ -613,6 +636,41 @@ function CommitmentRow({ row, onUpdate, onOpenEvidence, onConfirm }: {
           )}>
             {delta > 0 ? "+" : ""}{delta.toLocaleString()}
             <span className="text-caption text-text-3 ml-0.5">({deltaPct >= 0 ? "+" : ""}{deltaPct.toFixed(0)}%)</span>
+          </span>
+        ) : <span className="text-text-3">—</span>}
+      </td>
+
+      {/* ĐÃ RELEASE */}
+      <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
+        {released > 0 ? (
+          <span className="font-medium text-text-1">{released.toLocaleString()}</span>
+        ) : <span className="text-text-3">—</span>}
+      </td>
+
+      {/* CÒN LẠI */}
+      <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
+        {row.committed > 0 ? (
+          remaining > 0 ? (
+            <span className={cn("font-medium", lateRelease ? "text-danger" : "text-warning")}>
+              {remaining.toLocaleString()}
+            </span>
+          ) : <span className="text-success font-medium">0</span>
+        ) : <span className="text-text-3">—</span>}
+      </td>
+
+      {/* % RELEASE */}
+      <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
+        {row.committed > 0 && released > 0 ? (
+          <span
+            title={lateRelease ? `Cần release nhanh — kỳ vọng ≥ ${expectedPct}% tại ngày ${BPO_DEMO_DAY_OF_MONTH}/${BPO_DEMO_DAYS_IN_MONTH}` : undefined}
+            className={cn(
+              "inline-flex items-center gap-1 font-semibold",
+              lateRelease ? "text-danger" :
+              releasePct >= expectedPct ? "text-success" : "text-warning",
+            )}
+          >
+            {releasePct}%
+            {lateRelease && <span title="Cần release nhanh">🔴</span>}
           </span>
         ) : <span className="text-text-3">—</span>}
       </td>

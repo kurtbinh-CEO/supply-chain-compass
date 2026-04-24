@@ -36,10 +36,15 @@ import {
 } from "@/lib/po-lifecycle-data";
 import { CARRIERS, CN_REGION } from "@/data/unis-enterprise-dataset";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
+import { BpoProgressSection } from "@/components/orders/BpoProgressSection";
+import {
+  BPO_DEMO_DAY_OF_MONTH, BPO_DEMO_DAYS_IN_MONTH, BPO_EXPECTED_PCT,
+  totals as bpoTotals, findBpoForPo, WEEK_STATUS_META,
+} from "@/lib/bpo-tracker";
 import {
   Send, CheckCircle2, Truck, Package, Flag, ClipboardCheck,
   Phone, AlertTriangle, ChevronDown, ChevronRight,
-  Camera, FileText, X, Image, PenLine, ShieldAlert,
+  Camera, FileText, X, Image, PenLine, ShieldAlert, Layers,
 } from "lucide-react";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
@@ -70,6 +75,7 @@ export default function OrdersPage() {
   const [kindFilter, setKindFilter] = useState<Set<"RPO" | "TO">>(new Set());
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [bpoOpen, setBpoOpen] = useState(true);
 
   // Drill-down popup từ summary cards
   const [drillFocus, setDrillFocus] = useState<DrillFocus>(null);
@@ -210,7 +216,29 @@ export default function OrdersPage() {
           counts.overdue > 0 ? "critical" : "ok";
         const urgentTodo = rows.filter(r => ACTION_STAGES.includes(r.stage) && isOverdue(r)).length;
 
+        const bpo = bpoTotals();
+        const expected = Math.round(BPO_EXPECTED_PCT);
+        const bpoSeverity: SummaryCard["severity"] =
+          bpo.pct >= expected ? "ok" :
+          bpo.pct >= expected * 0.6 ? "warn" : "critical";
         const cards: SummaryCard[] = [
+          {
+            key: "bpo", label: "Tiến độ cam kết", value: `${bpo.pct}%`,
+            severity: bpoSeverity,
+            trend: {
+              delta: `${(bpo.released / 1000).toFixed(1)}K/${(bpo.committed / 1000).toFixed(1)}K m²`,
+              direction: bpo.pct >= expected ? "up" : "down",
+              color: bpo.pct >= expected ? "green" : bpo.pct >= expected * 0.6 ? "gray" : "red",
+            },
+            tooltip: `Đã release ${bpo.released.toLocaleString()} / ${bpo.committed.toLocaleString()} m². Ngày ${BPO_DEMO_DAY_OF_MONTH}/${BPO_DEMO_DAYS_IN_MONTH} kỳ vọng ≥ ${expected}%. Click để xem phân rã theo NM.`,
+            onClick: () => {
+              setBpoOpen(true);
+              // smooth-scroll xuống section
+              setTimeout(() => {
+                document.getElementById("bpo-progress")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }, 50);
+            },
+          },
           {
             key: "todo", label: "Cần xử lý", value: counts.todo, unit: "đơn",
             severity: todoSeverity,
@@ -246,6 +274,11 @@ export default function OrdersPage() {
         ];
         return <SummaryCards cards={cards} screenId="orders-lifecycle" editable />;
       })()}
+
+      {/* ═══ TIẾN ĐỘ CAM KẾT THÁNG (BPO ↔ RPO trừ lùi) ═══ */}
+      <div className="mt-4">
+        <BpoProgressSection open={bpoOpen} onOpenChange={setBpoOpen} />
+      </div>
 
       {/* ═══ LỚP 2: FILTER PILLS — gộp status + type + alert ═══ */}
       <div className="flex flex-wrap items-center gap-1.5 mt-4 mb-2">
@@ -753,8 +786,60 @@ const ACTION_CONFIG_FALLBACK = ACTION_CONFIG;
    Expanded drill-down
    ═══════════════════════════════════════════════════════════════════════════ */
 function ExpandedRow({ row }: { row: PoLifecycleRow }) {
+  // Tra cứu BPO cha (cam kết tháng) — nếu PO này thuộc 1 BPO trong tracker
+  const bpoLink = row.kind === "RPO" ? findBpoForPo(row.poNumber) : null;
   return (
     <div className="bg-surface-1 border-t border-surface-3 p-4 space-y-4">
+      {/* ═══ BPO link (cam kết tháng cha) ═══ */}
+      {bpoLink && (
+        <div className="rounded border border-info/30 bg-info-bg/40 p-3">
+          <div className="flex items-start gap-2 mb-2">
+            <Layers className="h-4 w-4 text-info shrink-0 mt-0.5" />
+            <div className="flex-1 text-table-sm">
+              <div className="text-text-1">
+                <span className="text-text-3">Thuộc cam kết:</span>{" "}
+                <span className="font-medium">{bpoLink.tracker.nmName} {bpoLink.tracker.skuBaseCode}</span>{" "}
+                <span className="text-text-3">T{bpoLink.tracker.month}</span>
+                {" — "}
+                <span className="font-semibold tabular-nums">
+                  {bpoLink.tracker.committedQty.toLocaleString()} m²
+                </span>
+                <span className="text-text-3">
+                  {" "}· Đã release{" "}
+                  <span className="font-semibold text-text-1 tabular-nums">
+                    {bpoLink.tracker.releasedQty.toLocaleString()}/{bpoLink.tracker.committedQty.toLocaleString()}
+                  </span>
+                  {" "}({bpoLink.tracker.releasePct}%)
+                </span>
+              </div>
+              <div className="text-caption text-text-3 mt-0.5">
+                PO này là release tuần W{bpoLink.week.week}: {bpoLink.week.qty.toLocaleString()}m² ·{" "}
+                {WEEK_STATUS_META[bpoLink.week.status].emoji} {WEEK_STATUS_META[bpoLink.week.status].label}
+                {bpoLink.tracker.remainingQty > 0 && (
+                  <> · Còn chưa đặt: <span className="text-warning font-medium">{bpoLink.tracker.remainingQty.toLocaleString()} m²</span></>
+                )}
+              </div>
+              {/* mini progress */}
+              <div className="mt-2 flex items-center gap-2">
+                <div className="flex-1 h-1.5 rounded-full bg-surface-3 overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full",
+                      bpoLink.tracker.releasePct >= BPO_EXPECTED_PCT
+                        ? "bg-success" : bpoLink.tracker.releasePct >= BPO_EXPECTED_PCT * 0.6
+                        ? "bg-warning" : "bg-danger",
+                    )}
+                    style={{ width: `${Math.min(100, bpoLink.tracker.releasePct)}%` }}
+                  />
+                </div>
+                <span className="text-[11px] tabular-nums font-semibold text-text-1 w-10 text-right">
+                  {bpoLink.tracker.releasePct}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Lifecycle timeline */}
       <div>
         <div className="text-caption uppercase tracking-wide text-text-3 mb-2 font-semibold">Lifecycle</div>
