@@ -128,6 +128,7 @@ export default function SopPage() {
   const [activeTab, setActiveTab] = useState("consensus");
   const { tenant } = useTenant();
   const { markDone } = useNextStep();
+  const { current: planCycle, isReadOnly: planLocked } = usePlanningPeriod();
 
   const [locked, setLocked] = useState(false);
   const [showPreLock, setShowPreLock] = useState(false);
