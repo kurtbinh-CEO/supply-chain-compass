@@ -168,7 +168,7 @@ export default function OrdersPage() {
           return next;
         })}
         emptyState={{
-          icon: filter === "overdue" ? CheckCircle2 : ClipboardCheck,
+          icon: filter === "overdue" ? <CheckCircle2 /> : <ClipboardCheck />,
           title: filter === "overdue" ? "Không có đơn trễ hạn" : "Không có đơn nào",
           description: filter === "todo"
             ? "Mọi đơn đã được xử lý. Quay lại sau hoặc xem tab khác."
