@@ -441,7 +441,11 @@ export default function ConfigPage() {
 
         {TABS.map((t) => (
           <TabsContent key={t.v} value={t.v}>
-            <ConfigTable rows={visibleByTab[t.v] ?? []} onUpdate={handleUpdate} />
+            {t.v === "integration" ? (
+              <IntegrationsTab />
+            ) : (
+              <ConfigTable rows={visibleByTab[t.v] ?? []} onUpdate={handleUpdate} />
+            )}
           </TabsContent>
         ))}
       </Tabs>
