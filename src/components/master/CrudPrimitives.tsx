@@ -10,7 +10,7 @@
  * mà không phải copy-paste boilerplate.
  */
 import { useState, type ReactNode } from "react";
-import { Search, Plus, Upload, Download, AlertTriangle, X, Pencil, Trash2 } from "lucide-react";
+import { Search, Plus, Upload, Download, AlertTriangle, X, Pencil, Trash2, History } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
