@@ -821,12 +821,20 @@ export default function DrpPage() {
         }}
       />
 
-      {/* ── HEADER ── */}
-      <div className="flex items-center justify-between mb-3">
+      {/* ── HEADER ── (step-aware title) */}
+      <div className="flex items-center justify-between mb-2">
         <div>
-          <h1 className="text-h2 font-display font-bold text-text-1">Kết quả DRP — Tuần 20</h1>
+          <h1 className="text-h2 font-display font-bold text-text-1">
+            {wizardStep === 1 && "Chạy DRP — Tuần 20"}
+            {wizardStep === 2 && "Đang chạy DRP — Tuần 20"}
+            {wizardStep === 3 && "Kết quả DRP — Tuần 20"}
+          </h1>
           <p className="text-table-sm text-text-3 mt-0.5 flex items-center gap-1.5 flex-wrap">
-            <span>{batchStatus === "released" ? "Đã release sang Đơn hàng" : "Chạy lúc 23:02 đêm qua"}</span>
+            <span>
+              {wizardStep === 1 && "Kiểm tra dữ liệu trước khi chạy"}
+              {wizardStep === 2 && "Vui lòng đợi — DRP đang tính toán"}
+              {wizardStep === 3 && (batchStatus === "released" ? "Đã release sang Đơn hàng" : "Chạy lúc 23:02 đêm qua")}
+            </span>
             <span>·</span>
             <span>Trong kỳ KH:</span>
             <button
@@ -839,21 +847,25 @@ export default function DrpPage() {
             </button>
           </p>
         </div>
-        {isPlanLocked || drpLocked ? (
+        {wizardStep === 3 && (isPlanLocked || drpLocked ? (
           <div className="flex items-center gap-2 rounded-button bg-surface-2 text-text-3 px-4 py-2 border border-surface-3">
             <LockIcon className="h-4 w-4" /> Đã khoá plan
           </div>
         ) : (
           <button
-            onClick={handleRunDrp}
+            onClick={handleRerun}
             disabled={isViewingOldVersion}
-            title={isViewingOldVersion ? "Phiên bản cũ — chỉ xem" : ""}
+            title={isViewingOldVersion ? "Phiên bản cũ — chỉ xem" : "Quay lại Bước 1 (Preflight) để chạy phiên bản mới"}
             className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-3"
           >
             <Play className="h-4 w-4" /> Chạy lại DRP
           </button>
-        )}
+        ))}
       </div>
+
+      {/* ── 3-STEP INDICATOR ── (luôn hiện) */}
+      <DrpStepIndicator current={wizardStep} completed={wizardCompleted} />
+
 
       {/* ── VERSION ROW ── */}
       <div className="flex flex-wrap items-center gap-2 mb-4 text-table-sm">
