@@ -90,7 +90,7 @@ export function ApprovalTable() {
                 )}
               >
                 <td className="px-5 py-3">
-                  <StatusChip status={item.typeColor} label={item.type} />
+                  <StatusChip status={item.typeColor} label={localizeType(item.type)} />
                 </td>
                 <td className="px-5 py-3 text-table text-text-1">{item.description}</td>
                 <td className="px-5 py-3 text-table text-text-2">{item.submitter}</td>
@@ -136,7 +136,7 @@ export function ApprovalTable() {
           {approveItem && (
             <div className="rounded-md border border-surface-3 bg-surface-0 p-4 space-y-1">
               <div className="flex items-center gap-2">
-                <StatusChip status={approveItem.typeColor} label={approveItem.type} />
+                <StatusChip status={approveItem.typeColor} label={localizeType(approveItem.type)} />
                 <span className="text-table-sm text-text-3">{approveItem.timeAgo}</span>
               </div>
               <p className="text-table text-text-1 font-medium">{approveItem.description}</p>
@@ -164,7 +164,7 @@ export function ApprovalTable() {
           {rejectItem && (
             <div className="rounded-md border border-surface-3 bg-surface-0 p-4 space-y-1">
               <div className="flex items-center gap-2">
-                <StatusChip status={rejectItem.typeColor} label={rejectItem.type} />
+                <StatusChip status={rejectItem.typeColor} label={localizeType(rejectItem.type)} />
               </div>
               <p className="text-table text-text-1 font-medium">{rejectItem.description}</p>
             </div>
