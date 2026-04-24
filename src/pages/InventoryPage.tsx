@@ -488,14 +488,79 @@ function buildBranchSkuPivot(rows: BranchRow[]): SkuPivotInvRow[] {
 function BranchesTab({ rows }: { rows: BranchRow[] }) {
   const navigate = useNavigate();
   const [pivot, setPivot] = usePivotMode("inv-cn");
+  const [cardFilter, setCardFilter] = useState<"all" | "critical" | "low">("all");
 
   const totals = useMemo(() => {
     const t = rows.reduce((s, r) => s + r.totalOnHand, 0);
     const avg = rows.length === 0 ? 0 : Math.round((rows.reduce((s, r) => s + r.hstk, 0) / rows.length) * 10) / 10;
-    return { t, avg };
+    const critical = rows.filter((r) => r.tone === "block").length;
+    const low = rows.filter((r) => r.tone === "watch").length;
+    // Working capital: assume 320,000 VND/m² average (mock UNIS price)
+    const workingCapital = t * 320000;
+    return { t, avg, critical, low, workingCapital };
   }, [rows]);
 
-  const skuPivotRows = useMemo(() => buildBranchSkuPivot(rows), [rows]);
+  const filteredRows = useMemo(() => {
+    if (cardFilter === "critical") return rows.filter((r) => r.tone === "block");
+    if (cardFilter === "low") return rows.filter((r) => r.tone === "watch");
+    return rows;
+  }, [rows, cardFilter]);
+
+  const cnSummary: SummaryCard[] = [
+    {
+      key: "total_stock",
+      label: "Tồn tổng",
+      value: totals.t.toLocaleString("vi-VN"),
+      unit: "m²",
+      severity: "ok",
+      trend: { delta: "+3% vs T4", direction: "up", color: "green" },
+      tooltip: "Tổng on-hand toàn bộ 12 chi nhánh, đã trừ reserved.",
+      onClick: () => setCardFilter("all"),
+    },
+    {
+      key: "avg_hstk",
+      label: "HSTK trung bình",
+      value: totals.avg.toFixed(1),
+      unit: "ngày",
+      severity: totals.avg < 5 ? "critical" : totals.avg < 10 ? "warn" : "ok",
+      trend: { delta: "↓0,3d vs T4", direction: "down", color: "green" },
+      tooltip: "Hạn sử dụng tồn kho trung bình = Tồn / nhu cầu ngày.",
+    },
+    {
+      key: "critical_cn",
+      label: "CN nguy hiểm",
+      value: totals.critical,
+      unit: "CN",
+      severity: totals.critical > 0 ? "critical" : "ok",
+      trend: totals.critical > 0
+        ? { delta: `${totals.critical} CN HSTK <2d`, direction: "up", color: "red" }
+        : { delta: "→ ổn định", direction: "flat", color: "gray" },
+      tooltip: "Số CN có HSTK dưới 2 ngày — cần lệnh điều chuyển khẩn.",
+      onClick: () => setCardFilter(cardFilter === "critical" ? "all" : "critical"),
+    },
+    {
+      key: "low_cn",
+      label: "CN sắp thiếu",
+      value: totals.low,
+      unit: "CN",
+      severity: totals.low > 0 ? "warn" : "ok",
+      trend: { delta: "HSTK 2-5d", direction: "flat", color: "gray" },
+      tooltip: "Số CN có HSTK từ 2-5 ngày — chuẩn bị bổ sung.",
+      onClick: () => setCardFilter(cardFilter === "low" ? "all" : "low"),
+    },
+    {
+      key: "working_capital",
+      label: "Vốn lưu động",
+      value: (totals.workingCapital / 1_000_000_000).toFixed(2),
+      unit: "tỷ ₫",
+      severity: "warn",
+      trend: { delta: "↓2% vs T4", direction: "down", color: "green" },
+      tooltip: "Giá trị tồn kho ước tính (320.000 ₫/m² avg).",
+      defaultHidden: true,
+    },
+  ];
+
+  const skuPivotRows = useMemo(() => buildBranchSkuPivot(filteredRows), [filteredRows]);
 
   const cnColumns: SmartTableColumn<BranchRow>[] = [
     {
