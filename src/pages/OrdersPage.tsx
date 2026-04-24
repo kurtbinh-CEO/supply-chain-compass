@@ -491,109 +491,207 @@ export default function OrdersPage() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Lifecycle summary bar — 7 nodes
+   Lifecycle flow — 1 dòng nhỏ trong header bảng (M5-UX-PATCH)
+   "Tiến trình: Duyệt(1) → NM(1) → Xe(2) → Lấy(2) → Chở(3) → Giao(2) → Xong(4)"
    ═══════════════════════════════════════════════════════════════════════════ */
-function LifecycleSummaryBar({
-  counts, onJumpStage,
+function LifecycleFlowMini({
+  counts, active, onToggle,
 }: {
   counts: Record<LifecycleStage, number>;
-  onJumpStage: (s: LifecycleStage) => void;
+  active: Set<LifecycleStage>;
+  onToggle: (s: LifecycleStage) => void;
 }) {
-  const ICONS: Record<LifecycleStage, React.ComponentType<{ className?: string }>> = {
-    approved: ClipboardCheck, sent_nm: Send, nm_confirmed: CheckCircle2,
-    pickup: Package, in_transit: Truck, delivering: Flag, completed: CheckCircle2,
-    cancelled: X,
-  };
   return (
-    <div className="rounded-card border border-surface-3 bg-surface-2 p-2 mt-2 overflow-x-auto">
-      <div className="flex items-center gap-0 min-w-max">
-        {STAGE_ORDER.map((s, i) => {
-          const Icon = ICONS[s];
-          const count = counts[s];
-          const active = count > 0;
-          return (
-            <div key={s} className="flex items-center">
-              <button
-                onClick={() => onJumpStage(s)}
-                disabled={!active}
-                className={cn(
-                  "flex flex-col items-center gap-1 px-2 py-1.5 rounded-button transition-all min-w-[78px]",
-                  active ? "hover:bg-surface-3 cursor-pointer" : "opacity-40 cursor-not-allowed",
-                )}
-              >
-                <div className={cn(
-                  "h-7 w-7 rounded-full flex items-center justify-center border",
-                  active ? STAGE_META[s].tone : "bg-surface-1 border-surface-3 text-text-3",
-                )}>
-                  <Icon className="h-3.5 w-3.5" />
-                </div>
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-text-3">{STAGE_META[s].short}</div>
-                <div className={cn("text-table-sm tabular-nums font-bold", active ? "text-text-1" : "text-text-3")}>
-                  ({count})
-                </div>
-              </button>
-              {i < STAGE_ORDER.length - 1 && (
-                <div className={cn("h-[2px] w-6 rounded-full mt-[-22px]", count > 0 ? "bg-primary/40" : "bg-surface-3")} />
+    <div className="flex items-center gap-1 text-[11px] text-text-3 mb-2 overflow-x-auto pb-1">
+      <span className="font-medium text-text-2 shrink-0">Tiến trình:</span>
+      {STAGE_ORDER.map((s, i) => {
+        const n = counts[s];
+        const isActive = active.has(s);
+        const enabled = n > 0;
+        return (
+          <span key={s} className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              disabled={!enabled}
+              onClick={() => onToggle(s)}
+              className={cn(
+                "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded transition-colors",
+                isActive
+                  ? "text-primary font-semibold bg-primary/10"
+                  : enabled ? "hover:text-text-1 hover:bg-surface-2" : "opacity-40 cursor-not-allowed",
               )}
-            </div>
-          );
-        })}
-      </div>
+              title={`${STAGE_META[s].label} — ${n} đơn`}
+            >
+              <span className={cn("h-1.5 w-1.5 rounded-full", enabled ? "bg-primary/60" : "bg-surface-3")} />
+              <span>{STAGE_META[s].short}</span>
+              <span className="tabular-nums font-semibold">({n})</span>
+            </button>
+            {i < STAGE_ORDER.length - 1 && (
+              <span className="text-text-3/50">→</span>
+            )}
+          </span>
+        );
+      })}
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Filter pill + kind toggle
+   Filter pill + separator
    ═══════════════════════════════════════════════════════════════════════════ */
 function FilterPill({ active, onClick, count, label, icon, tone, disabled }: {
   active: boolean; onClick: () => void; count: number; label: string;
   icon?: string; tone?: "warning" | "info" | "success" | "danger"; disabled?: boolean;
 }) {
-  const toneActive = tone === "warning" ? "bg-warning text-warning-foreground border-warning"
+  const toneActive = tone === "danger"
+    ? "bg-danger text-primary-foreground border-danger"
+    : tone === "warning" ? "bg-warning text-warning-foreground border-warning"
     : tone === "info" ? "bg-info text-info-foreground border-info"
     : tone === "success" ? "bg-success text-success-foreground border-success"
-    : tone === "danger" ? "bg-danger text-primary-foreground border-danger"
     : "bg-primary text-primary-foreground border-primary";
+  // Special: Trễ pill stays danger-tinted even when inactive (if has count)
+  const dangerInactive = tone === "danger" && !active && !disabled
+    ? "bg-danger-bg text-danger border-danger/40 hover:bg-danger/15"
+    : "";
   return (
     <button
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-table-sm font-medium transition-colors",
+        "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors",
         active
           ? toneActive
-          : "bg-surface-1 border-surface-3 text-text-2 hover:bg-surface-3",
+          : dangerInactive || "bg-surface-1 border-surface-3 text-text-2 hover:bg-surface-3",
         disabled && "opacity-50 cursor-not-allowed",
       )}
     >
       {icon && <span>{icon}</span>}
       <span>{label}</span>
-      <span className="tabular-nums font-bold">({count})</span>
+      <span className="tabular-nums font-bold">{count}</span>
     </button>
   );
 }
 
-function KindToggle({ value, onChange, po, to }: {
-  value: "all" | "RPO" | "TO"; onChange: (v: "all" | "RPO" | "TO") => void;
-  po: number; to: number;
+function Separator() {
+  return <span className="mx-1 h-4 w-px bg-surface-3" aria-hidden />;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Card drill-down popup (M5-UX-PATCH — cards CHỈ NHÌN, click → popup)
+   ═══════════════════════════════════════════════════════════════════════════ */
+function CardDrillDownDialog({
+  focus, rows, counts, onClose, onApplyFilter, onOpenRow,
+}: {
+  focus: NonNullable<DrillFocus>;
+  rows: PoLifecycleRow[];
+  counts: { stage: Record<LifecycleStage, number>; todo: number; transit: number; overdue: number; done: number };
+  onClose: () => void;
+  onApplyFilter: (s: "todo" | "transit" | "overdue" | "done" | { stage: LifecycleStage }) => void;
+  onOpenRow: (r: PoLifecycleRow) => void;
 }) {
-  const opt = (v: "all" | "RPO" | "TO", label: string, n: number) => (
-    <button
-      key={v}
-      onClick={() => onChange(v)}
-      className={cn(
-        "px-2.5 py-0.5 rounded-button text-[11px] font-medium transition-colors",
-        value === v ? "bg-primary text-primary-foreground" : "text-text-3 hover:text-text-1",
-      )}
-    >{label} ({n})</button>
-  );
+  const titleMap = {
+    todo: "Cần xử lý — phân rã theo trạng thái",
+    transit: "Đang vận chuyển — danh sách xe",
+    overdue: "Trễ hạn SLA — cần xử lý ngay",
+    done: "Hoàn tất tuần này",
+  } as const;
+
+  // Build content per focus
+  const renderBody = () => {
+    if (focus === "todo") {
+      const breakdown: Array<{ s: LifecycleStage; label: string; n: number }> = ACTION_STAGES.map(s => ({
+        s, label: STAGE_META[s].label, n: counts.stage[s],
+      })).filter(x => x.n > 0);
+      return (
+        <div className="space-y-2">
+          <div className="text-table-sm text-text-3">Tổng <b className="text-text-1">{counts.todo}</b> đơn cần thao tác.</div>
+          <div className="grid grid-cols-2 gap-2">
+            {breakdown.map(b => (
+              <button
+                key={b.s}
+                onClick={() => onApplyFilter({ stage: b.s })}
+                className="flex items-center justify-between rounded-card border border-surface-3 bg-surface-1 hover:bg-surface-2 px-3 py-2 transition-colors text-left"
+              >
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-text-3 font-semibold">{STAGE_META[b.s].short}</div>
+                  <div className="text-table-sm text-text-1">{b.label}</div>
+                </div>
+                <div className="text-h3 font-bold tabular-nums text-primary">{b.n}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    const list = focus === "transit"
+      ? rows.filter(r => r.stage === "pickup" || r.stage === "in_transit")
+      : focus === "overdue"
+      ? rows.filter(r => isOverdue(r))
+      : rows.filter(r => r.stage === "completed");
+
+    return (
+      <div className="space-y-2">
+        <div className="text-table-sm text-text-3">
+          {focus === "overdue" && <>Có <b className="text-danger">{list.length}</b> đơn vượt SLA. Bấm vào dòng để mở chi tiết.</>}
+          {focus === "transit" && <>Có <b className="text-text-1">{list.length}</b> xe đang trên đường.</>}
+          {focus === "done" && <>Đã hoàn tất <b className="text-success">{list.length}</b> đơn trong kỳ.</>}
+        </div>
+        <div className="max-h-[50vh] overflow-y-auto divide-y divide-surface-3 rounded-card border border-surface-3">
+          {list.length === 0 ? (
+            <div className="p-4 text-center text-table-sm text-text-3">Không có đơn nào.</div>
+          ) : list.map(r => {
+            const overdue = isOverdue(r);
+            return (
+              <button
+                key={r.id}
+                onClick={() => onOpenRow(r)}
+                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-surface-2 transition-colors"
+              >
+                <Badge variant="outline" className={cn("text-[10px] font-mono shrink-0", STAGE_META[r.stage].tone)}>
+                  {STAGE_META[r.stage].short}
+                </Badge>
+                <div className="flex-1 min-w-0">
+                  <div className="text-table-sm font-mono font-semibold text-text-1 truncate">{r.poNumber}</div>
+                  <div className="text-[11px] text-text-3 truncate">{r.fromName} → {r.toName}</div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className={cn("text-table-sm font-medium tabular-nums", overdue ? "text-danger" : "text-text-2")}>
+                    {fmtTimeInStage(r.hoursInStage)} {overdue && "⚠️"}
+                  </div>
+                  {overdue && <div className="text-[10px] text-danger">SLA {STAGE_SLA_HOURS[r.stage]}h</div>}
+                  {r.stage === "in_transit" && r.etaRemainingH !== undefined && (
+                    <div className="text-[10px] text-text-3">{fmtEta(r.etaRemainingH).label}</div>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-button bg-surface-1 border border-surface-3 p-0.5">
-      {opt("all", "Tất cả", po + to)}
-      {opt("RPO", "PO", po)}
-      {opt("TO", "TO", to)}
-    </div>
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{titleMap[focus]}</DialogTitle>
+          <DialogDescription>
+            {focus === "overdue"
+              ? "Mỗi đơn đã quá SLA. Bấm để mở dòng tương ứng trong bảng."
+              : "Bấm 1 mục để áp filter vào bảng và đóng popup."}
+          </DialogDescription>
+        </DialogHeader>
+        {renderBody()}
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose}>Đóng</Button>
+          <Button onClick={() => onApplyFilter(focus)}>
+            Lọc bảng theo "{titleMap[focus].split(" — ")[0]}"
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
