@@ -9,7 +9,7 @@
  * XÓA: Sourcing Workbench (4-step), tab cũ "Đặt hàng NM"
  */
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { SummaryCards } from "@/components/SummaryCards";
 import { VersionHistoryButton } from "@/components/VersionHistoryButton";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
