@@ -356,7 +356,7 @@ function ApprovalTab({
                 </td></tr>
               )}
               {showMock && rows.length === 0 && PO_DRAFT.slice(0, 5).map(po => (
-                <MockPoRow key={po.poId} po={po} scale={scale} />
+                <MockPoRow key={po.poNumber} po={po} scale={scale} />
               ))}
               {rows.map(r => r.type === "po"
                 ? <PoApprovalRow key={r.key} po={r.po} stage={effective(r.po)} expanded={expanded.has(r.key)} onToggle={() => toggle(r.key)} onSend={() => sendPo(r.po)} scale={scale} />
