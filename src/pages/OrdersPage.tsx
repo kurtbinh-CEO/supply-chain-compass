@@ -14,7 +14,8 @@
  * dialog here to log the transition. SLA-based reminders surface as row
  * tone + summary banner; nothing fires automatically.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
 import { useNavigate } from "react-router-dom";
