@@ -382,6 +382,13 @@ function ItemsTab() {
           setDeleting(null);
         }}
       />
+
+      <MasterAuditPanel
+        open={historyCode !== null}
+        onOpenChange={(v) => !v && setHistoryCode(null)}
+        entity="item"
+        entityCode={historyCode ?? undefined}
+      />
     </div>
   );
 }
