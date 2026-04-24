@@ -717,10 +717,50 @@ const CONTAINER_TYPES = [
   { code: "TRUCK10",name: "Truck 10 tấn",    capacityM2: 600,   palletLimit: 8,  weightLimitKg: 10000, costPerKm: 9000,  note: "Nội vùng, LCNB" },
 ];
 
+const CONTAINER_FIELDS: FormField[] = [
+  { key: "code",          label: "Mã loại", type: "text", required: true, mono: true, placeholder: "VD: 20FT", readOnlyOnEdit: true, span: 1 },
+  { key: "name",          label: "Tên loại", type: "text", required: true, placeholder: "Container 20ft", span: 1 },
+  { key: "capacityM2",    label: "Sức chứa (m²)", type: "number", required: true, span: 1 },
+  { key: "palletLimit",   label: "Số pallet tối đa", type: "number", required: true, span: 1 },
+  { key: "weightLimitKg", label: "Tải trọng (kg)", type: "number", required: true, span: 1 },
+  { key: "costPerKm",     label: "Cước (VND/km)", type: "number", required: true, span: 1 },
+  { key: "note",          label: "Ghi chú", type: "textarea", placeholder: "Đường dài, fill ≥ 60%...", span: 2 },
+];
+
 function ContainersTab() {
+  const [search, setSearch] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<typeof CONTAINER_TYPES[number] | null>(null);
+  const [deleting, setDeleting] = useState<typeof CONTAINER_TYPES[number] | null>(null);
+
+  const rows = CONTAINER_TYPES.filter(
+    (c) =>
+      c.code.toLowerCase().includes(search.toLowerCase()) ||
+      c.name.toLowerCase().includes(search.toLowerCase()),
+  );
+
   return (
     <div className="space-y-3">
-      <SearchToolbar value="" onChange={() => {}} onAdd={() => toast("Thêm loại container (demo)")} />
+      <CrudToolbar
+        search={search}
+        onSearchChange={setSearch}
+        onAdd={() => setAdding(true)}
+        onImport={(src) => toast.success(`Nhập loại container từ ${src} (demo)`)}
+        onExport={() =>
+          exportToCsv(
+            "container",
+            rows.map((c) => ({
+              ma: c.code, ten: c.name, suc_chua_m2: c.capacityM2,
+              pallet_limit: c.palletLimit, tai_trong_kg: c.weightLimitKg,
+              cuoc_vnd_km: c.costPerKm, ghi_chu: c.note,
+            })),
+          )
+        }
+        addLabel="Thêm loại container"
+        importTitle="Nhập loại container"
+        importDescription="Chọn nguồn nhập danh mục container"
+        placeholder="Tìm theo mã, tên..."
+      />
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
         <table className="w-full text-table">
           <thead>
@@ -728,11 +768,12 @@ function ContainersTab() {
               {["Mã", "Tên", "Sức chứa (m²)", "Pallet limit", "Tải trọng (kg)", "Cước (VND/km)", "Ghi chú"].map((h) => (
                 <th key={h} className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">{h}</th>
               ))}
+              <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3 font-medium w-[88px]">Thao tác</th>
             </tr>
           </thead>
           <tbody>
-            {CONTAINER_TYPES.map((c, i) => (
-              <tr key={c.code} className={`${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
+            {rows.map((c, i) => (
+              <tr key={c.code} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
                 <td className="px-4 py-2.5 font-mono font-medium text-text-1">{c.code}</td>
                 <td className="px-4 py-2.5 text-text-2">{c.name}</td>
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.capacityM2.toLocaleString("vi-VN")}</td>
@@ -740,11 +781,53 @@ function ContainersTab() {
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.weightLimitKg.toLocaleString("vi-VN")}</td>
                 <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.costPerKm.toLocaleString("vi-VN")}</td>
                 <td className="px-4 py-2.5 text-text-3">{c.note}</td>
+                <td className="px-4 py-2.5">
+                  <RowActions onEdit={() => setEditing(c)} onDelete={() => setDeleting(c)} />
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      <p className="text-table-sm text-text-3">{rows.length} / {CONTAINER_TYPES.length} loại container</p>
+
+      <EntityFormDialog
+        open={adding}
+        mode="create"
+        entityName="loại container"
+        fields={CONTAINER_FIELDS}
+        onClose={() => setAdding(false)}
+        onSave={(v) => {
+          toast.success(`Đã tạo loại container ${v.code} (demo)`);
+          setAdding(false);
+        }}
+      />
+      <EntityFormDialog
+        open={!!editing}
+        mode="edit"
+        entityName="loại container"
+        fields={CONTAINER_FIELDS}
+        initialValues={editing ?? undefined}
+        onClose={() => setEditing(null)}
+        onSave={(v) => {
+          toast.success(`Đã cập nhật ${v.code} (demo)`);
+          setEditing(null);
+        }}
+      />
+      <DeleteConfirmDialog
+        open={!!deleting}
+        entityLabel={deleting ? `loại ${deleting.code}` : ""}
+        description={
+          deleting
+            ? `Xóa loại ${deleting.code} sẽ ảnh hưởng tính cước & gom hàng các tuyến đang dùng.`
+            : undefined
+        }
+        onClose={() => setDeleting(null)}
+        onConfirm={() => {
+          toast.success(`Đã xóa ${deleting?.code} (demo)`);
+          setDeleting(null);
+        }}
+      />
     </div>
   );
 }
