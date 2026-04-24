@@ -3,32 +3,33 @@ import { cn } from "@/lib/utils";
 import { StatusChip } from "@/components/StatusChip";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { ArrowUpDown, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { TermTooltip } from "@/components/TermTooltip";
 
-// SS Targets
+// Mục tiêu SS
 const ssTargets = [
-  { node: "CN_NORTH_01", sku: "SKU-29384-H", current: 1420, formula: "z*σ*√LT", demand: 84.2, status: "Optimal" as const },
-  { node: "CN_SOUTH_04", sku: "SKU-11029-K", current: 840, formula: "z*σ*√LT", demand: 32.1, status: "Low Stock" as const },
-  { node: "CN_WEST_02", sku: "SKU-88210-L", current: 2100, formula: "Manual Override", demand: 112.5, status: "Manual" as const },
+  { node: "CN_NORTH_01", sku: "SKU-29384-H", current: 1420, formula: "z*σ*√LT", demand: 84.2, status: "Tối ưu" as const },
+  { node: "CN_SOUTH_04", sku: "SKU-11029-K", current: 840, formula: "z*σ*√LT", demand: 32.1, status: "Thiếu hàng" as const },
+  { node: "CN_WEST_02", sku: "SKU-88210-L", current: 2100, formula: "Ghi đè thủ công", demand: 112.5, status: "Thủ công" as const },
 ];
 
-// Change Log
+// Nhật ký thay đổi
 const changeLogs = [
-  { date: "2023-10-24", sku: "SKU-29384-H", from: 1200, to: 1420, delta: "+18.3%", trigger: "Demand Spike (Seasonal)", approver: "Nguyen T. Anh" },
-  { date: "2023-10-22", sku: "SKU-11029-K", from: 950, to: 840, delta: "-11.5%", trigger: "LT Optimization", approver: "Mark S. Curator" },
+  { date: "24/10/2023", sku: "SKU-29384-H", from: 1200, to: 1420, delta: "+18.3%", trigger: "Nhu cầu tăng đột biến (Mùa vụ)", approver: "Nguyễn T. Anh" },
+  { date: "22/10/2023", sku: "SKU-11029-K", from: 950, to: 840, delta: "-11.5%", trigger: "Tối ưu thời gian đặt hàng", approver: "Mark S. Curator" },
 ];
 
-// Trend data
+// Dữ liệu xu hướng
 const trendData = [
-  { month: "AUG", fc: 1.2, ss: 1.4, wc: 1.8 }, { month: "SEP", fc: 1.5, ss: 1.5, wc: 1.9 },
-  { month: "OCT", fc: 1.8, ss: 1.6, wc: 2.1 }, { month: "NOV", fc: 2.4, ss: 1.8, wc: 2.4 },
-  { month: "DEC", fc: 2.0, ss: 1.7, wc: 2.2 },
+  { month: "T8", fc: 1.2, ss: 1.4, wc: 1.8 }, { month: "T9", fc: 1.5, ss: 1.5, wc: 1.9 },
+  { month: "T10", fc: 1.8, ss: 1.6, wc: 2.1 }, { month: "T11", fc: 2.4, ss: 1.8, wc: 2.4 },
+  { month: "T12", fc: 2.0, ss: 1.7, wc: 2.2 },
 ];
 
 const simParams = ["Mức phục vụ mục tiêu (α)", "Thời gian đặt hàng (ngày)", "Biến động nhu cầu (σ)", "Chu kỳ kiểm tra"];
 
-// SS Alert (top of tab) — δ ≥ 10% → PENDING confirm
+// Cảnh báo SS — δ ≥ 10% → CHỜ DUYỆT
 const ssAlert = {
   sku: "GA-300",
   oldSs: 2719,
@@ -59,12 +60,12 @@ export function SafetyStockTab() {
 
   const handleKeepSs = () => {
     setSsAlertStatus("kept");
-    toast.info("Giữ SS cũ", { description: `${ssAlert.sku}: vẫn ${ssAlert.oldSs.toLocaleString()} m². Logged.` });
+    toast.info("Giữ SS cũ", { description: `${ssAlert.sku}: vẫn ${ssAlert.oldSs.toLocaleString()} m². Đã ghi log.` });
   };
 
   return (
     <div className="space-y-6">
-      {/* SS ALERT CARD — top of tab */}
+      {/* Card cảnh báo SS — đầu tab */}
       {ssAlertStatus === "pending" && (
         <div className={cn(
           "rounded-card border-l-4 p-5 animate-fade-in",
@@ -74,17 +75,18 @@ export function SafetyStockTab() {
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-table font-semibold text-text-1">
-                  {isLargeDelta ? "⚠ SS đề xuất — chờ xác nhận" : "✅ SS auto-applied"}
+                  {isLargeDelta ? "⚠ SS đề xuất — chờ xác nhận" : "✅ SS tự áp dụng"}
                 </span>
                 <span className={cn(
                   "rounded-full px-2 py-0.5 text-caption font-bold",
                   isLargeDelta ? "bg-warning text-warning-foreground" : "bg-success text-success-foreground"
                 )}>
-                  {isLargeDelta ? "PENDING" : "AUTO"}
+                  {isLargeDelta ? "CHỜ DUYỆT" : "TỰ ĐỘNG"}
                 </span>
               </div>
               <p className="text-table text-text-1">
-                <span className="font-mono font-medium">SS {ssAlert.sku}</span>:{" "}
+                <TermTooltip term="SS"><span className="font-mono font-medium">SS</span></TermTooltip>{" "}
+                <span className="font-mono font-medium">{ssAlert.sku}</span>:{" "}
                 <span className="tabular-nums">{ssAlert.oldSs.toLocaleString()}</span>
                 {" → "}
                 <span className="tabular-nums font-semibold">{ssAlert.newSs.toLocaleString()}</span>
@@ -115,21 +117,23 @@ export function SafetyStockTab() {
       )}
       {ssAlertStatus !== "pending" && (
         <div className="rounded-card border border-surface-3 bg-surface-2 px-4 py-2.5 text-table-sm text-text-2 flex items-center gap-2">
-          {ssAlertStatus === "confirmed" ? "✅ SS đã xác nhận" : "❌ Giữ SS cũ"} —{" "}
-          <span className="font-mono">{ssAlert.sku}</span>. Audit đã ghi.
+          {ssAlertStatus === "confirmed" ? "✅ Đã xác nhận SS" : "❌ Giữ SS cũ"} —{" "}
+          <span className="font-mono">{ssAlert.sku}</span>. Đã ghi log audit.
         </div>
       )}
       <div className="grid grid-cols-5 gap-6">
-        {/* A: SS Targets Table */}
+        {/* A: Bảng mục tiêu SS */}
         <div className="col-span-3 rounded-card border border-surface-3 bg-surface-2">
           <div className="px-5 py-4 border-b border-surface-3 flex items-center justify-between">
-            <h2 className="font-display text-section-header text-text-1">Current SS Targets</h2>
+            <h2 className="font-display text-section-header text-text-1">
+              Mục tiêu <TermTooltip term="SS">SS</TermTooltip> hiện tại
+            </h2>
             <span className="text-table-sm text-text-3 bg-surface-0 rounded-full px-2.5 py-0.5 border border-surface-3">z=1.64 (95%)</span>
           </div>
           <table className="w-full">
             <thead>
               <tr className="border-b border-surface-3">
-                {["Node × SKU", "Current Target", "SS Formula", "Σ Demand", "Status", ""].map((h) => (
+                {["Node × SKU", "Mục tiêu hiện tại", "Công thức SS", "Σ Nhu cầu", "Trạng thái", ""].map((h) => (
                   <th key={h} className="text-left text-table-header uppercase text-text-3 px-5 py-3">{h}</th>
                 ))}
               </tr>
@@ -141,12 +145,12 @@ export function SafetyStockTab() {
                     <span className="text-table font-medium text-text-1 block">{r.node}</span>
                     <span className="text-caption text-text-3 font-mono">{r.sku}</span>
                   </td>
-                  <td className="px-5 py-3 text-table font-medium text-text-1 tabular-nums">{r.current.toLocaleString()} <span className="text-text-3 text-caption">units</span></td>
+                  <td className="px-5 py-3 text-table font-medium text-text-1 tabular-nums">{r.current.toLocaleString()} <span className="text-text-3 text-caption">đv</span></td>
                   <td className="px-5 py-3 text-table text-text-2 font-mono italic">{r.formula}</td>
                   <td className="px-5 py-3 text-table text-text-1 tabular-nums">{r.demand}</td>
                   <td className="px-5 py-3">
                     <StatusChip
-                      status={r.status === "Optimal" ? "success" : r.status === "Low Stock" ? "danger" : "warning"}
+                      status={r.status === "Tối ưu" ? "success" : r.status === "Thiếu hàng" ? "danger" : "warning"}
                       label={r.status}
                     />
                   </td>
@@ -157,11 +161,11 @@ export function SafetyStockTab() {
           </table>
         </div>
 
-        {/* C: Simulation Hub */}
+        {/* C: Mô phỏng */}
         <div className="col-span-2 rounded-card border border-surface-3 bg-surface-2 p-5 space-y-5">
-          <h2 className="font-display text-section-header text-text-1">Simulation Hub</h2>
+          <h2 className="font-display text-section-header text-text-1">Mô phỏng</h2>
           <div>
-            <label className="text-table-header uppercase text-text-3 mb-1.5 block">Simulate Parameter</label>
+            <label className="text-table-header uppercase text-text-3 mb-1.5 block">Tham số mô phỏng</label>
             <select
               value={simParam}
               onChange={(e) => setSimParam(e.target.value)}
@@ -171,7 +175,7 @@ export function SafetyStockTab() {
             </select>
           </div>
           <div>
-            <label className="text-table-header uppercase text-text-3 mb-1.5 block">Simulation Value</label>
+            <label className="text-table-header uppercase text-text-3 mb-1.5 block">Giá trị mô phỏng</label>
             <div className="flex items-center gap-3">
               <input
                 type="range"
@@ -186,23 +190,23 @@ export function SafetyStockTab() {
           </div>
           <div className="space-y-2 py-2">
             <div className="flex justify-between text-table text-text-2 border-b border-surface-3/50 pb-2">
-              <span>Tác động đến Vốn lưu động</span>
+              <span>Tác động đến vốn lưu động</span>
               <span className={cn("font-medium", wcDelta > 0 ? "text-danger" : "text-success")}>
-                {wcDelta > 0 ? "+" : ""}{(wcDelta / 1000).toFixed(0)}K VND
+                {wcDelta > 0 ? "+" : ""}{(wcDelta / 1000).toFixed(0)}K ₫
               </span>
             </div>
             <div className="flex justify-between text-table text-text-2 border-b border-surface-3/50 pb-2">
-              <span>Stockout Risk Protection</span>
+              <span>Bảo vệ rủi ro thiếu hàng</span>
               <span className="text-success font-medium">+{Math.round((simValue - 95) * 3.5)}%</span>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 py-2">
             <div className="text-center">
-              <p className="text-table-header uppercase text-text-3">Before SS</p>
+              <p className="text-table-header uppercase text-text-3">SS trước</p>
               <p className="font-display text-kpi text-text-1">{beforeSS.toLocaleString()}</p>
             </div>
             <div className="text-center">
-              <p className="text-table-header uppercase text-success">After SS</p>
+              <p className="text-table-header uppercase text-success">SS sau</p>
               <p className="font-display text-kpi text-success">{afterSS.toLocaleString()}</p>
             </div>
           </div>
@@ -212,10 +216,10 @@ export function SafetyStockTab() {
         </div>
       </div>
 
-      {/* B: Audit & Change Log */}
+      {/* B: Audit & Nhật ký thay đổi */}
       <div className="rounded-card border border-surface-3 bg-surface-2">
         <div className="px-5 py-4 border-b border-surface-3 flex items-center justify-between">
-          <h2 className="font-display text-section-header text-text-1">Audit & Change Log</h2>
+          <h2 className="font-display text-section-header text-text-1">Audit & Nhật ký thay đổi</h2>
           <select
             value={dateFilter}
             onChange={(e) => setDateFilter(e.target.value)}
@@ -255,11 +259,11 @@ export function SafetyStockTab() {
         </table>
       </div>
 
-      {/* D: FC→SS→WC Trend Chart */}
+      {/* D: Biểu đồ xu hướng FC→SS→WC */}
       <div className="rounded-card border border-surface-3 bg-surface-2 p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-section-header text-text-1">FC → SS ROI</h2>
-          <span className="text-table-sm text-primary font-medium cursor-pointer hover:underline">Full Details</span>
+          <h2 className="font-display text-section-header text-text-1">FC → SS → ROI</h2>
+          <span className="text-table-sm text-primary font-medium cursor-pointer hover:underline">Xem chi tiết</span>
         </div>
         <ResponsiveContainer width="100%" height={250}>
           <BarChart data={trendData}>
@@ -268,18 +272,18 @@ export function SafetyStockTab() {
             <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} />
             <Tooltip contentStyle={{ borderRadius: 8, borderColor: "var(--color-surface-3)", fontSize: 12 }} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="fc" fill="#2563EB" name="Forecast" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="ss" fill="var(--color-surface-3)" name="Safety Stock" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="fc" fill="#2563EB" name="Dự báo" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="ss" fill="var(--color-surface-3)" name="Tồn an toàn" radius={[4, 4, 0, 0]} />
             <Bar dataKey="wc" fill="var(--color-success-text)" name="Vốn lưu động" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
         <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-surface-3">
           <div className="flex justify-between text-table text-text-2">
-            <span>Forecast Value Add (FVA)</span>
+            <span>Giá trị tăng thêm của FC (<TermTooltip term="FVA">FVA</TermTooltip>)</span>
             <span className="text-success font-medium">+12.4%</span>
           </div>
           <div className="flex justify-between text-table text-text-2">
-            <span>SS Reduction Factor</span>
+            <span>Hệ số giảm SS</span>
             <span className="text-danger font-medium">-8.2%</span>
           </div>
         </div>
