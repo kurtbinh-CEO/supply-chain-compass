@@ -1283,23 +1283,16 @@ export default function DrpPage() {
                           {cnTotals.pipeline > 0 && <span className="tabular-nums"><span className="text-text-3 mx-1">·</span>Về <span className="text-text-1 font-medium">{cnTotals.pipeline.toLocaleString()}</span></span>}
                           {cnTotals.hubPo > 0 && <span className="tabular-nums"><span className="text-text-3 mx-1">·</span>NM <span className="text-text-1 font-medium">{cnTotals.hubPo.toLocaleString()}</span></span>}
                           {cnTotals.lcnb > 0 && (() => {
-                            // Match TO whose destination is this CN (r.cn like "CN-NA" or "NA")
-                            const cnKey = r.cn.replace(/^CN-/, "");
-                            const toRowsLcnb = [
-                              { code: "TO-HCM-BD-W20-001", from: "HCM", to: "BD" },
-                              { code: "TO-QN-NA-W20-001",  from: "QN",  to: "NA" },
-                              { code: "TO-HN-NA-W20-002",  from: "HN",  to: "NA" },
-                              { code: "TO-DN-CT-W20-001",  from: "DN",  to: "CT" },
-                            ];
-                            const match = toRowsLcnb.find((t) => t.to === cnKey);
-                            const fromLabel = match ? `TO-${match.from}` : "TO";
+                            const match = findToByDestCn(r.cn);
+                            const fromShort = match ? match.fromCn.replace(/^CN-/, "") : "";
+                            const fromLabel = match ? `TO-${fromShort}` : "TO";
                             return (
                               <>
                                 <span className="text-text-3 mx-1">·</span>
                                 <button
                                   type="button"
-                                  onClick={(e) => { e.stopPropagation(); navigate("/orders?tab=approval&filter=TO"); }}
-                                  title={match ? `${match.code}: CN-${match.from} → CN-${match.to} · Nháp · click để duyệt` : "Chuyển ngang LCNB · click để duyệt TO"}
+                                  onClick={(e) => { e.stopPropagation(); setLcnbToDetail(match ?? null); }}
+                                  title={match ? `${match.code}: ${match.fromCn} → ${match.toCn} · Nháp · click để xem chi tiết TO` : "Chuyển ngang LCNB"}
                                   className="inline-flex items-center gap-0.5 rounded-full border border-warning/30 bg-warning-bg px-1.5 py-0.5 text-[11px] font-semibold text-warning tabular-nums hover:bg-warning hover:text-warning-foreground transition-colors"
                                 >
                                   {fromLabel} {cnTotals.lcnb.toLocaleString()}
