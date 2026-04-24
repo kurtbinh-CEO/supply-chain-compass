@@ -465,7 +465,7 @@ export function NmOrderTab({ scale }: Props) {
         {/* Progress */}
         <div className="rounded-card border border-surface-3 bg-surface-2 p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-table text-text-2">Released {bpo.released.toLocaleString()} / {bpo.confirmed.toLocaleString()}</span>
+            <span className="text-table text-text-2">Đã phát hành {bpo.released.toLocaleString()} / {bpo.confirmed.toLocaleString()}</span>
             <span className="text-table font-medium text-text-1">{releasedPct}%</span>
           </div>
           <div className="w-full h-2 bg-surface-1 rounded-full overflow-hidden">
@@ -477,12 +477,12 @@ export function NmOrderTab({ scale }: Props) {
         {/* RPO list */}
         <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
           <div className="px-4 py-2.5 bg-surface-1/50 border-b border-surface-3">
-            <span className="text-table-sm font-medium text-text-1">Release POs thuộc Blanket này</span>
+            <span className="text-table-sm font-medium text-text-1">PO phát hành thuộc đơn khung này</span>
           </div>
           <table className="w-full text-table-sm">
             <thead>
               <tr className="border-b border-surface-3 bg-surface-1/50">
-                {["RPO#", "Tuần", "SKU", "SL", "Trạng thái", "ETA", "Liên kết"].map(h => (
+                {["Mã RPO", "Tuần", "SKU", "SL (m²)", "Trạng thái", "Dự kiến đến", "Liên kết"].map(h => (
                   <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
                 ))}
               </tr>
@@ -494,7 +494,7 @@ export function NmOrderTab({ scale }: Props) {
                   rpo.status === "CONFIRMED" || rpo.status === "APPROVED" ? "bg-info-bg text-info" :
                   rpo.status === "ATP_FAIL" ? "bg-danger-bg text-danger" : "bg-surface-1 text-text-2";
                 const statusLabel =
-                  rpo.status === "SHIPPED" ? "ĐÃ GỬI" :
+                  rpo.status === "SHIPPED" ? "ĐÃ GIAO" :
                   rpo.status === "CONFIRMED" ? "ĐÃ XÁC NHẬN" :
                   rpo.status === "APPROVED" ? "ĐÃ DUYỆT" :
                   rpo.status === "DRAFT" ? "NHÁP" :
@@ -517,7 +517,7 @@ export function NmOrderTab({ scale }: Props) {
                 );
               })}
               <tr className="bg-surface-1/50 font-semibold border-t border-surface-3">
-                <td className="px-4 py-2.5 text-text-1">TOTAL released</td>
+                <td className="px-4 py-2.5 text-text-1">TỔNG đã phát hành</td>
                 <td />
                 <td />
                 <td className="px-4 py-2.5 tabular-nums text-text-1">{bpo.released.toLocaleString()}/{bpo.confirmed.toLocaleString()}</td>
@@ -557,7 +557,7 @@ export function NmOrderTab({ scale }: Props) {
             <table className="w-full text-table-sm">
               <thead>
                 <tr className="border-b border-surface-3 bg-surface-1/50">
-                  {["Item", "Variant", "Gửi", "NM xác nhận", "Chưa", "Ghi chú NM", "Action"].map(h => (
+                  {["Mã hàng", "Mẫu", "Đã gửi", "NM xác nhận", "Chưa", "Ghi chú NM", "Hành động"].map(h => (
                     <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -585,7 +585,7 @@ export function NmOrderTab({ scale }: Props) {
                   );
                 })}
                 <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
-                  <td className="px-4 py-2.5 text-text-1">TOTAL</td>
+                  <td className="px-4 py-2.5 text-text-1">TỔNG</td>
                   <td />
                   <td className="px-4 py-2.5 tabular-nums text-text-1">{nm.sent.toLocaleString()}</td>
                   <td className="px-4 py-2.5 tabular-nums text-text-1">{nm.confirmed.toLocaleString()}</td>
@@ -676,7 +676,7 @@ export function NmOrderTab({ scale }: Props) {
           <table className="w-full text-table-sm">
             <thead>
               <tr className="border-b border-surface-3 bg-surface-1/50">
-                {["NM", ...(bposSent ? ["BPO#"] : []), "Đã đặt", "NM xác nhận", ...(bposSent ? ["Đã phát (RPO)", "Còn lại"] : ["Chưa xác nhận"]), "Trạng thái", "Hành động"].map(h => (
+                {["NM", ...(bposSent ? ["Mã BPO"] : []), "Đã đặt", "NM xác nhận", ...(bposSent ? ["Đã phát (RPO)", "Còn lại"] : ["Chưa xác nhận"]), "Trạng thái", "Hành động"].map(h => (
                   <th key={h} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -721,13 +721,13 @@ export function NmOrderTab({ scale }: Props) {
                     <td className="px-4 py-2.5">
                       <span className={cn("font-medium", statusColor)}>
                         {statusIcon} {pct}%
-                        {bposSent && bpo ? ` · ${releasedPct}% released` : ""}
+                        {bposSent && bpo ? ` · ${releasedPct}% đã phát` : ""}
                       </span>
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="flex gap-1.5">
                         <button onClick={() => setDrillNm(i)} className="text-primary text-table-sm font-medium hover:underline flex items-center gap-0.5">
-                          Detail <ChevronRight className="h-3.5 w-3.5" />
+                          Chi tiết <ChevronRight className="h-3.5 w-3.5" />
                         </button>
                         {bposSent && bpo && (
                           <button onClick={() => setDrillBpo(bpo.bpo)} className="text-info text-table-sm font-medium hover:underline">BPO</button>
@@ -738,7 +738,7 @@ export function NmOrderTab({ scale }: Props) {
                 );
               })}
               <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
-                <td className="px-4 py-2.5 text-text-1">TOTAL</td>
+                <td className="px-4 py-2.5 text-text-1">TỔNG</td>
                 {bposSent && <td />}
                 <td className="px-4 py-2.5 tabular-nums text-text-1">{totalSent.toLocaleString()}</td>
                 <td className="px-4 py-2.5 tabular-nums text-text-1">{totalConfirmed.toLocaleString()}</td>
