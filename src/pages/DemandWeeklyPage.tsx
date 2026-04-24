@@ -636,9 +636,25 @@ function ScManagerTab({
   const totalAdjust  = scRows.reduce((s, r) => s + r.totalAdjust, 0);
   const totalDuKien  = scRows.reduce((s, r) => s + r.totalDuKien, 0);
   const adjustPct    = totalDuKien > 0 ? (totalAdjust / totalDuKien) * 100 : 0;
+  const totalActualPrev = scRows.reduce((s, r) => s + r.actualPrev, 0);
+  const fcVsActualPct = totalActualPrev > 0 ? ((totalDuKien - totalActualPrev) / totalActualPrev) * 100 : 0;
+  const cnHighFc = scRows.filter((r) => r.actualPrev > 0 && r.fcVsActualPct > 20).length;
   const worstCn      = [...scRows].filter(r => r.overCount > 0).sort((a, b) => Math.abs(b.totalPct) - Math.abs(a.totalPct))[0];
 
   const scSummary: SummaryCard[] = [
+    {
+      key: "actual_prev",
+      label: `Thực tế ${PREV_MONTH_LABEL} (tuần)`,
+      value: totalActualPrev.toLocaleString("vi-VN"),
+      unit: "m²",
+      severity: cnHighFc > 0 ? "warn" : "ok",
+      trend: {
+        delta: `FC tuần: ${totalDuKien.toLocaleString("vi-VN")} (${fcVsActualPct > 0 ? "+" : ""}${fcVsActualPct.toFixed(0)}%)`,
+        direction: fcVsActualPct > 0 ? "up" : fcVsActualPct < 0 ? "down" : "flat",
+        color: cnHighFc > 0 ? "red" : "gray",
+      },
+      tooltip: `Tổng thực tế tháng trước (T${PREV_MONTH}) quy đổi tuần. ${cnHighFc > 0 ? `${cnHighFc} CN có FC tuần này > thực tế +20%.` : "FC trong biên hợp lý."}`,
+    },
     {
       key: "cn_adjusted",
       label: "CN đã adjust",
@@ -665,17 +681,8 @@ function ScManagerTab({
       severity: totalOver > 0 ? "critical" : "ok",
       trend: worstCn
         ? { delta: `${worstCn.cnCode} ${worstCn.totalPct > 0 ? "+" : ""}${worstCn.totalPct.toFixed(0)}%`, direction: "up", color: "red" }
-        : { delta: "→ ổn định", direction: "flat", color: "gray" },
+        : { delta: `${totalPending} chờ duyệt`, direction: "flat", color: "gray" },
       tooltip: "Số CN có adjust ngoài tolerance band — cần SC xử lý.",
-    },
-    {
-      key: "pending",
-      label: "Chờ duyệt",
-      value: totalPending,
-      unit: "SKU",
-      severity: totalPending > 0 ? "warn" : "ok",
-      trend: { delta: totalPending > 0 ? "Cần SC duyệt" : "→ trống", direction: totalPending > 0 ? "up" : "flat", color: totalPending > 0 ? "red" : "gray" },
-      tooltip: "Số SKU đang chờ SC Manager phê duyệt.",
     },
   ];
 
