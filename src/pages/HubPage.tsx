@@ -78,6 +78,7 @@ export default function HubPage() {
   const [activeTab, setActiveTab] = useState("commitment");
   const { tenant } = useTenant();
   const { markDone } = useNextStep();
+  const { current: planCycle, isReadOnly: planLocked } = usePlanningPeriod();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
   const [importerOpen, setImporterOpen] = useState(false);
 
@@ -106,8 +107,9 @@ export default function HubPage() {
   return (
     <AppLayout>
       <ScreenHeader
-        title="Hub & Cam kết NM — Tháng 5/2026"
-        subtitle="S&OP locked v4 · Ngày 8/30 · Planner gõ cam kết NM trực tiếp"
+        title="Hub & Cam kết NM"
+        subtitle={planLocked ? `Chế độ chỉ xem — ${planCycle.label} đã khóa` : `S&OP locked v${planCycle.version} · Planner gõ cam kết NM trực tiếp`}
+        actions={<PlanningPeriodSelector />}
       />
 
       {/* Hub KPI strip — clickable totals */}
