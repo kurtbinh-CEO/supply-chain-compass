@@ -4,7 +4,7 @@ import {
   Package, CalendarDays, GitBranch,
   Truck, Database, FileBarChart, Settings,
   ChevronLeft, Play, BookOpen, Building, GraduationCap, LayoutDashboard,
-  AlertTriangle, RefreshCw, Crown, FlaskConical,
+  AlertTriangle, RefreshCw, Crown, FlaskConical, GitCompare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/components/SidebarContext";
