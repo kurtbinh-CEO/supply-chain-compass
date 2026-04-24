@@ -639,7 +639,7 @@ export default function DrpPage() {
       />
 
       {/* ── HEADER ── */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <div>
           <h1 className="text-h2 font-display font-bold text-text-1">Kết quả DRP — Tuần 20</h1>
           <p className="text-table-sm text-text-3 mt-0.5">
@@ -648,7 +648,7 @@ export default function DrpPage() {
         </div>
         {isPlanLocked ? (
           <div className="flex items-center gap-2 rounded-button bg-surface-2 text-text-3 px-4 py-2 border border-surface-3">
-            <LockIcon className="h-4 w-4" /> Plan locked
+            <LockIcon className="h-4 w-4" /> Đã khoá plan
           </div>
         ) : (
           <button onClick={handleRunDrp}
@@ -656,6 +656,29 @@ export default function DrpPage() {
             <Play className="h-4 w-4" /> Chạy lại DRP
           </button>
         )}
+      </div>
+
+      {/* ── VERSION ROW ── */}
+      <div className="flex flex-wrap items-center gap-2 mb-4 text-table-sm">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-success-bg text-success border border-success/30 px-2.5 py-0.5 font-medium">
+          <span className="h-1.5 w-1.5 rounded-full bg-success" />
+          DRP W20 v3 · Active
+        </span>
+        <button
+          onClick={() => toast.info(isPlanLocked ? "Plan đã khoá" : "Khoá plan để bảo vệ kết quả DRP")}
+          className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2 px-2.5 py-1 text-text-2 hover:text-text-1">
+          <LockIcon className="h-3 w-3" /> Khoá
+        </button>
+        <button
+          onClick={() => toast.info("So sánh với v2 — sẽ mở panel")}
+          className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2 px-2.5 py-1 text-text-2 hover:text-text-1">
+          So sánh <ChevronDown className="h-3 w-3" />
+        </button>
+        <button
+          onClick={() => toast.info("Lịch sử v1, v2, v3 — sẽ mở panel")}
+          className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2 px-2.5 py-1 text-text-2 hover:text-text-1">
+          Lịch sử <ChevronDown className="h-3 w-3" />
+        </button>
       </div>
 
       {/* ── DRP progress ── */}
