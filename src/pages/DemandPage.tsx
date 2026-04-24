@@ -86,6 +86,34 @@ const B2B_SOURCES: DataSource[] = [
   },
 ];
 
+const ACTUAL_SOURCES: DataSource[] = [
+  {
+    key: "api_sync",
+    icon: <Zap />,
+    title: "Tích hợp Bravo ERP",
+    description: "Đồng bộ doanh thu thực tế từ Bravo hằng ngày. Cần thiết lập connector.",
+    badge: "Sắp có",
+    badgeColor: "gray",
+    disabled: true,
+    configurable: true,
+    configRoute: "/config?tab=integration",
+  },
+  {
+    key: "excel_upload",
+    icon: <FileSpreadsheet />,
+    title: "Upload Excel thực tế",
+    description: "Upload file thực tế bán per CN × SKU × tháng. Template: CN | SKU | Tháng | Thực tế (m²) | Doanh thu (VND) | Ghi chú.",
+    badge: "Khuyến nghị",
+    badgeColor: "green",
+  },
+  {
+    key: "manual_input",
+    icon: <PenLine />,
+    title: "Nhập tay",
+    description: "Nhập từng CN × SKU trực tiếp. Phù hợp khi ít dữ liệu hoặc cần điều chỉnh nhanh.",
+  },
+];
+
 export default function DemandPage() {
   const [activeTab, setActiveTab] = useState("total");
   const { tenant } = useTenant();
