@@ -617,9 +617,11 @@ function LifecycleFlowMini({
 /* ═══════════════════════════════════════════════════════════════════════════
    Filter pill + separator
    ═══════════════════════════════════════════════════════════════════════════ */
-function FilterPill({ active, onClick, count, label, icon, tone, disabled }: {
+function FilterPill({ active, onClick, count, label, icon, tone, disabled, subcount }: {
   active: boolean; onClick: () => void; count: number; label: string;
   icon?: string; tone?: "warning" | "info" | "success" | "danger"; disabled?: boolean;
+  /** Optional secondary count (e.g. "15 dòng" beside "10 đơn"). */
+  subcount?: string;
 }) {
   const toneActive = tone === "danger"
     ? "bg-danger text-primary-foreground border-danger"
@@ -646,6 +648,11 @@ function FilterPill({ active, onClick, count, label, icon, tone, disabled }: {
       {icon && <span>{icon}</span>}
       <span>{label}</span>
       <span className="tabular-nums font-bold">{count}</span>
+      {subcount && (
+        <span className={cn("tabular-nums opacity-70 font-normal", active ? "" : "text-text-3")}>
+          ({subcount})
+        </span>
+      )}
     </button>
   );
 }
