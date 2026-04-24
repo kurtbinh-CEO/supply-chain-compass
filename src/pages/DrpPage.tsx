@@ -740,13 +740,17 @@ export default function DrpPage() {
             </button>
           </p>
         </div>
-        {isPlanLocked ? (
+        {isPlanLocked || drpLocked ? (
           <div className="flex items-center gap-2 rounded-button bg-surface-2 text-text-3 px-4 py-2 border border-surface-3">
             <LockIcon className="h-4 w-4" /> Đã khoá plan
           </div>
         ) : (
-          <button onClick={handleRunDrp}
-            className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow">
+          <button
+            onClick={handleRunDrp}
+            disabled={isViewingOldVersion}
+            title={isViewingOldVersion ? "Phiên bản cũ — chỉ xem" : ""}
+            className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-3"
+          >
             <Play className="h-4 w-4" /> Chạy lại DRP
           </button>
         )}
