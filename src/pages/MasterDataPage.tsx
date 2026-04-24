@@ -673,6 +673,7 @@ function BranchesTab() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<MergedBranch | null>(null);
   const [deleting, setDeleting] = useState<MergedBranch | null>(null);
+  const [historyCode, setHistoryCode] = useState<string | null>(null);
 
   const { data: cloudBranches = [] } = useMasterBranches();
   const createBranch = useCreateMasterBranch();
