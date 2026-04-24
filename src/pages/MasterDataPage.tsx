@@ -305,8 +305,16 @@ function ItemsTab() {
         entityName="mã hàng"
         fields={ITEM_FIELDS}
         onClose={() => setAdding(false)}
-        onSave={(v) => {
-          toast.success(`Đã tạo ${v.code} → ${NM_BY_ID[v.nmId as NmId] ?? v.nmId} (demo)`);
+        onSave={async (v) => {
+          await createItem.mutateAsync({
+            code: v.code,
+            name: v.name,
+            nm_id: v.nmId,
+            category: v.category || null,
+            unit: v.unit || "m²",
+            unit_price: Number(v.unitPrice || 0),
+          });
+          toast.success(`Đã tạo ${v.code} → ${NM_BY_ID[v.nmId as NmId] ?? v.nmId}`);
           setAdding(false);
         }}
       />
@@ -325,8 +333,28 @@ function ItemsTab() {
           unitPrice: editing.unitPrice,
         } : undefined}
         onClose={() => setEditing(null)}
-        onSave={(v) => {
-          toast.success(`Đã cập nhật ${v.code} (demo)`);
+        onSave={async (v) => {
+          if (editing?.source === "cloud" && editing.id) {
+            await updateItem.mutateAsync({
+              id: editing.id,
+              name: v.name,
+              nm_id: v.nmId,
+              category: v.category || null,
+              unit: v.unit || "m²",
+              unit_price: Number(v.unitPrice || 0),
+            });
+          } else {
+            // Hardcoded → tạo bản cloud override
+            await createItem.mutateAsync({
+              code: v.code,
+              name: v.name,
+              nm_id: v.nmId,
+              category: v.category || null,
+              unit: v.unit || "m²",
+              unit_price: Number(v.unitPrice || 0),
+            });
+          }
+          toast.success(`Đã cập nhật ${v.code}`);
           setEditing(null);
         }}
       />
@@ -336,12 +364,18 @@ function ItemsTab() {
         entityLabel={deleting ? `mã ${deleting.code}` : ""}
         description={
           deleting
-            ? `Mã ${deleting.code} đang có ${variantCount(deleting.code)} variants. Xóa sẽ ảnh hưởng forecast & PO.`
-            : undefined
+            ? deleting.source === "cloud"
+              ? `Mã ${deleting.code} (Cloud) đang có ${variantCount(deleting.code)} variants. Xóa sẽ ảnh hưởng forecast & PO. Yêu cầu quyền admin.`
+              : `Mã ${deleting.code} thuộc dataset mẫu — không thể xóa từ đây. Để ẩn, hãy thêm bản Cloud cùng mã rồi xóa bản Cloud.`
         }
         onClose={() => setDeleting(null)}
-        onConfirm={() => {
-          toast.success(`Đã xóa ${deleting?.code} (demo)`);
+        onConfirm={async () => {
+          if (deleting?.source === "cloud" && deleting.id) {
+            await deleteItem.mutateAsync(deleting.id);
+            toast.success(`Đã xóa ${deleting.code}`);
+          } else {
+            toast.warning("Không xóa được dataset mẫu — chỉ xóa được bản Cloud");
+          }
           setDeleting(null);
         }}
       />
