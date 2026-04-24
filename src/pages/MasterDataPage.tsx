@@ -17,6 +17,7 @@ import {
   exportToCsv,
   type FormField,
 } from "@/components/master/CrudPrimitives";
+import type { ImportField } from "@/components/master/ExcelImportWizard";
 import { Button } from "@/components/ui/button";
 import {
   SKU_BASES,
@@ -126,6 +127,17 @@ const ITEM_FIELDS: FormField[] = [
   { key: "unitPrice", label: "Đơn giá (VND/m²)", type: "number", placeholder: "180000", span: 1 },
 ];
 
+const ITEM_IMPORT_FIELDS: ImportField[] = [
+  { key: "code", label: "Mã gốc", required: true, aliases: ["ma", "code", "sku"] },
+  { key: "name", label: "Tên SKU", required: true, aliases: ["ten", "ten_sku", "name"] },
+  { key: "nmId", label: "Nhà máy", required: true, type: "select",
+    options: FACTORIES.map((f) => f.id),
+    aliases: ["nm", "nha_may", "factory", "supplier"] },
+  { key: "category", label: "Loại", aliases: ["loai", "category"] },
+  { key: "unit", label: "Đơn vị", aliases: ["don_vi", "uom", "unit"] },
+  { key: "unitPrice", label: "Đơn giá", type: "number", aliases: ["don_gia", "gia", "price"] },
+];
+
 function ItemsTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
@@ -148,7 +160,12 @@ function ItemsTab() {
         search={search}
         onSearchChange={setSearch}
         onAdd={() => setAdding(true)}
-        onImport={(src) => toast.success(`Nhập mã hàng từ ${src} (demo)`)}
+        excelImport={{
+          entityName: "mã hàng",
+          fields: ITEM_IMPORT_FIELDS,
+          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} mã hàng (chưa persist)`),
+        }}
+        onImport={(src) => toast.success(`Nhập mã hàng qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "ma_hang",
@@ -286,6 +303,19 @@ const SUPPLIER_FIELDS: FormField[] = [
   { key: "priceTier2",      label: "Giá tier 2 (VND)", type: "number", span: 1 },
 ];
 
+const SUPPLIER_IMPORT_FIELDS: ImportField[] = [
+  { key: "code",            label: "Mã NM", required: true, aliases: ["ma", "code", "factory_code"] },
+  { key: "name",            label: "Tên nhà máy", required: true, aliases: ["ten", "name", "factory_name"] },
+  { key: "region",          label: "Vùng", required: true, type: "select", options: ["Bắc", "Trung", "Nam"], aliases: ["vung", "region", "area"] },
+  { key: "ltDays",          label: "LT (ngày)", required: true, type: "number", aliases: ["lt", "lead_time", "lt_ngay"] },
+  { key: "sigmaLt",         label: "σ_LT", type: "number", aliases: ["sigma", "sigma_lt"] },
+  { key: "moqM2",           label: "MOQ (m²)", type: "number", aliases: ["moq"] },
+  { key: "capacityM2Month", label: "Capacity / tháng", type: "number", aliases: ["capacity", "cap_thang"] },
+  { key: "honoringPct",     label: "Honoring %", type: "number", aliases: ["honoring"] },
+  { key: "priceTier1",      label: "Giá tier 1", type: "number", aliases: ["gia_tier1", "price_tier1"] },
+  { key: "priceTier2",      label: "Giá tier 2", type: "number", aliases: ["gia_tier2", "price_tier2"] },
+];
+
 function SuppliersTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
@@ -302,7 +332,12 @@ function SuppliersTab() {
         search={search}
         onSearchChange={setSearch}
         onAdd={() => setAdding(true)}
-        onImport={(src) => toast.success(`Nhập NM từ ${src} (demo)`)}
+        excelImport={{
+          entityName: "nhà máy",
+          fields: SUPPLIER_IMPORT_FIELDS,
+          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} NM (chưa persist)`),
+        }}
+        onImport={(src) => toast.success(`Nhập NM qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "nha_may",
@@ -429,6 +464,16 @@ const BRANCH_FIELDS: FormField[] = [
   { key: "zFactor", label: "z-factor", type: "number", placeholder: "1.65", span: 2, hint: "1.65 ≈ 95% mức phục vụ" },
 ];
 
+const BRANCH_IMPORT_FIELDS: ImportField[] = [
+  { key: "code",    label: "Mã CN", required: true, aliases: ["ma", "code", "branch_code"] },
+  { key: "name",    label: "Tên chi nhánh", required: true, aliases: ["ten", "name", "branch_name"] },
+  { key: "region",  label: "Vùng", required: true, type: "select", options: ["Bắc", "Trung", "Nam"], aliases: ["vung", "region"] },
+  { key: "manager", label: "Quản lý", aliases: ["quan_ly", "manager"] },
+  { key: "lat",     label: "Lat", type: "number", aliases: ["latitude", "vi_do"] },
+  { key: "lng",     label: "Lng", type: "number", aliases: ["longitude", "kinh_do"] },
+  { key: "zFactor", label: "z-factor", type: "number", aliases: ["z", "z_factor"] },
+];
+
 function BranchesTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
@@ -445,7 +490,12 @@ function BranchesTab() {
         search={search}
         onSearchChange={setSearch}
         onAdd={() => setAdding(true)}
-        onImport={(src) => toast.success(`Nhập CN từ ${src} (demo)`)}
+        excelImport={{
+          entityName: "chi nhánh",
+          fields: BRANCH_IMPORT_FIELDS,
+          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} CN (chưa persist)`),
+        }}
+        onImport={(src) => toast.success(`Nhập CN qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "chi_nhanh",
@@ -727,6 +777,16 @@ const CONTAINER_FIELDS: FormField[] = [
   { key: "note",          label: "Ghi chú", type: "textarea", placeholder: "Đường dài, fill ≥ 60%...", span: 2 },
 ];
 
+const CONTAINER_IMPORT_FIELDS: ImportField[] = [
+  { key: "code",          label: "Mã loại", required: true, aliases: ["ma", "code"] },
+  { key: "name",          label: "Tên loại", required: true, aliases: ["ten", "name"] },
+  { key: "capacityM2",    label: "Sức chứa (m²)", required: true, type: "number", aliases: ["capacity", "suc_chua"] },
+  { key: "palletLimit",   label: "Số pallet", required: true, type: "number", aliases: ["pallet", "pallet_limit"] },
+  { key: "weightLimitKg", label: "Tải trọng (kg)", required: true, type: "number", aliases: ["tai_trong", "weight"] },
+  { key: "costPerKm",     label: "Cước (VND/km)", required: true, type: "number", aliases: ["cuoc", "cost_per_km"] },
+  { key: "note",          label: "Ghi chú", aliases: ["ghi_chu", "note"] },
+];
+
 function ContainersTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
@@ -745,7 +805,12 @@ function ContainersTab() {
         search={search}
         onSearchChange={setSearch}
         onAdd={() => setAdding(true)}
-        onImport={(src) => toast.success(`Nhập loại container từ ${src} (demo)`)}
+        excelImport={{
+          entityName: "loại container",
+          fields: CONTAINER_IMPORT_FIELDS,
+          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} loại container (chưa persist)`),
+        }}
+        onImport={(src) => toast.success(`Nhập loại container qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "container",

@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
+import { ExcelImportWizard, type ImportField } from "@/components/master/ExcelImportWizard";
 
 /* ════════════════════════════════════════════════════════════════════════ */
 /* CrudToolbar                                                              */
@@ -37,6 +38,13 @@ interface CrudToolbarProps {
   importDescription?: string;
   importSources?: DataSource[];
   placeholder?: string;
+  /** Bật wizard 5 bước cho key "excel". Khi có, source "excel" sẽ mở wizard thay vì gọi onImport. */
+  excelImport?: {
+    entityName: string;
+    fields: ImportField[];
+    onCommit: (rows: Record<string, string | number>[]) => void;
+    templateUrl?: string;
+  };
 }
 
 const DEFAULT_IMPORT_SOURCES: DataSource[] = [
@@ -78,8 +86,11 @@ export function CrudToolbar({
   importDescription = "Chọn nguồn nhập dữ liệu hàng loạt",
   importSources = DEFAULT_IMPORT_SOURCES,
   placeholder = "Tìm kiếm...",
+  excelImport,
 }: CrudToolbarProps) {
   const [importOpen, setImportOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const showImportButton = !!onImport || !!excelImport;
 
   return (
     <>
@@ -98,7 +109,7 @@ export function CrudToolbar({
           <Plus className="h-3.5 w-3.5" /> {addLabel}
         </Button>
 
-        {onImport && (
+        {showImportButton && (
           <Button onClick={() => setImportOpen(true)} variant="outline" size="sm" className="h-9">
             <Upload className="h-3.5 w-3.5" /> Nhập
           </Button>
@@ -111,7 +122,7 @@ export function CrudToolbar({
         )}
       </div>
 
-      {onImport && (
+      {showImportButton && (
         <DataSourceSelector
           open={importOpen}
           onClose={() => setImportOpen(false)}
@@ -120,8 +131,23 @@ export function CrudToolbar({
           sources={importSources}
           onSelect={(key) => {
             setImportOpen(false);
-            onImport(key);
+            if (key === "excel" && excelImport) {
+              setWizardOpen(true);
+            } else if (onImport) {
+              onImport(key);
+            }
           }}
+        />
+      )}
+
+      {excelImport && (
+        <ExcelImportWizard
+          open={wizardOpen}
+          onClose={() => setWizardOpen(false)}
+          entityName={excelImport.entityName}
+          fields={excelImport.fields}
+          onCommit={excelImport.onCommit}
+          templateUrl={excelImport.templateUrl}
         />
       )}
     </>
