@@ -17,6 +17,7 @@ import { TERMS } from "@/components/i18n/terms";
 import { toast } from "sonner";
 import { CONFIG_KEYS, type ConfigGroup, type ConfigKey as DsConfigKey } from "@/data/unis-enterprise-dataset";
 import { KpiTargetsTab } from "@/components/config/KpiTargetsTab";
+import { AopSummaryPanel } from "@/components/AopSummaryPanel";
 
 /* ── Tab structure (8 functional groupings) ── */
 type TabDef = {
