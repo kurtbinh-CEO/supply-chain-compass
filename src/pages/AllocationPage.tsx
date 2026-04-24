@@ -194,6 +194,69 @@ export default function AllocationPage() {
     });
   };
 
+  const exceptionColumns: SmartTableColumn<ExceptionRow>[] = [
+    {
+      key: "cnCode", label: "CN", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 140, accessor: (r) => cnName(r.cnCode),
+      render: (r) => <span className="font-medium text-text-1">{cnName(r.cnCode)}</span>,
+    },
+    {
+      key: "skuBaseCode", label: "SKU", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 130,
+      render: (r) => <span className="font-mono text-text-1">{r.skuBaseCode}</span>,
+    },
+    {
+      key: "netReqM2", label: "Net Req", sortable: true, hideable: true, priority: "medium",
+      numeric: true, align: "right", width: 130,
+      render: (r) => <span className="font-mono text-text-1">{fmt(r.netReqM2)}</span>,
+    },
+    {
+      key: "allocated", label: "Allocated", sortable: true, hideable: true, priority: "medium",
+      numeric: true, align: "right", width: 130,
+      render: (r) => <span className="font-mono text-text-2">{fmt(r.allocated)}</span>,
+    },
+    {
+      key: "shortage", label: "Shortage", sortable: true, hideable: false, priority: "high",
+      numeric: true, align: "right", width: 130, accessor: (r) => r.shortage,
+      render: (r) => {
+        const isShortage = r.status === "SHORTAGE";
+        return (
+          <span className={cn("font-mono font-semibold", isShortage ? "text-danger" : "text-warning")}>
+            −{fmt(r.shortage)}
+          </span>
+        );
+      },
+    },
+    {
+      key: "fillPct", label: "Fill %", sortable: true, hideable: false, priority: "high",
+      align: "center", numeric: true, width: 100, accessor: (r) => r.fillPct,
+      render: (r) => (
+        <span className={cn(
+          "rounded-full px-2 py-0.5 text-caption font-bold",
+          r.fillPct >= 80 ? "bg-warning/10 text-warning" : "bg-danger/10 text-danger",
+        )}>
+          {r.fillPct}%
+        </span>
+      ),
+    },
+    {
+      key: "status", label: "Trạng thái", sortable: true, hideable: true, priority: "medium",
+      width: 130, accessor: (r) => r.status,
+      filter: "enum",
+      filterOptions: [
+        { value: "SHORTAGE", label: "Thiếu hàng" },
+        { value: "PARTIAL", label: "Một phần" },
+        { value: "WATCH", label: "Theo dõi" },
+      ],
+      render: (r) => <span className="text-text-2">{r.status}</span>,
+    },
+    {
+      key: "actions", label: "Hành động", sortable: false, hideable: false,
+      align: "left", width: 300,
+      render: (r) => <ExceptionActions row={r} />,
+    },
+  ];
+
   return (
     <div className="p-8 max-w-screen-2xl mx-auto">
       <Link
