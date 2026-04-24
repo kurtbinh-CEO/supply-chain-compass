@@ -6,12 +6,14 @@ import { useWorkspace } from "@/components/WorkspaceContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { Play, ChevronDown, TrendingUp, TrendingDown, AlertTriangle, BarChart3, Package, Activity } from "lucide-react";
+import { Play, ChevronDown, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, BarChart3, Package, Activity } from "lucide-react";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { VoiceInput } from "@/components/VoiceInput";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
 import { getExpiringPriceLists, getNmWithoutActivePriceList } from "@/data/unis-enterprise-dataset";
+import { WORKSPACE_CONTEXTS } from "@/lib/workspace-context-data";
+import { WorkspaceItemDetail } from "@/components/workspace/WorkspaceItemDetail";
 
 type ItemType = "approve" | "exception" | "notify";
 type Priority = "danger" | "warning" | "info";
@@ -27,19 +29,19 @@ interface ActionItem {
 }
 
 const initialItems: ActionItem[] = [
-  { id: "1", type: "approve", priority: "danger", description: "Force-release Toko stale 28h — 3 cấp", time: "15m" },
-  { id: "2", type: "exception", priority: "danger", description: "SHORTAGE GA-300 CN-BD 345m² · Risk 120M₫", time: "23:02", navigateTo: "/drp", actionLabel: "Xử lý" },
-  { id: "3", type: "approve", priority: "warning", description: "CN Adjust CN-BD +12,5% GA-300 A4", time: "45m", navigateTo: "/cn-portal" },
-  { id: "4", type: "exception", priority: "warning", description: "PO_OVERDUE Toko 557m² 8 ngày · Risk 85M₫", time: "2h", navigateTo: "/orders", actionLabel: "Xử lý" },
-  { id: "5", type: "approve", priority: "warning", description: "PO Release PO-BD-W16 Mikado 1.200m²", time: "30m" },
-  { id: "6", type: "notify", priority: "info", description: "Phú Mỹ chưa cập nhật tồn kho 3 ngày", time: "1d", actionLabel: "Nhắc NM" },
-  { id: "7", type: "notify", priority: "info", description: "FC drift MAPE 18,4% tăng 3 tuần", time: "6h", navigateTo: "/monitoring", actionLabel: "Xem" },
-  { id: "8", type: "approve", priority: "info", description: "SS Change GA-300 A4: 900→1.350. WC +83M₫", time: "5m" },
+  { id: "1", type: "approve", priority: "danger", description: "Phát hành khẩn Toko dữ liệu cũ 28h — 3 cấp", time: "15 phút" },
+  { id: "2", type: "exception", priority: "danger", description: "THIẾU HÀNG GA-300 CN-BD 345m² · Risk 120 triệu ₫", time: "23:02", navigateTo: "/drp", actionLabel: "Xử lý" },
+  { id: "3", type: "approve", priority: "warning", description: "CN điều chỉnh CN-BD +12,5% GA-300 A4", time: "45 phút", navigateTo: "/cn-portal" },
+  { id: "4", type: "exception", priority: "warning", description: "PO QUÁ HẠN Toko 557m² 8 ngày · Risk 85 triệu ₫", time: "2 giờ", navigateTo: "/orders", actionLabel: "Xử lý" },
+  { id: "5", type: "approve", priority: "warning", description: "Phát hành PO PO-BD-W16 Mikado 1.200m²", time: "30 phút" },
+  { id: "6", type: "notify", priority: "info", description: "Phú Mỹ chưa cập nhật tồn kho 3 ngày", time: "1 ngày", actionLabel: "Nhắc NM" },
+  { id: "7", type: "notify", priority: "info", description: "Sai lệch dự báo MAPE 18,4% tăng 3 tuần", time: "6 giờ", navigateTo: "/monitoring", actionLabel: "Xem" },
+  { id: "8", type: "approve", priority: "info", description: "Thay đổi tồn kho an toàn GA-300 A4: 900→1.350. Vốn lưu động +83 triệu ₫", time: "5 phút" },
 ];
 
 const typeBadge: Record<ItemType, { label: string; cls: string }> = {
-  approve: { label: "Duyệt", cls: "bg-primary/10 text-primary" },
-  exception: { label: "Exception", cls: "bg-danger-bg text-danger" },
+  approve: { label: "Cần duyệt", cls: "bg-primary/10 text-primary" },
+  exception: { label: "Ngoại lệ", cls: "bg-danger-bg text-danger" },
   notify: { label: "Thông báo", cls: "bg-info-bg text-info" },
 };
 
