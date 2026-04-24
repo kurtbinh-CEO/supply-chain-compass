@@ -995,23 +995,8 @@ export default function DrpPage() {
         />
       )}
 
-      {/* ── DRP progress ── */}
-      {drpRunning && (
-        <div className="mb-4 rounded-card border border-primary/30 bg-primary/5 p-4 animate-fade-in">
-          <div className="flex items-center gap-6">
-            {["Netting", "Allocation", "PO generation"].map((label, i) => (
-              <div key={label} className="flex items-center gap-2">
-                <div className={cn("h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-bold",
-                  drpStep > i ? "bg-success text-primary-foreground" : drpStep === i ? "bg-primary text-primary-foreground animate-pulse" : "bg-surface-3 text-text-3")}>
-                  {drpStep > i ? "✓" : i + 1}
-                </div>
-                <span className={cn("text-table-sm", drpStep >= i ? "text-text-1 font-medium" : "text-text-3")}>{label}</span>
-                {i < 2 && <div className={cn("w-12 h-0.5", drpStep > i ? "bg-success" : "bg-surface-3")} />}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* (Old inline 3-step progress ribbon removed — Bước 2 dùng DrpProgress full screen) */}
+
 
       {/* ── SS change banner ── */}
       <button onClick={() => navigate("/monitoring")}
