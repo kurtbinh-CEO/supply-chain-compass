@@ -160,12 +160,28 @@ export function CrudToolbar({
 export function RowActions({
   onEdit,
   onDelete,
+  onHistory,
 }: {
   onEdit: () => void;
   onDelete: () => void;
+  onHistory?: () => void;
 }) {
   return (
     <div className="flex items-center gap-1 justify-end">
+      {onHistory && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onHistory();
+          }}
+          className="h-7 w-7 rounded-button flex items-center justify-center text-text-3 hover:text-info hover:bg-info-bg transition-colors"
+          title="Lịch sử"
+          aria-label="Lịch sử thay đổi"
+        >
+          <History className="h-3.5 w-3.5" />
+        </button>
+      )}
       <button
         type="button"
         onClick={(e) => {
