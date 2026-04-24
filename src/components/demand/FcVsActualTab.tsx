@@ -243,7 +243,11 @@ export function FcVsActualTab() {
             data={cnMape}
             getRowId={(r) => r.cn}
             rowSeverity={(r) => (r.mape > target ? "watch" : undefined)}
-            emptyMessage="Chưa có dữ liệu CN."
+            emptyState={{
+              icon: <MapPin />,
+              title: "Chưa có dữ liệu MAPE theo CN",
+              description: "Bảng MAPE sẽ điền sau khi mỗi CN có ít nhất 1 kỳ Actual đóng. Kiểm tra lại sau khi chốt tháng.",
+            }}
           />
         );
       })()}
