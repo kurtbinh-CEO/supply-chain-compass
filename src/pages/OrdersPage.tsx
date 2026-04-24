@@ -65,9 +65,14 @@ export default function OrdersPage() {
   const [rows, setRows] = useState<PoLifecycleRow[]>(() =>
     SEED_PO_LIFECYCLE.map(r => ({ ...r, qty: Math.round(r.qty * scale) }))
   );
-  const [filter, setFilter] = useState<FilterKey>("todo");
-  const [kindFilter, setKindFilter] = useState<"all" | "RPO" | "TO">("all");
+  // LỚP 2 — multi-select status pills (empty Set = "Tất cả")
+  const [statusFilter, setStatusFilter] = useState<Set<LifecycleStage>>(new Set());
+  const [kindFilter, setKindFilter] = useState<Set<"RPO" | "TO">>(new Set());
+  const [overdueOnly, setOverdueOnly] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Drill-down popup từ summary cards
+  const [drillFocus, setDrillFocus] = useState<DrillFocus>(null);
 
   // Dialog state — only one dialog open at a time
   const [actionRow, setActionRow] = useState<PoLifecycleRow | null>(null);
@@ -92,18 +97,34 @@ export default function OrdersPage() {
     return { stage, todo, transit, done, overdue, total: rows.length, po, to };
   }, [rows]);
 
-  /* ── Filtered list ── */
+  /* ── Filtered list — multi-select pills ── */
   const visibleRows = useMemo(() => {
     return rows.filter(r => {
-      if (kindFilter !== "all" && r.kind !== kindFilter) return false;
-      if (filter === "all")        return true;
-      if (filter === "todo")       return ACTION_STAGES.includes(r.stage);
-      if (filter === "in_transit") return r.stage === "pickup" || r.stage === "in_transit";
-      if (filter === "completed")  return r.stage === "completed";
-      if (filter === "overdue")    return isOverdue(r);
+      if (kindFilter.size > 0 && !kindFilter.has(r.kind as "RPO" | "TO")) return false;
+      if (overdueOnly && !isOverdue(r)) return false;
+      if (statusFilter.size > 0 && !statusFilter.has(r.stage)) return false;
       return true;
     });
-  }, [rows, filter, kindFilter]);
+  }, [rows, statusFilter, kindFilter, overdueOnly]);
+
+  // Toggle helpers
+  const toggleStatus = (s: LifecycleStage) =>
+    setStatusFilter(prev => {
+      const n = new Set(prev);
+      if (n.has(s)) n.delete(s); else n.add(s);
+      return n;
+    });
+  const toggleKind = (k: "RPO" | "TO") =>
+    setKindFilter(prev => {
+      const n = new Set(prev);
+      if (n.has(k)) n.delete(k); else n.add(k);
+      return n;
+    });
+  const clearAllFilters = () => {
+    setStatusFilter(new Set());
+    setKindFilter(new Set());
+    setOverdueOnly(false);
+  };
 
   /* ── Mutations from dialogs ── */
   const advance = (id: string, patch: Partial<PoLifecycleRow>) => {
@@ -114,7 +135,6 @@ export default function OrdersPage() {
       const row = rows.find(r => r.id === id);
       const docNo = row?.id || id;
       const erpDoc = `MIGO-${Date.now().toString().slice(-6)}`;
-      // Mock async post — 1s delay then success
       const t = toast.loading(`Đang đăng ERP cho ${docNo}...`, { description: "Tạo MIGO/Goods Receipt → SAP/Odoo" });
       setTimeout(() => {
         toast.success(`✅ Đã đăng ERP: ${erpDoc}`, {
@@ -135,6 +155,8 @@ export default function OrdersPage() {
       : r));
     toast.success("Đã hủy đơn", { description: reason });
   };
+
+  const noFilters = statusFilter.size === 0 && kindFilter.size === 0 && !overdueOnly;
 
   return (
     <AppLayout>
@@ -175,66 +197,116 @@ export default function OrdersPage() {
         </p>
       </div>
 
-      {/* ═══ SUMMARY CARDS — tóm tắt đơn hàng tuần ═══ */}
+      {/* ═══ LỚP 1: SUMMARY CARDS — chỉ để nhìn, click = drill-down popup ═══ */}
       {(() => {
+        // Severity rules (M5-UX-PATCH):
+        //   CẦN XỬ LÝ: 0 → ok, 1-5 → warn, >5 → critical
+        //   ĐANG VẬN CHUYỂN: luôn ok
+        //   TRỄ HẠN: 0 → ok, >0 → critical
+        //   HOÀN TẤT: luôn ok
+        const todoSeverity: SummaryCard["severity"] =
+          counts.todo === 0 ? "ok" : counts.todo <= 5 ? "warn" : "critical";
+        const overdueSeverity: SummaryCard["severity"] =
+          counts.overdue > 0 ? "critical" : "ok";
+        const urgentTodo = rows.filter(r => ACTION_STAGES.includes(r.stage) && isOverdue(r)).length;
+
         const cards: SummaryCard[] = [
           {
             key: "todo", label: "Cần xử lý", value: counts.todo, unit: "đơn",
-            severity: counts.todo > 5 ? "warn" : "ok",
-            tooltip: "Đơn ở stage approved/sent_nm/nm_confirmed/delivering — chờ tác vụ kế",
-            onClick: () => setFilter("todo"),
+            severity: todoSeverity,
+            trend: urgentTodo > 0
+              ? { delta: `${urgentTodo} khẩn`, direction: "up", color: "red" }
+              : { delta: "ổn định", direction: "flat", color: "gray" },
+            tooltip: "Đơn ở stage Đã duyệt / Đặt NM / Đặt xe / Giao hàng — chờ tác vụ kế. Click để xem phân rã.",
+            onClick: () => setDrillFocus("todo"),
           },
           {
             key: "transit", label: "Đang vận chuyển", value: counts.transit, unit: "xe",
             severity: "ok",
             trend: { delta: counts.transit > 0 ? "🚛 trên đường" : "→ rỗng", direction: "flat", color: "gray" },
-            tooltip: "Đơn pickup hoặc in_transit. Click để xem realtime ETA.",
-            onClick: () => setFilter("in_transit"),
+            tooltip: "Đơn đang lấy hàng hoặc trên đường. Click để xem ETA.",
+            onClick: () => setDrillFocus("transit"),
           },
           {
-            key: "overdue", label: "Trễ hạn SLA", value: counts.overdue, unit: "đơn",
-            severity: counts.overdue > 0 ? "critical" : "ok",
-            trend: counts.overdue > 0 ? { delta: "cần escalate", direction: "up", color: "red" } : undefined,
-            tooltip: "Vượt SLA cho stage hiện tại — báo manager + carrier gấp",
-            onClick: () => setFilter("overdue"),
+            key: "overdue", label: "Trễ hạn", value: counts.overdue, unit: "đơn",
+            severity: overdueSeverity,
+            trend: counts.overdue > 0
+              ? { delta: "⚠️ cần escalate", direction: "up", color: "red" }
+              : { delta: "đúng SLA", direction: "flat", color: "green" },
+            tooltip: "Vượt SLA cho stage hiện tại — cần xử lý ngay. Click để xem danh sách.",
+            onClick: () => setDrillFocus("overdue"),
           },
           {
             key: "done", label: "Hoàn tất", value: counts.done, unit: "đơn",
             severity: "ok",
-            trend: { delta: `${Math.round(counts.done / Math.max(1, counts.total) * 100)}%`, direction: "up", color: "green" },
-            tooltip: "Đã POD xong + đăng ERP",
-            onClick: () => setFilter("completed"),
-          },
-          {
-            key: "kind", label: "PO / TO", value: `${counts.po}/${counts.to}`, unit: "đơn",
-            severity: "ok",
-            tooltip: "PO = mua từ NM, TO = chuyển kho liên CN",
+            trend: { delta: "↑ 27% vs T4", direction: "up", color: "green" },
+            tooltip: "Đã POD xong + đăng ERP. Click để xem chi tiết.",
+            onClick: () => setDrillFocus("done"),
           },
         ];
         return <SummaryCards cards={cards} screenId="orders-lifecycle" editable />;
       })()}
 
-      {/* ═══ LIFECYCLE SUMMARY BAR (7 nodes) ═══ */}
-      <LifecycleSummaryBar counts={counts.stage} onJumpStage={(s) => {
-        // Map stage to filter pill where possible.
-        if (s === "approved" || s === "sent_nm" || s === "nm_confirmed" || s === "delivering") setFilter("todo");
-        else if (s === "pickup" || s === "in_transit") setFilter("in_transit");
-        else if (s === "completed") setFilter("completed");
-      }} />
+      {/* ═══ LỚP 2: FILTER PILLS — gộp status + type + alert ═══ */}
+      <div className="flex flex-wrap items-center gap-1.5 mt-4 mb-2">
+        {/* "Tất cả" — clear all */}
+        <FilterPill
+          active={noFilters}
+          onClick={clearAllFilters}
+          count={counts.total}
+          label="Tất cả"
+        />
 
-      {/* ═══ FILTER PILLS (replaces tabs) ═══ */}
-      <div className="flex flex-wrap items-center gap-2 mt-4 mb-3">
-        <FilterPill active={filter === "all"}        onClick={() => setFilter("all")}        count={counts.total}    label="Tất cả" />
-        <FilterPill active={filter === "todo"}       onClick={() => setFilter("todo")}       count={counts.todo}     label="Cần xử lý" icon="⏳" tone="warning" />
-        <FilterPill active={filter === "in_transit"} onClick={() => setFilter("in_transit")} count={counts.transit}  label="Đang vận chuyển" icon="🚛" tone="info" />
-        <FilterPill active={filter === "completed"}  onClick={() => setFilter("completed")}  count={counts.done}     label="Hoàn tất" icon="✅" tone="success" />
-        <FilterPill active={filter === "overdue"}    onClick={() => setFilter("overdue")}    count={counts.overdue}  label="Trễ hạn" icon="⚠️" tone="danger" disabled={counts.overdue === 0} />
+        {/* Nhóm 1: Status pills (multi-select) */}
+        {STAGE_ORDER.map(s => (
+          <FilterPill
+            key={s}
+            active={statusFilter.has(s)}
+            onClick={() => toggleStatus(s)}
+            count={counts.stage[s]}
+            label={STAGE_META[s].short}
+            disabled={counts.stage[s] === 0}
+          />
+        ))}
 
-        <div className="ml-auto flex items-center gap-1.5 text-table-sm">
-          <span className="text-text-3">Loại:</span>
-          <KindToggle value={kindFilter} onChange={setKindFilter} po={counts.po} to={counts.to} />
-        </div>
+        <Separator />
+
+        {/* Nhóm 2: Type pills */}
+        <FilterPill
+          active={kindFilter.has("RPO")}
+          onClick={() => toggleKind("RPO")}
+          count={counts.po}
+          label="PO"
+          disabled={counts.po === 0}
+        />
+        <FilterPill
+          active={kindFilter.has("TO")}
+          onClick={() => toggleKind("TO")}
+          count={counts.to}
+          label="TO"
+          disabled={counts.to === 0}
+        />
+
+        <Separator />
+
+        {/* Nhóm 3: Alert pill (cross-cutting) */}
+        <FilterPill
+          active={overdueOnly}
+          onClick={() => setOverdueOnly(v => !v)}
+          count={counts.overdue}
+          label="Trễ"
+          icon="⚠️"
+          tone="danger"
+          disabled={counts.overdue === 0}
+        />
       </div>
+
+      {/* ═══ LIFECYCLE FLOW — 1 dòng text nhỏ trong header bảng ═══ */}
+      <LifecycleFlowMini
+        counts={counts.stage}
+        active={statusFilter}
+        onToggle={toggleStatus}
+      />
 
       {/* ═══ MAIN TABLE ═══ */}
       <SmartTable<PoLifecycleRow>
