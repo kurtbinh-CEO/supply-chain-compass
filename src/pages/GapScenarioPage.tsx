@@ -504,9 +504,16 @@ function ScenarioCard({
         <p className="text-caption text-text-3 uppercase tracking-wider">
           Chi phí ước tính
         </p>
-        <p className="font-display text-h2 font-bold text-text-1 mt-0.5 tabular-nums">
-          {fmtVnd(scenario.cost)}
-        </p>
+        <ClickableNumber
+          value={fmtVnd(scenario.cost)}
+          label={`Kịch bản ${scenario.key} — Chi phí ước tính`}
+          color="font-display text-h2 font-bold text-text-1 mt-0.5 tabular-nums"
+          breakdown={[
+            { label: "Công thức", value: scenario.costFormula },
+            ...(scenario.priceInfo?.surchargeText ? [{ label: "Phụ phí", value: scenario.priceInfo.surchargeText }] : []),
+          ]}
+          note={scenario.aiRationale ?? scenario.costFormula}
+        />
         <p className="text-caption text-text-3 mt-0.5">{scenario.costFormula}</p>
         {/* Phụ phí breakdown */}
         {scenario.priceInfo?.surchargeText && (scenario.key === "A" || scenario.key === "D") && (
@@ -516,6 +523,13 @@ function ScenarioCard({
           </p>
         )}
       </div>
+
+      {/* AI rationale (M9 — explanation tiếng Việt) */}
+      {scenario.recommended && scenario.aiRationale && (
+        <div className="rounded-button bg-primary/5 border border-primary/20 px-3 py-2 text-caption text-text-1 leading-relaxed">
+          {scenario.aiRationale}
+        </div>
+      )}
 
       <div className="space-y-2">
         <div>
