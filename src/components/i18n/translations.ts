@@ -15,6 +15,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "nav.partners": "Đối tác",
     "nav.config": "Cấu hình",
     "nav.support": "Hỗ trợ",
+    "nav.executive": "Lãnh đạo",
+    "nav.executiveItem": "Tổng quan lãnh đạo",
 
     // Sidebar items
     "nav.dashboard": "Tổng quan SCP",
@@ -184,6 +186,8 @@ export const translations: Record<Locale, Record<string, string>> = {
     "nav.partners": "Partners",
     "nav.config": "Configuration",
     "nav.support": "Support",
+    "nav.executive": "Executive",
+    "nav.executiveItem": "Executive Overview",
 
     // Sidebar items
     "nav.dashboard": "SCP Overview",
