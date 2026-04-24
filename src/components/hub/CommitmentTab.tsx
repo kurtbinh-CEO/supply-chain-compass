@@ -189,6 +189,44 @@ export function CommitmentTab({ scale, onTotalsChange }: {
   const [evidenceModal, setEvidenceModal] = useState<{ rowId: string; files: EvidenceFile[] } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<string | null>(null);
   const [pivot, setPivot] = usePivotMode("hub-commitment");
+  const [monthLocked, setMonthLocked] = useState(false);
+  const [columnPreset, setColumnPreset] = useState<"simple" | "full">("simple");
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  /* ── Deep-link from Orders: ?nm=Mikado&sku=GA-300 → highlight + scroll ── */
+  useEffect(() => {
+    const nm = searchParams.get("nm");
+    const sku = searchParams.get("sku");
+    if (!nm && !sku) return;
+    // Map nm short id → name (NM-MKD/Mikado, hoặc dùng plain name)
+    const nmName = nm
+      ? (BPO_TRACKER.find(t => t.nmId === nm)?.nmName ?? nm)
+      : null;
+    const target = rows.find(r =>
+      (!nmName || r.nmName === nmName) &&
+      (!sku || skuBase(r.sku) === sku)
+    );
+    if (target) {
+      // Show full preset so the released/% columns are visible after deep-link
+      setColumnPreset("full");
+      setHighlightId(target.id);
+      // wait for layout, then scroll
+      requestAnimationFrame(() => {
+        const el = document.getElementById(`commit-row-${target.id}`);
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      // Auto-clear highlight after 4s
+      const t = window.setTimeout(() => setHighlightId(null), 4000);
+      // Strip params so refresh doesn't re-trigger
+      const next = new URLSearchParams(searchParams);
+      next.delete("nm"); next.delete("sku");
+      setSearchParams(next, { replace: true });
+      return () => window.clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* Totals */
   const totals = useMemo(() => {
