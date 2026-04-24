@@ -69,13 +69,13 @@ export function EntityDetailSheet({ open, onClose, entity }: Props) {
     return { total, avgHstk, danger };
   }, [lines]);
 
-  if (!entity) return null;
-
-  const isCn = entity.kind === "cn";
-  const branchMeta = isCn ? BRANCHES.find((b) => b.code === entity.code) : undefined;
-  const title = isCn
-    ? `${branchMeta?.name ?? entity.code} (${entity.code})`
-    : `Nhà máy ${entity.code}`;
+  // KHÔNG early-return — luôn render <Sheet> để Radix có thể chạy exit-animation
+  // mà không bị unmount đột ngột (nguyên nhân gây "Rendered fewer hooks than expected").
+  const isCn = entity?.kind === "cn";
+  const branchMeta = isCn && entity ? BRANCHES.find((b) => b.code === entity.code) : undefined;
+  const title = entity
+    ? (isCn ? `${branchMeta?.name ?? entity.code} (${entity.code})` : `Nhà máy ${entity.code}`)
+    : "";
   const subtitle = isCn ? "Chi nhánh — tồn kho theo SKU" : "Nhà máy — sản lượng & cam kết";
   const Icon = isCn ? Building2 : Factory;
 
@@ -178,14 +178,14 @@ export function EntityDetailSheet({ open, onClose, entity }: Props) {
             <>
               <button
                 className="w-full flex items-center justify-between rounded-md border border-surface-3 bg-surface-0 px-3 py-2 text-table-sm text-text-1 hover:border-primary hover:text-primary transition-colors"
-                onClick={() => { onClose(); navigate(`/drp?cn=${encodeURIComponent(entity.code)}`); }}
+                onClick={() => { if (!entity) return; onClose(); navigate(`/drp?cn=${encodeURIComponent(entity.code)}`); }}
               >
-                <span>Xem DRP cho {entity.code}</span>
+                <span>Xem DRP cho {entity?.code}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </button>
               <button
                 className="w-full flex items-center justify-between rounded-md border border-surface-3 bg-surface-0 px-3 py-2 text-table-sm text-text-1 hover:border-primary hover:text-primary transition-colors"
-                onClick={() => { onClose(); navigate(`/demand-weekly?cn=${encodeURIComponent(entity.code)}`); }}
+                onClick={() => { if (!entity) return; onClose(); navigate(`/demand-weekly?cn=${encodeURIComponent(entity.code)}`); }}
               >
                 <span>Xem Demand tuần</span>
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -195,14 +195,14 @@ export function EntityDetailSheet({ open, onClose, entity }: Props) {
             <>
               <button
                 className="w-full flex items-center justify-between rounded-md border border-surface-3 bg-surface-0 px-3 py-2 text-table-sm text-text-1 hover:border-primary hover:text-primary transition-colors"
-                onClick={() => { onClose(); navigate(`/supply?nm=${encodeURIComponent(entity.code)}`); }}
+                onClick={() => { if (!entity) return; onClose(); navigate(`/supply?nm=${encodeURIComponent(entity.code)}`); }}
               >
-                <span>Xem NM Supply cho {entity.code}</span>
+                <span>Xem NM Supply cho {entity?.code}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </button>
               <button
                 className="w-full flex items-center justify-between rounded-md border border-surface-3 bg-surface-0 px-3 py-2 text-table-sm text-text-1 hover:border-primary hover:text-primary transition-colors"
-                onClick={() => { onClose(); navigate(`/hub?nm=${encodeURIComponent(entity.code)}`); }}
+                onClick={() => { if (!entity) return; onClose(); navigate(`/hub?nm=${encodeURIComponent(entity.code)}`); }}
               >
                 <span>Xem Hub & Cam kết</span>
                 <ArrowRight className="h-3.5 w-3.5" />
