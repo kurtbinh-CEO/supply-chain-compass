@@ -415,60 +415,103 @@ export function DrpReleaseBar({
                   </div>
                 )}
 
-                <div className="rounded-card border border-surface-3 overflow-hidden">
-                  <table className="w-full text-table-sm">
-                    <thead>
-                      <tr className="bg-surface-1/50 border-b border-surface-3 text-text-3">
-                        <th className="px-3 py-2 text-left w-10">
-                          <Checkbox
-                            checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                            onCheckedChange={togglePage}
-                            disabled={status === "released"}
-                            aria-label="Chọn tất cả"
-                          />
-                        </th>
-                        <th className="px-3 py-2 text-left text-caption uppercase font-semibold tracking-wide">Mã</th>
-                        <th className="px-3 py-2 text-left text-caption uppercase font-semibold tracking-wide">{tab === "rpo" ? "NM" : "Từ → Đến"}</th>
-                        <th className="px-3 py-2 text-left text-caption uppercase font-semibold tracking-wide">SKU</th>
-                        <th className="px-3 py-2 text-right text-caption uppercase font-semibold tracking-wide">SL (m²)</th>
-                        <th className="px-3 py-2 text-right text-caption uppercase font-semibold tracking-wide">Giá trị</th>
-                        <th className="px-3 py-2 text-left text-caption uppercase font-semibold tracking-wide">Dự kiến đến</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tabItems.map((it) => {
-                        const isSelected = selected.has(it.code);
-                        return (
-                          <tr
-                            key={it.code}
-                            className={cn(
-                              "border-b border-surface-3/50 transition-colors",
-                              it.rejected ? "bg-danger-bg/20 line-through opacity-60" :
-                              isSelected ? "bg-warning/5" : "hover:bg-surface-1/40"
-                            )}
-                          >
-                            <td className="px-3 py-2">
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => toggleRow(it.code)}
-                                disabled={it.rejected || status === "released"}
-                                aria-label={`Chọn ${it.code}`}
-                              />
-                            </td>
-                            <td className="px-3 py-2 font-mono text-text-1 text-caption">{it.code}</td>
-                            <td className="px-3 py-2 text-text-2">
-                              {tab === "rpo" ? it.nm : <span className="inline-flex items-center gap-1">{it.fromCn} <ArrowLeftRight className="h-3 w-3 text-text-3" /> {it.toCn}</span>}
-                            </td>
-                            <td className="px-3 py-2 text-text-2 font-mono text-caption">{it.sku}</td>
-                            <td className="px-3 py-2 text-right tabular-nums text-text-1">{it.qty.toLocaleString()}</td>
-                            <td className="px-3 py-2 text-right tabular-nums text-text-1 font-medium">{fmtVnd(it.value)}</td>
-                            <td className="px-3 py-2 text-text-2">{it.eta}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                {(() => {
+                  const cols: SmartTableColumn<DrpBatchItem>[] = [
+                    {
+                      key: "select",
+                      label: "",
+                      width: 36,
+                      hideable: false,
+                      align: "center",
+                      render: (it) => (
+                        <Checkbox
+                          checked={selected.has(it.code)}
+                          onCheckedChange={() => toggleRow(it.code)}
+                          disabled={it.rejected || status === "released"}
+                          aria-label={`Chọn ${it.code}`}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ),
+                    },
+                    {
+                      key: "code",
+                      label: "Mã",
+                      sortable: true,
+                      accessor: (it) => it.code,
+                      render: (it) => <span className="font-mono text-text-1 text-caption">{it.code}</span>,
+                      priority: "high",
+                    },
+                    {
+                      key: "from",
+                      label: tab === "rpo" ? "NM" : "Từ → Đến",
+                      sortable: true,
+                      accessor: (it) => (tab === "rpo" ? it.nm ?? "" : `${it.fromCn ?? ""} → ${it.toCn ?? ""}`),
+                      render: (it) =>
+                        tab === "rpo" ? (
+                          <span className="text-text-2">{it.nm}</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-text-2">
+                            {it.fromCn}
+                            <ArrowLeftRight className="h-3 w-3 text-text-3" />
+                            {it.toCn}
+                          </span>
+                        ),
+                    },
+                    {
+                      key: "sku",
+                      label: "SKU",
+                      sortable: true,
+                      filter: "text",
+                      accessor: (it) => it.sku,
+                      render: (it) => <span className="text-text-2 font-mono text-caption">{it.sku}</span>,
+                    },
+                    {
+                      key: "qty",
+                      label: "SL (m²)",
+                      numeric: true,
+                      sortable: true,
+                      accessor: (it) => it.qty,
+                      render: (it) => <span className="tabular-nums text-text-1">{it.qty.toLocaleString()}</span>,
+                    },
+                    {
+                      key: "value",
+                      label: "Giá trị",
+                      numeric: true,
+                      sortable: true,
+                      accessor: (it) => it.value,
+                      render: (it) => <span className="tabular-nums text-text-1 font-medium">{fmtVnd(it.value)}</span>,
+                    },
+                    {
+                      key: "eta",
+                      label: "Dự kiến đến",
+                      sortable: true,
+                      accessor: (it) => it.eta,
+                      render: (it) => <span className="text-text-2">{it.eta}</span>,
+                      priority: "low",
+                    },
+                  ];
+                  const tabActiveValue = tabItems.filter((i) => !i.rejected).reduce((s, i) => s + i.value, 0);
+                  const tabActiveQty = tabItems.filter((i) => !i.rejected).reduce((s, i) => s + i.qty, 0);
+                  return (
+                    <SmartTable<DrpBatchItem>
+                      screenId={`drp-batch-items-${tab}`}
+                      exportFilename={`drp-batch-${batch.id}-${tab}`}
+                      columns={cols}
+                      data={tabItems}
+                      getRowId={(it) => it.code}
+                      rowSeverity={(it) => (it.rejected ? "stale" : selected.has(it.code) ? "watch" : undefined)}
+                      onRowClick={(it) => {
+                        if (!it.rejected && status !== "released") toggleRow(it.code);
+                      }}
+                      emptyMessage={`Không có ${tab === "rpo" ? "RPO" : "TO"} nào trong batch này.`}
+                      summaryRow={{
+                        code: <span className="font-semibold text-text-1">TỔNG · {tabItems.length} mục</span>,
+                        qty: <span className="tabular-nums font-semibold text-text-1">{tabActiveQty.toLocaleString()}</span>,
+                        value: <span className="tabular-nums font-bold text-primary">{fmtVnd(tabActiveValue)}</span>,
+                      }}
+                    />
+                  );
+                })()}
               </>
             )}
           </div>
