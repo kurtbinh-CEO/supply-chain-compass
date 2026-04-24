@@ -583,19 +583,19 @@ function ScManagerTab({
     scRows.forEach((cn) => {
       cn.rows.forEach((r) => {
         if (r.adjust === 0) return;
-        if (!map.has(r.sku)) {
-          map.set(r.sku, { sku: r.sku, totalAdjust: 0, cnCount: 0, overCount: 0, cnBreakdown: [] });
+        const skuLabel = `${r.item} ${r.variant}`;
+        if (!map.has(skuLabel)) {
+          map.set(skuLabel, { sku: skuLabel, totalAdjust: 0, cnCount: 0, overCount: 0, cnBreakdown: [] });
         }
-        const p = map.get(r.sku)!;
+        const p = map.get(skuLabel)!;
         p.totalAdjust += r.adjust;
         p.cnCount++;
         const pct = r.duKien > 0 ? (r.adjust / r.duKien) * 100 : 0;
         const isOver = Math.abs(pct) > 30;
         if (isOver) p.overCount++;
-        // Map CN to PivotChildRow — qty=adjust, hstk synthesized from |pct| (lower = more dangerous adjust)
         const hstk = Math.max(0.5, 30 - Math.abs(pct));
         p.cnBreakdown.push({
-          key: `${r.sku}-${cn.cnCode}`,
+          key: `${skuLabel}-${cn.cnCode}`,
           label: cn.cnName,
           qty: r.adjust,
           hstk,
