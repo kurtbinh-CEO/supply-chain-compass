@@ -123,46 +123,16 @@ export function FcAccuracyTab() {
         </div>
 
         {/* Bảng so sánh mô hình */}
-        <div className="rounded-card border border-surface-3 bg-surface-2">
-          <div className="px-5 py-4 border-b border-surface-3">
-            <h2 className="font-display text-section-header text-text-1 uppercase">So sánh mô hình</h2>
-          </div>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-surface-3">
-                {[
-                  { label: "Mô hình", term: null },
-                  { label: "MAPE", term: "MAPE" },
-                  { label: "Xu hướng", term: null },
-                  { label: "σ (Độ lệch)", term: null },
-                  { label: "Ảnh hưởng SS", term: "SS" },
-                  { label: "Ảnh hưởng vốn", term: null },
-                ].map((h) => (
-                  <th key={h.label} className="text-left text-table-header uppercase text-text-3 px-5 py-3">
-                    {h.term ? <TermTooltip term={h.term}>{h.label}</TermTooltip> : h.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {models.map((m, i) => (
-                <tr key={m.name} className={cn("border-b border-surface-3/50", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}>
-                  <td className="px-5 py-3">
-                    <span className="text-table font-medium text-text-1">{m.name}</span>
-                    {m.optimal && <StatusChip status="success" label="Tối ưu" className="ml-2" />}
-                  </td>
-                  <td className={cn("px-5 py-3 text-table font-mono font-bold tabular-nums", m.optimal ? "text-success" : "text-text-1")}>{m.mape}</td>
-                  <td className="px-5 py-3">
-                    {m.trend === "up" ? <TrendingUp className="h-4 w-4 text-danger" /> : <TrendingDown className="h-4 w-4 text-success" />}
-                  </td>
-                  <td className="px-5 py-3 text-table text-text-2 tabular-nums">{m.stdev}</td>
-                  <td className={cn("px-5 py-3 text-table font-medium tabular-nums", m.optimal ? "text-success" : "text-text-2")}>{m.ssImpact}</td>
-                  <td className={cn("px-5 py-3 text-table font-medium tabular-nums", m.optimal ? "text-success" : "text-text-2")}>{m.wcImpact}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <SmartTable<ModelRow>
+          screenId="monitoring-fc-models"
+          title="So sánh mô hình"
+          exportFilename="so-sanh-mo-hinh-fc"
+          columns={modelColumns}
+          data={models}
+          defaultDensity="normal"
+          getRowId={(r) => r.name}
+          rowSeverity={(r) => (r.optimal ? "ok" : "watch")}
+        />
       </div>
 
       {/* Phải: AI Trust Block — 2 cột */}
