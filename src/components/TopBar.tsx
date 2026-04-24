@@ -60,23 +60,23 @@ function TenantDropdown({ tenant, setTenant, tenants }: { tenant: string; setTen
   }, []);
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative shrink-0">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 rounded-lg bg-surface-0 border border-surface-3 px-3 py-1.5 text-table-sm font-medium text-text-1 hover:border-primary/40 transition-all hover:shadow-sm"
+        className="flex h-8 items-center gap-2 rounded-lg bg-surface-0 border border-surface-3 px-2.5 text-table-sm font-semibold text-text-1 hover:border-primary/40 hover:bg-surface-1 transition-all whitespace-nowrap"
       >
-        <span className="h-2 w-2 rounded-full bg-success" />
+        <span className="h-1.5 w-1.5 rounded-full bg-success" />
         <span>{tenant}</span>
         <ChevronDown className={`h-3 w-3 text-text-3 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="absolute top-full left-0 mt-1 w-48 rounded-card border border-surface-3 bg-surface-2 shadow-lg py-1 z-50 animate-fade-in">
+        <div className="absolute top-full left-0 mt-1.5 w-52 rounded-lg border border-surface-3 bg-surface-1 shadow-xl py-1 z-50 animate-fade-in">
           {tenants.map(t => (
             <button
               key={t}
               onClick={() => { setTenant(t as TenantName); setOpen(false); }}
               className={`flex items-center gap-2 w-full px-3 py-2 text-table-sm transition-colors ${
-                t === tenant ? "bg-primary/5 text-primary font-medium" : "text-text-2 hover:bg-surface-3"
+                t === tenant ? "bg-primary/5 text-primary font-semibold" : "text-text-2 hover:bg-surface-2"
               }`}
             >
               <span className={`h-1.5 w-1.5 rounded-full ${t === tenant ? "bg-primary" : "bg-text-3/30"}`} />
