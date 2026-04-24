@@ -16,8 +16,10 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   User, Building2, Clock, Lock, Send, ShieldCheck, AlertTriangle,
-  CheckCircle2, XCircle, Scissors, FileWarning, RefreshCw,
+  CheckCircle2, XCircle, Scissors, FileWarning, RefreshCw, Inbox,
+  FileSpreadsheet, PenLine,
 } from "lucide-react";
+import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
