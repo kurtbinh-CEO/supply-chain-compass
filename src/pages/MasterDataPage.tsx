@@ -464,6 +464,16 @@ const BRANCH_FIELDS: FormField[] = [
   { key: "zFactor", label: "z-factor", type: "number", placeholder: "1.65", span: 2, hint: "1.65 ≈ 95% mức phục vụ" },
 ];
 
+const BRANCH_IMPORT_FIELDS: ImportField[] = [
+  { key: "code",    label: "Mã CN", required: true, aliases: ["ma", "code", "branch_code"] },
+  { key: "name",    label: "Tên chi nhánh", required: true, aliases: ["ten", "name", "branch_name"] },
+  { key: "region",  label: "Vùng", required: true, type: "select", options: ["Bắc", "Trung", "Nam"], aliases: ["vung", "region"] },
+  { key: "manager", label: "Quản lý", aliases: ["quan_ly", "manager"] },
+  { key: "lat",     label: "Lat", type: "number", aliases: ["latitude", "vi_do"] },
+  { key: "lng",     label: "Lng", type: "number", aliases: ["longitude", "kinh_do"] },
+  { key: "zFactor", label: "z-factor", type: "number", aliases: ["z", "z_factor"] },
+];
+
 function BranchesTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
