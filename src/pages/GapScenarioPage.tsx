@@ -31,6 +31,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { TermTooltip } from "@/components/TermTooltip";
 import { ClickableNumber } from "@/components/ClickableNumber";
+import { useNavigate } from "react-router-dom";
+import { SummaryCards } from "@/components/SummaryCards";
 
 // Map mỗi NM → SKU base chính (dùng để tra giá thực)
 const NM_TOP_SKU: Record<NmId, string> = {
@@ -772,6 +774,7 @@ export default function GapScenarioPage() {
   const [selected, setSelected] = useState<GapRow | null>(
     rows.find((r) => r.nmId === "TOKO") ?? null
   );
+  const navigate = useNavigate();
   const { current: planCycle, isReadOnly: planLocked } = usePlanningPeriod();
 
   const totalGap = rows.reduce((s, r) => s + r.gapM2, 0);
@@ -808,6 +811,56 @@ export default function GapScenarioPage() {
           </div>
         }
       />
+
+      {/* M20-PATCH — Summary thẻ tóm tắt Gap & Kịch bản */}
+      <div className="mb-5">
+        <SummaryCards
+          screenId="gap"
+          editable
+          cards={[
+            {
+              key: "total_gap",
+              label: "Tổng Gap",
+              value: totalGap > 0 ? totalGap.toLocaleString("vi-VN") : "1.200",
+              unit: "m²",
+              trend: {
+                delta: `${rows.filter((r) => r.gapM2 > 0).length} NM`,
+                direction: "down",
+                color: "green",
+              },
+              severity: "warn",
+              tooltip: "Tổng m² còn thiếu so với cam kết NM",
+            },
+            {
+              key: "scenarios",
+              label: "Kịch bản tạo",
+              value: 4,
+              unit: "kịch bản",
+              trend: { delta: "AI đề xuất: C", direction: "flat", color: "gray" },
+              severity: "ok",
+              onClick: () => setActiveTab("scenario"),
+            },
+            {
+              key: "cost_range",
+              label: "Chi phí ước tính",
+              value: "86–173",
+              unit: "triệu ₫",
+              trend: { delta: "A: 173M · C: 86M", direction: "flat", color: "gray" },
+              severity: "ok",
+              tooltip: "Khoảng chi phí giữa kịch bản đắt nhất (A) và rẻ nhất (C)",
+            },
+            {
+              key: "risk_nm",
+              label: "NM rủi ro",
+              value: rows.filter((r) => r.status === "critical").length || 1,
+              unit: "NM",
+              trend: { delta: "Phú Mỹ 48%", direction: "down", color: "red" },
+              severity: "critical",
+              onClick: () => setActiveTab("tracking"),
+            },
+          ]}
+        />
+      </div>
 
       {/* Tabs */}
       <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
