@@ -274,9 +274,10 @@ function CnManagerTab({
   const totals = useMemo(() => {
     const duKien = rows.reduce((s, r) => s + r.duKien, 0);
     const adjust = rows.reduce((s, r) => s + r.adjust, 0);
+    const actualPrev = rows.reduce((s, r) => s + actualPrevMonthByCnSku(r.cnCode, r.item), 0);
     const final  = duKien + adjust;
     const pct    = duKien > 0 ? (adjust / duKien) * 100 : 0;
-    return { duKien, adjust, final, pct };
+    return { duKien, adjust, final, pct, actualPrev };
   }, [rows]);
 
   const adjustedCount = rows.filter((r) => r.adjust !== 0).length;
