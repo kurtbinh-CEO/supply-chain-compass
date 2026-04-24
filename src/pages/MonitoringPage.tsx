@@ -396,7 +396,7 @@ export default function MonitoringPage() {
 
   return (
     <AppLayout>
-      <ScreenHeader title="Monitoring" subtitle="Giám sát chuỗi cung ứng" />
+      <ScreenHeader title="Giám sát" subtitle="Sức khoẻ chuỗi cung ứng — KPI & cảnh báo" />
 
       {/* SS Batch Banner */}
       {ssBatch.batch && (
@@ -411,8 +411,14 @@ export default function MonitoringPage() {
         </div>
       )}
 
-      {/* Tab bar */}
-      <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
+      {/* M15 — 5 hero KPI cards (always visible above tabs) */}
+      <MonitoringHeroCards onTabChange={(k) => { setActiveTab(k); setDrillCn(null); }} />
+
+      {/* Tab bar — section "Chi tiết" */}
+      <div className="px-1 mb-2 text-caption uppercase tracking-wide text-text-3 font-semibold">
+        Chi tiết
+      </div>
+      <div className="flex items-center gap-0 border-b border-surface-3 mb-6 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.key}
