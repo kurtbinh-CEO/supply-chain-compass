@@ -275,6 +275,11 @@ export default function OrdersPage() {
         return <SummaryCards cards={cards} screenId="orders-lifecycle" editable />;
       })()}
 
+      {/* ═══ TIẾN ĐỘ CAM KẾT THÁNG (BPO ↔ RPO trừ lùi) ═══ */}
+      <div className="mt-4">
+        <BpoProgressSection open={bpoOpen} onOpenChange={setBpoOpen} />
+      </div>
+
       {/* ═══ LỚP 2: FILTER PILLS — gộp status + type + alert ═══ */}
       <div className="flex flex-wrap items-center gap-1.5 mt-4 mb-2">
         {/* "Tất cả" — clear all */}
