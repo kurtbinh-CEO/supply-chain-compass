@@ -41,10 +41,11 @@ import {
   BPO_DEMO_DAY_OF_MONTH, BPO_DEMO_DAYS_IN_MONTH, BPO_EXPECTED_PCT,
   totals as bpoTotals, findBpoForPo, WEEK_STATUS_META,
 } from "@/lib/bpo-tracker";
+import { buildPoGroups, unitPriceFor, type PoGroup } from "@/lib/po-group-builder";
 import {
   Send, CheckCircle2, Truck, Package, Flag, ClipboardCheck,
   Phone, AlertTriangle, ChevronDown, ChevronRight, ArrowRight,
-  Camera, FileText, X, Image, PenLine, ShieldAlert, Layers,
+  Camera, FileText, X, Image, PenLine, ShieldAlert, Layers, Container,
 } from "lucide-react";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
