@@ -15,6 +15,7 @@ import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { SkuDetailSheet } from "@/components/SkuDetailSheet";
+import { EntityDetailSheet, type EntityKind } from "@/components/EntityDetailSheet";
 
 export interface PivotChildRow {
   /** ID của hàng — vd "GA-300 A4" hoặc "CN-BD" */
@@ -69,6 +70,7 @@ export function PivotChildTable({
 }: PivotChildTableProps) {
   const navigate = useNavigate();
   const [skuSheet, setSkuSheet] = useState<string | null>(null);
+  const [entitySheet, setEntitySheet] = useState<{ kind: EntityKind; code: string } | null>(null);
   const hasSs = rows.length > 0 && rows.every((r) => typeof r.ssTarget === "number" && r.ssTarget! > 0);
   const showSs = showSoSs ?? hasSs;
 
@@ -90,10 +92,11 @@ export function PivotChildTable({
             onClick={(e) => {
               e.stopPropagation();
               const v = r.navValue ?? r.key;
-              // SKU click → popup detail tại chỗ (không navigate)
+              // Mọi click mã thực thể đều mở popup tại chỗ — không navigate.
+              // Cross-link sang DRP/Supply chỉ khi user click [Xem ... →] trong popup.
               if (r.navKind === "sku") setSkuSheet(v);
-              else if (r.navKind === "cn") navigate(`/drp?cn=${encodeURIComponent(v)}`);
-              else if (r.navKind === "nm") navigate(`/supply?nm=${encodeURIComponent(v)}`);
+              else if (r.navKind === "cn") setEntitySheet({ kind: "cn", code: v });
+              else if (r.navKind === "nm") setEntitySheet({ kind: "nm", code: v });
             }}
           >
             {r.label}
@@ -179,6 +182,16 @@ export function PivotChildTable({
       : []),
   ];
 
+  // Row-level open: click bất kỳ cell số nào → mở cùng popup như khi click mã.
+  // Khớp guideline: numeric cells = popup detail tại chỗ; KHÔNG navigate.
+  const handleRowOpen = (r: PivotChildRow) => {
+    if (!r.navKind) return;
+    const v = r.navValue ?? r.key;
+    if (r.navKind === "sku") setSkuSheet(v);
+    else if (r.navKind === "cn") setEntitySheet({ kind: "cn", code: v });
+    else if (r.navKind === "nm") setEntitySheet({ kind: "nm", code: v });
+  };
+
   return (
     <>
       <div className={cn("rounded-lg border border-surface-3 bg-surface-0 overflow-hidden", className)}>
@@ -187,6 +200,7 @@ export function PivotChildTable({
           columns={columns}
           data={sorted}
           defaultDensity="compact"
+          onRowClick={handleRowOpen}
           rowSeverity={(r) => {
             const st = statusFromHstk(r.hstk, thresholds);
             if (st.tone === "danger") return "shortage";
@@ -202,6 +216,7 @@ export function PivotChildTable({
         />
       </div>
       <SkuDetailSheet open={skuSheet !== null} onClose={() => setSkuSheet(null)} sku={skuSheet} />
+      <EntityDetailSheet open={entitySheet !== null} onClose={() => setEntitySheet(null)} entity={entitySheet} />
     </>
   );
 }
