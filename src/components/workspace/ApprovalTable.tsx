@@ -15,6 +15,23 @@ const rejectReasons = [
   "Lý do khác",
 ];
 
+/** Map raw English approval types to Vietnamese labels (M14). */
+const approvalTypeLabel: Record<string, string> = {
+  "S&OP": "S&OP",
+  "CN Adjust": "CN điều chỉnh",
+  "PO Release": "Phát hành PO",
+  "Force-release": "Phát hành khẩn",
+  "SS Change": "Thay đổi tồn kho an toàn",
+  "TO Source": "Nguồn TO",
+  "Nguồn TO": "Nguồn TO",
+  "CN điều chỉnh": "CN điều chỉnh",
+  "Phát hành PO": "Phát hành PO",
+  "Phát hành khẩn": "Phát hành khẩn",
+  "Thay đổi tồn kho an toàn": "Thay đổi tồn kho an toàn",
+};
+
+const localizeType = (raw: string) => approvalTypeLabel[raw] ?? raw;
+
 export function ApprovalTable() {
   const { approvals, pendingCount, removeApproval } = useWorkspace();
   const [approveId, setApproveId] = useState<string | null>(null);
@@ -73,7 +90,7 @@ export function ApprovalTable() {
                 )}
               >
                 <td className="px-5 py-3">
-                  <StatusChip status={item.typeColor} label={item.type} />
+                  <StatusChip status={item.typeColor} label={localizeType(item.type)} />
                 </td>
                 <td className="px-5 py-3 text-table text-text-1">{item.description}</td>
                 <td className="px-5 py-3 text-table text-text-2">{item.submitter}</td>
@@ -119,7 +136,7 @@ export function ApprovalTable() {
           {approveItem && (
             <div className="rounded-md border border-surface-3 bg-surface-0 p-4 space-y-1">
               <div className="flex items-center gap-2">
-                <StatusChip status={approveItem.typeColor} label={approveItem.type} />
+                <StatusChip status={approveItem.typeColor} label={localizeType(approveItem.type)} />
                 <span className="text-table-sm text-text-3">{approveItem.timeAgo}</span>
               </div>
               <p className="text-table text-text-1 font-medium">{approveItem.description}</p>
@@ -147,7 +164,7 @@ export function ApprovalTable() {
           {rejectItem && (
             <div className="rounded-md border border-surface-3 bg-surface-0 p-4 space-y-1">
               <div className="flex items-center gap-2">
-                <StatusChip status={rejectItem.typeColor} label={rejectItem.type} />
+                <StatusChip status={rejectItem.typeColor} label={localizeType(rejectItem.type)} />
               </div>
               <p className="text-table text-text-1 font-medium">{rejectItem.description}</p>
             </div>

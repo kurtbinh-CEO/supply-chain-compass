@@ -6,12 +6,14 @@ import { useWorkspace } from "@/components/WorkspaceContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
-import { Play, ChevronDown, TrendingUp, TrendingDown, AlertTriangle, BarChart3, Package, Activity } from "lucide-react";
+import { Play, ChevronDown, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, BarChart3, Package, Activity } from "lucide-react";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { VoiceInput } from "@/components/VoiceInput";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LogicLink } from "@/components/LogicLink";
 import { getExpiringPriceLists, getNmWithoutActivePriceList } from "@/data/unis-enterprise-dataset";
+import { WORKSPACE_CONTEXTS } from "@/lib/workspace-context-data";
+import { WorkspaceItemDetail } from "@/components/workspace/WorkspaceItemDetail";
 
 type ItemType = "approve" | "exception" | "notify";
 type Priority = "danger" | "warning" | "info";
@@ -27,19 +29,19 @@ interface ActionItem {
 }
 
 const initialItems: ActionItem[] = [
-  { id: "1", type: "approve", priority: "danger", description: "Force-release Toko stale 28h — 3 cấp", time: "15m" },
-  { id: "2", type: "exception", priority: "danger", description: "SHORTAGE GA-300 CN-BD 345m² · Risk 120M₫", time: "23:02", navigateTo: "/drp", actionLabel: "Xử lý" },
-  { id: "3", type: "approve", priority: "warning", description: "CN Adjust CN-BD +12,5% GA-300 A4", time: "45m", navigateTo: "/cn-portal" },
-  { id: "4", type: "exception", priority: "warning", description: "PO_OVERDUE Toko 557m² 8 ngày · Risk 85M₫", time: "2h", navigateTo: "/orders", actionLabel: "Xử lý" },
-  { id: "5", type: "approve", priority: "warning", description: "PO Release PO-BD-W16 Mikado 1.200m²", time: "30m" },
-  { id: "6", type: "notify", priority: "info", description: "Phú Mỹ chưa cập nhật tồn kho 3 ngày", time: "1d", actionLabel: "Nhắc NM" },
-  { id: "7", type: "notify", priority: "info", description: "FC drift MAPE 18,4% tăng 3 tuần", time: "6h", navigateTo: "/monitoring", actionLabel: "Xem" },
-  { id: "8", type: "approve", priority: "info", description: "SS Change GA-300 A4: 900→1.350. WC +83M₫", time: "5m" },
+  { id: "1", type: "approve", priority: "danger", description: "Phát hành khẩn Toko dữ liệu cũ 28h — 3 cấp", time: "15 phút" },
+  { id: "2", type: "exception", priority: "danger", description: "THIẾU HÀNG GA-300 CN-BD 345m² · Risk 120 triệu ₫", time: "23:02", navigateTo: "/drp", actionLabel: "Xử lý" },
+  { id: "3", type: "approve", priority: "warning", description: "CN điều chỉnh CN-BD +12,5% GA-300 A4", time: "45 phút", navigateTo: "/cn-portal" },
+  { id: "4", type: "exception", priority: "warning", description: "PO QUÁ HẠN Toko 557m² 8 ngày · Risk 85 triệu ₫", time: "2 giờ", navigateTo: "/orders", actionLabel: "Xử lý" },
+  { id: "5", type: "approve", priority: "warning", description: "Phát hành PO PO-BD-W16 Mikado 1.200m²", time: "30 phút" },
+  { id: "6", type: "notify", priority: "info", description: "Phú Mỹ chưa cập nhật tồn kho 3 ngày", time: "1 ngày", actionLabel: "Nhắc NM" },
+  { id: "7", type: "notify", priority: "info", description: "Sai lệch dự báo MAPE 18,4% tăng 3 tuần", time: "6 giờ", navigateTo: "/monitoring", actionLabel: "Xem" },
+  { id: "8", type: "approve", priority: "info", description: "Thay đổi tồn kho an toàn GA-300 A4: 900→1.350. Vốn lưu động +83 triệu ₫", time: "5 phút" },
 ];
 
 const typeBadge: Record<ItemType, { label: string; cls: string }> = {
-  approve: { label: "Duyệt", cls: "bg-primary/10 text-primary" },
-  exception: { label: "Exception", cls: "bg-danger-bg text-danger" },
+  approve: { label: "Cần duyệt", cls: "bg-primary/10 text-primary" },
+  exception: { label: "Ngoại lệ", cls: "bg-danger-bg text-danger" },
   notify: { label: "Thông báo", cls: "bg-info-bg text-info" },
 };
 
@@ -60,6 +62,7 @@ export default function WorkspacePage() {
   const [showAll, setShowAll] = useState(false);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Auto-check bảng giá NM (chỉ chạy 1 lần / mount)
   const priceCheckRan = useRef(false);
@@ -138,7 +141,7 @@ export default function WorkspacePage() {
   const filters: { key: FilterKey; label: string; count: number }[] = [
     { key: "all", label: "Tất cả", count: items.length },
     { key: "approve", label: "Cần duyệt", count: approveCount },
-    { key: "exception", label: "Exceptions", count: excCount },
+    { key: "exception", label: "Ngoại lệ", count: excCount },
     { key: "notify", label: "Thông báo", count: notifyCount },
   ];
 
@@ -344,43 +347,81 @@ export default function WorkspacePage() {
           </div>
 
           <div className="divide-y divide-surface-3/50">
-            {visible.map((item) => (
-              <div key={item.id} className="px-5 py-3 flex items-center gap-3 hover:bg-surface-1/30 transition-colors">
-                <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", dotColor[item.priority])} />
-                <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium shrink-0", typeBadge[item.type].cls)}>
-                  {typeBadge[item.type].label}
-                </span>
-                <span className="flex-1 text-table text-text-1 truncate">{item.description}</span>
-                <span className="text-caption text-text-3 shrink-0">{item.time}</span>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {item.type === "approve" && (
-                    <>
-                      <button onClick={() => handleApprove(item)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">Duyệt</button>
-                      <button onClick={() => handleReject(item)} className="rounded-button border border-surface-3 text-text-2 px-2.5 py-1 text-caption font-medium hover:text-danger hover:border-danger">Từ chối</button>
-                      {rejectingId === item.id && (
-                        <div className="flex items-center gap-1 ml-1">
-                          <input value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") handleReject(item); }}
-                            placeholder="Lý do..." autoFocus
-                            className="w-28 h-6 rounded border border-surface-3 bg-surface-0 px-2 text-caption text-text-1 focus:outline-none focus:ring-1 focus:ring-primary" />
-                          <VoiceInput onTranscript={(t) => setRejectReason((p) => p + t)} />
-                        </div>
+            {visible.map((item) => {
+              const ctx = WORKSPACE_CONTEXTS[item.id];
+              const isExpanded = expandedId === item.id;
+              const hasContext = !!ctx;
+              return (
+                <div key={item.id} className={cn("transition-colors", isExpanded && "bg-surface-1/30")}>
+                  <div
+                    className={cn(
+                      "px-5 py-3 flex items-center gap-3 transition-colors",
+                      hasContext ? "cursor-pointer hover:bg-surface-1/40" : "hover:bg-surface-1/30"
+                    )}
+                    onClick={() => hasContext && setExpandedId(isExpanded ? null : item.id)}
+                  >
+                    {hasContext ? (
+                      isExpanded
+                        ? <ChevronDown className="h-3.5 w-3.5 text-text-3 shrink-0" />
+                        : <ChevronRight className="h-3.5 w-3.5 text-text-3 shrink-0" />
+                    ) : (
+                      <span className="w-3.5 shrink-0" />
+                    )}
+                    <span className={cn("h-2.5 w-2.5 rounded-full shrink-0", dotColor[item.priority])} />
+                    <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium shrink-0", typeBadge[item.type].cls)}>
+                      {typeBadge[item.type].label}
+                    </span>
+                    <span className="flex-1 text-table text-text-1 truncate">{item.description}</span>
+                    <span className="text-caption text-text-3 shrink-0">{item.time}</span>
+                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {item.type === "approve" && !isExpanded && (
+                        <>
+                          <button onClick={() => handleApprove(item)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">Duyệt</button>
+                          <button onClick={() => handleReject(item)} className="rounded-button border border-surface-3 text-text-2 px-2.5 py-1 text-caption font-medium hover:text-danger hover:border-danger">Từ chối</button>
+                          {rejectingId === item.id && (
+                            <div className="flex items-center gap-1 ml-1">
+                              <input value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") handleReject(item); }}
+                                placeholder="Lý do..." autoFocus
+                                className="w-28 h-6 rounded border border-surface-3 bg-surface-0 px-2 text-caption text-text-1 focus:outline-none focus:ring-1 focus:ring-primary" />
+                              <VoiceInput onTranscript={(t) => setRejectReason((p) => p + t)} />
+                            </div>
+                          )}
+                        </>
                       )}
-                    </>
-                  )}
-                  {item.type === "exception" && (
-                    <button onClick={() => handleAction(item)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">
-                      {item.actionLabel} →
-                    </button>
-                  )}
-                  {item.type === "notify" && (
-                    <button onClick={() => handleAction(item)} className="rounded-button border border-surface-3 text-text-2 px-2.5 py-1 text-caption font-medium hover:text-text-1">
-                      {item.actionLabel} {item.navigateTo ? "→" : ""}
-                    </button>
+                      {item.type === "exception" && !isExpanded && (
+                        <button onClick={() => handleAction(item)} className="rounded-button bg-gradient-primary text-primary-foreground px-2.5 py-1 text-caption font-medium">
+                          {item.actionLabel} →
+                        </button>
+                      )}
+                      {item.type === "notify" && !isExpanded && (
+                        <button onClick={() => handleAction(item)} className="rounded-button border border-surface-3 text-text-2 px-2.5 py-1 text-caption font-medium hover:text-text-1">
+                          {item.actionLabel} {item.navigateTo ? "→" : ""}
+                        </button>
+                      )}
+                      {hasContext && (
+                        <button
+                          onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                          className="rounded-button border border-surface-3 text-text-2 px-2.5 py-1 text-caption font-medium hover:text-text-1"
+                        >
+                          {isExpanded ? "Thu gọn" : "Xem"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {isExpanded && ctx && (
+                    <WorkspaceItemDetail
+                      ctx={ctx}
+                      onAction={(label) => {
+                        toast.success(`${item.description.slice(0, 32)}… → ${label}`);
+                        if (item.type === "approve") removeItem(item.id);
+                        setExpandedId(null);
+                      }}
+                    />
                   )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {filtered.length > 5 && !showAll && (
