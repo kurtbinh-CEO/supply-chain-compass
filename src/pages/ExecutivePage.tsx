@@ -485,7 +485,7 @@ export default function ExecutivePage() {
 
   /* ─── Allocation columns ─── */
   const allocCols: SmartTableColumn<AllocRow>[] = [
-    { key: "cn", label: "CN", width: 90, sticky: true, render: (r) => <span className="font-mono font-semibold text-text-1">{r.cn}</span> },
+    { key: "cn", label: "CN", width: 90, render: (r) => <span className="font-mono font-semibold text-text-1">{r.cn}</span> },
     { key: "demand", label: "Nhu cầu", width: 90, align: "right", render: (r) => <span className="tabular-nums">{r.demand.toLocaleString("vi-VN")}</span> },
     { key: "alloc", label: "Phân bổ", width: 90, align: "right", render: (r) => <span className="tabular-nums">{r.alloc.toLocaleString("vi-VN")}</span> },
     {
@@ -512,7 +512,7 @@ export default function ExecutivePage() {
 
   /* ─── Trend columns ─── */
   const trendCols: SmartTableColumn<TrendRow>[] = [
-    { key: "kpi", label: "KPI", width: 200, sticky: true, render: (r) => <span className="font-medium text-text-1">{r.kpi}</span> },
+    { key: "kpi", label: "KPI", width: 200, render: (r) => <span className="font-medium text-text-1">{r.kpi}</span> },
     ...(["t12","t1","t2","t3","t4","t5"] as const).map((k, i) => ({
       key: k,
       label: ["T12/25","T1/26","T2/26","T3/26","T4/26","T5/26 (dk)"][i],
