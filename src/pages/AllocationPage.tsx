@@ -313,60 +313,20 @@ export default function AllocationPage() {
           </div>
         </div>
 
-        <div className="rounded-card border border-surface-3 bg-surface-1 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-surface-2/50 border-b border-surface-3">
-              <tr className="text-table-sm text-text-3 text-left">
-                <th className="px-4 py-2.5 font-medium">CN</th>
-                <th className="px-4 py-2.5 font-medium">SKU</th>
-                <th className="px-4 py-2.5 font-medium text-right">Net Req</th>
-                <th className="px-4 py-2.5 font-medium text-right">Allocated</th>
-                <th className="px-4 py-2.5 font-medium text-right">Shortage</th>
-                <th className="px-4 py-2.5 font-medium text-center">Fill%</th>
-                <th className="px-4 py-2.5 font-medium">Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {exceptions.map((row) => {
-                const isShortage = row.status === "SHORTAGE";
-                return (
-                  <tr
-                    key={`${row.cnCode}-${row.skuBaseCode}`}
-                    className={cn(
-                      "border-b border-surface-3 transition-colors hover:bg-surface-2/30",
-                      isShortage && "bg-danger/5",
-                    )}
-                    data-severity={isShortage ? "shortage" : "watch"}
-                  >
-                    <td className="px-4 py-3 text-table-sm text-text-1 font-medium">{cnName(row.cnCode)}</td>
-                    <td className="px-4 py-3 text-table-sm font-mono text-text-1">{row.skuBaseCode}</td>
-                    <td className="px-4 py-3 text-table-sm font-mono text-right text-text-1">{fmt(row.netReqM2)}</td>
-                    <td className="px-4 py-3 text-table-sm font-mono text-right text-text-2">{fmt(row.allocated)}</td>
-                    <td className={cn("px-4 py-3 text-table-sm font-mono text-right font-semibold", isShortage ? "text-danger" : "text-warning")}>
-                      −{fmt(row.shortage)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={cn(
-                        "rounded-full px-2 py-0.5 text-caption font-bold",
-                        row.fillPct >= 80 ? "bg-warning/10 text-warning" : "bg-danger/10 text-danger",
-                      )}>
-                        {row.fillPct}%
-                      </span>
-                    </td>
-                    <td className="px-4 py-3"><ExceptionActions row={row} /></td>
-                  </tr>
-                );
-              })}
-              {exceptions.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-table-sm text-text-3">
-                    🎉 Không có ngoại lệ — tất cả CN×SKU đều đủ tồn kho.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <SmartTable<ExceptionRow>
+          screenId="allocation-exceptions"
+          title="Ngoại lệ phân bổ — Fill < 100%"
+          exportFilename="ngoai-le-phan-bo"
+          columns={exceptionColumns}
+          data={exceptions}
+          defaultDensity="normal"
+          getRowId={(r) => `${r.cnCode}-${r.skuBaseCode}`}
+          rowSeverity={(r) => r.status === "SHORTAGE" ? "shortage" : "watch"}
+          emptyState={{
+            title: "Không có ngoại lệ",
+            description: "🎉 Tất cả CN × SKU đều đủ tồn kho.",
+          }}
+        />
       </section>
 
       {/* Bước tiếp */}
