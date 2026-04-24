@@ -141,18 +141,52 @@ const ITEM_IMPORT_FIELDS: ImportField[] = [
 function ItemsTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
-  const [editing, setEditing] = useState<typeof SKU_BASES[number] | null>(null);
-  const [deleting, setDeleting] = useState<typeof SKU_BASES[number] | null>(null);
+  const [editing, setEditing] = useState<MergedItem | null>(null);
+  const [deleting, setDeleting] = useState<MergedItem | null>(null);
+
+  const { data: cloudItems = [] } = useMasterItems();
+  const createItem = useCreateMasterItem();
+  const updateItem = useUpdateMasterItem();
+  const deleteItem = useDeleteMasterItem();
+  const bulkInsertItems = useBulkInsertMasterItems();
+
+  // Merge cloud (override) + hardcode (fallback) by code
+  const merged: MergedItem[] = useMemo(() => {
+    const cloudByCode = new Map(cloudItems.map((c) => [c.code, c]));
+    const fromHardcode: MergedItem[] = SKU_BASES
+      .filter((b) => !cloudByCode.has(b.code))
+      .map((b) => ({
+        id: null,
+        code: b.code,
+        name: b.name,
+        nmId: b.nmId,
+        category: b.category,
+        unit: b.unit,
+        unitPrice: b.unitPrice,
+        source: "hardcode" as const,
+      }));
+    const fromCloud: MergedItem[] = cloudItems.map((c) => ({
+      id: c.id,
+      code: c.code,
+      name: c.name,
+      nmId: c.nm_id,
+      category: c.category ?? "",
+      unit: c.unit,
+      unitPrice: Number(c.unit_price),
+      source: "cloud" as const,
+    }));
+    return [...fromCloud, ...fromHardcode].sort((a, b) => a.code.localeCompare(b.code));
+  }, [cloudItems]);
 
   const rows = useMemo(() => {
     const q = search.toLowerCase();
-    return SKU_BASES.filter(
+    return merged.filter(
       (b) =>
         b.code.toLowerCase().includes(q) ||
         b.name.toLowerCase().includes(q) ||
-        NM_BY_ID[b.nmId].toLowerCase().includes(q),
+        (NM_BY_ID[b.nmId as NmId] ?? "").toLowerCase().includes(q),
     );
-  }, [search]);
+  }, [search, merged]);
 
   return (
     <div className="space-y-3">
