@@ -98,93 +98,112 @@ export function PriceListsTab() {
           </span>
         </div>
 
-        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-table-sm">
-              <thead className="bg-surface-1/60 border-b border-surface-3">
-                <tr>
-                  {["", "NM", "Ver.", <span key="h-eff">
-                    <TermTooltip term="Hieu_luc">Hiệu lực từ</TermTooltip>
-                  </span>, "Hết hạn", "Trạng thái", "Điều khoản", "Người duyệt"].map((h, i) => (
-                    <th key={i} className="px-3 py-2 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {NM_PRICE_LISTS.map((pl) => {
-                  const isOpen = expanded === pl.id;
-                  const days = daysUntil(pl.expiryDate);
-                  const expiringSoon = pl.status === "Hiệu lực" && days < 30;
-                  const meta = STATUS_META[pl.status];
-                  return (
-                    <>
-                      <tr
-                        key={pl.id}
-                        onClick={() => setExpanded(isOpen ? null : pl.id)}
-                        className={cn(
-                          "border-b border-surface-3/50 cursor-pointer hover:bg-surface-1/40 transition-colors",
-                          isOpen && "bg-surface-1/60",
-                          expiringSoon && "bg-warning-bg/30"
-                        )}
-                        data-severity={expiringSoon ? "shortage" : undefined}
-                      >
-                        <td className="px-3 py-2.5 w-8">
-                          {isOpen ? <ChevronDown className="h-4 w-4 text-text-3" /> : <ChevronRight className="h-4 w-4 text-text-3" />}
-                        </td>
-                        <td className="px-3 py-2.5 font-medium text-text-1">{nmName(pl.nmId)}</td>
-                        <td className="px-3 py-2.5 tabular-nums text-text-2">v{pl.version}</td>
-                        <td className="px-3 py-2.5 tabular-nums text-text-2">{pl.effectiveDate}</td>
-                        <td className="px-3 py-2.5 tabular-nums text-text-2">
-                          {pl.expiryDate}
-                          {expiringSoon && (
-                            <span className="ml-1.5 text-caption text-warning">(còn {days}d)</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-medium", meta.tone)}>
-                            {meta.dot} {pl.status}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2.5 text-text-2 max-w-[200px] truncate" title={pl.paymentTerms}>
-                          {pl.paymentTerms}
-                        </td>
-                        <td className="px-3 py-2.5 text-text-2">{pl.approvedBy}</td>
-                      </tr>
-
-                      {/* Cảnh báo Phú Mỹ sắp hết hạn */}
-                      {expiringSoon && !isOpen && (
-                        <tr key={`${pl.id}-warn`} className="bg-warning-bg/20 border-b border-warning/20">
-                          <td />
-                          <td colSpan={7} className="px-3 py-2 text-table-sm text-warning">
-                            <AlertTriangle className="inline h-3.5 w-3.5 mr-1" />
-                            Hết hạn {pl.expiryDate} — còn <strong>{days} ngày</strong>. Chưa gia hạn. {pl.note}
-                          </td>
-                        </tr>
-                      )}
-
-                      {/* SECTION B + C: Expanded detail */}
-                      {isOpen && (
-                        <tr key={`${pl.id}-detail`} className="bg-surface-1/30">
-                          <td />
-                          <td colSpan={7} className="px-3 py-4">
-                            {/* SECTION B */}
-                            <ExpandedDetail
-                              pl={pl}
-                              lines={linesByPl[pl.id] ?? []}
-                              surcharges={surchargesByPl[pl.id] ?? []}
-                              surchargeState={surchargeState}
-                              onToggleSurcharge={toggleSurcharge}
-                            />
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        {(() => {
+          const cols: SmartTableColumn<NmPriceList>[] = [
+            {
+              key: "nm",
+              label: "NM",
+              sortable: true,
+              accessor: (r) => nmName(r.nmId),
+              render: (r) => <span className="font-medium text-text-1">{nmName(r.nmId)}</span>,
+              priority: "high",
+            },
+            {
+              key: "version",
+              label: "Ver.",
+              sortable: true,
+              accessor: (r) => r.version,
+              render: (r) => <span className="tabular-nums text-text-2">v{r.version}</span>,
+            },
+            {
+              key: "effectiveDate",
+              label: "Hiệu lực từ",
+              sortable: true,
+              accessor: (r) => r.effectiveDate,
+              render: (r) => <span className="tabular-nums text-text-2">{r.effectiveDate}</span>,
+            },
+            {
+              key: "expiryDate",
+              label: "Hết hạn",
+              sortable: true,
+              accessor: (r) => r.expiryDate,
+              render: (r) => {
+                const days = daysUntil(r.expiryDate);
+                const expiringSoon = r.status === "Hiệu lực" && days < 30;
+                return (
+                  <span className="tabular-nums text-text-2">
+                    {r.expiryDate}
+                    {expiringSoon && <span className="ml-1.5 text-caption text-warning">(còn {days}d)</span>}
+                  </span>
+                );
+              },
+            },
+            {
+              key: "status",
+              label: "Trạng thái",
+              sortable: true,
+              filter: "enum",
+              filterOptions: [
+                { value: "Hiệu lực", label: "🟢 Hiệu lực" },
+                { value: "Hết hạn", label: "⚪ Hết hạn" },
+                { value: "Nháp", label: "🟡 Nháp" },
+              ],
+              accessor: (r) => r.status,
+              render: (r) => {
+                const meta = STATUS_META[r.status];
+                return (
+                  <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-medium", meta.tone)}>
+                    {meta.dot} {r.status}
+                  </span>
+                );
+              },
+            },
+            {
+              key: "paymentTerms",
+              label: "Điều khoản",
+              accessor: (r) => r.paymentTerms,
+              render: (r) => (
+                <span className="text-text-2 max-w-[200px] truncate inline-block" title={r.paymentTerms}>
+                  {r.paymentTerms}
+                </span>
+              ),
+              priority: "low",
+            },
+            {
+              key: "approvedBy",
+              label: "Người duyệt",
+              sortable: true,
+              accessor: (r) => r.approvedBy,
+              render: (r) => <span className="text-text-2">{r.approvedBy}</span>,
+              priority: "low",
+            },
+          ];
+          return (
+            <SmartTable<NmPriceList>
+              screenId="master-price-lists"
+              title="Danh sách bảng giá"
+              exportFilename="nm-price-lists"
+              columns={cols}
+              data={NM_PRICE_LISTS}
+              getRowId={(r) => r.id}
+              autoExpandWhen={(r) => r.id === "PL-TKO-03"}
+              rowSeverity={(r) => {
+                const days = daysUntil(r.expiryDate);
+                return r.status === "Hiệu lực" && days < 30 ? "shortage" : undefined;
+              }}
+              drillDown={(r) => (
+                <ExpandedDetail
+                  pl={r}
+                  lines={linesByPl[r.id] ?? []}
+                  surcharges={surchargesByPl[r.id] ?? []}
+                  surchargeState={surchargeState}
+                  onToggleSurcharge={toggleSurcharge}
+                />
+              )}
+              emptyMessage="Chưa có bảng giá nào."
+            />
+          );
+        })()}
       </section>
 
       {/* SECTION D: So sánh version Toko v2 vs v3 */}
