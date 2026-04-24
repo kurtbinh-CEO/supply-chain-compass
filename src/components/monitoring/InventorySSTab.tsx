@@ -566,6 +566,7 @@ export function InventorySSTab({ scale: s }: Props) {
           )}
         </DialogContent>
       </Dialog>
+      <SkuDetailSheet open={skuSheet !== null} onClose={() => setSkuSheet(null)} sku={skuSheet} />
     </div>
   );
 }
