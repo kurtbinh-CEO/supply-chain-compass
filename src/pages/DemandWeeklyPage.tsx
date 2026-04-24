@@ -33,7 +33,7 @@ import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
 import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
-import { BRANCHES, TRUST_BY_CN, DEMAND_FC } from "@/data/unis-enterprise-dataset";
+import { BRANCHES, TRUST_BY_CN, DEMAND_FC, FC_ACTUAL } from "@/data/unis-enterprise-dataset";
 import { PhasingDialog } from "@/components/PhasingDialog";
 import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
 import { Calendar } from "lucide-react";
@@ -114,6 +114,28 @@ const REASONS = [
   "Khác",
 ] as const;
 type Reason = typeof REASONS[number] | "";
+
+/* ────────────── Actual M-1 (Tháng trước) lookup ──────────────
+ * Quy đổi actual tháng trước → weekly-equivalent (÷ 4 tuần) để so sánh trực tiếp với FC tuần.
+ * PREV_MONTH = 4 (T4) — current period là T5/W20.
+ */
+const PREV_MONTH = 4;
+const PREV_MONTH_LABEL = "T4";
+
+function actualPrevMonthByCnSku(cnCode: string, item: string): number {
+  const monthlyTotal = FC_ACTUAL
+    .filter((r) => r.cnCode === cnCode && r.skuBaseCode === item && r.month === PREV_MONTH)
+    .reduce((s, r) => s + r.actualQtyM2, 0);
+  // Quy đổi sang tuần (÷ 4.3 tuần/tháng, làm tròn)
+  return Math.round(monthlyTotal / 4.3);
+}
+
+function actualPrevMonthByCn(cnCode: string): number {
+  const monthlyTotal = FC_ACTUAL
+    .filter((r) => r.cnCode === cnCode && r.month === PREV_MONTH)
+    .reduce((s, r) => s + r.actualQtyM2, 0);
+  return Math.round(monthlyTotal / 4.3);
+}
 
 /** SKU seeds per CN (~4 SKUs each, scaled by tenant). Pre-filled adjustments
  *  illustrate the 4 demo cases described in spec. */
@@ -252,9 +274,10 @@ function CnManagerTab({
   const totals = useMemo(() => {
     const duKien = rows.reduce((s, r) => s + r.duKien, 0);
     const adjust = rows.reduce((s, r) => s + r.adjust, 0);
+    const actualPrev = rows.reduce((s, r) => s + actualPrevMonthByCnSku(r.cnCode, r.item), 0);
     const final  = duKien + adjust;
     const pct    = duKien > 0 ? (adjust / duKien) * 100 : 0;
-    return { duKien, adjust, final, pct };
+    return { duKien, adjust, final, pct, actualPrev };
   }, [rows]);
 
   const adjustedCount = rows.filter((r) => r.adjust !== 0).length;
@@ -272,9 +295,42 @@ function CnManagerTab({
       ),
     },
     {
-      key: "duKien", label: "Dự kiến (m²)", sortable: true, numeric: true, align: "right",
+      key: "actualPrev", label: `Thực tế ${PREV_MONTH_LABEL}`, sortable: true, numeric: true, align: "right",
+      hideable: true, priority: "high", width: 110,
+      accessor: (r) => actualPrevMonthByCnSku(r.cnCode, r.item),
+      render: (r) => {
+        const actual = actualPrevMonthByCnSku(r.cnCode, r.item);
+        if (actual === 0) return <span className="text-text-3 text-table-sm">—</span>;
+        const deltaPct = ((r.duKien - actual) / actual) * 100;
+        const high = deltaPct > 20;
+        return (
+          <div className="flex flex-col items-end leading-tight" title={high ? `Tháng trước CN bán ${actual.toLocaleString("vi-VN")}m²/tuần. FC tuần này ${r.duKien.toLocaleString("vi-VN")}m² (${deltaPct > 0 ? "+" : ""}${deltaPct.toFixed(0)}%). Hợp lý?` : undefined}>
+            <span className="tabular-nums text-text-2">{actual.toLocaleString("vi-VN")}</span>
+            {high && (
+              <span className="text-[10px] text-warning font-medium">
+                FC +{deltaPct.toFixed(0)}%
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: "duKien", label: "FC tuần (m²)", sortable: true, numeric: true, align: "right",
       hideable: false, priority: "high", width: 110,
-      render: (r) => <span className="tabular-nums text-text-2">{r.duKien.toLocaleString("vi-VN")}</span>,
+      render: (r) => {
+        const actual = actualPrevMonthByCnSku(r.cnCode, r.item);
+        const deltaPct = actual > 0 ? ((r.duKien - actual) / actual) * 100 : 0;
+        const high = actual > 0 && deltaPct > 20;
+        return (
+          <span className={cn(
+            "tabular-nums text-text-2",
+            high && "border border-warning/50 bg-warning-bg/40 text-warning rounded px-1.5 py-0.5 font-medium",
+          )}>
+            {r.duKien.toLocaleString("vi-VN")}
+          </span>
+        );
+      },
     },
     {
       key: "adjust", label: "Điều chỉnh", hideable: false, priority: "high", width: 130, align: "right",
@@ -443,6 +499,7 @@ function CnManagerTab({
         }}
         summaryRow={{
           item: <span className="font-semibold text-text-1">TỔNG</span>,
+          actualPrev: <span className="tabular-nums font-semibold text-text-2">{totals.actualPrev.toLocaleString("vi-VN")}</span>,
           duKien: <span className="tabular-nums font-semibold">{totals.duKien.toLocaleString("vi-VN")}</span>,
           adjust: (
             <span className={cn(
@@ -498,6 +555,8 @@ interface ScSummaryRow {
   totalDuKien: number;
   totalAdjust: number;
   totalPct: number;
+  actualPrev: number;       // tổng thực tế T4 (weekly-equivalent)
+  fcVsActualPct: number;    // (FC - actual) / actual × 100
   skuCount: number;       // số SKU adjust ≠ 0
   pendingCount: number;
   overCount: number;
@@ -521,6 +580,8 @@ function buildScRows(
     const totalDuKien = rows.reduce((s, r) => s + r.duKien, 0);
     const totalAdjust = rows.reduce((s, r) => s + r.adjust, 0);
     const totalPct = totalDuKien > 0 ? (totalAdjust / totalDuKien) * 100 : 0;
+    const actualPrev = actualPrevMonthByCn(b.code);
+    const fcVsActualPct = actualPrev > 0 ? ((totalDuKien - actualPrev) / actualPrev) * 100 : 0;
     const adjustedRows = rows.filter((r) => r.adjust !== 0);
     let pendingCount = 0, overCount = 0, autoCount = 0;
     adjustedRows.forEach((r) => {
@@ -540,6 +601,8 @@ function buildScRows(
       totalDuKien,
       totalAdjust,
       totalPct,
+      actualPrev,
+      fcVsActualPct,
       skuCount: adjustedRows.length,
       pendingCount,
       overCount,
@@ -573,9 +636,25 @@ function ScManagerTab({
   const totalAdjust  = scRows.reduce((s, r) => s + r.totalAdjust, 0);
   const totalDuKien  = scRows.reduce((s, r) => s + r.totalDuKien, 0);
   const adjustPct    = totalDuKien > 0 ? (totalAdjust / totalDuKien) * 100 : 0;
+  const totalActualPrev = scRows.reduce((s, r) => s + r.actualPrev, 0);
+  const fcVsActualPct = totalActualPrev > 0 ? ((totalDuKien - totalActualPrev) / totalActualPrev) * 100 : 0;
+  const cnHighFc = scRows.filter((r) => r.actualPrev > 0 && r.fcVsActualPct > 20).length;
   const worstCn      = [...scRows].filter(r => r.overCount > 0).sort((a, b) => Math.abs(b.totalPct) - Math.abs(a.totalPct))[0];
 
   const scSummary: SummaryCard[] = [
+    {
+      key: "actual_prev",
+      label: `Thực tế ${PREV_MONTH_LABEL} (tuần)`,
+      value: totalActualPrev.toLocaleString("vi-VN"),
+      unit: "m²",
+      severity: cnHighFc > 0 ? "warn" : "ok",
+      trend: {
+        delta: `FC tuần: ${totalDuKien.toLocaleString("vi-VN")} (${fcVsActualPct > 0 ? "+" : ""}${fcVsActualPct.toFixed(0)}%)`,
+        direction: fcVsActualPct > 0 ? "up" : fcVsActualPct < 0 ? "down" : "flat",
+        color: cnHighFc > 0 ? "red" : "gray",
+      },
+      tooltip: `Tổng thực tế tháng trước (T${PREV_MONTH}) quy đổi tuần. ${cnHighFc > 0 ? `${cnHighFc} CN có FC tuần này > thực tế +20%.` : "FC trong biên hợp lý."}`,
+    },
     {
       key: "cn_adjusted",
       label: "CN đã adjust",
@@ -602,17 +681,8 @@ function ScManagerTab({
       severity: totalOver > 0 ? "critical" : "ok",
       trend: worstCn
         ? { delta: `${worstCn.cnCode} ${worstCn.totalPct > 0 ? "+" : ""}${worstCn.totalPct.toFixed(0)}%`, direction: "up", color: "red" }
-        : { delta: "→ ổn định", direction: "flat", color: "gray" },
+        : { delta: `${totalPending} chờ duyệt`, direction: "flat", color: "gray" },
       tooltip: "Số CN có adjust ngoài tolerance band — cần SC xử lý.",
-    },
-    {
-      key: "pending",
-      label: "Chờ duyệt",
-      value: totalPending,
-      unit: "SKU",
-      severity: totalPending > 0 ? "warn" : "ok",
-      trend: { delta: totalPending > 0 ? "Cần SC duyệt" : "→ trống", direction: totalPending > 0 ? "up" : "flat", color: totalPending > 0 ? "red" : "gray" },
-      tooltip: "Số SKU đang chờ SC Manager phê duyệt.",
     },
   ];
 
@@ -665,6 +735,41 @@ function ScManagerTab({
           <span className="text-[10px] text-text-3 font-mono">{r.cnCode}</span>
         </div>
       ),
+    },
+    {
+      key: "actualPrev", label: `Thực tế ${PREV_MONTH_LABEL}`, numeric: true, align: "right",
+      sortable: true, hideable: true, priority: "high", width: 110,
+      accessor: (r) => r.actualPrev,
+      render: (r) => {
+        if (r.actualPrev === 0) return <span className="text-text-3 text-table-sm">—</span>;
+        return <span className="tabular-nums text-text-2">{r.actualPrev.toLocaleString("vi-VN")}</span>;
+      },
+    },
+    {
+      key: "fcWeek", label: "FC tuần", numeric: true, align: "right",
+      sortable: true, hideable: true, priority: "high", width: 130,
+      accessor: (r) => r.totalDuKien,
+      render: (r) => {
+        const high = r.actualPrev > 0 && r.fcVsActualPct > 20;
+        return (
+          <div className="flex flex-col items-end leading-tight" title={high ? `Tháng trước CN-${r.cnCode.replace("CN-","")} bán ${r.actualPrev.toLocaleString("vi-VN")}m²/tuần. Tuần này FC ${r.totalDuKien.toLocaleString("vi-VN")}m² (+${r.fcVsActualPct.toFixed(0)}%). Hợp lý?` : undefined}>
+            <span className={cn(
+              "tabular-nums text-text-1",
+              high && "border border-warning/50 bg-warning-bg/40 text-warning rounded px-1.5 py-0.5 font-medium",
+            )}>
+              {r.totalDuKien.toLocaleString("vi-VN")}
+            </span>
+            {r.actualPrev > 0 && (
+              <span className={cn(
+                "text-[10px] tabular-nums",
+                high ? "text-warning font-medium" : "text-text-3",
+              )}>
+                {r.fcVsActualPct > 0 ? "+" : ""}{r.fcVsActualPct.toFixed(0)}% vs T{PREV_MONTH}
+              </span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "trust", label: "Trust", numeric: true, align: "right", sortable: true,
@@ -925,10 +1030,11 @@ function ScCnDrillDown({ row, onApproveRow, onRejectRow, onTrimRow, onOverrideRo
       <thead>
         <tr className="text-[10px] uppercase text-text-3 border-b border-surface-3">
           <th className="text-left  px-2 py-1.5 font-medium">Mã hàng</th>
-          <th className="text-right px-2 py-1.5 font-medium">Dự kiến</th>
+          <th className="text-right px-2 py-1.5 font-medium">Thực tế {PREV_MONTH_LABEL}</th>
+          <th className="text-right px-2 py-1.5 font-medium">FC tuần</th>
           <th className="text-right px-2 py-1.5 font-medium">Adjust</th>
           <th className="text-left  px-2 py-1.5 font-medium">Lý do</th>
-          <th className="text-right px-2 py-1.5 font-medium">Δ%</th>
+          <th className="text-right px-2 py-1.5 font-medium">Δ% vs FC</th>
           <th className="text-right px-2 py-1.5 font-medium">Hành động</th>
         </tr>
       </thead>
@@ -936,6 +1042,9 @@ function ScCnDrillDown({ row, onApproveRow, onRejectRow, onTrimRow, onOverrideRo
         {adjusted.map((r) => {
           const sev = classifyRow(r, row.config);
           const pct = r.duKien > 0 ? (r.adjust / r.duKien) * 100 : 0;
+          const actual = actualPrevMonthByCnSku(r.cnCode, r.item);
+          const finalQty = r.duKien + r.adjust;
+          const deltaVsActual = actual > 0 ? ((finalQty - actual) / actual) * 100 : 0;
           const reasonLabel = r.reason === "Khác" && r.reasonOther
             ? `Khác: ${r.reasonOther}` : (r.reason || "—");
           const decided = r.decision !== undefined;
@@ -946,6 +1055,10 @@ function ScCnDrillDown({ row, onApproveRow, onRejectRow, onTrimRow, onOverrideRo
                 <span className="text-text-3">{r.variant}</span>
               </td>
               <td className="px-2 py-1.5 text-right tabular-nums text-text-2">
+                {actual > 0 ? actual.toLocaleString("vi-VN") : "—"}
+              </td>
+              <td className="px-2 py-1.5 text-right tabular-nums text-text-2"
+                title={actual > 0 ? `Sau adjust: ${finalQty.toLocaleString("vi-VN")} (${deltaVsActual > 0 ? "+" : ""}${deltaVsActual.toFixed(0)}% vs T${PREV_MONTH})` : undefined}>
                 {r.duKien.toLocaleString("vi-VN")}
               </td>
               <td className="px-2 py-1.5 text-right tabular-nums">
