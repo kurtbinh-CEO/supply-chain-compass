@@ -234,10 +234,22 @@ export default function DemandPage() {
             </>
           }
           actions={
-            <Button size="sm" onClick={() => setImporterOpen(true)} className="h-8 gap-1.5">
-              <Inbox className="h-3.5 w-3.5" />
-              {activeTab === "b2b" ? "Nhập B2B" : "Nhập FC"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setActualOpen(true)}
+                className="h-8 gap-1.5"
+                title="Cập nhật doanh thu thực tế (Bravo / Excel / Tay)"
+              >
+                <Inbox className="h-3.5 w-3.5" />
+                Nhập thực tế
+              </Button>
+              <Button size="sm" onClick={() => setImporterOpen(true)} className="h-8 gap-1.5">
+                <Inbox className="h-3.5 w-3.5" />
+                {activeTab === "b2b" ? "Nhập B2B" : "Nhập FC"}
+              </Button>
+            </div>
           }
         />
       </div>
@@ -249,6 +261,15 @@ export default function DemandPage() {
         description="Chọn nguồn nhập dữ liệu. Mỗi lần tạo 1 entry trong nhật ký."
         sources={activeTab === "b2b" ? B2B_SOURCES : FC_SOURCES}
         onSelect={handleSourceSelect}
+      />
+
+      <DataSourceSelector
+        open={actualOpen}
+        onClose={() => setActualOpen(false)}
+        title="Nhập thực tế bán hàng"
+        description="Cập nhật doanh thu thực tế per CN × SKU × tháng. MAPE và YTD sẽ tính lại."
+        sources={ACTUAL_SOURCES}
+        onSelect={handleActualSelect}
       />
 
       <AopPlanDialog
