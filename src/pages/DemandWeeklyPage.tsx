@@ -565,9 +565,49 @@ function ScManagerTab({
   scRows, onApproveCn, onRejectCn,
   onApproveRow, onRejectRow, onTrimRow, onOverrideRow, onApproveAllInBand,
 }: ScManagerTabProps) {
+  const [pivot, setPivot] = usePivotMode("demand-weekly-sc");
   const adjustedCns = scRows.filter((r) => r.skuCount > 0).length;
   const totalPending = scRows.reduce((s, r) => s + r.pendingCount, 0);
   const totalOver    = scRows.reduce((s, r) => s + r.overCount, 0);
+
+  // Build SKU-first pivot: aggregate adjust per SKU across CNs
+  interface SkuAggRow {
+    sku: string;
+    totalAdjust: number;
+    cnCount: number;
+    overCount: number;
+    cnBreakdown: PivotChildRow[];
+  }
+  const skuAggRows: SkuAggRow[] = (() => {
+    const map = new Map<string, SkuAggRow>();
+    scRows.forEach((cn) => {
+      cn.rows.forEach((r) => {
+        if (r.adjust === 0) return;
+        if (!map.has(r.sku)) {
+          map.set(r.sku, { sku: r.sku, totalAdjust: 0, cnCount: 0, overCount: 0, cnBreakdown: [] });
+        }
+        const p = map.get(r.sku)!;
+        p.totalAdjust += r.adjust;
+        p.cnCount++;
+        const pct = r.duKien > 0 ? (r.adjust / r.duKien) * 100 : 0;
+        const isOver = Math.abs(pct) > 30;
+        if (isOver) p.overCount++;
+        // Map CN to PivotChildRow — qty=adjust, hstk synthesized from |pct| (lower = more dangerous adjust)
+        const hstk = Math.max(0.5, 30 - Math.abs(pct));
+        p.cnBreakdown.push({
+          key: `${r.sku}-${cn.cnCode}`,
+          label: cn.cnName,
+          qty: r.adjust,
+          hstk,
+          ssTarget: r.duKien,
+          statusOverride: `${pct > 0 ? "+" : ""}${pct.toFixed(0)}%`,
+          navKind: "cn",
+          navValue: cn.cnCode,
+        });
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => b.overCount - a.overCount || Math.abs(b.totalAdjust) - Math.abs(a.totalAdjust));
+  })();
 
   const columns: SmartTableColumn<ScSummaryRow>[] = [
     {
