@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, Fragment } from "react";
+import { useState, useMemo, useEffect, useRef, Fragment } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
 import { useNavigate } from "react-router-dom";
@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   Play, ChevronDown, ChevronRight, ArrowRight, Lock as LockIcon,
-  CheckCircle2, AlertTriangle, Info,
+  CheckCircle2, AlertTriangle, Info, X,
 } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { TermTooltip } from "@/components/TermTooltip";
@@ -21,6 +21,12 @@ import { BRANCHES as _BR2, DRP_RESULTS as _DRP2, PLAN_VERSIONS } from "@/data/un
 import { VersionHistoryPanel } from "@/components/VersionHistoryPanel";
 import { VersionCompareInline } from "@/components/VersionCompareInline";
 import { VersionLockDialog, ViewingVersionBanner } from "@/components/VersionLockDialog";
+import { DrpStepIndicator, type DrpStep } from "@/components/drp/DrpStepIndicator";
+import { DrpPreflight, type PreflightItem } from "@/components/drp/DrpPreflight";
+import { DrpProgress, type ProgressStep } from "@/components/drp/DrpProgress";
+import { DrpCalcSummaryLine, type CalcToken } from "@/components/drp/DrpCalcSummaryLine";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
