@@ -48,16 +48,16 @@ Phase 5 — Excel Wizard 5 bước (DONE):
 - `CrudToolbar` thêm prop `excelImport={ entityName, fields: ImportField[], onCommit }`. Khi user chọn "Excel/CSV" trong DataSourceSelector → mở wizard thay vì gọi `onImport`
 - Wired vào 4 tab Master Data: Mã hàng, NM, CN, Container — mỗi tab có `*_IMPORT_FIELDS` riêng với aliases tiếng Việt
 
-Phase 6 — Persist Master Data vào Lovable Cloud (PARTIAL):
+Phase 6 — Persist Master Data vào Lovable Cloud (DONE):
 - Migration tạo 4 bảng: `master_items`, `master_factories`, `master_branches`, `master_containers`
   - Mỗi bảng: id UUID, code (UNIQUE per tenant), updated_at trigger, RLS public read + auth write + admin delete
-- **`src/hooks/useMasterData.ts`**: 5 hook/entity (list, create, update, delete, bulkInsert) dùng React Query, invalidate cache
-- **MasterDataPage Items tab** đã wire full Cloud (DONE):
-  - Merged view: cloud rows override hardcode SKU_BASES theo `code`, badge "Cloud" cho rows từ DB
+- **`src/hooks/useMasterData.ts`**: 5 hook/entity × 4 entity (list, create, update, delete, bulkInsert) dùng React Query, invalidate cache
+- **Tất cả 4 tab Master Data** (Items/NM/CN/Container) đã wire full Cloud:
+  - Merged view: cloud rows override hardcode dataset theo `code`, badge "Cloud" hiển thị inline với mã
   - Add/Edit/Delete/Bulk-import-Excel đều gọi mutation thật
-  - Edit hardcoded row → tạo Cloud override; Delete chỉ cho cloud rows (admin)
-- 3 tab còn lại (NM/CN/Container) — hooks sẵn sàng, chưa wire UI (next turn)
+  - Edit hardcoded row → tạo Cloud override (cùng `code`); Delete chỉ cho cloud rows (yêu cầu admin)
+  - Footer hiển thị "X từ cloud + Y từ dataset mẫu"
+  - Excel wizard onCommit gọi `bulkInsert*` thật → dòng hợp lệ vào DB ngay
 
 Còn lại:
-- Wire Cloud cho NM/CN/Container tabs (lặp pattern Items)
-- Phase 7: Audit log Master Data CRUD
+- Phase 7: Audit log Master Data CRUD (ai, khi nào, before/after diff → ActivityLog)
