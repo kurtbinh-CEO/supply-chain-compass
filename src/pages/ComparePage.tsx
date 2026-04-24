@@ -159,17 +159,20 @@ function PeriodCompare() {
   const [rightM, setRightM] = useState(6);
 
   const rows = useMemo<DiffRow[]>(() => {
+    const monthLeft = AOP_PLAN.totalTarget * (AOP_PLAN.monthlyWeights[leftM - 1] / 100);
+    const monthRight = AOP_PLAN.totalTarget * (AOP_PLAN.monthlyWeights[rightM - 1] / 100);
+    // Phân bổ tháng × region weight × CN-share trong region
+    const regionCnCount: Record<string, number> = {};
+    BRANCHES.forEach(cn => { regionCnCount[cn.region] = (regionCnCount[cn.region] ?? 0) + 1; });
     return BRANCHES.map((cn) => {
-      const aopRow = AOP_PLAN.find(p => p.cnCode === cn.code);
-      const seasonalLeft = aopRow?.seasonalWeights?.[leftM - 1] ?? (1 / 12);
-      const seasonalRight = aopRow?.seasonalWeights?.[rightM - 1] ?? (1 / 12);
-      const annualTotal = aopRow?.annualM2 ?? 0;
+      const regionW = (AOP_PLAN.regionWeights[cn.region] ?? 0) / 100;
+      const cnShare = 1 / Math.max(1, regionCnCount[cn.region]);
       return {
         id: cn.code,
         label: cn.code,
         group: cn.region,
-        left: Math.round(annualTotal * seasonalLeft),
-        right: Math.round(annualTotal * seasonalRight),
+        left: Math.round(monthLeft * regionW * cnShare),
+        right: Math.round(monthRight * regionW * cnShare),
         unit: "m²",
       };
     });
