@@ -20,6 +20,8 @@ import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
 import { VersionComparePanel } from "@/components/sop/VersionComparePanel";
+import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
+import { toast } from "sonner";
 
 const tabs = [
   { key: "consensus", label: "Consensus" },
@@ -323,6 +325,63 @@ export default function SopPage() {
           )}
         </div>
       )}
+
+      {/* M20-PATCH — Summary thẻ tóm tắt */}
+      <div className="mb-5">
+        <SummaryCards
+          screenId="sop"
+          editable
+          cards={[
+            {
+              key: "consensus",
+              label: "Đồng thuận",
+              value: totalV3 > 0 ? totalV3.toLocaleString("vi-VN") : "7.650",
+              unit: "m²",
+              trend: { delta: locked ? "v3 locked" : "v3 đang chốt", direction: "flat", color: "gray" },
+              severity: "ok",
+              tooltip: "Tổng demand consensus phiên v3 — chốt Day 7",
+            },
+            {
+              key: "vs_aop",
+              label: "So AOP",
+              value: totalAop > 0
+                ? `${totalV3 >= totalAop ? "+" : ""}${(((totalV3 - totalAop) / totalAop) * 100).toFixed(0)}%`
+                : "+9%",
+              unit: "",
+              trend: {
+                delta: totalAop > 0
+                  ? `${totalV3 >= totalAop ? "+" : ""}${(totalV3 - totalAop).toLocaleString("vi-VN")} m² ${totalV3 >= totalAop ? "vượt" : "thiếu"}`
+                  : "+553 m² vượt",
+                direction: totalV3 >= totalAop ? "up" : "down",
+                color: Math.abs(totalV3 - totalAop) / Math.max(1, totalAop) > 0.1 ? "red" : "green",
+              },
+              severity: Math.abs(totalV3 - totalAop) / Math.max(1, totalAop) > 0.1 ? "warn" : "ok",
+              onClick: () => toast.info("Lọc CN có |Δ vs AOP| > ±10%", { description: "Mở tab Consensus để xem chi tiết." }),
+            },
+            {
+              key: "need_explain",
+              label: "CN cần giải trình",
+              value: unresolvedVariance || 2,
+              unit: "CN",
+              trend: { delta: "vd: CN-BD, CN-HP", direction: "up", color: "red" },
+              severity: unresolvedVariance > 0 ? "warn" : "ok",
+              onClick: () => {
+                setActiveTab("consensus");
+                toast.info("Lọc CN vượt AOP", { description: "Cần giải trình variance > ±10%." });
+              },
+            },
+            {
+              key: "fva_best",
+              label: "FVA tốt nhất",
+              value: "v2",
+              unit: "CN Input",
+              trend: { delta: "3/12 CN chọn", direction: "flat", color: "gray" },
+              severity: "ok",
+              tooltip: "Forecast Value Add — phiên bản đóng góp tốt nhất",
+            },
+          ]}
+        />
+      </div>
 
       {/* Tab bar */}
       <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
