@@ -38,6 +38,13 @@ interface CrudToolbarProps {
   importDescription?: string;
   importSources?: DataSource[];
   placeholder?: string;
+  /** Bật wizard 5 bước cho key "excel". Khi có, source "excel" sẽ mở wizard thay vì gọi onImport. */
+  excelImport?: {
+    entityName: string;
+    fields: ImportField[];
+    onCommit: (rows: Record<string, string | number>[]) => void;
+    templateUrl?: string;
+  };
 }
 
 const DEFAULT_IMPORT_SOURCES: DataSource[] = [
