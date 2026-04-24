@@ -19,6 +19,9 @@ import {
   X, Image as ImageIcon, Lock, Filter,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
+import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    §  Types
@@ -168,6 +171,7 @@ export function CommitmentTab({ scale, onTotalsChange }: {
   const [filterStatus, setFilterStatus] = useState<"all" | CommitStatus>("all");
   const [evidenceModal, setEvidenceModal] = useState<{ rowId: string; files: EvidenceFile[] } | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<string | null>(null);
+  const [pivot, setPivot] = usePivotMode("hub-commitment");
 
   /* Totals */
   const totals = useMemo(() => {
@@ -238,6 +242,46 @@ export function CommitmentTab({ scale, onTotalsChange }: {
     return c;
   }, [rows]);
 
+  /* SKU-first pivot — aggregate commitment per SKU across NMs */
+  interface SkuCommitRow {
+    sku: string;
+    totalFc: number;
+    totalCommitted: number;
+    nmCount: number;
+    confirmedCount: number;
+    nmBreakdown: PivotChildRow[];
+  }
+  const skuPivotRows: SkuCommitRow[] = useMemo(() => {
+    const map = new Map<string, SkuCommitRow>();
+    rows.forEach(r => {
+      if (!map.has(r.sku)) {
+        map.set(r.sku, { sku: r.sku, totalFc: 0, totalCommitted: 0, nmCount: 0, confirmedCount: 0, nmBreakdown: [] });
+      }
+      const p = map.get(r.sku)!;
+      p.totalFc += r.fcSent;
+      p.totalCommitted += r.committed;
+      p.nmCount++;
+      if (r.status === "confirmed" || r.status === "counter") p.confirmedCount++;
+      // hstk synthesized = 14d if confirmed/locked, 5d if waiting, 1d if not_called
+      const hstk = r.locked || r.status === "confirmed" ? 14 : r.status === "counter" ? 8 : r.status === "waiting" ? 5 : 1;
+      const status =
+        r.status === "confirmed" ? "Đã xác nhận" :
+        r.status === "counter" ? "Counter" :
+        r.status === "waiting" ? "Chờ NM" : "Chưa gọi";
+      p.nmBreakdown.push({
+        key: `${r.sku}-${r.id}`,
+        label: r.nmName,
+        qty: r.committed,
+        hstk,
+        ssTarget: r.fcSent,
+        statusOverride: status,
+        navKind: "nm",
+        navValue: r.nmName,
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => (a.confirmedCount / Math.max(1, a.nmCount)) - (b.confirmedCount / Math.max(1, b.nmCount)));
+  }, [rows]);
+
   return (
     <div className="space-y-4">
       {/* ═══ HEADER ═══ */}
@@ -297,72 +341,137 @@ export function CommitmentTab({ scale, onTotalsChange }: {
         </div>
       </div>
 
-      {/* ═══ FILTER CHIPS ═══ */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Filter className="h-3.5 w-3.5 text-text-3" />
-        {([
-          { key: "all", label: "Tất cả", icon: "" },
-          { key: "not_called", label: "Chưa gọi", icon: "🔴" },
-          { key: "waiting", label: "Chờ NM", icon: "🟡" },
-          { key: "confirmed", label: "Đã xác nhận", icon: "🟢" },
-          { key: "counter", label: "NM counter", icon: "⚠️" },
-        ] as const).map(f => {
-          const count = counts[f.key as keyof typeof counts];
-          const active = filterStatus === f.key;
-          return (
-            <button key={f.key} onClick={() => setFilterStatus(f.key as typeof filterStatus)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-table-sm font-medium transition-colors",
-                active
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-surface-3 bg-surface-2 text-text-2 hover:border-primary/40"
-              )}>
-              {f.icon && <span>{f.icon}</span>}
-              <span>{f.label}</span>
-              <span className="tabular-nums text-caption opacity-80">({count})</span>
-            </button>
-          );
-        })}
+      {/* ═══ PIVOT TOGGLE ═══ */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <PivotToggle mode={pivot} onChange={setPivot} cnLabel="Nhà máy" skuLabel="Mã hàng" />
+        <span className="text-caption text-text-3">
+          {pivot === "cn" ? "Quản lý cam kết per NM × SKU" : "Tổng hợp cam kết per Mã hàng → từng NM"}
+        </span>
       </div>
 
-      {/* ═══ TABLE ═══ */}
-      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-surface-1/60 border-b border-surface-3">
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">NM</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Mã hàng</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">FC gửi NM</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Cam kết NM ✏️</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Δ</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Tier</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden md:table-cell">Nguồn</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden lg:table-cell">Ngày liên hệ</th>
-                <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Minh chứng</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Trạng thái</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.length === 0 && (
-                <tr><td colSpan={11} className="text-center py-8 text-text-3 text-table-sm">
-                  Không có cam kết nào khớp bộ lọc.
-                </td></tr>
-              )}
-              {filteredRows.map(row => (
-                <CommitmentRow
-                  key={row.id}
-                  row={row}
-                  onUpdate={(patch) => updateRow(row.id, patch)}
-                  onOpenEvidence={() => setEvidenceModal({ rowId: row.id, files: row.evidence })}
-                  onConfirm={() => setConfirmDialog(row.id)}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {pivot === "cn" ? (
+        <>
+          {/* ═══ FILTER CHIPS ═══ */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Filter className="h-3.5 w-3.5 text-text-3" />
+            {([
+              { key: "all", label: "Tất cả", icon: "" },
+              { key: "not_called", label: "Chưa gọi", icon: "🔴" },
+              { key: "waiting", label: "Chờ NM", icon: "🟡" },
+              { key: "confirmed", label: "Đã xác nhận", icon: "🟢" },
+              { key: "counter", label: "NM counter", icon: "⚠️" },
+            ] as const).map(f => {
+              const count = counts[f.key as keyof typeof counts];
+              const active = filterStatus === f.key;
+              return (
+                <button key={f.key} onClick={() => setFilterStatus(f.key as typeof filterStatus)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-table-sm font-medium transition-colors",
+                    active
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-surface-3 bg-surface-2 text-text-2 hover:border-primary/40"
+                  )}>
+                  {f.icon && <span>{f.icon}</span>}
+                  <span>{f.label}</span>
+                  <span className="tabular-nums text-caption opacity-80">({count})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ═══ TABLE NM × SKU ═══ */}
+          <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-surface-1/60 border-b border-surface-3">
+                    <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">NM</th>
+                    <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Mã hàng</th>
+                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">FC gửi NM</th>
+                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Cam kết NM ✏️</th>
+                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Δ</th>
+                    <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Tier</th>
+                    <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden md:table-cell">Nguồn</th>
+                    <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden lg:table-cell">Ngày liên hệ</th>
+                    <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Minh chứng</th>
+                    <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Trạng thái</th>
+                    <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.length === 0 && (
+                    <tr><td colSpan={11} className="text-center py-8 text-text-3 text-table-sm">
+                      Không có cam kết nào khớp bộ lọc.
+                    </td></tr>
+                  )}
+                  {filteredRows.map(row => (
+                    <CommitmentRow
+                      key={row.id}
+                      row={row}
+                      onUpdate={(patch) => updateRow(row.id, patch)}
+                      onOpenEvidence={() => setEvidenceModal({ rowId: row.id, files: row.evidence })}
+                      onConfirm={() => setConfirmDialog(row.id)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      ) : (
+        /* ═══ SKU-FIRST PIVOT ═══ */
+        <SmartTable<SkuCommitRow>
+          screenId="hub-commitment-sku"
+          title="Mã hàng → Nhà máy cam kết"
+          exportFilename="hub-cam-ket-sku"
+          columns={[
+            { key: "sku", label: "Mã hàng", sortable: true, width: 140, render: (r) => <span className="font-medium text-text-1 text-table-sm">{r.sku}</span> },
+            { key: "totalFc", label: "FC tổng (m²)", numeric: true, align: "right", sortable: true, width: 130, render: (r) => <span className="tabular-nums text-text-2">{r.totalFc.toLocaleString()}</span> },
+            {
+              key: "totalCommitted", label: "Cam kết (m²)", numeric: true, align: "right", sortable: true, width: 140,
+              render: (r) => {
+                const cov = r.totalFc > 0 ? Math.round((r.totalCommitted / r.totalFc) * 100) : 0;
+                const color = cov >= 95 ? "text-success" : cov >= 70 ? "text-warning" : "text-danger";
+                return (
+                  <div className="flex flex-col items-end">
+                    <span className={cn("tabular-nums font-medium", color)}>{r.totalCommitted.toLocaleString()}</span>
+                    <span className="text-[10px] text-text-3">{cov}% FC</span>
+                  </div>
+                );
+              },
+            },
+            {
+              key: "confirmedCount", label: "Tiến độ NM", numeric: true, align: "right", sortable: true, width: 120,
+              render: (r) => (
+                <span className={cn(
+                  "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                  r.confirmedCount === r.nmCount ? "bg-success-bg text-success" :
+                  r.confirmedCount > 0 ? "bg-warning-bg text-warning" : "bg-danger-bg text-danger"
+                )}>
+                  {r.confirmedCount}/{r.nmCount} NM
+                </span>
+              ),
+            },
+          ]}
+          data={skuPivotRows}
+          defaultDensity="compact"
+          getRowId={(r) => r.sku}
+          rowSeverity={(r) => {
+            const cov = r.totalFc > 0 ? r.totalCommitted / r.totalFc : 0;
+            if (cov < 0.7) return "shortage";
+            if (cov < 0.95) return "watch";
+            return "ok";
+          }}
+          autoExpandWhen={(r) => r.confirmedCount < r.nmCount}
+          drillDown={(r) => (
+            <PivotChildTable
+              rows={r.nmBreakdown}
+              firstColLabel="Nhà máy"
+              screenId={`hub-commit-sku-child-${r.sku}`}
+            />
+          )}
+        />
+      )}
 
       {/* ═══ EVIDENCE UPLOAD MODAL ═══ */}
       {evidenceModal && (

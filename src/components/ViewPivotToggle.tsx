@@ -8,9 +8,13 @@ interface ViewPivotToggleProps {
   value: PivotMode;
   onChange: (mode: PivotMode) => void;
   className?: string;
+  /** Nhãn tuỳ biến cho cụm "đối tượng đầu" — vd "Nhà máy" thay cho "Chi nhánh" */
+  cnLabel?: string;
+  /** Nhãn tuỳ biến cho cụm SKU — vd "Mã hàng" */
+  skuLabel?: string;
 }
 
-export function ViewPivotToggle({ value, onChange, className }: ViewPivotToggleProps) {
+export function ViewPivotToggle({ value, onChange, className, cnLabel = "Chi nhánh", skuLabel = "SKU" }: ViewPivotToggleProps) {
   return (
     <div className={cn("inline-flex rounded-lg border border-surface-3 bg-surface-0 p-0.5", className)}>
       <button
@@ -23,7 +27,7 @@ export function ViewPivotToggle({ value, onChange, className }: ViewPivotToggleP
         )}
       >
         <Building2 className="h-3.5 w-3.5" />
-        Chi nhánh → SKU
+        {cnLabel} → {skuLabel}
       </button>
       <button
         onClick={() => onChange("sku")}
@@ -35,10 +39,23 @@ export function ViewPivotToggle({ value, onChange, className }: ViewPivotToggleP
         )}
       >
         <Package className="h-3.5 w-3.5" />
-        SKU → Chi nhánh
+        {skuLabel} → {cnLabel}
       </button>
     </div>
   );
+}
+
+/* Alias xuất theo spec M20 — cùng API, hỗ trợ ergonomy:
+   <PivotToggle mode={mode} onChange={setMode} cnLabel="Nhà máy" skuLabel="Mã hàng" /> */
+export interface PivotToggleProps {
+  mode: PivotMode;
+  onChange: (m: PivotMode) => void;
+  cnLabel?: string;
+  skuLabel?: string;
+  className?: string;
+}
+export function PivotToggle({ mode, onChange, cnLabel, skuLabel, className }: PivotToggleProps) {
+  return <ViewPivotToggle value={mode} onChange={onChange} cnLabel={cnLabel} skuLabel={skuLabel} className={className} />;
 }
 
 /** Hook that persists pivot mode per screen in sessionStorage */

@@ -30,6 +30,8 @@ import {
 import { TermTooltip } from "@/components/TermTooltip";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
+import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
 import { BRANCHES, TRUST_BY_CN, DEMAND_FC } from "@/data/unis-enterprise-dataset";
 import { PhasingDialog } from "@/components/PhasingDialog";
 import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
@@ -563,9 +565,49 @@ function ScManagerTab({
   scRows, onApproveCn, onRejectCn,
   onApproveRow, onRejectRow, onTrimRow, onOverrideRow, onApproveAllInBand,
 }: ScManagerTabProps) {
+  const [pivot, setPivot] = usePivotMode("demand-weekly-sc");
   const adjustedCns = scRows.filter((r) => r.skuCount > 0).length;
   const totalPending = scRows.reduce((s, r) => s + r.pendingCount, 0);
   const totalOver    = scRows.reduce((s, r) => s + r.overCount, 0);
+
+  // Build SKU-first pivot: aggregate adjust per SKU across CNs
+  interface SkuAggRow {
+    sku: string;
+    totalAdjust: number;
+    cnCount: number;
+    overCount: number;
+    cnBreakdown: PivotChildRow[];
+  }
+  const skuAggRows: SkuAggRow[] = (() => {
+    const map = new Map<string, SkuAggRow>();
+    scRows.forEach((cn) => {
+      cn.rows.forEach((r) => {
+        if (r.adjust === 0) return;
+        const skuLabel = `${r.item} ${r.variant}`;
+        if (!map.has(skuLabel)) {
+          map.set(skuLabel, { sku: skuLabel, totalAdjust: 0, cnCount: 0, overCount: 0, cnBreakdown: [] });
+        }
+        const p = map.get(skuLabel)!;
+        p.totalAdjust += r.adjust;
+        p.cnCount++;
+        const pct = r.duKien > 0 ? (r.adjust / r.duKien) * 100 : 0;
+        const isOver = Math.abs(pct) > 30;
+        if (isOver) p.overCount++;
+        const hstk = Math.max(0.5, 30 - Math.abs(pct));
+        p.cnBreakdown.push({
+          key: `${skuLabel}-${cn.cnCode}`,
+          label: cn.cnName,
+          qty: r.adjust,
+          hstk,
+          ssTarget: r.duKien,
+          statusOverride: `${pct > 0 ? "+" : ""}${pct.toFixed(0)}%`,
+          navKind: "cn",
+          navValue: cn.cnCode,
+        });
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => b.overCount - a.overCount || Math.abs(b.totalAdjust) - Math.abs(a.totalAdjust));
+  })();
 
   const columns: SmartTableColumn<ScSummaryRow>[] = [
     {
@@ -719,35 +761,94 @@ function ScManagerTab({
         </Button>
       </div>
 
-      {/* SC Manager table — 12 CN with drilldown */}
-      <SmartTable<ScSummaryRow>
-        screenId="demand-weekly-sc"
-        title="12 chi nhánh"
-        exportFilename="demand-weekly-sc-summary"
-        columns={columns}
-        data={scRows}
-        defaultDensity="normal"
-        getRowId={(r) => r.cnCode}
-        rowSeverity={(r) =>
-          r.status === "over" ? "shortage" :
-          r.status === "pending" ? "watch" : "ok"
-        }
-        autoExpandWhen={(r) => r.status === "over" || r.status === "pending"}
-        drillDown={(r) => (
-          <ScCnDrillDown
-            row={r}
-            onApproveRow={onApproveRow}
-            onRejectRow={onRejectRow}
-            onTrimRow={onTrimRow}
-            onOverrideRow={onOverrideRow}
-          />
-        )}
-        emptyState={{
-          icon: <Inbox />,
-          title: "Chưa có CN nào gửi điều chỉnh",
-          description: "Bảng tổng hợp 12 CN sẽ điền dần khi mỗi CN Manager submit điều chỉnh tuần. Cutoff: 18:00 hàng ngày.",
-        }}
-      />
+      {/* Pivot toggle CN ↔ Mã hàng */}
+      <div className="flex items-center justify-between">
+        <PivotToggle mode={pivot} onChange={setPivot} cnLabel="Chi nhánh" skuLabel="Mã hàng" />
+        <span className="text-caption text-text-3">
+          {pivot === "cn" ? "Click 1 CN → xem chi tiết SKU adjust" : "Click 1 SKU → xem CN nào adjust"}
+        </span>
+      </div>
+
+      {pivot === "cn" ? (
+        /* SC Manager table — 12 CN with drilldown */
+        <SmartTable<ScSummaryRow>
+          screenId="demand-weekly-sc"
+          title="12 chi nhánh"
+          exportFilename="demand-weekly-sc-summary"
+          columns={columns}
+          data={scRows}
+          defaultDensity="normal"
+          getRowId={(r) => r.cnCode}
+          rowSeverity={(r) =>
+            r.status === "over" ? "shortage" :
+            r.status === "pending" ? "watch" : "ok"
+          }
+          autoExpandWhen={(r) => r.status === "over" || r.status === "pending"}
+          drillDown={(r) => (
+            <ScCnDrillDown
+              row={r}
+              onApproveRow={onApproveRow}
+              onRejectRow={onRejectRow}
+              onTrimRow={onTrimRow}
+              onOverrideRow={onOverrideRow}
+            />
+          )}
+          emptyState={{
+            icon: <Inbox />,
+            title: "Chưa có CN nào gửi điều chỉnh",
+            description: "Bảng tổng hợp 12 CN sẽ điền dần khi mỗi CN Manager submit điều chỉnh tuần. Cutoff: 18:00 hàng ngày.",
+          }}
+        />
+      ) : (
+        /* SKU-first pivot: aggregate adjust per SKU across CNs */
+        <SmartTable<typeof skuAggRows[number]>
+          screenId="demand-weekly-sc-sku"
+          title="Mã hàng → Chi nhánh adjust"
+          exportFilename="demand-weekly-sku-pivot"
+          columns={[
+            {
+              key: "sku", label: "Mã hàng", sortable: true, width: 160,
+              render: (r) => <span className="font-medium text-text-1 text-table-sm">{r.sku}</span>,
+            },
+            {
+              key: "totalAdjust", label: "Tổng adjust", numeric: true, align: "right", sortable: true, width: 130,
+              render: (r) => (
+                <span className={cn("tabular-nums font-medium", r.totalAdjust > 0 ? "text-success" : r.totalAdjust < 0 ? "text-danger" : "text-text-2")}>
+                  {r.totalAdjust > 0 ? "+" : ""}{r.totalAdjust.toLocaleString("vi-VN")}
+                </span>
+              ),
+            },
+            {
+              key: "cnCount", label: "# CN adjust", numeric: true, align: "right", sortable: true, width: 110,
+              render: (r) => <span className="tabular-nums text-text-2">{r.cnCount}</span>,
+            },
+            {
+              key: "overCount", label: "Vượt biên", numeric: true, align: "right", sortable: true, width: 110,
+              render: (r) => r.overCount > 0
+                ? <span className="rounded-full bg-danger-bg text-danger px-2 py-0.5 text-[11px] font-medium">{r.overCount} CN</span>
+                : <span className="text-success text-table-sm">🟢 Trong biên</span>,
+            },
+          ]}
+          data={skuAggRows}
+          defaultDensity="compact"
+          getRowId={(r) => r.sku}
+          rowSeverity={(r) => r.overCount > 0 ? "shortage" : "ok"}
+          autoExpandWhen={(r) => r.overCount > 0}
+          drillDown={(r) => (
+            <PivotChildTable
+              rows={r.cnBreakdown}
+              firstColLabel="Chi nhánh"
+              screenId={`demand-weekly-sku-child-${r.sku}`}
+              showSoSs={false}
+            />
+          )}
+          emptyState={{
+            icon: <Inbox />,
+            title: "Chưa có SKU nào được adjust",
+            description: "Khi CN gửi điều chỉnh, danh sách SKU sẽ hiện ra ở đây.",
+          }}
+        />
+      )}
     </div>
   );
 }
