@@ -1006,49 +1006,38 @@ export default function DrpPage() {
         <span className="ml-auto text-info text-caption flex items-center gap-1">Xem chi tiết <ArrowRight className="h-3 w-3" /></span>
       </button>
 
-      {/* ═══ FLOW STEPPER ═══ */}
-      <div className="rounded-card border border-surface-3 bg-surface-2 p-4 mb-4">
-        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-3">
-          {PHASES.map((phase, pi) => (
-            <div key={phase.name} className="flex-1">
-              <div className="text-[10px] uppercase tracking-wider text-text-3 font-semibold mb-1.5">{phase.name}</div>
-              <div className="flex flex-wrap gap-1.5">
-                {phase.steps.map(step => {
-                  const active = activeStep === step.id;
-                  return (
-                    <button key={step.id} onClick={() => setActiveStep(step.id)}
-                      className={cn(
-                        "relative min-w-[58px] rounded border px-2 py-1.5 text-left transition-all",
-                        active ? "border-primary bg-primary/10 shadow-sm" : "border-surface-3 bg-surface-1 hover:border-primary/40"
-                      )}>
-                      <div className={cn("text-[10px] font-bold tabular-nums", active ? "text-primary" : "text-text-3")}>
-                        {step.id < 10 ? `0${step.id}` : step.id}
-                      </div>
-                      <div className={cn("text-[11px] leading-tight font-medium mt-0.5", active ? "text-text-1" : "text-text-2")}>
-                        {step.label}
-                      </div>
-                      <StepBadgeDot b={step.badge} />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* ═══ 10 BƯỚC TÍNH TOÁN — 1 dòng tóm tắt (thay cho 11-zigzag cũ) ═══ */}
+      <div className="mb-4">
+        <DrpCalcSummaryLine
+          tokens={[
+            { stepId: 1, label: "Nhu cầu 31.632" },
+            { stepId: 2, label: "→ Trừ tồn −3.200" },
+            { stepId: 3, label: "→ Trừ về −1.757" },
+            { stepId: 4, label: "→ +SS 1.200" },
+            { stepId: 5, label: "→ Ròng 27.875", severity: "warn" },
+            { stepId: 6, label: "→ LCNB 4 TO · 555m²" },
+            { stepId: 7, label: "→ Hub 780m²" },
+            { stepId: 8, label: "→ Variant ⚠️1", severity: "warn" },
+            { stepId: 9, label: "→ Container 8 · 1 giữ" },
+            { stepId: 10, label: "→ NM 4/5 PASS", severity: "danger" },
+          ]}
+          onClickToken={(id) => setActiveStep(id)}
+        />
 
-        {/* Step detail */}
-        <div className="rounded border border-surface-3 bg-surface-1/40 p-3">
-          <div className="text-table-sm font-semibold text-text-1 mb-2 flex items-center gap-2">
-            <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
-              {activeStep}
-            </span>
-            <span>
-              {PHASES.flatMap(p => p.steps).find(s => s.id === activeStep)?.label}
+        {/* Step detail (chỉ hiện khi có activeStep) */}
+        <div className="mt-2 rounded border border-surface-3 bg-surface-1/40 p-3">
+          <div className="text-table-sm font-semibold text-text-1 mb-2 flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                {activeStep}
+              </span>
+              <span>{PHASES.flatMap(p => p.steps).find(s => s.id === activeStep)?.label ?? `Bước ${activeStep}`}</span>
             </span>
           </div>
           <StepDetail stepId={activeStep} scale={s} />
         </div>
       </div>
+
 
       {/* ═══ SUMMARY CARDS — tóm tắt DRP một lần nhìn ═══ */}
       {(() => {
