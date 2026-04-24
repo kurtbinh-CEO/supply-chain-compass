@@ -80,6 +80,7 @@ const COMMITMENT_SOURCES: DataSource[] = [
 
 export default function HubPage() {
   const [activeTab, setActiveTab] = useState("commitment");
+  const navigate = useNavigate();
   const { tenant } = useTenant();
   const { markDone } = useNextStep();
   const { current: planCycle, isReadOnly: planLocked } = usePlanningPeriod();
