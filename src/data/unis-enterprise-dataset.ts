@@ -519,7 +519,7 @@ export const COMMITMENT_GAPS: CommitmentGapRow[] = (() => {
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /* §12 DRP_RESULTS — netting at SKU BASE level (rule #2)                      */
-/*     3 SHORTAGE, 2 WATCH, rest OK                                          */
+/*     Mở rộng scenario: 6 SHORTAGE (incl. severe), 4 WATCH, 2 STOCKOUT_RISK */
 /* ────────────────────────────────────────────────────────────────────────── */
 
 export type DrpStatus = "OK" | "WATCH" | "SHORTAGE";
@@ -534,13 +534,24 @@ export interface DrpResultRow {
   netReqM2: number;        // = max(0, FC + SS - OnHand - InTransit)
   status: DrpStatus;
   recommendation: string;
+  /** "severe" = fill < 50%, "stockout_risk" = HSTK < 3 ngày */
+  scenario?: "severe" | "stockout_risk" | "nm_rejected" | "cascade";
 }
 
+// SCENARIO MIX — đa dạng để demo edge cases
 const SHORTAGE_KEYS = new Set([
-  "CN-HCM|GA-300", "CN-HCM|GA-600", "CN-LA|GT-300",
+  "CN-HCM|GA-300",     // Severe — TP lớn, fill 35%
+  "CN-HCM|GA-600",     // NM Mikado vừa từ chối → cascade
+  "CN-LA|GT-300",      // Stockout risk — HSTK 2.1 ngày
+  "CN-DT|GA-400",      // Severe — Đồng Tháp khô hàng
+  "CN-CT|GT-400",      // NM Tân Việt giảm 40% honoring
+  "CN-AG|GA-300",      // Cascade từ HCM thiếu, AG cũng thiếu
 ]);
+const SEVERE_KEYS = new Set(["CN-HCM|GA-300", "CN-DT|GA-400"]);
+const STOCKOUT_RISK_KEYS = new Set(["CN-LA|GT-300", "CN-AG|GA-300"]);
+const NM_REJECTED_KEYS = new Set(["CN-HCM|GA-600", "CN-CT|GT-400"]);
 const WATCH_KEYS = new Set([
-  "CN-NA|GA-300", "CN-NT|GT-600",
+  "CN-NA|GA-300", "CN-NT|GT-600", "CN-BD|GA-400", "CN-VL|GT-300",
 ]);
 
 export const DRP_RESULTS: DrpResultRow[] = SKU_BASES.flatMap((b) =>
