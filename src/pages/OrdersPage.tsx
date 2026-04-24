@@ -129,11 +129,31 @@ export default function OrdersPage() {
             PO Batch W20 v1 · Active
           </Badge>
         </div>
-        <p className="text-table-sm text-text-3 mt-0.5">
-          Tổng <span className="text-text-1 font-semibold tabular-nums">{counts.total}</span> đơn ·
+        <p className="text-table-sm text-text-3 mt-0.5 flex items-center gap-1.5 flex-wrap">
+          <span>drp_run:</span>
+          <button
+            type="button"
+            onClick={() => navigate("/drp")}
+            className="inline-flex items-center rounded-full bg-surface-2 border border-surface-3 px-2 py-0.5 text-caption font-mono text-text-2 hover:bg-surface-1 hover:text-text-1 transition-colors"
+            title="Mở DRP batch nguồn"
+          >
+            DRP-W20
+          </button>
+          <span>·</span>
+          <span>Kỳ KH:</span>
+          <button
+            type="button"
+            onClick={() => navigate("/demand")}
+            className="inline-flex items-center rounded-full bg-info-bg text-info border border-info/30 px-2 py-0.5 text-caption font-medium hover:bg-info/15 transition-colors"
+            title="Mở rà soát nhu cầu của kỳ này"
+          >
+            {planCycle.label}
+          </button>
+          <span>·</span>
+          <span>Tổng <span className="text-text-1 font-semibold tabular-nums">{counts.total}</span> đơn</span>
           {counts.overdue > 0 && (
-            <> <span className="text-danger font-semibold">{counts.overdue} trễ hạn</span> ·</>
-          )} cập nhật thủ công sau khi gọi NM/NVT
+            <> · <span className="text-danger font-semibold">{counts.overdue} trễ hạn</span></>
+          )}
         </p>
       </div>
 
