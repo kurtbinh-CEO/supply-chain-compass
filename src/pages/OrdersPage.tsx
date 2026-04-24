@@ -561,7 +561,7 @@ export default function OrdersPage() {
             else if (typeof s === "object") setStatusFilter(new Set([s.stage]));
             setDrillFocus(null);
           }}
-          onOpenRow={(r) => { setDrillFocus(null); setExpanded(prev => new Set(prev).add(r.id)); }}
+          onOpenRow={() => { setDrillFocus(null); /* SmartTable groups: user expands manually via ▸ chevron */ }}
         />
       )}
     </AppLayout>
