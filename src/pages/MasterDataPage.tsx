@@ -1052,6 +1052,7 @@ function ContainersTab() {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<MergedContainer | null>(null);
   const [deleting, setDeleting] = useState<MergedContainer | null>(null);
+  const [historyCode, setHistoryCode] = useState<string | null>(null);
 
   const { data: cloudContainers = [] } = useMasterContainers();
   const createContainer = useCreateMasterContainer();
