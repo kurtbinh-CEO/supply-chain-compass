@@ -692,25 +692,33 @@ export const TRANSPORT_PLANS: TransportPlan[] = [
 /* §15.1 CARRIERS — danh mục nhà xe (P25)                                    */
 /* ────────────────────────────────────────────────────────────────────────── */
 
+export type CarrierStatus = "Hoạt động" | "Tạm ngưng";
+
 export interface Carrier {
   id: string;
+  /** Mã NVT hiển thị (NVT-VNT, NVT-NB…). Optional cho records cũ. */
+  code?: string;
   name: string;
   type: "Nội bộ" | "Đối tác" | "NM tự vận chuyển";
   phone: string;
   region: string[];          // "Bắc" | "Trung" | "Nam"
-  rate20ft: number;          // VND / chuyến
+  rate20ft: number;          // VND / chuyến (legacy quick-rate)
   rate40ft: number;
   slaOnTimePct: number;
   available: boolean;
   note: string;
+  /** Tên người liên hệ chính (tùy chọn). */
+  contactName?: string;
+  /** Trạng thái vận hành chi tiết — derived từ `available` nếu thiếu. */
+  status?: CarrierStatus;
 }
 
 export const CARRIERS: Carrier[] = [
-  { id: "CR-01", name: "Vinatrans",         type: "Đối tác",            phone: "028 3822 8888", region: ["Nam", "Trung"],         rate20ft: 8_500_000, rate40ft: 14_200_000, slaOnTimePct: 92, available: true,  note: "Đối tác chính UNIS miền Nam" },
-  { id: "CR-02", name: "Gemadept Logistics", type: "Đối tác",           phone: "028 3811 7777", region: ["Nam", "Trung", "Bắc"], rate20ft: 9_200_000, rate40ft: 15_800_000, slaOnTimePct: 95, available: true,  note: "Phủ toàn quốc, giá cao hơn" },
-  { id: "CR-03", name: "Tân Cảng STC",       type: "Đối tác",           phone: "028 3742 0888", region: ["Nam"],                 rate20ft: 7_800_000, rate40ft: 13_500_000, slaOnTimePct: 88, available: true,  note: "Giá tốt nhất miền Nam" },
-  { id: "CR-04", name: "Vận tải Mikado",     type: "NM tự vận chuyển",   phone: "0221 382 1234", region: ["Bắc"],                 rate20ft: 0,         rate40ft: 0,          slaOnTimePct: 85, available: true,  note: "Mikado tự vận chuyển, không tính phí riêng" },
-  { id: "CR-05", name: "Hải Vân Express",    type: "Đối tác",           phone: "0236 388 5555", region: ["Trung"],               rate20ft: 7_200_000, rate40ft: 12_800_000, slaOnTimePct: 82, available: false, note: "Tạm ngưng — xe bảo trì tháng 5" },
+  { id: "CR-01", code: "NVT-VNT", name: "Vinatrans",         type: "Đối tác",            phone: "028 3822 8888", region: ["Nam", "Trung"],         rate20ft: 8_500_000, rate40ft: 14_200_000, slaOnTimePct: 92, available: true,  note: "Đối tác chính UNIS miền Nam",            contactName: "Nguyễn Văn Khôi", status: "Hoạt động" },
+  { id: "CR-02", code: "NVT-GMD", name: "Gemadept Logistics", type: "Đối tác",           phone: "028 3811 7777", region: ["Nam", "Trung", "Bắc"], rate20ft: 9_200_000, rate40ft: 15_800_000, slaOnTimePct: 95, available: true,  note: "Phủ toàn quốc, giá cao hơn",               contactName: "Lê Quốc Đạt",     status: "Hoạt động" },
+  { id: "CR-03", code: "NVT-TC",  name: "Tân Cảng STC",       type: "Đối tác",           phone: "028 3742 0888", region: ["Nam"],                 rate20ft: 7_800_000, rate40ft: 13_500_000, slaOnTimePct: 88, available: true,  note: "Giá tốt nhất miền Nam",                    contactName: "Trần Thị Hằng",   status: "Hoạt động" },
+  { id: "CR-04", code: "NVT-MKD", name: "Vận tải Mikado",     type: "NM tự vận chuyển",   phone: "0221 382 1234", region: ["Bắc"],                 rate20ft: 0,         rate40ft: 0,          slaOnTimePct: 85, available: true,  note: "Mikado tự vận chuyển, không tính phí riêng", contactName: "Phạm Minh Tùng",  status: "Hoạt động" },
+  { id: "CR-05", code: "NVT-HV",  name: "Hải Vân Express",    type: "Đối tác",           phone: "0236 388 5555", region: ["Trung"],               rate20ft: 7_200_000, rate40ft: 12_800_000, slaOnTimePct: 82, available: false, note: "Tạm ngưng — xe bảo trì tháng 5",           contactName: "Hoàng Anh Tuấn",  status: "Tạm ngưng" },
 ];
 
 // Map CN → vùng (để lọc carrier theo region)
