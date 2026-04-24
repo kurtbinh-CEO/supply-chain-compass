@@ -303,48 +303,11 @@ export function ConsensusTab({ data, totalAop, totalV3, locked, onUpdateV3, onUp
     );
   }
 
-  // Layer 1
-  const sopCards = useMemo<SummaryCard[]>(() => {
-    const aopDelta = totalAop > 0 ? Math.round(((totalV3 - totalAop) / totalAop) * 100) : 0;
-    const varianceCount = data.filter(r => {
-      const bu = r.skus.reduce((a, s) => a + s.v3, 0);
-      return r.v0 > 0 && Math.abs((bu - r.v0) / r.v0) > 0.1;
-    }).length;
-    const explainedCount = data.filter(r => (varianceExplanations[r.cn] ?? "").trim().length >= 6).length;
-    const cnCount = data.length;
-    return [
-      {
-        key: "v3", label: "v3 đồng thuận", value: totalV3.toLocaleString("vi-VN"), unit: "m²",
-        severity: "ok",
-        trend: { delta: `${aopDelta >= 0 ? "+" : ""}${aopDelta}% vs AOP`, direction: aopDelta >= 0 ? "up" : "down", color: Math.abs(aopDelta) <= 5 ? "green" : "red" },
-        tooltip: "Tổng v3 đồng thuận sau S&OP — sẽ được khóa Day 7",
-      },
-      {
-        key: "aop", label: "AOP mục tiêu", value: totalAop.toLocaleString("vi-VN"), unit: "m²",
-        severity: "ok",
-        tooltip: "Mục tiêu năm phân bổ tháng — chuẩn so sánh",
-      },
-      {
-        key: "var", label: "CN sai lệch >10%", value: varianceCount, unit: "CN",
-        severity: varianceCount > 0 ? "critical" : "ok",
-        tooltip: "Top-down vs bottom-up — cần giải trình",
-      },
-      {
-        key: "exp", label: "Đã giải trình", value: `${explainedCount}/${cnCount}`,
-        severity: explainedCount >= cnCount ? "ok" : "warn",
-        tooltip: "CN có giải trình ≥ 6 ký tự",
-      },
-      {
-        key: "cn", label: "CN tham gia", value: cnCount, unit: "CN",
-        severity: "ok",
-        tooltip: "Số chi nhánh có data trong consensus tuần này",
-      },
-    ];
-  }, [data, totalAop, totalV3, varianceExplanations]);
+  // ⚠ SOP-REDESIGN: 5 cards trùng đã được XÓA — page-level đã render 4 Summary Cards
+  // ở LỚP 2 (Đồng thuận / So AOP / CN cần xem / Đã giải trình). Mỗi số chỉ hiện 1 lần.
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <SummaryCards cards={sopCards} screenId="sop-consensus" editable />
       {/* Pivot toggle */}
       <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setDrillCn(null); setDrillSku(null); }} />
 
