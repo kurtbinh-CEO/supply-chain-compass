@@ -1244,12 +1244,16 @@ function ContainersTab() {
           setDeleting(null);
         }}
       />
+
+      <MasterAuditPanel
+        open={historyCode !== null}
+        onOpenChange={(v) => !v && setHistoryCode(null)}
+        entity="container"
+        entityCode={historyCode ?? undefined}
+      />
     </div>
   );
 }
-
-/* ────────────────────────────────────────────────────────────────────────── */
-/* TAB 7 — Chất lượng dữ liệu                                                 */
 /* ────────────────────────────────────────────────────────────────────────── */
 interface DataIssue {
   id: string;
