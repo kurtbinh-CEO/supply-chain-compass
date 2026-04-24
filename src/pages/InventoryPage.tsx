@@ -151,6 +151,7 @@ function buildFactorySkuPivot(rows: FactoryRow[]): SkuPivotNmRow[] {
 function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
   const navigate = useNavigate();
   const [pivot, setPivot] = usePivotMode("inv-nm");
+  const [cardFilter, setCardFilter] = useState<"all" | "stale" | "full">("all");
 
   const handleRemind = useCallback((name: string) => {
     toast.success(`Đã gửi nhắc ${name}`, {
@@ -161,8 +162,60 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
   const totals = useMemo(() => {
     const t = rows.reduce((s, r) => s + r.totalOnHand, 0);
     const c = rows.reduce((s, r) => s + r.capacity, 0);
-    return { t, c, pct: c === 0 ? 0 : Math.round((t / c) * 100) };
+    const pct = c === 0 ? 0 : Math.round((t / c) * 100);
+    const stale = rows.filter((r) => r.tone !== "fresh").length;
+    const full = rows.filter((r) => r.utilizationPct >= 90).length;
+    return { t, c, pct, stale, full };
   }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    if (cardFilter === "stale") return rows.filter((r) => r.tone !== "fresh");
+    if (cardFilter === "full") return rows.filter((r) => r.utilizationPct >= 90);
+    return rows;
+  }, [rows, cardFilter]);
+
+  const nmSummary: SummaryCard[] = [
+    {
+      key: "total_stock",
+      label: "Tồn tổng NM",
+      value: totals.t.toLocaleString("vi-VN"),
+      unit: "m²",
+      severity: "ok",
+      trend: { delta: "+5% vs T4", direction: "up", color: "green" },
+      tooltip: "Tổng tồn on-hand toàn bộ 5 nhà máy.",
+    },
+    {
+      key: "avg_capacity",
+      label: "Capacity TB",
+      value: `${totals.pct}`,
+      unit: "%",
+      severity: totals.pct >= 95 ? "critical" : totals.pct >= 85 ? "warn" : "ok",
+      trend: { delta: "→ ổn định", direction: "flat", color: "gray" },
+      tooltip: "Mức sử dụng năng lực sản xuất trung bình các NM.",
+    },
+    {
+      key: "stale_nm",
+      label: "NM dữ liệu cũ",
+      value: totals.stale,
+      unit: "NM",
+      severity: totals.stale > 0 ? "critical" : "ok",
+      trend: totals.stale > 0
+        ? { delta: `${totals.stale} NM cần nhắc`, direction: "up", color: "red" }
+        : { delta: "→ tươi", direction: "flat", color: "gray" },
+      tooltip: "Số NM chưa cập nhật tồn trong 24h gần nhất.",
+      onClick: () => setCardFilter(cardFilter === "stale" ? "all" : "stale"),
+    },
+    {
+      key: "full_nm",
+      label: "NM đầy kho",
+      value: totals.full,
+      unit: "NM",
+      severity: totals.full > 0 ? "warn" : "ok",
+      trend: { delta: "% ≥ 90%", direction: "flat", color: "gray" },
+      tooltip: "Số NM có capacity utilization ≥ 90% — sản xuất sẽ bị nghẽn.",
+      onClick: () => setCardFilter(cardFilter === "full" ? "all" : "full"),
+    },
+  ];
 
   const skuPivotRows = useMemo(() => buildFactorySkuPivot(rows), [rows]);
 
