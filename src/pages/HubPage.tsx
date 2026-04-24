@@ -152,23 +152,40 @@ export default function HubPage() {
         </div>
       </div>
 
-      <div data-tour="hub-tabs" className="flex items-center gap-0 border-b border-surface-3 mb-6">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              "px-5 py-3 text-table font-medium transition-colors relative whitespace-nowrap",
-              activeTab === tab.key ? "text-primary" : "text-text-2 hover:text-text-1"
-            )}
-          >
-            {tab.label}
-            {activeTab === tab.key && (
-              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t" />
-            )}
-          </button>
-        ))}
+      <div data-tour="hub-tabs" className="flex items-center justify-between border-b border-surface-3 mb-6">
+        <div className="flex items-center gap-0">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                "px-5 py-3 text-table font-medium transition-colors relative whitespace-nowrap",
+                activeTab === tab.key ? "text-primary" : "text-text-2 hover:text-text-1"
+              )}
+            >
+              {tab.label}
+              {activeTab === tab.key && (
+                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t" />
+              )}
+            </button>
+          ))}
+        </div>
+        {activeTab === "commitment" && (
+          <Button size="sm" onClick={() => setImporterOpen(true)} className="h-8 gap-1.5 mb-1.5">
+            <Inbox className="h-3.5 w-3.5" />
+            Nhập cam kết
+          </Button>
+        )}
       </div>
+
+      <DataSourceSelector
+        open={importerOpen}
+        onClose={() => setImporterOpen(false)}
+        title="Nhập cam kết NM"
+        description="Chọn cách nhập cam kết. Phương án Khuyến nghị: Planner gọi NM rồi gõ tay."
+        sources={COMMITMENT_SOURCES}
+        onSelect={handleSourceSelect}
+      />
 
       <div data-tour="hub-commitment">
         {activeTab === "commitment" && (
