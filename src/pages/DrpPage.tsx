@@ -17,6 +17,7 @@ import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
 import { supabase } from "@/integrations/supabase/client";
 import { BRANCHES, DRP_RESULTS } from "@/data/unis-enterprise-dataset";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
+import { BPO_TRACKER } from "@/lib/bpo-tracker";
 import { BRANCHES as _BR2, DRP_RESULTS as _DRP2, PLAN_VERSIONS } from "@/data/unis-enterprise-dataset";
 import { VersionHistoryPanel } from "@/components/VersionHistoryPanel";
 import { VersionCompareInline } from "@/components/VersionCompareInline";
