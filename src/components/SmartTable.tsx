@@ -86,6 +86,13 @@ export interface SmartTableColumn<T = any> {
   numeric?: boolean;
 }
 
+export interface SmartTableEmptyState {
+  icon?: React.ReactNode;
+  title: string;
+  description?: string;
+  action?: { label: string; route?: string; onClick?: () => void };
+}
+
 export interface SmartTableProps<T = any> {
   columns: SmartTableColumn<T>[];
   data: T[];
@@ -94,6 +101,10 @@ export interface SmartTableProps<T = any> {
   autoExpandWhen?: (row: T) => boolean;
   onRowClick?: (row: T) => void;
   emptyMessage?: string;
+  /** Trạng thái loading — hiện shimmer rows */
+  isLoading?: boolean;
+  /** Empty state khi data.length === 0 && !isLoading */
+  emptyState?: SmartTableEmptyState;
   /** ID duy nhất cho screen — dùng cho localStorage persist */
   screenId: string;
   /** Hàm tính severity cho row (gắn data-severity) */
