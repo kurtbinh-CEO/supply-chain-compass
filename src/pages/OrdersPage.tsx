@@ -36,10 +36,15 @@ import {
 } from "@/lib/po-lifecycle-data";
 import { CARRIERS, CN_REGION } from "@/data/unis-enterprise-dataset";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
+import { BpoProgressSection } from "@/components/orders/BpoProgressSection";
+import {
+  BPO_DEMO_DAY_OF_MONTH, BPO_DEMO_DAYS_IN_MONTH, BPO_EXPECTED_PCT,
+  totals as bpoTotals, findBpoForPo,
+} from "@/lib/bpo-tracker";
 import {
   Send, CheckCircle2, Truck, Package, Flag, ClipboardCheck,
   Phone, AlertTriangle, ChevronDown, ChevronRight,
-  Camera, FileText, X, Image, PenLine, ShieldAlert,
+  Camera, FileText, X, Image, PenLine, ShieldAlert, Layers,
 } from "lucide-react";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
