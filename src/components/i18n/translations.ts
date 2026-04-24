@@ -42,6 +42,7 @@ export const translations: Record<Locale, Record<string, string>> = {
     "nav.logicOps": "Logic vận hành",
     "nav.guide": "Hướng dẫn",
     "nav.scenarios": "Tình huống Demo",
+    "nav.compare": "So sánh phiên bản",
 
     // Sidebar footer
     "workflow.daily": "Quy trình ngày",
