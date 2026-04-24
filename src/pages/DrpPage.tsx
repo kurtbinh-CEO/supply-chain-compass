@@ -16,6 +16,7 @@ import { useRbac } from "@/components/RbacContext";
 import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
 import { supabase } from "@/integrations/supabase/client";
 import { BRANCHES, DRP_RESULTS } from "@/data/unis-enterprise-dataset";
+import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
