@@ -210,6 +210,12 @@ export default function DemandPage() {
         onSelect={handleSourceSelect}
       />
 
+      <AopPlanDialog
+        open={aopOpen}
+        onClose={() => setAopOpen(false)}
+        plan={aopPlan}
+        onSave={(next) => setAopPlan(next)}
+      />
 
 
       {forecastLoading && (
