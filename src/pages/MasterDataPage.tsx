@@ -635,11 +635,16 @@ function SuppliersTab() {
           setDeleting(null);
         }}
       />
+
+      <MasterAuditPanel
+        open={historyCode !== null}
+        onOpenChange={(v) => !v && setHistoryCode(null)}
+        entity="factory"
+        entityCode={historyCode ?? undefined}
+      />
     </div>
   );
 }
-
-/* ────────────────────────────────────────────────────────────────────────── */
 /* TAB 3 — CN (12 branches) with region, lat/lng, z-factor, SS               */
 /* ────────────────────────────────────────────────────────────────────────── */
 const BRANCH_FIELDS: FormField[] = [
