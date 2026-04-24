@@ -363,6 +363,24 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
 
   return (
     <div className="space-y-3">
+      <SummaryCards screenId="inv-nm" cards={nmSummary} />
+
+      {cardFilter !== "all" && (
+        <div className="flex items-center gap-2 rounded-lg border border-info/30 bg-info-bg/40 px-3 py-1.5 text-table-sm">
+          <span className="text-text-2">
+            Đang lọc: <span className="font-semibold text-info">
+              {cardFilter === "stale" ? "🔴 NM dữ liệu cũ" : "🟡 NM đầy kho"}
+            </span> ({filteredRows.length} NM)
+          </span>
+          <button
+            className="ml-auto text-info hover:underline text-caption"
+            onClick={() => setCardFilter("all")}
+          >
+            ✕ Xoá lọc
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <PivotToggle mode={pivot} onChange={setPivot} cnLabel="Nhà máy" skuLabel="Mã hàng" />
         <span className="text-caption text-text-3">
@@ -376,7 +394,7 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
           title="Nhà máy"
           exportFilename="ton-kho-nha-may"
           columns={columns}
-          data={rows}
+          data={filteredRows}
           defaultDensity="compact"
           rowSeverity={(r) => r.tone === "block" ? "shortage" : r.tone === "watch" ? "watch" : "ok"}
           getRowId={(r) => r.nmId}
