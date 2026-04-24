@@ -28,6 +28,11 @@ type TabDef = {
 
 const TABS: TabDef[] = [
   {
+    v: "integration",
+    l: "Tích hợp",
+    groups: [],
+  },
+  {
     v: "demand_sop",
     l: "A. Nhu cầu & S&OP",
     groups: ["Demand", "S&OP"],
@@ -82,6 +87,83 @@ const TABS: TabDef[] = [
       (k.group === "Feedback" && (k.key.includes("honoring") || k.key.includes("lcnb_hit"))),
   },
 ];
+
+/* ─────────── Integrations table ─────────── */
+interface Integration {
+  id: string;
+  source: string;
+  type: string;
+  status: "active" | "inactive";
+  schedule: string;
+}
+
+const INTEGRATIONS: Integration[] = [
+  { id: "bravo-cn",    source: "Bravo ERP", type: "Tồn CN",  status: "active",   schedule: "06:00 + 22:00" },
+  { id: "bravo-nm",    source: "Bravo ERP", type: "Tồn NM",  status: "inactive", schedule: "—" },
+  { id: "dss-fc",      source: "DSS / SAP", type: "FC tháng", status: "inactive", schedule: "—" },
+  { id: "hubspot-b2b", source: "HubSpot",   type: "B2B Pipeline", status: "inactive", schedule: "—" },
+  { id: "nm-commit",   source: "Cổng NM xác nhận", type: "Cam kết NM", status: "inactive", schedule: "—" },
+  { id: "erp-price",   source: "SAP / Oracle NM", type: "Bảng giá NM", status: "inactive", schedule: "—" },
+];
+
+function IntegrationsTab() {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-card border border-surface-3 bg-info-bg/40 px-4 py-3 text-table-sm text-text-2">
+        💡 Quản lý các nguồn dữ liệu tích hợp tự động. Dùng nút <b>Kết nối</b> để cấu hình API URL, API Key và Mapping fields.
+        Khi connector hoạt động, dữ liệu sẽ tự đồng bộ theo lịch.
+      </div>
+      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
+        <table className="w-full text-table">
+          <thead>
+            <tr className="bg-surface-1">
+              <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">Nguồn dữ liệu</th>
+              <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">Loại</th>
+              <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">Trạng thái</th>
+              <th className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">Lịch sync</th>
+              <th className="text-right px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">Hành động</th>
+            </tr>
+          </thead>
+          <tbody>
+            {INTEGRATIONS.map((row, i) => (
+              <tr key={row.id} className={i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"}>
+                <td className="px-4 py-2.5 font-medium text-text-1">{row.source}</td>
+                <td className="px-4 py-2.5 text-text-2">{row.type}</td>
+                <td className="px-4 py-2.5">
+                  {row.status === "active" ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-success-bg text-success border border-success/30 px-2 py-0.5 text-table-sm font-medium">
+                      🟢 Đang hoạt động
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-surface-1 text-text-3 border border-surface-3 px-2 py-0.5 text-table-sm font-medium">
+                      🔴 Chưa thiết lập
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-2.5 text-text-2 tabular-nums">{row.schedule}</td>
+                <td className="px-4 py-2.5 text-right">
+                  {row.status === "active" ? (
+                    <div className="inline-flex gap-1.5">
+                      <button onClick={() => toast("Cấu hình connector (demo)")} className="h-7 px-2 rounded-button border border-surface-3 bg-surface-1 text-text-2 text-table-sm hover:bg-surface-3 transition-colors">⚙ Cấu hình</button>
+                      <button onClick={() => toast("Đã tạm dừng sync (demo)")} className="h-7 px-2 rounded-button border border-warning/30 bg-warning-bg text-warning text-table-sm hover:opacity-80 transition-opacity">⏸ Tạm dừng</button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => toast.info("Tính năng sắp có trong Phase 2", { description: "Kết nối sẽ mở dialog: API URL + API Key + Mapping fields + Test connection." })}
+                      className="h-7 px-3 rounded-button bg-gradient-primary text-primary-foreground text-table-sm font-medium hover:opacity-90 transition-opacity"
+                    >
+                      🔌 Kết nối
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 /* ── Mutable runtime config row ── */
 type RuntimeConfig = DsConfigKey & {
@@ -270,7 +352,11 @@ export default function ConfigPage() {
   const [configs, setConfigs] = useState<RuntimeConfig[]>(() => CONFIG_KEYS.map(toRuntime));
   const [audit, setAudit] = useState<AuditEntry[]>(SEED_AUDIT);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState(TABS[0].v);
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === "undefined") return TABS[0].v;
+    const param = new URLSearchParams(window.location.search).get("tab");
+    return TABS.find((t) => t.v === param)?.v ?? TABS[0].v;
+  });
 
   /** Filter rows by tab + search. */
   const visibleByTab = useMemo(() => {
@@ -359,7 +445,11 @@ export default function ConfigPage() {
 
         {TABS.map((t) => (
           <TabsContent key={t.v} value={t.v}>
-            <ConfigTable rows={visibleByTab[t.v] ?? []} onUpdate={handleUpdate} />
+            {t.v === "integration" ? (
+              <IntegrationsTab />
+            ) : (
+              <ConfigTable rows={visibleByTab[t.v] ?? []} onUpdate={handleUpdate} />
+            )}
           </TabsContent>
         ))}
       </Tabs>

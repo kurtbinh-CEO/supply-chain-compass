@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Search, Plus, Upload, X, AlertTriangle, CheckCircle2, Wrench } from "lucide-react";
+import { Search, Plus, Upload, X, AlertTriangle, CheckCircle2, Wrench, Inbox, Zap, FileSpreadsheet, PenLine } from "lucide-react";
 import { toast } from "sonner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PriceListsTab } from "@/components/master/PriceListsTab";
+import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
+import { Button } from "@/components/ui/button";
 import {
   SKU_BASES,
   SKU_VARIANTS,
@@ -749,8 +751,61 @@ function Stat({ label, value, sub, tone = "default" }: { label: string; value: s
 /* ────────────────────────────────────────────────────────────────────────── */
 /* MAIN PAGE                                                                  */
 /* ────────────────────────────────────────────────────────────────────────── */
+const PRICE_SOURCES: DataSource[] = [
+  {
+    key: "api_sync",
+    icon: <Zap />,
+    title: "Tích hợp ERP NM",
+    description: "Đồng bộ bảng giá từ SAP / Oracle NM. Cần thiết lập connector.",
+    badge: "Sắp có",
+    badgeColor: "gray",
+    disabled: true,
+    configurable: true,
+    configRoute: "/config?tab=integration",
+  },
+  {
+    key: "excel_upload",
+    icon: <FileSpreadsheet />,
+    title: "Upload Excel bảng giá",
+    description: "Upload file bảng giá NM theo template. Cột: NM, SKU, MOQ breaks, Hiệu lực, Phụ phí.",
+    badge: "Khuyến nghị",
+    badgeColor: "green",
+  },
+  {
+    key: "manual_input",
+    icon: <PenLine />,
+    title: "Nhập tay",
+    description: "Nhập từng dòng giá trực tiếp. Phù hợp khi NM gửi báo giá qua Zalo/email.",
+  },
+];
+
+const FREIGHT_SOURCES: DataSource[] = [
+  {
+    key: "excel_upload",
+    icon: <FileSpreadsheet />,
+    title: "Upload Excel cước vận chuyển",
+    description: "Upload bảng cước theo template. Cột: Tuyến, Loại xe, Cước/chuyến, Phụ phí.",
+    badge: "Khuyến nghị",
+    badgeColor: "green",
+  },
+  {
+    key: "manual_input",
+    icon: <PenLine />,
+    title: "Nhập tay",
+    description: "Nhập từng tuyến/cước trực tiếp.",
+  },
+];
+
 export default function MasterDataPage() {
   const { conflict: mdConflict, clearConflict: clearMdConflict } = useVersionConflict();
+  const [activeTab, setActiveTab] = useState("items");
+  const [importerOpen, setImporterOpen] = useState<null | "price" | "freight">(null);
+
+  const importerLabel: Record<string, { title: string; sources: DataSource[] }> = {
+    price: { title: "Nhập bảng giá NM", sources: PRICE_SOURCES },
+    freight: { title: "Nhập cước vận chuyển", sources: FREIGHT_SOURCES },
+  };
+  const current = importerOpen ? importerLabel[importerOpen] : null;
 
   return (
     <AppLayout>
@@ -765,18 +820,47 @@ export default function MasterDataPage() {
         />
       )}
 
-      <Tabs defaultValue="items">
-        <TabsList className="bg-surface-1 border border-surface-3 mb-4 flex flex-wrap h-auto">
-          {tabDefs.map((t) => (
-            <TabsTrigger
-              key={t.key}
-              value={t.key}
-              className="data-[state=active]:bg-surface-2 data-[state=active]:text-text-1 text-text-2 text-table"
-            >
-              {t.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      {current && (
+        <DataSourceSelector
+          open={importerOpen !== null}
+          onClose={() => setImporterOpen(null)}
+          title={current.title}
+          description="Chọn nguồn nhập dữ liệu. Mỗi lần tạo 1 entry trong nhật ký."
+          sources={current.sources}
+          onSelect={(key) => {
+            setImporterOpen(null);
+            toast.success(`Đã chọn: ${key}`);
+          }}
+        />
+      )}
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <div className="flex items-center justify-between mb-4 gap-3">
+          <TabsList className="bg-surface-1 border border-surface-3 flex flex-wrap h-auto">
+            {tabDefs.map((t) => (
+              <TabsTrigger
+                key={t.key}
+                value={t.key}
+                className="data-[state=active]:bg-surface-2 data-[state=active]:text-text-1 text-text-2 text-table"
+              >
+                {t.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {activeTab === "pricelists" && (
+            <Button size="sm" onClick={() => setImporterOpen("price")} className="h-8 gap-1.5 shrink-0">
+              <Inbox className="h-3.5 w-3.5" />
+              Nhập bảng giá
+            </Button>
+          )}
+          {activeTab === "routes" && (
+            <Button size="sm" onClick={() => setImporterOpen("freight")} className="h-8 gap-1.5 shrink-0">
+              <Inbox className="h-3.5 w-3.5" />
+              Nhập cước
+            </Button>
+          )}
+        </div>
 
         <TabsContent value="items"><ItemsTab /></TabsContent>
         <TabsContent value="suppliers"><SuppliersTab /></TabsContent>

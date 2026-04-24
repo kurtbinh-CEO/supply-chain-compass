@@ -7,11 +7,14 @@ import { B2BInputTab } from "@/components/demand/B2BInputTab";
 import { FcVsActualTab } from "@/components/demand/FcVsActualTab";
 import { useTenant } from "@/components/TenantContext";
 import { useDemandForecasts } from "@/hooks/useDemandForecasts";
-import { Loader2 } from "lucide-react";
+import { Loader2, Inbox, Zap, FileSpreadsheet, Database, PenLine } from "lucide-react";
 import { B2B_DEALS, B2B_STAGE_PROB, DEMAND_FC, type B2bStage, type B2bDeal } from "@/data/unis-enterprise-dataset";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
+import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 const tabs = [
   { key: "total", label: "Demand tổng" },
@@ -25,11 +28,83 @@ const TENANT_SCALE: Record<string, number> = {
   "Mondelez": 1.35,
 };
 
+const FC_SOURCES: DataSource[] = [
+  {
+    key: "api_sync",
+    icon: <Zap />,
+    title: "Tích hợp DSS / SAP",
+    description: "Đồng bộ trực tiếp từ DSS / SAP. Cần thiết lập connector.",
+    badge: "Sắp có",
+    badgeColor: "gray",
+    disabled: true,
+    configurable: true,
+    configRoute: "/config?tab=integration",
+  },
+  {
+    key: "excel_upload",
+    icon: <FileSpreadsheet />,
+    title: "Upload Excel",
+    description: "Upload file .xlsx theo template. Wizard 5 bước: tải template → validate → áp dụng.",
+    badge: "Khuyến nghị",
+    badgeColor: "green",
+  },
+  {
+    key: "generate",
+    icon: <Database />,
+    title: "Tự sinh Baseline",
+    description: "Sinh FC bằng Holt-Winters từ history 12 tháng. Dùng khi không có file Excel.",
+  },
+];
+
+const B2B_SOURCES: DataSource[] = [
+  {
+    key: "api_sync",
+    icon: <Zap />,
+    title: "Tích hợp CRM",
+    description: "Đồng bộ deals từ HubSpot / Salesforce. Cần thiết lập connector.",
+    badge: "Sắp có",
+    badgeColor: "gray",
+    disabled: true,
+    configurable: true,
+    configRoute: "/config?tab=integration",
+  },
+  {
+    key: "excel_upload",
+    icon: <FileSpreadsheet />,
+    title: "Upload Excel",
+    description: "Upload danh sách deals theo template. Cột: Khách hàng, SKU, Qty, Xác suất, Giai đoạn.",
+    badge: "Khuyến nghị",
+    badgeColor: "green",
+  },
+  {
+    key: "manual_input",
+    icon: <PenLine />,
+    title: "Nhập tay từng deal",
+    description: "Dùng nút [+ Thêm deal] để nhập từng deal. Phù hợp khi ít deals mới.",
+  },
+];
+
 export default function DemandPage() {
   const [activeTab, setActiveTab] = useState("total");
   const { tenant } = useTenant();
   const { cnSummaries, loading: forecastLoading } = useDemandForecasts();
   const { markDone } = useNextStep();
+  const [importerOpen, setImporterOpen] = useState(false);
+
+  const handleSourceSelect = (key: string) => {
+    setImporterOpen(false);
+    const labels: Record<string, string> = {
+      api_sync: "Tích hợp tự động (sắp có)",
+      excel_upload: "Upload Excel — mở wizard 5 bước",
+      generate: "Tự sinh Baseline Holt-Winters",
+      manual_input: "Nhập tay",
+    };
+    toast.success(labels[key] ?? key, {
+      description: activeTab === "b2b"
+        ? "Áp dụng cho B2B Pipeline."
+        : "Áp dụng cho FC tháng.",
+    });
+  };
 
   // Mark "FC nhập xong" once forecasts are loaded with data — banner appears so the user can move to /sop.
   useEffect(() => {
@@ -103,8 +178,25 @@ export default function DemandPage() {
               <span className="rounded-full bg-success-bg text-success px-3 py-1 text-table-sm font-medium">YTD: 187.600 (34%)</span>
             </>
           }
+          actions={
+            <Button size="sm" onClick={() => setImporterOpen(true)} className="h-8 gap-1.5">
+              <Inbox className="h-3.5 w-3.5" />
+              {activeTab === "b2b" ? "Nhập B2B" : "Nhập FC"}
+            </Button>
+          }
         />
       </div>
+
+      <DataSourceSelector
+        open={importerOpen}
+        onClose={() => setImporterOpen(false)}
+        title={activeTab === "b2b" ? "Nhập B2B Pipeline" : "Nhập FC tháng"}
+        description="Chọn nguồn nhập dữ liệu. Mỗi lần tạo 1 entry trong nhật ký."
+        sources={activeTab === "b2b" ? B2B_SOURCES : FC_SOURCES}
+        onSelect={handleSourceSelect}
+      />
+
+
 
       {forecastLoading && (
         <div className="flex items-center gap-2 text-text-3 text-table-sm mb-4">

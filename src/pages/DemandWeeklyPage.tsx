@@ -16,8 +16,10 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   User, Building2, Clock, Lock, Send, ShieldCheck, AlertTriangle,
-  CheckCircle2, XCircle, Scissors, FileWarning, RefreshCw,
+  CheckCircle2, XCircle, Scissors, FileWarning, RefreshCw, Inbox,
+  FileSpreadsheet, PenLine,
 } from "lucide-react";
+import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -862,6 +864,7 @@ export default function DemandWeeklyPage() {
 
   const [persona, setPersonaState] = useState<Persona>(() => loadPersona());
   const setPersona = (p: Persona) => { setPersonaState(p); savePersona(p); };
+  const [importerOpen, setImporterOpen] = useState(false);
 
   const cnConfigs = useMemo(buildCnConfigs, []);
 
@@ -1012,6 +1015,23 @@ export default function DemandWeeklyPage() {
       ? `⏳ Cutoff 18:00 — còn ${cutoff.hoursLeft}h ${cutoff.minutesLeft}m`
       : `⏳ Cutoff 18:00 — còn ${cutoff.minutesLeft}m`;
 
+  const ADJUST_SOURCES: DataSource[] = [
+    {
+      key: "excel_upload",
+      icon: <FileSpreadsheet />,
+      title: "Upload Excel điều chỉnh",
+      description: "CN Manager upload file điều chỉnh per SKU theo template. Cột: SKU, Adjust, Lý do.",
+    },
+    {
+      key: "manual_input",
+      icon: <PenLine />,
+      title: "Nhập tay per SKU",
+      description: "Nhập điều chỉnh trực tiếp trên bảng. Phù hợp khi ít SKU cần sửa.",
+      badge: "Khuyến nghị",
+      badgeColor: "green",
+    },
+  ];
+
   return (
     <AppLayout>
       <ScreenHeader
@@ -1044,6 +1064,16 @@ export default function DemandWeeklyPage() {
                 <Building2 className="h-3.5 w-3.5" /> SC Manager
               </button>
             </div>
+            {persona === "cn" && (
+              <Button
+                size="sm"
+                onClick={() => setImporterOpen(true)}
+                className="h-8 gap-1.5"
+              >
+                <Inbox className="h-3.5 w-3.5" />
+                Nhập điều chỉnh
+              </Button>
+            )}
             <span className="hidden sm:inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-1 px-2.5 py-1.5 text-table-sm text-text-2">
               <RefreshCw className="h-3.5 w-3.5 text-info" />
               Demand W20 v2 — 18:00 hôm nay
@@ -1053,6 +1083,18 @@ export default function DemandWeeklyPage() {
             </span>
           </div>
         }
+      />
+
+      <DataSourceSelector
+        open={importerOpen}
+        onClose={() => setImporterOpen(false)}
+        title="Nhập điều chỉnh tuần"
+        description="Chọn nguồn nhập điều chỉnh cho tuần này. Phù hợp CN Manager."
+        sources={ADJUST_SOURCES}
+        onSelect={(key) => {
+          setImporterOpen(false);
+          toast.success(key === "excel_upload" ? "Mở wizard Upload Excel (5 bước)" : "Nhập tay trên bảng SKU");
+        }}
       />
 
       {/* Cutoff banner */}

@@ -24,7 +24,12 @@ import {
   RefreshCw,
   Package,
   MapPin,
+  Inbox,
+  Zap,
+  PenLine,
+  Link2,
 } from "lucide-react";
+import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { ChangeLogPanel } from "@/components/ChangeLogPanel";
@@ -557,6 +562,57 @@ function UploadZone() {
 
 /* ─────────────────────────── Page ─────────────────────────── */
 
+/* ─────────────────────────── Data sources per tab ─────────────────────────── */
+
+const NM_SOURCES: DataSource[] = [
+  {
+    key: "api_sync",
+    icon: <Zap />,
+    title: "Tích hợp Bravo",
+    description: "Tự động đồng bộ tồn NM từ Bravo ERP 2 lần/ngày (06:00, 22:00).",
+    badge: "Sắp có",
+    badgeColor: "gray",
+    disabled: true,
+    configurable: true,
+    configRoute: "/config?tab=integration",
+  },
+  {
+    key: "excel_upload",
+    icon: <FileSpreadsheet />,
+    title: "Upload Excel",
+    description: "Upload file tồn kho NM theo template. Mỗi NM 1 file hoặc gộp chung.",
+    badge: "Khuyến nghị",
+    badgeColor: "green",
+  },
+  {
+    key: "manual_input",
+    icon: <Link2 />,
+    title: "NM tự cập nhật",
+    description: "Gửi link cho NM để tự nhập tồn kho trực tiếp. Thay thế cho Cổng NM.",
+  },
+];
+
+const CN_SOURCES: DataSource[] = [
+  {
+    key: "api_sync",
+    icon: <Zap />,
+    title: "Tích hợp Bravo",
+    description: "Tự động sync tồn CN từ Bravo. Lịch: 06:00 + 22:00 hàng ngày.",
+    badge: "Đang hoạt động",
+    badgeColor: "green",
+    configurable: true,
+    configRoute: "/config?tab=integration",
+  },
+  {
+    key: "excel_upload",
+    icon: <FileSpreadsheet />,
+    title: "Upload CSV / Excel",
+    description: "Upload file Bravo export (.csv). Dùng khi Bravo sync bị lỗi.",
+    badge: "Dự phòng",
+    badgeColor: "amber",
+  },
+];
+
 export default function InventoryPage() {
   const { tenant } = useTenant();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
@@ -565,9 +621,29 @@ export default function InventoryPage() {
   const branchRows  = useMemo(() => buildBranchRows(scale),  [scale]);
 
   const [tab, setTab] = useState<"nm" | "cn">("nm");
+  const [importerOpen, setImporterOpen] = useState(false);
 
   const blockedNm = factoryRows.filter((r) => r.tone === "block").length;
   const dangerCn  = branchRows.filter((r) => r.tone === "block").length;
+
+  const handleSourceSelect = (key: string) => {
+    setImporterOpen(false);
+    const labels: Record<string, string> = {
+      api_sync: "Tích hợp tự động",
+      excel_upload: "Upload Excel",
+      manual_input: "Nhập tay / Cập nhật từ NM",
+    };
+    toast.success(`Đã chọn: ${labels[key] ?? key}`, {
+      description: tab === "nm"
+        ? "Mở wizard 5 bước để nạp tồn kho NM."
+        : "Mở wizard 5 bước để nạp tồn kho CN.",
+    });
+    if (key === "excel_upload") {
+      setTimeout(() => {
+        document.getElementById("inventory-upload-zone")?.scrollIntoView({ behavior: "smooth" });
+      }, 200);
+    }
+  };
 
   return (
     <AppLayout>
@@ -575,14 +651,33 @@ export default function InventoryPage() {
         title="Tồn kho"
         subtitle={`5 nhà máy · 12 chi nhánh · Cập nhật 06:00 sáng nay`}
         actions={
-          <div className="hidden sm:flex items-center gap-2 rounded-button border border-surface-3 bg-surface-1 px-3 py-1.5 text-table-sm">
-            <RefreshCw className="h-3.5 w-3.5 text-success" />
-            <span className="text-text-2">Bravo sync v12 — 06:00</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-success-bg text-success px-1.5 py-0.5 text-[10px] font-medium">
-              ● Active
-            </span>
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2 rounded-button border border-surface-3 bg-surface-1 px-3 py-1.5 text-table-sm">
+              <RefreshCw className="h-3.5 w-3.5 text-success" />
+              <span className="text-text-2">Bravo sync v12 — 06:00</span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-success-bg text-success px-1.5 py-0.5 text-[10px] font-medium">
+                ● Active
+              </span>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setImporterOpen(true)}
+              className="h-8 gap-1.5"
+            >
+              <Inbox className="h-3.5 w-3.5" />
+              {tab === "nm" ? "Nhập tồn NM" : "Nhập tồn CN"}
+            </Button>
           </div>
         }
+      />
+
+      <DataSourceSelector
+        open={importerOpen}
+        onClose={() => setImporterOpen(false)}
+        title={tab === "nm" ? "Nhập tồn kho nhà máy" : "Nhập tồn kho chi nhánh"}
+        description="Chọn nguồn nhập dữ liệu. Mỗi lần tạo 1 entry trong nhật ký."
+        sources={tab === "nm" ? NM_SOURCES : CN_SOURCES}
+        onSelect={handleSourceSelect}
       />
 
       {/* Summary chips */}
