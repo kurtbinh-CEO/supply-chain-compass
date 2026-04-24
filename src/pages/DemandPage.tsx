@@ -195,13 +195,8 @@ export default function DemandPage() {
         sources={activeTab === "b2b" ? B2B_SOURCES : FC_SOURCES}
         onSelect={handleSourceSelect}
       />
-            <>
-              <span className="rounded-full bg-info-bg text-info px-3 py-1 text-table-sm font-medium">AOP 2026: 560.000 m²</span>
-              <span className="rounded-full bg-success-bg text-success px-3 py-1 text-table-sm font-medium">YTD: 187.600 (34%)</span>
-            </>
-          }
-        />
-      </div>
+
+
 
       {forecastLoading && (
         <div className="flex items-center gap-2 text-text-3 text-table-sm mb-4">
