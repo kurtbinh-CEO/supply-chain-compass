@@ -85,7 +85,7 @@ export function SkuDetailSheet({ open, onClose, sku, branches, factories }: Prop
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-[560px] p-0 flex flex-col"
+        className="w-full sm:w-[clamp(420px,42vw,560px)] sm:max-w-[560px] p-0 flex flex-col"
       >
         <SheetHeader className="px-5 py-4 border-b border-surface-3 bg-surface-1/60">
           <div className="flex items-start justify-between gap-3">
