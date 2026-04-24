@@ -1,1027 +1,1106 @@
 /**
- * OrdersPage — M5 lean rewrite
+ * OrdersPage — M5-REVISED
  *
- * 3 tabs:
- *   1. Duyệt PO/TO    — gộp PO_DRAFT (status=draft|submitted) + TO chờ duyệt
- *   2. Vận chuyển      — TRANSPORT_PLANS + TO đã duyệt; gán nhà xe / Hold-or-Ship
- *   3. Theo dõi        — PO + TO status in (confirmed, shipped, received) với timeline
+ * One screen, one table, no tabs. UNIS planners click filter pills to scope
+ * the list. Every row exposes ONE primary action that advances the PO/TO to
+ * the next stage in the 7-step lifecycle.
  *
- * XÓA:
- *   - BPO Burn-down (chuyển sang /monitoring)
- *   - Tab Chuyển ngang riêng (gộp vào Duyệt + Vận chuyển)
- *   - Tab Nhà xe riêng (chuyển sang /master-data)
+ *   ĐÃ DUYỆT → ĐẶT NM → ĐẶT XE → LẤY HÀNG → ĐANG CHỞ → GIAO HÀNG → HOÀN TẤT
  *
- * Header có flow summary 1 dòng:
- *   DRP→ [5 chờ duyệt] →duyệt→ [2 chờ nhà xe] →ship→ [3 đang giao] → [1 nhận]
+ * TO (transfer orders) share the same table; their lifecycle skips ĐẶT NM
+ * (no factory to confirm).
+ *
+ * Manual updates only — UNIS calls/Zalos partners offline, then opens a
+ * dialog here to log the transition. SLA-based reminders surface as row
+ * tone + summary banner; nothing fires automatically.
  */
-import { useState, useMemo, useEffect, Fragment } from "react";
+import { useMemo, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
-import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTenant } from "@/components/TenantContext";
-import { usePurchaseOrders, type PurchaseOrderRow } from "@/hooks/usePurchaseOrders";
-import {
-  PO_DRAFT, TRANSPORT_PLANS, CARRIERS, CN_REGION,
-  type TransportPlan, type Carrier,
-} from "@/data/unis-enterprise-dataset";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import {
-  ClipboardCheck, Truck, MapPin, ChevronRight, ChevronDown,
-  Send, CheckCircle2, AlertTriangle, Phone, ArrowRight, Package,
-  Pause, Play,
+  SEED_PO_LIFECYCLE, STAGE_META, STAGE_ORDER, STAGE_SLA_HOURS, REMINDER_CONFIG,
+  type PoLifecycleRow, type LifecycleStage, type PoEvidence,
+  nextStage, isOverdue, isNearSla, fmtTimeInStage, fmtEta,
+} from "@/lib/po-lifecycle-data";
+import { CARRIERS, CN_REGION } from "@/data/unis-enterprise-dataset";
+import {
+  Send, CheckCircle2, Truck, Package, Flag, ClipboardCheck,
+  Phone, AlertTriangle, ChevronDown, ChevronRight,
+  Camera, FileText, X, Image, PenLine, ShieldAlert,
 } from "lucide-react";
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   §  Helpers / labels
-   ═══════════════════════════════════════════════════════════════════════════ */
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
-const STAGE_LABEL: Record<string, string> = {
-  draft: "Nháp",
-  submitted: "Đã gửi",
-  confirmed: "NM xác nhận",
-  in_production: "Đang SX",
-  shipped: "Đã giao",
-  received: "Đã nhận",
-  cancelled: "Đã hủy",
-};
-
-function fmtVnd(v: number): string {
-  if (v >= 1e9) return `${(v / 1e9).toFixed(1)} tỷ`;
-  if (v >= 1e6) return `${(v / 1e6).toFixed(1)} triệu`;
-  return v.toLocaleString("vi-VN");
-}
-
-function fmtDate(d: string | null | undefined): string {
-  if (!d) return "—";
-  return new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
-}
-
-/* PO type = RPO | BPO | TO derived from po_number prefix or to_cn */
-type PoKind = "RPO" | "BPO" | "TO";
-function detectKind(po: PurchaseOrderRow): PoKind {
-  const n = po.po_number.toUpperCase();
-  if (n.startsWith("BPO")) return "BPO";
-  if (n.startsWith("TO")) return "TO";
-  return "RPO";
-}
-const KIND_BADGE: Record<PoKind, string> = {
-  RPO: "bg-success-bg text-success border-success/30",
-  BPO: "bg-info-bg text-info border-info/30",
-  TO:  "bg-warning-bg text-warning border-warning/30",
-};
-
 /* ═══════════════════════════════════════════════════════════════════════════
-   §  Mock TO (Transfer Order) data — chuyển ngang giữa CN
+   Filter pills definition
    ═══════════════════════════════════════════════════════════════════════════ */
-type ToRow = {
-  id: string;
-  fromCn: string;
-  toCn: string;
-  sku: string;
-  qty: number;
-  status: "draft" | "submitted" | "confirmed" | "shipped" | "received";
-  carrier: string | null;
-  driver: string | null;
-  driverPhone: string | null;
-  vehicle: string | null;
-  eta: string;
-};
-const TO_DRAFT: ToRow[] = [
-  { id: "TO-HCM-BD-2605-001", fromCn: "CN-HCM", toCn: "CN-BD",  sku: "GA-600 A4", qty: 200, status: "draft",     carrier: null,         driver: null,             driverPhone: null,       vehicle: null,        eta: "2026-05-15" },
-  { id: "TO-QN-NA-2605-001",  fromCn: "CN-QN",  toCn: "CN-NA",  sku: "GA-300 A4", qty: 180, status: "draft",     carrier: null,         driver: null,             driverPhone: null,       vehicle: null,        eta: "2026-05-15" },
-  { id: "TO-HN-NA-2605-001",  fromCn: "CN-HN",  toCn: "CN-NA",  sku: "GM-300 A4", qty: 95,  status: "submitted", carrier: "Vinatrans",  driver: null,             driverPhone: null,       vehicle: null,        eta: "2026-05-16" },
-  { id: "TO-DN-CT-2605-001",  fromCn: "CN-DN",  toCn: "CN-CT",  sku: "GA-300 B2", qty: 80,  status: "shipped",   carrier: "Tân Cảng",   driver: "Nguyễn Văn Tài", driverPhone: "0902 777 888", vehicle: "51C-65902", eta: "2026-05-14" },
-];
+type FilterKey = "all" | "todo" | "in_transit" | "completed" | "overdue";
+
+const ACTION_STAGES: LifecycleStage[] = ["approved", "sent_nm", "nm_confirmed", "delivering"];
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   §  Tabs definition
-   ═══════════════════════════════════════════════════════════════════════════ */
-const TABS = [
-  { key: "approval",  label: "Duyệt PO/TO",  icon: ClipboardCheck },
-  { key: "transport", label: "Vận chuyển",   icon: Truck },
-  { key: "tracking",  label: "Theo dõi",     icon: MapPin },
-] as const;
-type TabKey = typeof TABS[number]["key"];
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   §  MAIN COMPONENT
+   MAIN PAGE
    ═══════════════════════════════════════════════════════════════════════════ */
 export default function OrdersPage() {
   const { tenant } = useTenant();
   const scale = tenantScales[tenant] || 1;
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const { allOrders } = usePurchaseOrders();
 
-  // Tab init: URL ?tab=… > localStorage > "approval"
-  const initialTab: TabKey = (() => {
-    const fromUrl = searchParams.get("tab") as TabKey | null;
-    if (fromUrl && TABS.some(t => t.key === fromUrl)) return fromUrl;
-    if (typeof window !== "undefined") {
-      const ls = localStorage.getItem("scp-orders-active-tab") as TabKey | null;
-      if (ls && TABS.some(t => t.key === ls)) return ls;
+  // Local mutable copy of seed (so dialogs can advance stages within session).
+  const [rows, setRows] = useState<PoLifecycleRow[]>(() =>
+    SEED_PO_LIFECYCLE.map(r => ({ ...r, qty: Math.round(r.qty * scale) }))
+  );
+  const [filter, setFilter] = useState<FilterKey>("todo");
+  const [kindFilter, setKindFilter] = useState<"all" | "RPO" | "TO">("all");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Dialog state — only one dialog open at a time
+  const [actionRow, setActionRow] = useState<PoLifecycleRow | null>(null);
+  const [cancelRow, setCancelRow] = useState<PoLifecycleRow | null>(null);
+
+  /* ── Stage counts for summary bar + filter pills ── */
+  const counts = useMemo(() => {
+    const stage: Record<LifecycleStage, number> = {
+      approved: 0, sent_nm: 0, nm_confirmed: 0, pickup: 0,
+      in_transit: 0, delivering: 0, completed: 0, cancelled: 0,
+    };
+    let todo = 0, transit = 0, done = 0, overdue = 0;
+    let po = 0, to = 0;
+    for (const r of rows) {
+      stage[r.stage]++;
+      if (r.kind === "RPO") po++; else to++;
+      if (ACTION_STAGES.includes(r.stage)) todo++;
+      if (r.stage === "pickup" || r.stage === "in_transit") transit++;
+      if (r.stage === "completed") done++;
+      if (isOverdue(r)) overdue++;
     }
-    return "approval";
-  })();
-  const [tab, setTab] = useState<TabKey>(initialTab);
+    return { stage, todo, transit, done, overdue, total: rows.length, po, to };
+  }, [rows]);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") localStorage.setItem("scp-orders-active-tab", tab);
-    if (searchParams.get("tab") !== tab) {
-      const next = new URLSearchParams(searchParams);
-      next.set("tab", tab);
-      setSearchParams(next, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
-
-  /* ── Status overrides (local approval / send actions) ── */
-  const [overrides, setOverrides] = useState<Record<string, string>>({});
-  const [toOverrides, setToOverrides] = useState<Record<string, ToRow["status"]>>({});
-  const [carrierAssign, setCarrierAssign] = useState<Record<string, string>>({});
-  const effective = (po: PurchaseOrderRow) => overrides[po.po_number] || po.status;
-  const effectiveTo = (t: ToRow) => toOverrides[t.id] || t.status;
-
-  /* ── Combined PO + TO list (for header counts) ── */
-  const stageCounts = useMemo(() => {
-    const counts = { pendingApprove: 0, awaitCarrier: 0, inTransit: 0, received: 0 };
-    allOrders.forEach(po => {
-      const s = effective(po);
-      if (s === "draft" || s === "submitted") counts.pendingApprove++;
-      else if (s === "confirmed") counts.awaitCarrier++;
-      else if (s === "shipped") counts.inTransit++;
-      else if (s === "received") counts.received++;
+  /* ── Filtered list ── */
+  const visibleRows = useMemo(() => {
+    return rows.filter(r => {
+      if (kindFilter !== "all" && r.kind !== kindFilter) return false;
+      if (filter === "all")        return true;
+      if (filter === "todo")       return ACTION_STAGES.includes(r.stage);
+      if (filter === "in_transit") return r.stage === "pickup" || r.stage === "in_transit";
+      if (filter === "completed")  return r.stage === "completed";
+      if (filter === "overdue")    return isOverdue(r);
+      return true;
     });
-    TO_DRAFT.forEach(t => {
-      const s = effectiveTo(t);
-      if (s === "draft" || s === "submitted") counts.pendingApprove++;
-      else if (s === "confirmed") counts.awaitCarrier++;
-      else if (s === "shipped") counts.inTransit++;
-      else if (s === "received") counts.received++;
-    });
-    // Mock baseline if DB empty
-    if (allOrders.length === 0) {
-      counts.pendingApprove = Math.max(counts.pendingApprove, 5);
-      counts.awaitCarrier   = Math.max(counts.awaitCarrier, 2);
-      counts.inTransit      = Math.max(counts.inTransit, 3);
-      counts.received       = Math.max(counts.received, 1);
-    }
-    return counts;
-  }, [allOrders, overrides, toOverrides]);
+  }, [rows, filter, kindFilter]);
+
+  /* ── Mutations from dialogs ── */
+  const advance = (id: string, patch: Partial<PoLifecycleRow>) => {
+    setRows(prev => prev.map(r => r.id === id ? { ...r, ...patch, hoursInStage: 0, overdueFlag: false } : r));
+  };
+
+  const cancelPo = (id: string, reason: string, note: string) => {
+    setRows(prev => prev.map(r => r.id === id
+      ? {
+          ...r, stage: "cancelled" as LifecycleStage, cancelReason: reason,
+          timeline: [...r.timeline, { stage: "cancelled", ts: nowTs(), actor: "Planner Linh", note: `${reason}${note ? ` — ${note}` : ""}` }],
+        }
+      : r));
+    toast.success("Đã hủy đơn", { description: reason });
+  };
 
   return (
     <AppLayout>
       {/* ═══ HEADER ═══ */}
       <div className="mb-3">
-        <h1 className="text-h2 font-display font-bold text-text-1">Đơn hàng — Tuần 20</h1>
-
-        {/* Flow summary — 1 line */}
-        <FlowSummary counts={stageCounts} onJump={(key) => setTab(key)} />
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h1 className="text-h2 font-display font-bold text-text-1">Đơn hàng — Tuần 20</h1>
+          <Badge variant="outline" className="font-mono text-caption gap-1.5 border-success/40 text-success">
+            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+            PO Batch W20 v1 · Active
+          </Badge>
+        </div>
+        <p className="text-table-sm text-text-3 mt-0.5">
+          Tổng <span className="text-text-1 font-semibold tabular-nums">{counts.total}</span> đơn ·
+          {counts.overdue > 0 && (
+            <> <span className="text-danger font-semibold">{counts.overdue} trễ hạn</span> ·</>
+          )} cập nhật thủ công sau khi gọi NM/NVT
+        </p>
       </div>
 
-      {/* ═══ VERSION ROW ═══ */}
-      <div className="flex flex-wrap items-center gap-2 mb-4 text-table-sm">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-success-bg text-success border border-success/30 px-2.5 py-0.5 font-medium">
-          <span className="h-1.5 w-1.5 rounded-full bg-success" />
-          PO Batch W20 v1 · Active
-        </span>
-        <span className="text-text-3 text-caption">Tổng {stageCounts.pendingApprove + stageCounts.awaitCarrier + stageCounts.inTransit + stageCounts.received} đơn</span>
+      {/* ═══ LIFECYCLE SUMMARY BAR (7 nodes) ═══ */}
+      <LifecycleSummaryBar counts={counts.stage} onJumpStage={(s) => {
+        // Map stage to filter pill where possible.
+        if (s === "approved" || s === "sent_nm" || s === "nm_confirmed" || s === "delivering") setFilter("todo");
+        else if (s === "pickup" || s === "in_transit") setFilter("in_transit");
+        else if (s === "completed") setFilter("completed");
+      }} />
+
+      {/* ═══ FILTER PILLS (replaces tabs) ═══ */}
+      <div className="flex flex-wrap items-center gap-2 mt-4 mb-3">
+        <FilterPill active={filter === "all"}        onClick={() => setFilter("all")}        count={counts.total}    label="Tất cả" />
+        <FilterPill active={filter === "todo"}       onClick={() => setFilter("todo")}       count={counts.todo}     label="Cần xử lý" icon="⏳" tone="warning" />
+        <FilterPill active={filter === "in_transit"} onClick={() => setFilter("in_transit")} count={counts.transit}  label="Đang vận chuyển" icon="🚛" tone="info" />
+        <FilterPill active={filter === "completed"}  onClick={() => setFilter("completed")}  count={counts.done}     label="Hoàn tất" icon="✅" tone="success" />
+        <FilterPill active={filter === "overdue"}    onClick={() => setFilter("overdue")}    count={counts.overdue}  label="Trễ hạn" icon="⚠️" tone="danger" disabled={counts.overdue === 0} />
+
+        <div className="ml-auto flex items-center gap-1.5 text-table-sm">
+          <span className="text-text-3">Loại:</span>
+          <KindToggle value={kindFilter} onChange={setKindFilter} po={counts.po} to={counts.to} />
+        </div>
       </div>
 
-      {/* ═══ TAB BAR ═══ */}
-      <div className="flex gap-1 mb-4 border-b border-surface-3">
-        {TABS.map(t => {
-          const Icon = t.icon;
-          const active = tab === t.key;
-          return (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className={cn(
-                "inline-flex items-center gap-2 px-4 py-2.5 text-table-sm font-medium border-b-2 transition-colors -mb-px",
-                active
-                  ? "border-primary text-primary"
-                  : "border-transparent text-text-3 hover:text-text-1"
-              )}>
-              <Icon className="h-4 w-4" /> {t.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* ═══ MAIN TABLE ═══ */}
+      <SmartTable<PoLifecycleRow>
+        data={visibleRows}
+        getRowId={(r) => r.id}
+        screenId="orders-lifecycle"
+        defaultDensity="compact"
+        rowSeverity={(r) => isOverdue(r) ? "shortage" : isNearSla(r) ? "watch" : undefined}
+        autoExpandWhen={(r) => expanded.has(r.id)}
+        emptyState={{
+          icon: filter === "overdue" ? <CheckCircle2 /> : <ClipboardCheck />,
+          title: filter === "overdue" ? "Không có đơn trễ hạn" : "Không có đơn nào",
+          description: filter === "todo"
+            ? "Mọi đơn đã được xử lý. Quay lại sau hoặc xem tab khác."
+            : "Thử đổi filter hoặc tải đơn mới từ DRP batch.",
+        }}
+        drillDown={(r) => <ExpandedRow row={r} />}
+        columns={[
+          {
+            key: "expand", label: "", width: 32, hideable: false,
+            render: (r) => (
+              <button
+                aria-label={expanded.has(r.id) ? "Thu gọn" : "Mở rộng"}
+                className="text-text-3 hover:text-text-1 transition-transform"
+                onClick={(e) => { e.stopPropagation(); setExpanded(prev => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; }); }}
+              >
+                {expanded.has(r.id) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </button>
+            ),
+          },
+          {
+            key: "poNumber", label: "Mã đơn", width: 180, sortable: true, hideable: false, priority: "high",
+            filter: "text",
+            accessor: (r) => r.poNumber,
+            render: (r) => (
+              <div className="flex flex-col">
+                <span className="font-mono text-table-sm font-semibold text-text-1">{r.poNumber}</span>
+                {r.cancelReason && <span className="text-[10px] text-danger">Hủy: {r.cancelReason}</span>}
+              </div>
+            ),
+          },
+          {
+            key: "kind", label: "Loại", width: 70, align: "center",
+            filter: "enum", filterOptions: [{ label: "RPO", value: "RPO" }, { label: "TO", value: "TO" }],
+            accessor: (r) => r.kind,
+            render: (r) => (
+              <Badge variant="outline" className={cn("text-[10px] font-mono",
+                r.kind === "TO" ? "border-warning/40 text-warning bg-warning-bg/40" : "border-success/40 text-success bg-success-bg/40"
+              )}>{r.kind}</Badge>
+            ),
+          },
+          {
+            key: "route", label: "Tuyến", width: 240,
+            filter: "text",
+            accessor: (r) => `${r.fromName} → ${r.toName}`,
+            render: (r) => (
+              <div className="flex flex-col text-table-sm">
+                <span className="text-text-1 font-medium truncate">{r.fromName}</span>
+                <span className="text-text-3 text-[11px]">→ {r.toName}</span>
+              </div>
+            ),
+          },
+          {
+            key: "sku", label: "Mã hàng", width: 130,
+            filter: "text",
+            accessor: (r) => r.skuLabel,
+            render: (r) => <span className="font-mono text-table-sm text-text-2">{r.skuLabel}</span>,
+          },
+          {
+            key: "qty", label: "Số lượng", width: 120, numeric: true, align: "right", sortable: true,
+            accessor: (r) => r.qty,
+            render: (r) => (
+              <div className="text-right tabular-nums text-table-sm">
+                <div className="text-text-1 font-medium">{r.qty.toLocaleString()} m²</div>
+                {r.qtyConfirmed !== undefined && r.qtyConfirmed < r.qty && (
+                  <div className="text-[10px] text-warning">NM: {r.qtyConfirmed.toLocaleString()}</div>
+                )}
+                {r.qtyDelivered !== undefined && r.qtyDelivered < (r.qtyConfirmed ?? r.qty) && (
+                  <div className="text-[10px] text-danger">Nhận: {r.qtyDelivered.toLocaleString()}</div>
+                )}
+              </div>
+            ),
+          },
+          {
+            key: "stage", label: "Trạng thái", width: 140, align: "center",
+            filter: "enum",
+            filterOptions: STAGE_ORDER.concat(["cancelled"]).map(s => ({ label: STAGE_META[s].short, value: s })),
+            accessor: (r) => r.stage,
+            render: (r) => (
+              <Badge variant="outline" className={cn("text-[10px] font-bold tracking-wide", STAGE_META[r.stage].tone)}>
+                {STAGE_META[r.stage].label}
+              </Badge>
+            ),
+          },
+          {
+            key: "time", label: "Thời gian", width: 130, align: "center",
+            sortable: true,
+            accessor: (r) => r.hoursInStage,
+            render: (r) => {
+              if (r.stage === "completed" || r.stage === "cancelled") {
+                return <span className="text-text-3 text-table-sm">{fmtTimeInStage(r.hoursInStage)}</span>;
+              }
+              const overdue = isOverdue(r);
+              const near = isNearSla(r);
+              if ((r.stage === "in_transit" || r.stage === "pickup") && r.etaRemainingH !== undefined) {
+                const eta = fmtEta(r.etaRemainingH);
+                return (
+                  <div className="flex flex-col items-center text-table-sm">
+                    <span className={cn("font-medium",
+                      eta.tone === "danger" && "text-danger",
+                      eta.tone === "warning" && "text-warning",
+                      eta.tone === "success" && "text-success",
+                    )}>{eta.label}</span>
+                    <span className="text-[10px] text-text-3">{fmtTimeInStage(r.hoursInStage)}</span>
+                  </div>
+                );
+              }
+              return (
+                <div className="flex flex-col items-center text-table-sm">
+                  <span className={cn(
+                    "font-medium tabular-nums",
+                    overdue ? "text-danger" : near ? "text-warning" : "text-text-2",
+                  )}>
+                    {fmtTimeInStage(r.hoursInStage)} {overdue && "⚠️"}
+                  </span>
+                  {overdue && (
+                    <span className="text-[10px] text-danger">SLA {STAGE_SLA_HOURS[r.stage]}h</span>
+                  )}
+                </div>
+              );
+            },
+          },
+          {
+            key: "action", label: "Hành động", width: 200, align: "center", hideable: false,
+            render: (r) => <RowActionButton row={r} onClick={() => setActionRow(r)} onCancel={() => setCancelRow(r)} />,
+          },
+        ] satisfies SmartTableColumn<PoLifecycleRow>[]}
+      />
 
-      {/* ═══ TAB CONTENT ═══ */}
-      {tab === "approval"  && <ApprovalTab orders={allOrders} effective={effective} setOverrides={setOverrides} effectiveTo={effectiveTo} setToOverrides={setToOverrides} scale={scale} />}
-      {tab === "transport" && <TransportTab orders={allOrders} effective={effective} setOverrides={setOverrides} effectiveTo={effectiveTo} setToOverrides={setToOverrides} carrierAssign={carrierAssign} setCarrierAssign={setCarrierAssign} scale={scale} />}
-      {tab === "tracking"  && <TrackingTab orders={allOrders} effective={effective} effectiveTo={effectiveTo} carrierAssign={carrierAssign} scale={scale} />}
+      {/* ═══ DIALOG ROUTER ═══ */}
+      {actionRow && (
+        <ActionDialog
+          row={actionRow}
+          onClose={() => setActionRow(null)}
+          onAdvance={(patch) => {
+            advance(actionRow.id, patch);
+            const ns = patch.stage ? STAGE_META[patch.stage].label : "—";
+            toast.success(`${actionRow.poNumber} → ${ns}`);
+            setActionRow(null);
+          }}
+        />
+      )}
+
+      {cancelRow && (
+        <CancelDialog
+          row={cancelRow}
+          onClose={() => setCancelRow(null)}
+          onConfirm={(reason, note) => { cancelPo(cancelRow.id, reason, note); setCancelRow(null); }}
+        />
+      )}
     </AppLayout>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   §  Flow summary
+   Lifecycle summary bar — 7 nodes
    ═══════════════════════════════════════════════════════════════════════════ */
-function FlowSummary({ counts, onJump }: {
-  counts: { pendingApprove: number; awaitCarrier: number; inTransit: number; received: number };
-  onJump: (tab: TabKey) => void;
-}) {
-  const Node = ({ count, label, tab, tone }: { count: number; label: string; tab: TabKey; tone: "warn" | "info" | "primary" | "success" }) => {
-    const toneCls = tone === "warn" ? "border-warning/40 bg-warning-bg/40 text-warning hover:bg-warning-bg"
-      : tone === "info" ? "border-info/40 bg-info-bg/40 text-info hover:bg-info-bg"
-      : tone === "primary" ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
-      : "border-success/40 bg-success-bg/40 text-success hover:bg-success-bg";
-    return (
-      <button onClick={() => onJump(tab)}
-        className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-table-sm font-medium transition-colors", toneCls)}>
-        <span className="tabular-nums font-bold">{count}</span>
-        <span className="text-caption opacity-90">{label}</span>
-      </button>
-    );
-  };
-  const Arrow = ({ verb }: { verb: string }) => (
-    <span className="inline-flex items-center text-text-3 text-caption">
-      <ArrowRight className="h-3 w-3 mx-1" />
-      <span className="hidden sm:inline">{verb}</span>
-      <ArrowRight className="h-3 w-3 mx-1 sm:ml-1" />
-    </span>
-  );
-  return (
-    <div className="flex flex-wrap items-center gap-1 mt-1.5 text-table-sm">
-      <span className="text-text-3 font-medium">DRP</span>
-      <Arrow verb="" />
-      <Node count={counts.pendingApprove} label="chờ duyệt" tab="approval" tone="warn" />
-      <Arrow verb="duyệt" />
-      <Node count={counts.awaitCarrier} label="chờ nhà xe" tab="transport" tone="info" />
-      <Arrow verb="ship" />
-      <Node count={counts.inTransit} label="đang giao" tab="tracking" tone="primary" />
-      <ArrowRight className="h-3 w-3 mx-1 text-text-3" />
-      <Node count={counts.received} label="đã nhận" tab="tracking" tone="success" />
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   §  TAB 1 — Duyệt PO/TO
-   ═══════════════════════════════════════════════════════════════════════════ */
-type ApprovalRow =
-  | { type: "po"; key: string; po: PurchaseOrderRow; stage: string; kind: PoKind; qty: number; route: string; sku: string }
-  | { type: "to"; key: string; to: ToRow;            stage: string; kind: PoKind; qty: number; route: string; sku: string };
-
-function ApprovalTab({
-  orders, effective, setOverrides, effectiveTo, setToOverrides, scale,
+function LifecycleSummaryBar({
+  counts, onJumpStage,
 }: {
-  orders: PurchaseOrderRow[];
-  effective: (po: PurchaseOrderRow) => string;
-  setOverrides: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  effectiveTo: (t: ToRow) => ToRow["status"];
-  setToOverrides: React.Dispatch<React.SetStateAction<Record<string, ToRow["status"]>>>;
-  scale: number;
+  counts: Record<LifecycleStage, number>;
+  onJumpStage: (s: LifecycleStage) => void;
 }) {
-  /* Combine PO drafts + TO drafts/submitted into a single typed row list */
-  const rows: ApprovalRow[] = useMemo(() => {
-    const out: ApprovalRow[] = [];
-    orders.forEach(po => {
-      const s = effective(po);
-      if (s === "draft" || s === "submitted") {
-        const kind = detectKind(po);
-        const qty = Math.round(Number(po.quantity) * scale);
-        const route = kind === "TO"
-          ? `${po.notes ?? "—"}`
-          : `NM ${po.supplier} → ${po.notes?.match(/CN-[A-Z]+/)?.[0] || "—"}`;
-        out.push({ type: "po", key: po.po_number, po, stage: s, kind, qty, route, sku: po.sku });
-      }
-    });
-    TO_DRAFT.forEach(to => {
-      const s = effectiveTo(to);
-      if (s === "draft" || s === "submitted") {
-        out.push({
-          type: "to", key: to.id, to, stage: s, kind: "TO",
-          qty: Math.round(to.qty * scale),
-          route: `${to.fromCn} → ${to.toCn}`,
-          sku: to.sku,
-        });
-      }
-    });
-    return out;
-  }, [orders, effective, effectiveTo, scale]);
-
-  /* Mock fallback if DB empty */
-  const showMock = orders.length === 0 && PO_DRAFT.length > 0 && rows.length === 0;
-  const mockRows: ApprovalRow[] = useMemo(() => {
-    if (!showMock) return [];
-    return PO_DRAFT.slice(0, 5).map(po => ({
-      type: "po" as const,
-      key: po.poNumber,
-      po: {
-        po_number: po.poNumber,
-        supplier: po.nmId,
-        sku: po.skuBaseCode,
-        quantity: po.qtyM2,
-        unit_price: 0,
-        currency: "VND",
-        status: po.status,
-        order_date: "",
-        expected_date: null,
-        received_date: null,
-        notes: po.cnCode,
-        tenant: "UNIS",
-        id: po.poNumber,
-      } as PurchaseOrderRow,
-      stage: po.status === "draft" ? "draft" : "submitted",
-      kind: "RPO",
-      qty: Math.round(po.qtyM2 * scale),
-      route: `NM ${po.nmId} → ${po.cnCode}`,
-      sku: po.skuBaseCode,
-    }));
-  }, [showMock, scale]);
-
-  const allRows = rows.length > 0 ? rows : mockRows;
-
-  const sendPo = (po: PurchaseOrderRow) => {
-    const next = po.status === "draft" ? "submitted" : "confirmed";
-    setOverrides(prev => ({ ...prev, [po.po_number]: next }));
-    toast.success(`Đã gửi ${po.po_number} → ${STAGE_LABEL[next]}`);
+  const ICONS: Record<LifecycleStage, React.ComponentType<{ className?: string }>> = {
+    approved: ClipboardCheck, sent_nm: Send, nm_confirmed: CheckCircle2,
+    pickup: Package, in_transit: Truck, delivering: Flag, completed: CheckCircle2,
+    cancelled: X,
   };
-  const sendTo = (t: ToRow) => {
-    const next: ToRow["status"] = t.status === "draft" ? "submitted" : "confirmed";
-    setToOverrides(prev => ({ ...prev, [t.id]: next }));
-    toast.success(`Đã gửi ${t.id} → ${STAGE_LABEL[next]}`);
-  };
-  const approveAll = () => {
-    const updates: Record<string, string> = {};
-    rows.forEach(r => { if (r.type === "po") updates[r.po.po_number] = "confirmed"; });
-    setOverrides(prev => ({ ...prev, ...updates }));
-    const updatesTo: Record<string, ToRow["status"]> = {};
-    rows.forEach(r => { if (r.type === "to") updatesTo[r.to.id] = "confirmed"; });
-    setToOverrides(prev => ({ ...prev, ...updatesTo }));
-    toast.success(`Đã duyệt ${rows.length} đơn`);
-  };
-
-  const columns: SmartTableColumn<ApprovalRow>[] = [
-    {
-      key: "key", label: "PO/TO #", sortable: true, hideable: false, priority: "high",
-      filter: "text", width: 180,
-      accessor: (r) => r.key,
-      render: (r) => <span className="font-mono text-[11px] text-text-1">{r.key}</span>,
-    },
-    {
-      key: "kind", label: "Loại", sortable: true, hideable: true, priority: "high",
-      filter: "enum",
-      filterOptions: [
-        { value: "RPO", label: "RPO" },
-        { value: "BPO", label: "BPO" },
-        { value: "TO",  label: "TO"  },
-      ],
-      width: 80,
-      accessor: (r) => r.kind,
-      render: (r) => <KindBadge kind={r.kind} />,
-    },
-    {
-      key: "route", label: "Tuyến", sortable: true, hideable: true, priority: "high",
-      filter: "text",
-      accessor: (r) => r.route,
-      render: (r) => <span className="text-table-sm text-text-2">{r.route}</span>,
-    },
-    {
-      key: "sku", label: "Mã hàng", sortable: true, hideable: true, priority: "medium",
-      filter: "text",
-      accessor: (r) => r.sku,
-      render: (r) => <span className="text-table-sm text-text-2">{r.sku}</span>,
-    },
-    {
-      key: "qty", label: "Số lượng", sortable: true, hideable: true, priority: "high",
-      numeric: true, align: "right", width: 110,
-      accessor: (r) => r.qty,
-      render: (r) => <span className="tabular-nums text-text-1">{r.qty.toLocaleString("vi-VN")}</span>,
-    },
-    {
-      key: "container", label: "Container", sortable: false, hideable: true, priority: "low",
-      width: 120,
-      render: (r) => <span className="text-table-sm text-text-3">{r.kind === "TO" ? `Xe 10T · ${Math.round(r.qty / 10)}%` : "40ft · 89%"}</span>,
-    },
-    {
-      key: "stage", label: "Trạng thái", sortable: true, hideable: true, priority: "high",
-      filter: "enum",
-      filterOptions: [
-        { value: "draft",     label: STAGE_LABEL.draft     },
-        { value: "submitted", label: STAGE_LABEL.submitted },
-      ],
-      width: 130,
-      accessor: (r) => r.stage,
-      render: (r) => <StageBadge stage={r.stage} />,
-    },
-    {
-      key: "action", label: "Hành động", sortable: false, hideable: false, priority: "high",
-      align: "right", width: 110,
-      render: (r) => {
-        if (r.stage !== "draft" && r.stage !== "submitted") return null;
-        if (showMock && allRows === mockRows) return <span className="text-caption text-text-3">Mock</span>;
-        return (
-          <button
-            onClick={(e) => { e.stopPropagation(); r.type === "po" ? sendPo(r.po) : sendTo(r.to); }}
-            className="inline-flex items-center gap-1 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1 text-caption font-semibold">
-            <Send className="h-3 w-3" /> {r.stage === "draft" ? "Gửi" : "Duyệt"}
-          </button>
-        );
-      },
-    },
-  ];
-
   return (
-    <div className="space-y-3">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="text-table-sm text-text-3">
-          {rows.length > 0 ? `${rows.length} đơn chờ xử lý` : showMock ? `${mockRows.length} đơn (mock)` : "Không có đơn chờ duyệt"}
-        </div>
-        {rows.length > 0 && (
-          <button onClick={approveAll}
-            className="inline-flex items-center gap-1.5 rounded-button bg-gradient-primary text-primary-foreground px-4 py-2 text-table-sm font-semibold shadow-sm hover:shadow-md transition-shadow">
-            <CheckCircle2 className="h-4 w-4" /> Duyệt tất cả
-          </button>
-        )}
-      </div>
-
-      <SmartTable<ApprovalRow>
-        screenId="orders-approval"
-        title="Duyệt PO/TO"
-        exportFilename="orders-approval"
-        columns={columns}
-        data={allRows}
-        defaultDensity="compact"
-        getRowId={(r) => r.key}
-        rowSeverity={(r) => r.stage === "submitted" ? "watch" : undefined}
-        emptyState={{
-          icon: <ClipboardCheck className="h-8 w-8" />,
-          title: "Không có đơn chờ duyệt",
-          description: "Quay về Kết quả DRP để chạy đợt mới.",
-          action: { label: "Mở DRP", route: "/drp" },
-        }}
-        drillDown={(r) => r.type === "po"
-          ? <PoLineage po={r.po} kind={r.kind} />
-          : <ToLineage to={r.to} />
-        }
-      />
-    </div>
-  );
-}
-
-function StageBadge({ stage }: { stage: string }) {
-  const tone =
-    stage === "received" ? "bg-success-bg text-success border-success/30"
-    : stage === "shipped" ? "bg-info-bg text-info border-info/30"
-    : stage === "in_production" ? "bg-warning-bg text-warning border-warning/30"
-    : stage === "confirmed" ? "bg-primary/10 text-primary border-primary/30"
-    : stage === "submitted" ? "bg-warning-bg text-warning border-warning/30"
-    : "bg-surface-1 text-text-3 border-surface-3";
-  return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium", tone)}>
-      {STAGE_LABEL[stage] || stage}
-    </span>
-  );
-}
-
-function KindBadge({ kind }: { kind: PoKind }) {
-  return (
-    <span className={cn("inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold tracking-wide", KIND_BADGE[kind])}>
-      {kind}
-    </span>
-  );
-}
-
-function ToLineage({ to }: { to: ToRow }) {
-  return (
-    <div className="text-table-sm text-text-2">
-      <div className="text-caption text-text-3 mb-2">Lineage</div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="rounded bg-surface-2 border border-surface-3 px-2 py-0.5">DRP 23:02</span>
-        <ChevronRight className="h-3 w-3 text-text-3" />
-        <span className="rounded bg-surface-2 border border-surface-3 px-2 py-0.5">LCNB {to.fromCn} → {to.toCn}</span>
-        <ChevronRight className="h-3 w-3 text-text-3" />
-        <span className="rounded bg-surface-2 border border-surface-3 px-2 py-0.5">Xe 10T</span>
-        <ChevronRight className="h-3 w-3 text-text-3" />
-        <span className="rounded bg-warning-bg text-warning border border-warning/30 px-2 py-0.5">Duyệt</span>
-      </div>
-    </div>
-  );
-}
-
-function PoLineage({ po, kind }: { po: PurchaseOrderRow; kind: PoKind }) {
-  return (
-    <div className="text-table-sm text-text-2">
-      <div className="text-caption text-text-3 mb-2">Lineage — nguồn gốc đơn hàng</div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="rounded bg-surface-2 border border-surface-3 px-2 py-0.5">DRP 23:02</span>
-        <ChevronRight className="h-3 w-3 text-text-3" />
-        <span className="rounded bg-surface-2 border border-surface-3 px-2 py-0.5">Phân bổ {po.notes?.match(/CN-[A-Z]+/)?.[0] || "CN"}</span>
-        <ChevronRight className="h-3 w-3 text-text-3" />
-        <span className="rounded bg-surface-2 border border-surface-3 px-2 py-0.5">Container 40ft · 89%</span>
-        <ChevronRight className="h-3 w-3 text-text-3" />
-        <span className="rounded bg-surface-2 border border-surface-3 px-2 py-0.5">NM {po.supplier}</span>
-        <ChevronRight className="h-3 w-3 text-text-3" />
-        <span className="rounded bg-warning-bg text-warning border border-warning/30 px-2 py-0.5">Duyệt</span>
-      </div>
-      <div className="mt-2 flex flex-wrap gap-2">
-        <button onClick={() => toast.info("Đổi loại container")} className="rounded-button border border-surface-3 px-2.5 py-1 text-caption text-text-2 hover:text-text-1">Đổi loại ▼</button>
-        <button onClick={() => toast.info("Tách thành 2 PO")} className="rounded-button border border-surface-3 px-2.5 py-1 text-caption text-text-2 hover:text-text-1">Tách</button>
-        <button onClick={() => toast.info("Gộp với PO khác")} className="rounded-button border border-surface-3 px-2.5 py-1 text-caption text-text-2 hover:text-text-1">Gộp</button>
-      </div>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   §  TAB 2 — Vận chuyển
-   ═══════════════════════════════════════════════════════════════════════════ */
-type TransportRowT = {
-  id: string;
-  kind: "PO" | "TO";
-  route: string;
-  qty: number;
-  carrier: string | null;
-  eta: string;
-  status: "wait" | "ready" | "moving" | "hold";
-  fillPct: number;
-  containerType: string;
-  fromRegion?: string;
-};
-
-function TransportTab({
-  orders, effective, setOverrides, effectiveTo, setToOverrides, carrierAssign, setCarrierAssign, scale,
-}: {
-  orders: PurchaseOrderRow[];
-  effective: (po: PurchaseOrderRow) => string;
-  setOverrides: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  effectiveTo: (t: ToRow) => ToRow["status"];
-  setToOverrides: React.Dispatch<React.SetStateAction<Record<string, ToRow["status"]>>>;
-  carrierAssign: Record<string, string>;
-  setCarrierAssign: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  scale: number;
-}) {
-  type Filter = "all" | "PO" | "TO" | "wait" | "moving";
-  const [filter, setFilter] = useState<Filter>("all");
-
-  const rows: TransportRowT[] = useMemo(() => {
-    const list: TransportRowT[] = [];
-    TRANSPORT_PLANS.forEach(p => {
-      const carrier = carrierAssign[p.id] ?? CARRIERS.find(c => c.id === p.carrierId)?.name ?? null;
-      const status: TransportRowT["status"] = p.status === "HOLD" ? "hold"
-        : !carrier ? "wait"
-        : p.status === "SHIP" ? "moving"
-        : "ready";
-      list.push({
-        id: p.id, kind: "PO",
-        route: `${p.fromCode} → ${p.toCnCode}`,
-        qty: Math.round(p.loadedM2 * scale),
-        carrier, eta: p.scheduledDate,
-        status, fillPct: p.fillPct,
-        containerType: p.containerType,
-        fromRegion: CN_REGION[p.toCnCode],
-      });
-    });
-    TO_DRAFT.filter(t => effectiveTo(t) !== "draft" && effectiveTo(t) !== "submitted").forEach(t => {
-      const carrier = carrierAssign[t.id] ?? t.carrier;
-      const eff = effectiveTo(t);
-      const status: TransportRowT["status"] = eff === "shipped" || eff === "received" ? "moving"
-        : carrier ? "ready" : "wait";
-      list.push({
-        id: t.id, kind: "TO",
-        route: `${t.fromCn} → ${t.toCn}`,
-        qty: Math.round(t.qty * scale),
-        carrier, eta: t.eta,
-        status, fillPct: 60,
-        containerType: "Xe 10T",
-        fromRegion: CN_REGION[t.toCn],
-      });
-    });
-    return list;
-  }, [carrierAssign, scale, effectiveTo]);
-
-  const filtered = rows.filter(r => {
-    if (filter === "all") return true;
-    if (filter === "PO" || filter === "TO") return r.kind === filter;
-    if (filter === "wait") return r.status === "wait" || r.status === "hold";
-    if (filter === "moving") return r.status === "moving" || r.status === "ready";
-    return true;
-  });
-
-  const counts = {
-    all: rows.length,
-    PO: rows.filter(r => r.kind === "PO").length,
-    TO: rows.filter(r => r.kind === "TO").length,
-    wait: rows.filter(r => r.status === "wait" || r.status === "hold").length,
-    moving: rows.filter(r => r.status === "moving" || r.status === "ready").length,
-  };
-
-  const filterTabs: { key: Filter; label: string; count: number }[] = [
-    { key: "all", label: "Tất cả", count: counts.all },
-    { key: "PO", label: "PO", count: counts.PO },
-    { key: "TO", label: "TO", count: counts.TO },
-    { key: "wait", label: "Chờ nhà xe", count: counts.wait },
-    { key: "moving", label: "Đang chuyển", count: counts.moving },
-  ];
-
-  const handleAssign = (id: string, carrierName: string) => {
-    setCarrierAssign(prev => ({ ...prev, [id]: carrierName }));
-    toast.success(`${id}: gán nhà xe ${carrierName}`);
-  };
-  const handleShipNow = (r: TransportRowT) => {
-    if (r.kind === "TO") setToOverrides(prev => ({ ...prev, [r.id]: "shipped" }));
-    toast.success(`${r.id}: override xuất ngay`);
-  };
-  const handleWaitMore = (r: TransportRowT) => toast.info(`${r.id}: chờ gom thêm hàng`);
-
-  const columns: SmartTableColumn<TransportRowT>[] = [
-    {
-      key: "id", label: "Chuyến", sortable: true, hideable: false, priority: "high",
-      filter: "text", width: 180,
-      accessor: (r) => r.id,
-      render: (r) => <span className="font-mono text-[11px] text-text-1">{r.id}</span>,
-    },
-    {
-      key: "kind", label: "Loại", sortable: true, hideable: true, priority: "high",
-      filter: "enum",
-      filterOptions: [
-        { value: "PO", label: "PO" },
-        { value: "TO", label: "TO" },
-      ],
-      width: 80,
-      accessor: (r) => r.kind,
-      render: (r) => <KindBadge kind={r.kind === "PO" ? "RPO" : "TO"} />,
-    },
-    {
-      key: "route", label: "Tuyến", sortable: true, hideable: true, priority: "high",
-      filter: "text",
-      accessor: (r) => r.route,
-      render: (r) => <span className="text-table-sm text-text-2">{r.route}</span>,
-    },
-    {
-      key: "qty", label: "Số lượng", sortable: true, hideable: true, priority: "high",
-      numeric: true, align: "right", width: 130,
-      accessor: (r) => r.qty,
-      render: (r) => (
-        <div>
-          <div className="tabular-nums text-text-1">{r.qty.toLocaleString("vi-VN")}</div>
-          <div className="text-[10px] text-text-3">{r.containerType} · {r.fillPct}%</div>
-        </div>
-      ),
-    },
-    {
-      key: "carrier", label: "Nhà xe", sortable: true, hideable: true, priority: "medium",
-      filter: "text",
-      accessor: (r) => r.carrier ?? "",
-      render: (r) => r.carrier
-        ? <span className="text-text-1">{r.carrier}</span>
-        : <span className="text-text-3 italic">Chưa gán</span>,
-    },
-    {
-      key: "eta", label: "Ngày dự kiến", sortable: true, hideable: true, priority: "medium",
-      width: 120,
-      accessor: (r) => r.eta,
-      render: (r) => <span className="text-table-sm text-text-2">{fmtDate(r.eta)}</span>,
-    },
-    {
-      key: "status", label: "Trạng thái", sortable: true, hideable: true, priority: "high",
-      filter: "enum",
-      filterOptions: [
-        { value: "wait",   label: "Chờ nhà xe" },
-        { value: "hold",   label: "Giữ lại" },
-        { value: "ready",  label: "Sẵn sàng" },
-        { value: "moving", label: "Đang chuyển" },
-      ],
-      width: 130,
-      accessor: (r) => r.status,
-      render: (r) => {
-        const statusLabel =
-          r.status === "wait" ? "Chờ nhà xe"
-          : r.status === "hold" ? "Giữ lại"
-          : r.status === "ready" ? "Sẵn sàng"
-          : "Đang chuyển";
-        const statusCls =
-          r.status === "wait" ? "bg-warning-bg text-warning border-warning/30"
-          : r.status === "hold" ? "bg-danger-bg text-danger border-danger/30"
-          : r.status === "ready" ? "bg-info-bg text-info border-info/30"
-          : "bg-success-bg text-success border-success/30";
-        return (
-          <span className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium", statusCls)}>
-            {statusLabel}
-          </span>
-        );
-      },
-    },
-    {
-      key: "action", label: "Hành động", sortable: false, hideable: false, priority: "high",
-      align: "right", width: 160,
-      render: (r) => (
-        <TransportActionCell
-          row={r}
-          onAssignCarrier={(name) => handleAssign(r.id, name)}
-          onShipNow={() => handleShipNow(r)}
-          onWaitMore={() => handleWaitMore(r)}
-        />
-      ),
-    },
-  ];
-
-  return (
-    <div className="space-y-3">
-      {/* Filter chips */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {filterTabs.map(t => (
-          <button key={t.key} onClick={() => setFilter(t.key)}
-            className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-table-sm font-medium transition-colors",
-              filter === t.key
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-surface-3 bg-surface-2 text-text-2 hover:border-primary/40")}>
-            {t.label}
-            <span className="tabular-nums text-caption opacity-80">({t.count})</span>
-          </button>
-        ))}
-      </div>
-
-      <SmartTable<TransportRowT>
-        screenId="orders-transport"
-        title="Vận chuyển"
-        exportFilename="orders-transport"
-        columns={columns}
-        data={filtered}
-        defaultDensity="compact"
-        getRowId={(r) => r.id}
-        rowSeverity={(r) => r.status === "hold" ? "overdue" : r.status === "wait" ? "watch" : undefined}
-        emptyState={{
-          icon: <Truck className="h-8 w-8" />,
-          title: "Không có chuyến nào",
-          description: "Không có chuyến nào khớp bộ lọc hiện tại.",
-        }}
-      />
-    </div>
-  );
-}
-
-function TransportActionCell({ row, onAssignCarrier, onShipNow, onWaitMore }: {
-  row: TransportRowT;
-  onAssignCarrier: (name: string) => void;
-  onShipNow: () => void;
-  onWaitMore: () => void;
-}) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const eligible = CARRIERS.filter(c => c.available && (!row.fromRegion || c.region.includes(row.fromRegion)));
-
-  if (row.status === "wait") {
-    return (
-      <div className="relative inline-block" onClick={(e) => e.stopPropagation()}>
-        <button onClick={() => setPickerOpen(!pickerOpen)}
-          className="inline-flex items-center gap-1 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1 text-caption font-semibold">
-          Gán nhà xe <ChevronDown className="h-3 w-3" />
-        </button>
-        {pickerOpen && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setPickerOpen(false)} />
-            <div className="absolute right-0 mt-1 z-50 w-72 rounded-card border border-surface-3 bg-surface-2 shadow-lg p-1.5">
-              {eligible.length === 0 && (
-                <div className="px-3 py-2 text-caption text-text-3">Không có nhà xe khả dụng cho vùng này.</div>
+    <div className="rounded-card border border-surface-3 bg-surface-2 p-2 mt-2 overflow-x-auto">
+      <div className="flex items-center gap-0 min-w-max">
+        {STAGE_ORDER.map((s, i) => {
+          const Icon = ICONS[s];
+          const count = counts[s];
+          const active = count > 0;
+          return (
+            <div key={s} className="flex items-center">
+              <button
+                onClick={() => onJumpStage(s)}
+                disabled={!active}
+                className={cn(
+                  "flex flex-col items-center gap-1 px-2 py-1.5 rounded-button transition-all min-w-[78px]",
+                  active ? "hover:bg-surface-3 cursor-pointer" : "opacity-40 cursor-not-allowed",
+                )}
+              >
+                <div className={cn(
+                  "h-7 w-7 rounded-full flex items-center justify-center border",
+                  active ? STAGE_META[s].tone : "bg-surface-1 border-surface-3 text-text-3",
+                )}>
+                  <Icon className="h-3.5 w-3.5" />
+                </div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-text-3">{STAGE_META[s].short}</div>
+                <div className={cn("text-table-sm tabular-nums font-bold", active ? "text-text-1" : "text-text-3")}>
+                  ({count})
+                </div>
+              </button>
+              {i < STAGE_ORDER.length - 1 && (
+                <div className={cn("h-[2px] w-6 rounded-full mt-[-22px]", count > 0 ? "bg-primary/40" : "bg-surface-3")} />
               )}
-              {eligible.map(c => (
-                <button key={c.id}
-                  onClick={() => { onAssignCarrier(c.name); setPickerOpen(false); }}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-surface-1 transition-colors">
-                  <div className="text-table-sm text-text-1 font-medium">{c.name}</div>
-                  <div className="text-caption text-text-3">
-                    {c.rate40ft > 0 ? `${fmtVnd(c.rate40ft)}/40ft · ` : "Miễn phí · "}
-                    SLA {c.slaOnTimePct}%
-                  </div>
-                </button>
-              ))}
             </div>
-          </>
-        )}
-      </div>
-    );
-  }
-  if (row.status === "hold") {
-    return (
-      <div className="inline-flex gap-1" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onShipNow}
-          className="inline-flex items-center gap-1 rounded-button border border-warning/40 bg-warning-bg/40 text-warning px-2 py-1 text-caption font-medium">
-          <Play className="h-3 w-3" /> Xuất ngay
-        </button>
-        <button onClick={onWaitMore}
-          className="inline-flex items-center gap-1 rounded-button border border-surface-3 px-2 py-1 text-caption text-text-2 hover:text-text-1">
-          <Pause className="h-3 w-3" /> Chờ gom
-        </button>
-      </div>
-    );
-  }
-  if (row.status === "ready") {
-    return (
-      <button onClick={(e) => { e.stopPropagation(); onShipNow(); }}
-        className="inline-flex items-center gap-1 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1 text-caption font-semibold">
-        <Truck className="h-3 w-3" /> Khởi hành
-      </button>
-    );
-  }
-  return <span className="text-caption text-text-3">Đang chạy</span>;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   §  TAB 3 — Theo dõi
-   ═══════════════════════════════════════════════════════════════════════════ */
-type TrackingRowT = {
-  id: string; kind: PoKind; route: string; carrier: string | null;
-  driver: string | null; phone: string | null; vehicle: string | null;
-  eta: string; status: string; orderDate: string;
-};
-
-function TrackingTab({ orders, effective, effectiveTo, carrierAssign, scale }: {
-  orders: PurchaseOrderRow[];
-  effective: (po: PurchaseOrderRow) => string;
-  effectiveTo: (t: ToRow) => ToRow["status"];
-  carrierAssign: Record<string, string>;
-  scale: number;
-}) {
-  const rows: TrackingRowT[] = useMemo(() => {
-    const out: TrackingRowT[] = [];
-    orders.forEach(po => {
-      const s = effective(po);
-      if (s === "confirmed" || s === "shipped" || s === "received") {
-        const plan = TRANSPORT_PLANS.find(p => p.poRefs.includes(po.po_number));
-        const carrierName = plan ? (carrierAssign[plan.id] ?? CARRIERS.find(c => c.id === plan.carrierId)?.name ?? null) : null;
-        out.push({
-          id: po.po_number, kind: detectKind(po),
-          route: `${po.supplier} → ${po.notes?.match(/CN-[A-Z]+/)?.[0] || "—"}`,
-          carrier: carrierName,
-          driver: plan?.driverName ?? null, phone: plan?.driverPhone ?? null, vehicle: plan?.vehiclePlate ?? null,
-          eta: po.expected_date ?? "", status: s, orderDate: po.order_date,
-        });
-      }
-    });
-    TO_DRAFT.forEach(t => {
-      const s = effectiveTo(t);
-      if (s === "confirmed" || s === "shipped" || s === "received") {
-        out.push({
-          id: t.id, kind: "TO",
-          route: `${t.fromCn} → ${t.toCn}`,
-          carrier: carrierAssign[t.id] ?? t.carrier,
-          driver: t.driver, phone: t.driverPhone, vehicle: t.vehicle,
-          eta: t.eta, status: s, orderDate: "2026-05-12",
-        });
-      }
-    });
-    /* Mock fallback — show 3 example shipments if DB is empty */
-    if (out.length === 0) {
-      out.push(
-        { id: "RPO-MKD-2605-001", kind: "RPO", route: "Mikado → CN-HN",  carrier: "Vận tải Mikado", driver: "Trần Văn Nam", phone: "0903 111 555", vehicle: "29C-18472", eta: "2026-05-14", status: "shipped",  orderDate: "2026-05-10" },
-        { id: "RPO-DTM-2605-002", kind: "RPO", route: "Đồng Tâm → CN-HCM", carrier: "Vinatrans",   driver: "Lê Văn Hùng",  phone: "0903 555 222", vehicle: "51C-72184", eta: "2026-05-15", status: "shipped",  orderDate: "2026-05-11" },
-        { id: "RPO-VGR-2605-003", kind: "RPO", route: "Vigracera → CN-HN", carrier: null,            driver: null,             phone: null,           vehicle: null,        eta: "2026-05-13", status: "received", orderDate: "2026-05-08" },
-      );
-    }
-    return out;
-  }, [orders, effective, effectiveTo, carrierAssign]);
-
-  const columns: SmartTableColumn<TrackingRowT>[] = [
-    {
-      key: "id", label: "PO/TO #", sortable: true, hideable: false, priority: "high",
-      filter: "text", width: 220,
-      accessor: (r) => r.id,
-      render: (r) => (
-        <span>
-          <span className="font-mono text-[11px] text-text-1">{r.id}</span>
-          <span className="ml-2"><KindBadge kind={r.kind} /></span>
-        </span>
-      ),
-    },
-    {
-      key: "route", label: "Tuyến", sortable: true, hideable: true, priority: "high",
-      filter: "text",
-      accessor: (r) => r.route,
-      render: (r) => <span className="text-table-sm text-text-2">{r.route}</span>,
-    },
-    {
-      key: "carrier", label: "Nhà xe", sortable: true, hideable: true, priority: "medium",
-      filter: "text",
-      accessor: (r) => r.carrier ?? "",
-      render: (r) => r.carrier
-        ? <span className="text-text-1">{r.carrier}</span>
-        : <span className="text-text-3 italic">—</span>,
-    },
-    {
-      key: "driver", label: "Tài xế · SĐT", sortable: true, hideable: true, priority: "low",
-      accessor: (r) => r.driver ?? "",
-      render: (r) => r.driver ? (
-        <div>
-          <div className="text-text-1">{r.driver}</div>
-          <div className="text-caption text-text-3">{r.phone}</div>
-        </div>
-      ) : <span className="text-text-3 italic">Chưa có</span>,
-    },
-    {
-      key: "eta", label: "ETA", sortable: true, hideable: true, priority: "high",
-      width: 100,
-      accessor: (r) => r.eta,
-      render: (r) => <span className="text-table-sm text-text-2">{fmtDate(r.eta)}</span>,
-    },
-    {
-      key: "status", label: "Trạng thái", sortable: true, hideable: true, priority: "high",
-      filter: "enum",
-      filterOptions: [
-        { value: "confirmed", label: STAGE_LABEL.confirmed },
-        { value: "shipped",   label: STAGE_LABEL.shipped   },
-        { value: "received",  label: STAGE_LABEL.received  },
-      ],
-      width: 130,
-      accessor: (r) => r.status,
-      render: (r) => <StageBadge stage={r.status} />,
-    },
-  ];
-
-  return (
-    <SmartTable<TrackingRowT>
-      screenId="orders-tracking"
-      title="Theo dõi giao hàng"
-      exportFilename="orders-tracking"
-      columns={columns}
-      data={rows}
-      defaultDensity="compact"
-      getRowId={(r) => r.id}
-      rowSeverity={(r) => r.status === "received" ? "ok" : r.status === "shipped" ? "watch" : undefined}
-      emptyState={{
-        icon: <MapPin className="h-8 w-8" />,
-        title: "Chưa có đơn nào đang giao",
-        description: "Sau khi duyệt PO/TO, chuyến hàng sẽ hiển thị tại đây.",
-      }}
-      drillDown={(r) => <ShipmentTimeline row={r} />}
-    />
-  );
-}
-
-function ShipmentTimeline({ row }: {
-  row: { id: string; kind: PoKind; route: string; carrier: string | null; driver: string | null; phone: string | null; vehicle: string | null; eta: string; status: string; orderDate: string };
-}) {
-  type Stage = { key: string; label: string; date: string; done: boolean; current: boolean };
-  const today = Date.now();
-  const ord = new Date(row.orderDate).getTime();
-  const eta = new Date(row.eta).getTime();
-  const has = (s: string[]) => s.includes(row.status);
-
-  const stages: Stage[] = [
-    { key: "draft",     label: "Nháp",         date: fmtDate(row.orderDate), done: true, current: false },
-    { key: "submitted", label: "Đã gửi",       date: fmtDate(new Date(ord + 1*86400000).toISOString()),  done: true, current: false },
-    { key: "confirmed", label: "NM xác nhận",  date: fmtDate(new Date(ord + 2*86400000).toISOString()),  done: has(["confirmed", "shipped", "received"]),                       current: row.status === "confirmed" },
-    { key: "in_prod",   label: "Đang SX",      date: fmtDate(new Date(ord + 5*86400000).toISOString()),  done: has(["shipped", "received"]),                                    current: row.status === "in_production" },
-    { key: "shipped",   label: "Đã giao",      date: fmtDate(new Date(eta - 1*86400000).toISOString()),  done: has(["shipped", "received"]),                                    current: row.status === "shipped" },
-    { key: "received",  label: "Đã nhận",      date: fmtDate(row.eta),                                   done: has(["received"]),                                               current: row.status === "received" },
-  ];
-
-  return (
-    <div className="space-y-3">
-      {/* Carrier / driver bar */}
-      {row.driver && row.phone && (
-        <div className="rounded border border-success/30 bg-success-bg/30 px-3 py-2 flex items-center gap-3">
-          <Truck className="h-4 w-4 text-success" />
-          <div className="text-table-sm text-text-1">
-            <span className="font-medium">Xe {row.vehicle}</span>
-            <span className="text-text-3 mx-2">·</span>
-            <span>{row.carrier}</span>
-            <span className="text-text-3 mx-2">·</span>
-            <span>{row.driver} {row.phone}</span>
-          </div>
-          <a href={`tel:${row.phone.replace(/\s/g, "")}`}
-            className="ml-auto inline-flex items-center gap-1 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1 text-caption font-semibold">
-            <Phone className="h-3 w-3" /> Gọi
-          </a>
-        </div>
-      )}
-      {!row.driver && row.status === "shipped" && (
-        <div className="rounded border border-warning/30 bg-warning-bg/30 px-3 py-2 text-table-sm text-warning flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4" /> Chưa có thông tin tài xế — chờ NM cập nhật.
-        </div>
-      )}
-
-      {/* Timeline */}
-      <div className="text-caption text-text-3 mb-1">Tiến trình giao hàng</div>
-      <div className="flex items-start gap-1 overflow-x-auto pb-2">
-        {stages.map((s, i) => (
-          <Fragment key={s.key}>
-            <div className="flex flex-col items-center min-w-[80px]">
-              <div className={cn(
-                "h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold",
-                s.done && !s.current && "bg-success text-primary-foreground",
-                s.current && "bg-primary text-primary-foreground ring-2 ring-primary/30 animate-pulse",
-                !s.done && !s.current && "bg-surface-1 border border-surface-3 text-text-3"
-              )}>
-                {s.done && !s.current ? "✓" : s.current ? "●" : "○"}
-              </div>
-              <div className={cn("text-[11px] mt-1 font-medium text-center", s.current ? "text-primary" : s.done ? "text-text-1" : "text-text-3")}>
-                {s.label}
-              </div>
-              <div className="text-[10px] text-text-3 tabular-nums">{s.date}</div>
-            </div>
-            {i < stages.length - 1 && (
-              <div className={cn("flex-1 h-0.5 mt-3 min-w-[20px]", stages[i + 1].done ? "bg-success" : "bg-surface-3")} />
-            )}
-          </Fragment>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Filter pill + kind toggle
+   ═══════════════════════════════════════════════════════════════════════════ */
+function FilterPill({ active, onClick, count, label, icon, tone, disabled }: {
+  active: boolean; onClick: () => void; count: number; label: string;
+  icon?: string; tone?: "warning" | "info" | "success" | "danger"; disabled?: boolean;
+}) {
+  const toneActive = tone === "warning" ? "bg-warning text-warning-foreground border-warning"
+    : tone === "info" ? "bg-info text-info-foreground border-info"
+    : tone === "success" ? "bg-success text-success-foreground border-success"
+    : tone === "danger" ? "bg-danger text-primary-foreground border-danger"
+    : "bg-primary text-primary-foreground border-primary";
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-table-sm font-medium transition-colors",
+        active
+          ? toneActive
+          : "bg-surface-1 border-surface-3 text-text-2 hover:bg-surface-3",
+        disabled && "opacity-50 cursor-not-allowed",
+      )}
+    >
+      {icon && <span>{icon}</span>}
+      <span>{label}</span>
+      <span className="tabular-nums font-bold">({count})</span>
+    </button>
+  );
+}
+
+function KindToggle({ value, onChange, po, to }: {
+  value: "all" | "RPO" | "TO"; onChange: (v: "all" | "RPO" | "TO") => void;
+  po: number; to: number;
+}) {
+  const opt = (v: "all" | "RPO" | "TO", label: string, n: number) => (
+    <button
+      key={v}
+      onClick={() => onChange(v)}
+      className={cn(
+        "px-2.5 py-0.5 rounded-button text-[11px] font-medium transition-colors",
+        value === v ? "bg-primary text-primary-foreground" : "text-text-3 hover:text-text-1",
+      )}
+    >{label} ({n})</button>
+  );
+  return (
+    <div className="inline-flex items-center gap-0.5 rounded-button bg-surface-1 border border-surface-3 p-0.5">
+      {opt("all", "Tất cả", po + to)}
+      {opt("RPO", "PO", po)}
+      {opt("TO", "TO", to)}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Per-row action button (button label depends on current stage)
+   ═══════════════════════════════════════════════════════════════════════════ */
+function RowActionButton({
+  row, onClick, onCancel,
+}: { row: PoLifecycleRow; onClick: () => void; onCancel: () => void }) {
+  const cfg = ACTION_CONFIG[row.stage];
+  if (!cfg) {
+    if (row.stage === "completed") {
+      return <span className="text-[11px] text-text-3 inline-flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-success" /> Hoàn tất</span>;
+    }
+    if (row.stage === "cancelled") {
+      return <span className="text-[11px] text-text-3 inline-flex items-center gap-1"><X className="h-3.5 w-3.5 text-danger" /> Đã hủy</span>;
+    }
+    // pickup / in_transit — has primary advance + cancel
+  }
+  return (
+    <div className="flex items-center justify-center gap-1">
+      <Button size="sm" onClick={(e) => { e.stopPropagation(); onClick(); }} className="h-7 text-[11px] px-2.5 gap-1">
+        {cfg?.icon && <cfg.icon className="h-3.5 w-3.5" />}
+        {cfg?.label || ACTION_CONFIG_FALLBACK[row.stage]?.label || "Cập nhật"}
+      </Button>
+      {row.stage !== "completed" && row.stage !== "cancelled" && row.stage !== "in_transit" && (
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={(e) => { e.stopPropagation(); onCancel(); }}
+          className="h-7 w-7 text-text-3 hover:text-danger"
+          title="Hủy đơn"
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
+const ACTION_CONFIG: Partial<Record<LifecycleStage, { label: string; icon: typeof Send }>> = {
+  approved:     { label: "Gửi NM",       icon: Send },
+  sent_nm:      { label: "NM xác nhận",  icon: CheckCircle2 },
+  nm_confirmed: { label: "Đặt xe",       icon: Truck },
+  pickup:       { label: "Đã lấy hàng",  icon: Package },
+  in_transit:   { label: "Đã đến CN",    icon: Flag },
+  delivering:   { label: "Kiểm đếm POD", icon: ClipboardCheck },
+};
+const ACTION_CONFIG_FALLBACK = ACTION_CONFIG;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Expanded drill-down
+   ═══════════════════════════════════════════════════════════════════════════ */
+function ExpandedRow({ row }: { row: PoLifecycleRow }) {
+  return (
+    <div className="bg-surface-1 border-t border-surface-3 p-4 space-y-4">
+      {/* Lifecycle timeline */}
+      <div>
+        <div className="text-caption uppercase tracking-wide text-text-3 mb-2 font-semibold">Lifecycle</div>
+        <div className="flex items-center gap-0 overflow-x-auto pb-1">
+          {STAGE_ORDER.map((s, i) => {
+            const event = row.timeline.find(e => e.stage === s);
+            const reached = !!event;
+            const isCurrent = s === row.stage;
+            return (
+              <div key={s} className="flex items-center min-w-max">
+                <div className="flex flex-col items-center px-2">
+                  <div className={cn(
+                    "h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold",
+                    reached
+                      ? isCurrent ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
+                      : "bg-success text-success-foreground"
+                      : "bg-surface-3 text-text-3",
+                  )}>
+                    {reached ? "✓" : i + 1}
+                  </div>
+                  <div className={cn("text-[10px] mt-1 font-medium", reached ? "text-text-1" : "text-text-3")}>
+                    {STAGE_META[s].short}
+                  </div>
+                  {event && <div className="text-[10px] text-text-3 tabular-nums">{event.ts}</div>}
+                </div>
+                {i < STAGE_ORDER.length - 1 && (
+                  <div className={cn("h-[2px] w-8 mt-[-26px]", reached ? "bg-success/60" : "bg-surface-3")} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Two-column info */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Transport info */}
+        {row.carrierName && (
+          <div className="rounded-card border border-surface-3 bg-surface-0 p-3 space-y-1.5">
+            <div className="text-caption uppercase tracking-wide text-text-3 font-semibold mb-1">Vận chuyển</div>
+            <div className="text-table-sm"><span className="text-text-3">NVT:</span> <span className="font-medium text-text-1">{row.carrierName}</span></div>
+            {row.vehiclePlate && <div className="text-table-sm font-mono"><span className="text-text-3 font-sans">Xe:</span> {row.vehiclePlate}</div>}
+            {row.containerNo && <div className="text-table-sm font-mono"><span className="text-text-3 font-sans">Cont:</span> {row.containerNo}</div>}
+            {row.driverName && (
+              <div className="text-table-sm flex items-center gap-2">
+                <span className="text-text-3">Tài xế:</span>
+                <span className="text-text-1 font-medium">{row.driverName}</span>
+                {row.driverPhone && (
+                  <a href={`tel:${row.driverPhone.replace(/\s/g, "")}`}
+                    className="inline-flex items-center gap-1 text-primary hover:underline text-[11px]">
+                    <Phone className="h-3 w-3" /> {row.driverPhone}
+                  </a>
+                )}
+              </div>
+            )}
+            {row.deliveryEta && (
+              <div className="text-table-sm flex items-center gap-2 mt-1.5 pt-1.5 border-t border-surface-3">
+                <span className="text-text-3">ETA:</span>
+                <span className="font-medium text-text-1">{row.deliveryEta}</span>
+                {row.etaRemainingH !== undefined && (() => {
+                  const e = fmtEta(row.etaRemainingH);
+                  return <span className={cn("text-[11px] font-bold",
+                    e.tone === "danger" && "text-danger",
+                    e.tone === "warning" && "text-warning",
+                    e.tone === "success" && "text-success",
+                  )}>· {e.label}</span>;
+                })()}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Evidence */}
+        <div className="rounded-card border border-surface-3 bg-surface-0 p-3">
+          <div className="text-caption uppercase tracking-wide text-text-3 font-semibold mb-2">Minh chứng</div>
+          {row.evidence.length === 0
+            ? <div className="text-table-sm text-text-3 italic">Chưa có minh chứng</div>
+            : (
+              <div className="space-y-1">
+                {row.evidence.map((e, i) => <EvidenceBadge key={i} ev={e} />)}
+              </div>
+            )
+          }
+        </div>
+      </div>
+
+      {/* Full timeline log */}
+      <div className="rounded-card border border-surface-3 bg-surface-0 p-3">
+        <div className="text-caption uppercase tracking-wide text-text-3 font-semibold mb-2">Lịch sử</div>
+        <div className="space-y-1.5">
+          {row.timeline.map((e, i) => (
+            <div key={i} className="flex items-start gap-2 text-table-sm">
+              <div className="text-text-3 tabular-nums w-20 shrink-0">{e.ts}</div>
+              <Badge variant="outline" className={cn("text-[10px] shrink-0", STAGE_META[e.stage].tone)}>
+                {STAGE_META[e.stage].short}
+              </Badge>
+              <div className="flex-1">
+                <div className="text-text-1">{e.actor}</div>
+                {e.note && <div className="text-[11px] text-text-3">{e.note}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EvidenceBadge({ ev }: { ev: PoEvidence }) {
+  const Icon = ev.kind === "photo" || ev.kind === "screenshot" ? Image
+    : ev.kind === "signature" ? PenLine
+    : FileText;
+  return (
+    <div className="flex items-center gap-2 text-table-sm">
+      <Icon className="h-3.5 w-3.5 text-text-3" />
+      <span className="text-text-2">{ev.label}</span>
+      {ev.count && ev.count > 1 && <span className="text-[10px] text-text-3">({ev.count})</span>}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACTION DIALOG — routes to per-stage form
+   ═══════════════════════════════════════════════════════════════════════════ */
+function ActionDialog({
+  row, onClose, onAdvance,
+}: {
+  row: PoLifecycleRow;
+  onClose: () => void;
+  onAdvance: (patch: Partial<PoLifecycleRow>) => void;
+}) {
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        {row.stage === "approved"     && <SendNmForm row={row} onSubmit={onAdvance} />}
+        {row.stage === "sent_nm"      && <NmConfirmForm row={row} onSubmit={onAdvance} />}
+        {row.stage === "nm_confirmed" && <BookCarrierForm row={row} onSubmit={onAdvance} />}
+        {row.stage === "pickup"       && <PickupForm row={row} onSubmit={onAdvance} />}
+        {row.stage === "in_transit"   && <ArrivalForm row={row} onSubmit={onAdvance} />}
+        {row.stage === "delivering"   && <PodForm row={row} onSubmit={onAdvance} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ── BƯỚC 1: Gửi NM ── */
+function SendNmForm({ row, onSubmit }: { row: PoLifecycleRow; onSubmit: (p: Partial<PoLifecycleRow>) => void }) {
+  const [channel, setChannel] = useState("Zalo");
+  const [note, setNote] = useState("");
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Gửi {row.poNumber} cho {row.fromName}</DialogTitle>
+        <DialogDescription>UNIS gọi/nhắn {row.fromName} qua kênh dưới đây, sau đó xác nhận đã gửi.</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-3">
+        <div>
+          <Label className="text-caption">Kênh liên hệ</Label>
+          <Select value={channel} onValueChange={setChannel}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Zalo">Zalo</SelectItem>
+              <SelectItem value="Gọi điện">Gọi điện</SelectItem>
+              <SelectItem value="Email">Email</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-caption">Ghi chú</Label>
+          <Textarea
+            value={note} onChange={(e) => setNote(e.target.value)} maxLength={500}
+            placeholder="VD: Đã gọi anh Hùng, confirm nhận PO" rows={3}
+          />
+        </div>
+        <FilePickerStub label="Ảnh Zalo (tuỳ chọn)" />
+        <SlaInfo text={`NM phải xác nhận trong ${REMINDER_CONFIG.nmResponseSlaDays} ngày`} />
+      </div>
+      <DialogFooter>
+        <Button onClick={() => onSubmit({
+          stage: "sent_nm",
+          evidence: [...row.evidence, { label: `${channel}: ${note || "không ghi chú"}`, kind: "screenshot" }],
+          timeline: [...row.timeline, { stage: "sent_nm", ts: nowTs(), actor: "Planner Linh", note: `${channel}${note ? ` — ${note}` : ""}` }],
+        })}>Xác nhận đã gửi</Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+/* ── BƯỚC 2: NM xác nhận ── */
+function NmConfirmForm({ row, onSubmit }: { row: PoLifecycleRow; onSubmit: (p: Partial<PoLifecycleRow>) => void }) {
+  const [qtyConfirmed, setQtyConfirmed] = useState(row.qty);
+  const [readyDate, setReadyDate] = useState(todayPlus(2));
+  const counter = qtyConfirmed < row.qty;
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{row.fromName} xác nhận {row.poNumber}</DialogTitle>
+        <DialogDescription>Cập nhật số lượng + ngày sẵn sàng giao theo phản hồi của NM.</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-caption">SL xác nhận (m²)</Label>
+            <Input type="number" value={qtyConfirmed} onChange={(e) => setQtyConfirmed(Number(e.target.value))} />
+            {counter && <div className="text-[11px] text-warning mt-1">⚠️ NM chỉ xác nhận {qtyConfirmed}/{row.qty}m²</div>}
+          </div>
+          <div>
+            <Label className="text-caption">Ngày NM sẵn sàng</Label>
+            <Input type="date" value={readyDate} onChange={(e) => setReadyDate(e.target.value)} />
+          </div>
+        </div>
+        <FilePickerStub label="Ảnh xác nhận từ NM (Zalo)" />
+        <SlaInfo text="Sau khi xác nhận, planner cần đặt nhà xe trong 1 ngày." />
+      </div>
+      <DialogFooter>
+        <Button onClick={() => onSubmit({
+          stage: "nm_confirmed", qtyConfirmed,
+          pickupEta: fmtDateShort(readyDate),
+          evidence: [...row.evidence, { label: "Xác nhận NM (Zalo)", kind: "screenshot" }],
+          timeline: [...row.timeline, { stage: "nm_confirmed", ts: nowTs(), actor: row.fromName, note: counter ? `Counter ${qtyConfirmed}/${row.qty}m². Sẵn sàng ${readyDate}` : `Đủ ${qtyConfirmed}m². Sẵn sàng ${readyDate}` }],
+        })}>NM đã xác nhận</Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+/* ── BƯỚC 3: Đặt xe (Book carrier) ── */
+function BookCarrierForm({ row, onSubmit }: { row: PoLifecycleRow; onSubmit: (p: Partial<PoLifecycleRow>) => void }) {
+  // Filter carriers by region of destination CN
+  const region = CN_REGION[row.toName] || row.region;
+  const eligible = useMemo(() => {
+    return [...CARRIERS]
+      .filter(c => c.region.includes(region))
+      .sort((a, b) => Number(b.available) - Number(a.available));
+  }, [region]);
+
+  const qty = row.qtyConfirmed ?? row.qty;
+  const trips = qty > 900 ? Math.ceil(qty / 1800) : 1;
+  const [carrierId, setCarrierId] = useState<string>(eligible.find(c => c.available)?.id || "");
+  const [pickupDate, setPickupDate] = useState(todayPlus(1));
+  const [containerType, setContainerType] = useState<"20ft" | "40ft" | "10T">(qty > 900 ? "40ft" : "20ft");
+  const carrier = CARRIERS.find(c => c.id === carrierId);
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Đặt xe — {row.poNumber}</DialogTitle>
+        <DialogDescription>{row.fromName} → {row.toName} · {qty.toLocaleString()}m²</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-3">
+        <div>
+          <Label className="text-caption">Nhà xe (vùng {region})</Label>
+          <Select value={carrierId} onValueChange={setCarrierId}>
+            <SelectTrigger><SelectValue placeholder="Chọn nhà xe" /></SelectTrigger>
+            <SelectContent>
+              {eligible.map(c => (
+                <SelectItem key={c.id} value={c.id} disabled={!c.available}>
+                  {c.name} · {(c.rate40ft / 1e6).toFixed(1)}tr/40ft · SLA {c.slaOnTimePct}%
+                  {!c.available && " · Tạm ngưng"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {carrier && !carrier.available && (
+            <div className="text-[11px] text-danger mt-1 inline-flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" /> {carrier.name} đang tạm ngưng. Chọn nhà xe khác.
+            </div>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-caption">Loại xe</Label>
+            <Select value={containerType} onValueChange={(v) => setContainerType(v as "20ft" | "40ft" | "10T")}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="20ft">Container 20ft (900m²)</SelectItem>
+                <SelectItem value="40ft">Container 40ft (1.800m²)</SelectItem>
+                <SelectItem value="10T">Xe tải 10T (500m²)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-caption">Số chuyến</Label>
+            <Input type="number" value={trips} readOnly className="bg-surface-1" />
+          </div>
+        </div>
+        <div>
+          <Label className="text-caption">Ngày lấy hàng</Label>
+          <Input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} />
+        </div>
+        {qty > 900 && containerType === "20ft" && (
+          <div className="rounded-card border border-warning/40 bg-warning-bg p-2 text-[11px] text-warning">
+            <strong>Split shipment:</strong> {qty.toLocaleString()}m² &gt; 900m²/20ft → cần {Math.ceil(qty / 900)} chuyến.
+          </div>
+        )}
+        <SlaInfo text="Sau ngày lấy hàng + 4h, nếu xe chưa đến NM, hệ thống sẽ nhắc gọi NVT." />
+      </div>
+      <DialogFooter>
+        <Button
+          disabled={!carrier?.available}
+          onClick={() => onSubmit({
+            stage: "pickup",
+            carrierId, carrierName: carrier?.name,
+            pickupEta: fmtDateShort(pickupDate),
+            timeline: [...row.timeline, { stage: "pickup", ts: nowTs(), actor: "Planner Linh", note: `${carrier?.name} · ${containerType} · ${trips} chuyến · lấy ${pickupDate}` }],
+          })}
+        >Xác nhận đặt xe</Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+/* ── BƯỚC 4: Xe đã lấy hàng ── */
+function PickupForm({ row, onSubmit }: { row: PoLifecycleRow; onSubmit: (p: Partial<PoLifecycleRow>) => void }) {
+  const [vehiclePlate, setVehiclePlate] = useState(row.vehiclePlate || "");
+  const [containerNo, setContainerNo] = useState("");
+  const [driverName, setDriverName] = useState(row.driverName || "");
+  const [driverPhone, setDriverPhone] = useState(row.driverPhone || "");
+  const [actualQty, setActualQty] = useState(row.qtyConfirmed ?? row.qty);
+  const targetQty = row.qtyConfirmed ?? row.qty;
+  const partial = actualQty < targetQty;
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Xác nhận lấy hàng tại {row.fromName}</DialogTitle>
+        <DialogDescription>Nhập thông tin xe + tài xế. POD đầu NM bắt buộc nếu &gt; 500m².</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-caption">Số xe *</Label>
+            <Input value={vehiclePlate} onChange={(e) => setVehiclePlate(e.target.value)} placeholder="51C-72184" />
+          </div>
+          <div>
+            <Label className="text-caption">Số container</Label>
+            <Input value={containerNo} onChange={(e) => setContainerNo(e.target.value)} placeholder="TCKU2200881" />
+          </div>
+          <div>
+            <Label className="text-caption">Tài xế *</Label>
+            <Input value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Lê Văn Hùng" />
+          </div>
+          <div>
+            <Label className="text-caption">SĐT tài xế *</Label>
+            <Input value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} placeholder="0903 555 222" inputMode="tel" />
+          </div>
+        </div>
+        <div>
+          <Label className="text-caption">SL thực tế bốc (m²)</Label>
+          <Input type="number" value={actualQty} onChange={(e) => setActualQty(Number(e.target.value))} />
+          {partial && (
+            <div className="text-[11px] text-danger mt-1 inline-flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" /> NM giao thiếu {targetQty - actualQty}m² so với cam kết.
+            </div>
+          )}
+        </div>
+        {row.qty > 500 && <FilePickerStub label="Ảnh bốc hàng tại NM (bắt buộc)" required />}
+        {row.qty > 500 && <FilePickerStub label="Phiếu xuất kho NM (bắt buộc)" required />}
+        <SlaInfo text="ETA tự động tính = ngày lấy + transit days. Sẽ nhắc nếu trễ ETA + 4h." />
+      </div>
+      <DialogFooter>
+        <Button
+          disabled={!vehiclePlate || !driverName || !driverPhone}
+          onClick={() => onSubmit({
+            stage: "in_transit", vehiclePlate, containerNo: containerNo || undefined,
+            driverName, driverPhone, qtyDelivered: actualQty,
+            etaRemainingH: 24,
+            deliveryEta: `${todayPlus(1).slice(8)}/${todayPlus(1).slice(5,7)} 14:00`,
+            evidence: [
+              ...row.evidence,
+              { label: "Ảnh bốc hàng NM", kind: "photo", count: 2 },
+              ...(row.qty > 500 ? [{ label: "Phiếu xuất NM", kind: "doc" } satisfies PoEvidence] : []),
+            ],
+            timeline: [...row.timeline, { stage: "in_transit", ts: nowTs(), actor: `Tài xế ${driverName}`, note: `${vehiclePlate}${containerNo ? ` · ${containerNo}` : ""} · ${actualQty}m²${partial ? ` (thiếu ${targetQty - actualQty})` : ""}` }],
+          })}
+        >Xác nhận đã lấy hàng</Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+/* ── BƯỚC 5: Xe đã đến CN ── */
+function ArrivalForm({ row, onSubmit }: { row: PoLifecycleRow; onSubmit: (p: Partial<PoLifecycleRow>) => void }) {
+  const [condition, setCondition] = useState<"intact" | "damaged" | "missing">("intact");
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Xác nhận xe đến {row.toName}</DialogTitle>
+        <DialogDescription>Xe {row.vehiclePlate} · {row.driverName} đã đến cổng. Kiểm sơ trước khi dỡ hàng.</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-3">
+        <div>
+          <Label className="text-caption">Trạng thái hàng</Label>
+          <Select value={condition} onValueChange={(v) => setCondition(v as "intact" | "damaged" | "missing")}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="intact">Nguyên vẹn</SelectItem>
+              <SelectItem value="damaged">Hư hỏng</SelectItem>
+              <SelectItem value="missing">Thiếu</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <SlaInfo text={`POD phải upload trong ${REMINDER_CONFIG.podDeadlineHours} giờ kể từ khi đến CN.`} />
+      </div>
+      <DialogFooter>
+        <Button onClick={() => onSubmit({
+          stage: "delivering", etaRemainingH: undefined,
+          timeline: [...row.timeline, { stage: "delivering", ts: nowTs(), actor: row.toName, note: `Xe đến · ${condition === "intact" ? "Nguyên vẹn" : condition === "damaged" ? "Có hư hỏng" : "Thiếu hàng"}` }],
+        })}>Xe đã đến CN</Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+/* ── BƯỚC 6: POD form (mobile-friendly) ── */
+function PodForm({ row, onSubmit }: { row: PoLifecycleRow; onSubmit: (p: Partial<PoLifecycleRow>) => void }) {
+  const targetQty = row.qtyConfirmed ?? row.qty;
+  const [receivedQty, setReceivedQty] = useState(targetQty);
+  const [quality, setQuality] = useState<"intact" | "partial" | "damaged">("intact");
+  const [receiverName, setReceiverName] = useState("");
+  const [receiverRole, setReceiverRole] = useState("Thủ kho");
+  const partial = receivedQty < targetQty;
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Kiểm đếm & POD — {row.poNumber}</DialogTitle>
+        <DialogDescription>{row.skuLabel} · cam kết {targetQty.toLocaleString()}m²</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-3">
+        {/* QTY */}
+        <div className="rounded-card border border-surface-3 bg-surface-1 p-3 space-y-2">
+          <div className="text-caption uppercase font-semibold text-text-3">Số lượng nhận</div>
+          <Input type="number" value={receivedQty} onChange={(e) => setReceivedQty(Number(e.target.value))} className="text-base h-11" />
+          {partial && (
+            <div className="text-[11px] text-warning inline-flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" /> Thiếu {targetQty - receivedQty}m². Sẽ tạo backorder.
+            </div>
+          )}
+        </div>
+
+        {/* QUALITY */}
+        <div>
+          <Label className="text-caption mb-1.5 block">Chất lượng</Label>
+          <div className="grid grid-cols-3 gap-1.5">
+            {([
+              { v: "intact",  l: "✅ Nguyên vẹn" },
+              { v: "partial", l: "⚠️ Hỏng phần" },
+              { v: "damaged", l: "❌ Hỏng nặng" },
+            ] as const).map(opt => (
+              <button key={opt.v} type="button"
+                onClick={() => setQuality(opt.v)}
+                className={cn(
+                  "py-2 px-2 text-[11px] font-medium rounded-button border transition-colors",
+                  quality === opt.v
+                    ? opt.v === "intact" ? "bg-success-bg border-success text-success"
+                      : opt.v === "partial" ? "bg-warning-bg border-warning text-warning"
+                      : "bg-danger-bg border-danger text-danger"
+                    : "border-surface-3 text-text-3 hover:bg-surface-1",
+                )}
+              >{opt.l}</button>
+            ))}
+          </div>
+          {quality !== "intact" && (
+            <div className="mt-2 space-y-2 rounded-card border border-danger/30 bg-danger-bg/30 p-2">
+              <div className="text-[11px] text-danger inline-flex items-center gap-1">
+                <ShieldAlert className="h-3 w-3" /> Damage claim — bắt buộc 3+ ảnh + mô tả
+              </div>
+              <FilePickerStub label="Ảnh hư hỏng (≥ 3 ảnh)" required />
+              <Textarea placeholder="Mô tả hư hỏng..." rows={2} />
+            </div>
+          )}
+        </div>
+
+        {/* POD docs */}
+        <div className="space-y-2">
+          <FilePickerStub label={`Ảnh hàng nhận (≥ ${REMINDER_CONFIG.podMinPhotos} ảnh) *`} required />
+          <FilePickerStub label="Biên nhận giao hàng *" required />
+        </div>
+
+        {/* Receiver */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label className="text-caption">Tên người nhận *</Label>
+            <Input value={receiverName} onChange={(e) => setReceiverName(e.target.value)} className="h-11 text-base" />
+          </div>
+          <div>
+            <Label className="text-caption">Chức vụ</Label>
+            <Select value={receiverRole} onValueChange={setReceiverRole}>
+              <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Thủ kho">Thủ kho</SelectItem>
+                <SelectItem value="CN Manager">CN Manager</SelectItem>
+                <SelectItem value="Khác">Khác</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Signature stub */}
+        <div className="rounded-card border-2 border-dashed border-surface-3 bg-surface-1 p-4 text-center text-text-3 text-table-sm">
+          <PenLine className="h-5 w-5 mx-auto mb-1" />
+          Ký tên (vẽ tay trên màn hình)
+        </div>
+      </div>
+      <DialogFooter>
+        <Button
+          disabled={!receiverName}
+          onClick={() => onSubmit({
+            stage: "completed", qtyDelivered: receivedQty,
+            evidence: [
+              ...row.evidence,
+              { label: "Ảnh nhận hàng CN", kind: "photo", count: REMINDER_CONFIG.podMinPhotos },
+              { label: "Biên nhận giao hàng", kind: "doc" },
+              { label: `Chữ ký ${receiverName} (${receiverRole})`, kind: "signature" },
+              ...(quality !== "intact" ? [{ label: "Ảnh hư hỏng", kind: "photo" as const, count: 3 }] : []),
+            ],
+            timeline: [...row.timeline, { stage: "completed", ts: nowTs(), actor: `${receiverName} (${receiverRole})`, note: partial ? `Nhận ${receivedQty}/${targetQty}m². ${quality === "intact" ? "Nguyên vẹn" : "Có hư hỏng"}` : `Nhận đủ ${receivedQty}m². ${quality === "intact" ? "Nguyên vẹn" : "Có hư hỏng"}` }],
+          })}
+        >Hoàn tất nhận hàng</Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CANCEL DIALOG
+   ═══════════════════════════════════════════════════════════════════════════ */
+function CancelDialog({
+  row, onClose, onConfirm,
+}: {
+  row: PoLifecycleRow;
+  onClose: () => void;
+  onConfirm: (reason: string, note: string) => void;
+}) {
+  const [reason, setReason] = useState("NM không đáp ứng");
+  const [note, setNote] = useState("");
+  const inTransit = row.stage === "in_transit";
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-danger inline-flex items-center gap-2">
+            <X className="h-4 w-4" /> Hủy {row.poNumber}
+          </DialogTitle>
+          <DialogDescription>
+            {inTransit
+              ? "Đơn đang vận chuyển — không thể hủy. Liên hệ tài xế để trả hàng về NM."
+              : "Hành động này không thể hoàn tác. Lý do hủy sẽ được ghi vào lịch sử."}
+          </DialogDescription>
+        </DialogHeader>
+        {!inTransit && (
+          <div className="space-y-3">
+            <div>
+              <Label className="text-caption">Lý do *</Label>
+              <Select value={reason} onValueChange={setReason}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NM không đáp ứng">NM không đáp ứng</SelectItem>
+                  <SelectItem value="CN hủy nhu cầu">CN hủy nhu cầu</SelectItem>
+                  <SelectItem value="Thay đổi kế hoạch">Thay đổi kế hoạch</SelectItem>
+                  <SelectItem value="Khác">Khác</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-caption">Ghi chú *</Label>
+              <Textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={3} required />
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Đóng</Button>
+          {!inTransit && (
+            <Button variant="destructive" disabled={!note} onClick={() => onConfirm(reason, note)}>
+              Xác nhận hủy
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Small shared utilities
+   ═══════════════════════════════════════════════════════════════════════════ */
+function FilePickerStub({ label, required }: { label: string; required?: boolean }) {
+  return (
+    <button type="button" className="w-full rounded-card border-2 border-dashed border-surface-3 bg-surface-1 hover:bg-surface-3 p-3 text-table-sm text-text-2 inline-flex items-center justify-center gap-2 transition-colors">
+      <Camera className="h-4 w-4" />
+      <span>{label}</span>
+      {required && <span className="text-danger">*</span>}
+    </button>
+  );
+}
+
+function SlaInfo({ text }: { text: string }) {
+  return (
+    <div className="rounded-card bg-info-bg/40 border border-info/20 px-2.5 py-1.5 text-[11px] text-info inline-flex items-center gap-1.5">
+      <AlertTriangle className="h-3 w-3 shrink-0" />
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function nowTs(): string {
+  const d = new Date();
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm} ${hh}:${mi}`;
+}
+
+function todayPlus(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function fmtDateShort(iso: string): string {
+  if (!iso) return "—";
+  const [, m, dd] = iso.split("-");
+  return `${dd}/${m}`;
 }
