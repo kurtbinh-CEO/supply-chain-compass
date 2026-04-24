@@ -12,6 +12,8 @@ import { B2B_DEALS, B2B_STAGE_PROB, DEMAND_FC, AOP_PLAN, getFcActualYtd, type Ao
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
+import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
+import { PlanningPeriodSelector } from "@/components/PlanningPeriodSelector";
 import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
 import { AopPlanDialog } from "@/components/AopPlanDialog";
 import { toast } from "sonner";
