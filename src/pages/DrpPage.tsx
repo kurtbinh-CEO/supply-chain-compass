@@ -775,9 +775,9 @@ export default function DrpPage() {
         {drpLocked ? (
           <button
             onClick={() => setLockDialogOpen(true)}
-            disabled={!rbac.is("sc_manager") && !rbac.is("admin")}
+            disabled={!canApprove}
             className="inline-flex items-center gap-1 rounded-button border border-info/30 bg-info-bg/50 px-2.5 py-1 text-info hover:text-info disabled:opacity-50 disabled:cursor-not-allowed"
-            title={!rbac.is("sc_manager") && !rbac.is("admin") ? "Chỉ SC Manager mở khóa được" : "Mở khóa phiên bản"}
+            title={!canApprove ? "Chỉ SC Manager mở khóa được" : "Mở khóa phiên bản"}
           >
             <LockIcon className="h-3 w-3" /> Mở khóa
           </button>
