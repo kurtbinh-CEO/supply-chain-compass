@@ -132,7 +132,7 @@ export default function WorkspacePage() {
 
   const handleStartWorkflow = (type: "daily" | "monthly") => {
     startWorkflow(type);
-    navigate(type === "daily" ? "/supply" : "/demand");
+    navigate(type === "daily" ? "/inventory" : "/demand");
   };
 
   const filters: { key: FilterKey; label: string; count: number }[] = [
