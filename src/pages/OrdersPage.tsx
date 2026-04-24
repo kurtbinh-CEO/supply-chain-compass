@@ -75,6 +75,7 @@ export default function OrdersPage() {
   const [kindFilter, setKindFilter] = useState<Set<"RPO" | "TO">>(new Set());
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [bpoOpen, setBpoOpen] = useState(true);
 
   // Drill-down popup từ summary cards
   const [drillFocus, setDrillFocus] = useState<DrillFocus>(null);
