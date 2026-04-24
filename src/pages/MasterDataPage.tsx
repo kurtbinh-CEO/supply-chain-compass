@@ -112,11 +112,25 @@ function SearchToolbar({
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/* TAB 1 — Mã hàng (SKU bases) with NM column + variant badge + Add modal    */
+/* TAB 1 — Mã hàng (SKU bases) — Full CRUD                                   */
 /* ────────────────────────────────────────────────────────────────────────── */
+const ITEM_FIELDS: FormField[] = [
+  { key: "code",      label: "Mã gốc", type: "text", required: true, mono: true, placeholder: "VD: GA-300", readOnlyOnEdit: true, span: 1 },
+  { key: "name",      label: "Tên SKU", type: "text", required: true, placeholder: "Granite GA 30×30", span: 1 },
+  { key: "nmId",      label: "Nhà máy", type: "select", required: true, span: 1,
+    options: FACTORIES.map((f) => ({ value: f.id, label: `${f.name} (${f.region})` })),
+    hint: "1 mã gốc = 1 NM duy nhất",
+  },
+  { key: "category",  label: "Loại", type: "text", placeholder: "Granite / Ceramic", span: 1 },
+  { key: "unit",      label: "Đơn vị", type: "text", placeholder: "m²", span: 1 },
+  { key: "unitPrice", label: "Đơn giá (VND/m²)", type: "number", placeholder: "180000", span: 1 },
+];
+
 function ItemsTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<typeof SKU_BASES[number] | null>(null);
+  const [deleting, setDeleting] = useState<typeof SKU_BASES[number] | null>(null);
 
   const rows = useMemo(() => {
     const q = search.toLowerCase();
@@ -130,11 +144,29 @@ function ItemsTab() {
 
   return (
     <div className="space-y-3">
-      <SearchToolbar
-        value={search}
-        onChange={setSearch}
+      <CrudToolbar
+        search={search}
+        onSearchChange={setSearch}
         onAdd={() => setAdding(true)}
-        onUpload={() => toast("Upload CSV (demo)")}
+        onImport={(src) => toast.success(`Nhập mã hàng từ ${src} (demo)`)}
+        onExport={() =>
+          exportToCsv(
+            "ma_hang",
+            rows.map((b) => ({
+              ma_goc: b.code,
+              ten: b.name,
+              nha_may: NM_BY_ID[b.nmId],
+              loai: b.category,
+              don_vi: b.unit,
+              don_gia: b.unitPrice,
+              variants: variantCount(b.code),
+            })),
+          )
+        }
+        addLabel="Thêm mã hàng"
+        importTitle="Nhập danh mục mã hàng"
+        importDescription="Chọn nguồn nhập SKU hàng loạt"
+        placeholder="Tìm theo mã, tên, NM..."
       />
 
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
@@ -146,14 +178,16 @@ function ItemsTab() {
                   {h}
                 </th>
               ))}
+              <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3 font-medium w-[88px]">
+                Thao tác
+              </th>
             </tr>
           </thead>
           <tbody>
             {rows.map((b, i) => (
               <tr
                 key={b.code}
-                className={`${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 cursor-pointer transition-colors`}
-                onClick={() => toast(`Chỉnh sửa ${b.code} (demo)`)}
+                className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}
               >
                 <td className="px-4 py-2.5 font-mono font-medium text-text-1">{b.code}</td>
                 <td className="px-4 py-2.5 text-text-2">{b.name}</td>
@@ -170,6 +204,9 @@ function ItemsTab() {
                     {variantCount(b.code)} variant
                   </span>
                 </td>
+                <td className="px-4 py-2.5">
+                  <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -177,101 +214,53 @@ function ItemsTab() {
       </div>
       <p className="text-table-sm text-text-3">{rows.length} / {SKU_BASES.length} mã gốc</p>
 
-      {adding && <NewItemModal onClose={() => setAdding(false)} />}
+      <EntityFormDialog
+        open={adding}
+        mode="create"
+        entityName="mã hàng"
+        fields={ITEM_FIELDS}
+        onClose={() => setAdding(false)}
+        onSave={(v) => {
+          toast.success(`Đã tạo ${v.code} → ${NM_BY_ID[v.nmId as NmId] ?? v.nmId} (demo)`);
+          setAdding(false);
+        }}
+      />
+
+      <EntityFormDialog
+        open={!!editing}
+        mode="edit"
+        entityName="mã hàng"
+        fields={ITEM_FIELDS}
+        initialValues={editing ? {
+          code: editing.code,
+          name: editing.name,
+          nmId: editing.nmId,
+          category: editing.category,
+          unit: editing.unit,
+          unitPrice: editing.unitPrice,
+        } : undefined}
+        onClose={() => setEditing(null)}
+        onSave={(v) => {
+          toast.success(`Đã cập nhật ${v.code} (demo)`);
+          setEditing(null);
+        }}
+      />
+
+      <DeleteConfirmDialog
+        open={!!deleting}
+        entityLabel={deleting ? `mã ${deleting.code}` : ""}
+        description={
+          deleting
+            ? `Mã ${deleting.code} đang có ${variantCount(deleting.code)} variants. Xóa sẽ ảnh hưởng forecast & PO.`
+            : undefined
+        }
+        onClose={() => setDeleting(null)}
+        onConfirm={() => {
+          toast.success(`Đã xóa ${deleting?.code} (demo)`);
+          setDeleting(null);
+        }}
+      />
     </div>
-  );
-}
-
-function NewItemModal({ onClose }: { onClose: () => void }) {
-  const [code, setCode] = useState("");
-  const [name, setName] = useState("");
-  const [nmId, setNmId] = useState<NmId | "">("");
-  const [error, setError] = useState<string | null>(null);
-
-  const onSave = () => {
-    if (!code.trim() || !name.trim()) {
-      setError("Mã gốc và tên là bắt buộc.");
-      return;
-    }
-    if (!nmId) {
-      setError("Phải chọn Nhà máy. 1 mã gốc bắt buộc gắn 1 NM duy nhất.");
-      return;
-    }
-    toast.success(`Đã tạo ${code} → ${NM_BY_ID[nmId as NmId]}`);
-    onClose();
-  };
-
-  return (
-    <>
-      <div className="fixed inset-0 bg-text-1/30 z-50" onClick={onClose} />
-      <div className="fixed right-0 top-0 h-full w-[480px] max-w-full bg-surface-2 border-l border-surface-3 z-50 rounded-l-panel animate-slide-in-right shadow-xl flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-surface-3">
-          <h2 className="font-display text-section-header text-text-1">Tạo mã gốc mới</h2>
-          <button onClick={onClose} className="text-text-3 hover:text-text-1 transition-colors">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          <div>
-            <label className="text-table-sm text-text-3 uppercase font-medium">Mã gốc *</label>
-            <input
-              value={code}
-              onChange={(e) => { setCode(e.target.value.toUpperCase()); setError(null); }}
-              placeholder="VD: GA-300"
-              className="w-full h-10 mt-1 rounded-button border border-surface-3 bg-surface-0 px-3 text-table font-mono text-text-1"
-            />
-          </div>
-          <div>
-            <label className="text-table-sm text-text-3 uppercase font-medium">Tên SKU *</label>
-            <input
-              value={name}
-              onChange={(e) => { setName(e.target.value); setError(null); }}
-              placeholder="Granite GA 30×30"
-              className="w-full h-10 mt-1 rounded-button border border-surface-3 bg-surface-0 px-3 text-table text-text-1"
-            />
-          </div>
-          <div>
-            <label className="text-table-sm text-text-3 uppercase font-medium">
-              Nhà máy * <span className="text-text-3 normal-case">(1 mã gốc = 1 NM duy nhất)</span>
-            </label>
-            <select
-              value={nmId}
-              onChange={(e) => { setNmId(e.target.value as NmId); setError(null); }}
-              className={`w-full h-10 mt-1 rounded-button border bg-surface-0 px-3 text-table text-text-1 ${
-                error && !nmId ? "border-danger" : "border-surface-3"
-              }`}
-            >
-              <option value="">— Chọn nhà máy —</option>
-              {FACTORIES.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name} ({f.region}) — LT {f.ltDays}d, Honoring {f.honoringPct}%
-                </option>
-              ))}
-            </select>
-          </div>
-          {error && (
-            <div className="flex items-start gap-2 p-3 rounded-card bg-danger-bg border border-danger/30 text-danger text-table-sm">
-              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-        </div>
-        <div className="px-6 py-4 border-t border-surface-3 flex gap-2">
-          <button
-            onClick={onSave}
-            className="flex-1 h-10 rounded-button bg-gradient-primary text-primary-foreground font-medium text-table hover:opacity-90 transition-opacity"
-          >
-            Lưu
-          </button>
-          <button
-            onClick={onClose}
-            className="h-10 px-4 rounded-button border border-surface-3 text-text-2 text-table font-medium hover:bg-surface-1 transition-colors"
-          >
-            Huỷ
-          </button>
-        </div>
-      </div>
-    </>
   );
 }
 
