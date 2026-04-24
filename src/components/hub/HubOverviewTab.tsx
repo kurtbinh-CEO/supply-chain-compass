@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp, AlertTriangle, TrendingDown, TrendingUp, Info }
 import { cn } from "@/lib/utils";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from "recharts";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 
 type NmRiskTier = "low" | "med" | "high";
 
