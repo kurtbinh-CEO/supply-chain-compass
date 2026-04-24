@@ -565,10 +565,28 @@ export const DRP_RESULTS: DrpResultRow[] = SKU_BASES.flatMap((b) =>
     let status: DrpStatus = "OK";
     let netReq = Math.max(0, fc + ss - onHand - inTransit);
     let recommendation = "Đủ tồn kho";
-    if (SHORTAGE_KEYS.has(key)) {
+    let scenario: DrpResultRow["scenario"] | undefined;
+
+    if (SEVERE_KEYS.has(key)) {
+      status = "SHORTAGE";
+      netReq = Math.round(fc * 0.85);
+      recommendation = "🔴 NGUY CẤP — fill < 50%. Cần PO khẩn + LCNB + TO chéo CN";
+      scenario = "severe";
+    } else if (STOCKOUT_RISK_KEYS.has(key)) {
+      status = "SHORTAGE";
+      netReq = Math.round(fc * 0.7);
+      recommendation = "⚠️ HSTK < 3 ngày. Đặt TO khẩn từ CN-HCM hoặc air-freight";
+      scenario = "stockout_risk";
+    } else if (NM_REJECTED_KEYS.has(key)) {
+      status = "SHORTAGE";
+      netReq = Math.round(fc * 0.55);
+      recommendation = "❌ NM từ chối/giảm cam kết. Tìm NM thay thế hoặc thương lượng";
+      scenario = "nm_rejected";
+    } else if (SHORTAGE_KEYS.has(key)) {
       status = "SHORTAGE";
       netReq = Math.round(fc * 0.6);
       recommendation = "Cần đặt PO mới hoặc LCNB";
+      scenario = "cascade";
     } else if (WATCH_KEYS.has(key)) {
       status = "WATCH";
       netReq = Math.round(fc * 0.25);
@@ -577,7 +595,7 @@ export const DRP_RESULTS: DrpResultRow[] = SKU_BASES.flatMap((b) =>
     return {
       cnCode: cn.code, skuBaseCode: b.code,
       fcM2: fc, onHandM2: onHand, inTransitM2: inTransit, ssM2: ss,
-      netReqM2: netReq, status, recommendation,
+      netReqM2: netReq, status, recommendation, scenario,
     };
   }),
 );
