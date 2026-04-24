@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/components/WorkspaceContext";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import {
   TO_DRAFT,
   DRP_RESULTS,
@@ -26,6 +27,13 @@ import {
   type ToDraftRow,
   type DrpResultRow,
 } from "@/data/unis-enterprise-dataset";
+
+type ExceptionRow = DrpResultRow & {
+  allocated: number;
+  required: number;
+  shortage: number;
+  fillPct: number;
+};
 
 const fmt = (n: number) => `${n.toLocaleString("vi-VN")} m²`;
 const cnName = (code: string) => BRANCHES.find((b) => b.code === code)?.name ?? code;
