@@ -101,6 +101,94 @@ export function HubOverviewTab({ scale, totals }: Props) {
     { time: "11/05 08:00", who: "Hệ thống",   change: "S&OP v3 khóa T5: 7.650 m²", source: "sop" },
   ];
 
+  /* ─── SmartTable column defs ─── */
+  const compareColumns: SmartTableColumn<CommitmentRow>[] = [
+    {
+      key: "nm", label: "NM", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 120,
+      accessor: (r) => r.nm,
+      render: (r) => <span className="text-text-1 font-medium">{r.nm}</span>,
+    },
+    {
+      key: "sku", label: "SKU", sortable: true, hideable: true, priority: "high",
+      filter: "text", width: 100,
+      accessor: (r) => r.sku,
+      render: (r) => <span className="text-text-2 font-mono">{r.sku}</span>,
+    },
+    {
+      key: "prev", label: "T4 (m²)", sortable: true, hideable: true, priority: "medium",
+      numeric: true, align: "right", width: 110,
+      accessor: (r) => r.prev,
+      render: (r) => <span className="tabular-nums text-text-2">{r.prev.toLocaleString()}</span>,
+    },
+    {
+      key: "curr", label: "T5 (m²)", sortable: true, hideable: false, priority: "high",
+      numeric: true, align: "right", width: 110,
+      accessor: (r) => r.curr,
+      render: (r) => <span className="tabular-nums text-text-1 font-medium">{r.curr.toLocaleString()}</span>,
+    },
+    {
+      key: "delta", label: "Δ%", sortable: true, hideable: false, priority: "high",
+      numeric: true, align: "right", width: 110,
+      accessor: (r) => ((r.curr - r.prev) / r.prev) * 100,
+      render: (r) => {
+        const delta = ((r.curr - r.prev) / r.prev) * 100;
+        const big = Math.abs(delta) >= 30;
+        return (
+          <span className={cn("tabular-nums font-medium inline-flex items-center gap-1", delta >= 0 ? "text-success" : "text-danger")}>
+            {delta >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            {delta >= 0 ? "+" : ""}{delta.toFixed(1)}%
+            {big && delta < 0 && <span className="ml-1">🔴</span>}
+          </span>
+        );
+      },
+    },
+    {
+      key: "reason", label: "Lý do", sortable: false, hideable: true, priority: "low",
+      filter: "text",
+      accessor: (r) => r.reason ?? "",
+      render: (r) => <span className="text-text-3 text-caption">{r.reason || "—"}</span>,
+    },
+  ];
+
+  const changeLogColumns: SmartTableColumn<ChangeLog>[] = [
+    {
+      key: "time", label: "Thời gian", sortable: true, hideable: false, priority: "high",
+      width: 130,
+      accessor: (r) => r.time,
+      render: (r) => <span className="text-text-2 font-mono tabular-nums">{r.time}</span>,
+    },
+    {
+      key: "who", label: "Người / Nguồn", sortable: true, hideable: true, priority: "high",
+      filter: "text", width: 160,
+      accessor: (r) => r.who,
+      render: (r) => <span className="text-text-1">{r.who}</span>,
+    },
+    {
+      key: "change", label: "Thay đổi", sortable: false, hideable: false, priority: "high",
+      filter: "text",
+      accessor: (r) => r.change,
+      render: (r) => <span className="text-text-2">{r.change}</span>,
+    },
+    {
+      key: "source", label: "Nguồn", sortable: true, hideable: true, priority: "medium",
+      filter: "enum",
+      filterOptions: [
+        { value: "drp",    label: "DRP" },
+        { value: "nm",     label: "NM" },
+        { value: "manual", label: "Thủ công" },
+        { value: "sop",    label: "S&OP" },
+      ],
+      width: 100,
+      accessor: (r) => r.source,
+      render: (r) => (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-caption uppercase tracking-wider bg-surface-3 text-text-2">
+          {r.source}
+        </span>
+      ),
+    },
+  ];
+
   const ssAlert = totals.available < totals.ssHub;
 
   return (
