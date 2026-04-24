@@ -140,7 +140,7 @@ export default function WorkspacePage() {
   const filters: { key: FilterKey; label: string; count: number }[] = [
     { key: "all", label: "Tất cả", count: items.length },
     { key: "approve", label: "Cần duyệt", count: approveCount },
-    { key: "exception", label: "Exceptions", count: excCount },
+    { key: "exception", label: "Ngoại lệ", count: excCount },
     { key: "notify", label: "Thông báo", count: notifyCount },
   ];
 
