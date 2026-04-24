@@ -640,6 +640,41 @@ function CommitmentRow({ row, onUpdate, onOpenEvidence, onConfirm }: {
         ) : <span className="text-text-3">—</span>}
       </td>
 
+      {/* ĐÃ RELEASE */}
+      <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
+        {released > 0 ? (
+          <span className="font-medium text-text-1">{released.toLocaleString()}</span>
+        ) : <span className="text-text-3">—</span>}
+      </td>
+
+      {/* CÒN LẠI */}
+      <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
+        {row.committed > 0 ? (
+          remaining > 0 ? (
+            <span className={cn("font-medium", lateRelease ? "text-danger" : "text-warning")}>
+              {remaining.toLocaleString()}
+            </span>
+          ) : <span className="text-success font-medium">0</span>
+        ) : <span className="text-text-3">—</span>}
+      </td>
+
+      {/* % RELEASE */}
+      <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
+        {row.committed > 0 && released > 0 ? (
+          <span
+            title={lateRelease ? `Cần release nhanh — kỳ vọng ≥ ${expectedPct}% tại ngày ${BPO_DEMO_DAY_OF_MONTH}/${BPO_DEMO_DAYS_IN_MONTH}` : undefined}
+            className={cn(
+              "inline-flex items-center gap-1 font-semibold",
+              lateRelease ? "text-danger" :
+              releasePct >= expectedPct ? "text-success" : "text-warning",
+            )}
+          >
+            {releasePct}%
+            {lateRelease && <span title="Cần release nhanh">🔴</span>}
+          </span>
+        ) : <span className="text-text-3">—</span>}
+      </td>
+
       {/* TIER */}
       <td className="px-3 py-2">
         <span title={tierMeta.tol}
