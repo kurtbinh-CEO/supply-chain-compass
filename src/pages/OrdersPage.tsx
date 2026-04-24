@@ -837,17 +837,8 @@ function TrackingTab({ orders, effective, effectiveTo, carrierAssign, scale }: {
   carrierAssign: Record<string, string>;
   scale: number;
 }) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const toggle = (k: string) => setExpanded(p => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
-
-  type Row = {
-    id: string; kind: PoKind; route: string; carrier: string | null;
-    driver: string | null; phone: string | null; vehicle: string | null;
-    eta: string; status: string; orderDate: string;
-  };
-
-  const rows: Row[] = useMemo(() => {
-    const out: Row[] = [];
+  const rows: TrackingRowT[] = useMemo(() => {
+    const out: TrackingRowT[] = [];
     orders.forEach(po => {
       const s = effective(po);
       if (s === "confirmed" || s === "shipped" || s === "received") {
@@ -885,66 +876,78 @@ function TrackingTab({ orders, effective, effectiveTo, carrierAssign, scale }: {
     return out;
   }, [orders, effective, effectiveTo, carrierAssign]);
 
+  const columns: SmartTableColumn<TrackingRowT>[] = [
+    {
+      key: "id", label: "PO/TO #", sortable: true, hideable: false, priority: "high",
+      filter: "text", width: 220,
+      accessor: (r) => r.id,
+      render: (r) => (
+        <span>
+          <span className="font-mono text-[11px] text-text-1">{r.id}</span>
+          <span className="ml-2"><KindBadge kind={r.kind} /></span>
+        </span>
+      ),
+    },
+    {
+      key: "route", label: "Tuyến", sortable: true, hideable: true, priority: "high",
+      filter: "text",
+      accessor: (r) => r.route,
+      render: (r) => <span className="text-table-sm text-text-2">{r.route}</span>,
+    },
+    {
+      key: "carrier", label: "Nhà xe", sortable: true, hideable: true, priority: "medium",
+      filter: "text",
+      accessor: (r) => r.carrier ?? "",
+      render: (r) => r.carrier
+        ? <span className="text-text-1">{r.carrier}</span>
+        : <span className="text-text-3 italic">—</span>,
+    },
+    {
+      key: "driver", label: "Tài xế · SĐT", sortable: true, hideable: true, priority: "low",
+      accessor: (r) => r.driver ?? "",
+      render: (r) => r.driver ? (
+        <div>
+          <div className="text-text-1">{r.driver}</div>
+          <div className="text-caption text-text-3">{r.phone}</div>
+        </div>
+      ) : <span className="text-text-3 italic">Chưa có</span>,
+    },
+    {
+      key: "eta", label: "ETA", sortable: true, hideable: true, priority: "high",
+      width: 100,
+      accessor: (r) => r.eta,
+      render: (r) => <span className="text-table-sm text-text-2">{fmtDate(r.eta)}</span>,
+    },
+    {
+      key: "status", label: "Trạng thái", sortable: true, hideable: true, priority: "high",
+      filter: "enum",
+      filterOptions: [
+        { value: "confirmed", label: STAGE_LABEL.confirmed },
+        { value: "shipped",   label: STAGE_LABEL.shipped   },
+        { value: "received",  label: STAGE_LABEL.received  },
+      ],
+      width: 130,
+      accessor: (r) => r.status,
+      render: (r) => <StageBadge stage={r.status} />,
+    },
+  ];
+
   return (
-    <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-surface-1/60 border-b border-surface-3">
-              <th className="w-8"></th>
-              <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">PO/TO #</th>
-              <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Tuyến</th>
-              <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden md:table-cell">Nhà xe</th>
-              <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 hidden lg:table-cell">Tài xế · SĐT</th>
-              <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">ETA</th>
-              <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Trạng thái</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-8 text-text-3 text-table-sm">
-                Chưa có đơn nào đang giao.
-              </td></tr>
-            )}
-            {rows.map(r => {
-              const isOpen = expanded.has(r.id);
-              return (
-                <Fragment key={r.id}>
-                  <tr onClick={() => toggle(r.id)} className="border-b border-surface-3 cursor-pointer hover:bg-surface-1/40 transition-colors">
-                    <td className="px-2 py-2.5 text-center">
-                      {isOpen ? <ChevronDown className="h-4 w-4 text-text-3 inline" /> : <ChevronRight className="h-4 w-4 text-text-3 inline" />}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <span className="font-mono text-[11px] text-text-1">{r.id}</span>
-                      <span className="ml-2"><KindBadge kind={r.kind} /></span>
-                    </td>
-                    <td className="px-3 py-2.5 text-table-sm text-text-2">{r.route}</td>
-                    <td className="px-3 py-2.5 text-table-sm hidden md:table-cell">
-                      {r.carrier ? <span className="text-text-1">{r.carrier}</span> : <span className="text-text-3 italic">—</span>}
-                    </td>
-                    <td className="px-3 py-2.5 text-table-sm hidden lg:table-cell">
-                      {r.driver ? (
-                        <div>
-                          <div className="text-text-1">{r.driver}</div>
-                          <div className="text-caption text-text-3">{r.phone}</div>
-                        </div>
-                      ) : <span className="text-text-3 italic">Chưa có</span>}
-                    </td>
-                    <td className="px-3 py-2.5 text-table-sm text-text-2">{fmtDate(r.eta)}</td>
-                    <td className="px-3 py-2.5"><StageBadge stage={r.status} /></td>
-                  </tr>
-                  {isOpen && (
-                    <tr><td colSpan={7} className="bg-surface-1/40 px-4 py-3 border-b border-surface-3">
-                      <ShipmentTimeline row={r} />
-                    </td></tr>
-                  )}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <SmartTable<TrackingRowT>
+      screenId="orders-tracking"
+      title="Theo dõi giao hàng"
+      exportFilename="orders-tracking"
+      columns={columns}
+      data={rows}
+      getRowId={(r) => r.id}
+      rowSeverity={(r) => r.status === "received" ? "ok" : r.status === "shipped" ? "watch" : undefined}
+      emptyState={{
+        icon: <MapPin className="h-8 w-8" />,
+        title: "Chưa có đơn nào đang giao",
+        description: "Sau khi duyệt PO/TO, chuyến hàng sẽ hiển thị tại đây.",
+      }}
+      drillDown={(r) => <ShipmentTimeline row={r} />}
+    />
   );
 }
 
