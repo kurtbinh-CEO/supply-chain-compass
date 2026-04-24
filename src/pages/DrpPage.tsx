@@ -1451,6 +1451,25 @@ export default function DrpPage() {
           }
         }}
       />
+
+      {/* ── APPROVE-WITH-EXCEPTIONS CONFIRM ── */}
+      <Dialog open={approveExceptionDialog} onOpenChange={(v) => !v && setApproveExceptionDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Còn ngoại lệ chưa xử lý</DialogTitle>
+          </DialogHeader>
+          <p className="text-table-sm text-text-2">
+            DRP W20 v{viewingVersion} còn {data.reduce((a, r) => a + r.exceptionList.length, 0)} ngoại lệ chưa xử lý.
+            Bạn vẫn muốn duyệt và chuyển sang Đơn hàng?
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setApproveExceptionDialog(false)}>Hủy</Button>
+            <Button onClick={() => handleApproveAndHandoff(true)}>
+              Duyệt với ngoại lệ ⚠️
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
