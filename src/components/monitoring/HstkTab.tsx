@@ -124,9 +124,9 @@ export function HstkTab() {
       {/* Inventory Table */}
       <div className="rounded-card border border-surface-3 bg-surface-2">
         <div className="flex items-center justify-between px-5 py-4 border-b border-surface-3">
-          <h2 className="font-display text-section-header text-text-1">Inventory Detailed View</h2>
+          <h2 className="font-display text-section-header text-text-1">Chi tiết tồn kho</h2>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">Filter</Button>
+            <Button variant="outline" size="sm">Lọc</Button>
             <Button variant="outline" size="sm">Xuất CSV</Button>
           </div>
         </div>

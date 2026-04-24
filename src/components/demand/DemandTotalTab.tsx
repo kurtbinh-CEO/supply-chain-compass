@@ -489,7 +489,7 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
                     </td>
                     <td className="px-3 py-2 text-center">
                       <button onClick={(e) => { e.stopPropagation(); setOverrideModal({ sku: `${sk.item} ${sk.variant}`, value: sk.total }); }}
-                        className="text-[11px] text-primary hover:underline font-medium">Override</button>
+                        className="text-[11px] text-primary hover:underline font-medium">Ghi đè</button>
                     </td>
                     <td />
                   </tr>
