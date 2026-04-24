@@ -17,6 +17,7 @@ import { AuthProvider, useAuth } from "@/components/AuthContext";
 import { ZoomProvider } from "@/components/ZoomControls";
 import { CommandPaletteProvider } from "@/components/CommandPalette";
 import { NextStepProvider } from "@/components/NextStepContext";
+import { PlanningPeriodProvider } from "@/components/PlanningPeriodContext";
 import { useEffect, useCallback } from "react";
 import { dispatchExpandAll } from "@/hooks/useExpandableRows";
 import { useIdleNudge } from "@/hooks/useIdleNudge";
@@ -94,6 +95,7 @@ function ProtectedRoutes() {
       <SafetyStockProvider>
       <WalkthroughProvider>
       <NextStepProvider>
+      <PlanningPeriodProvider>
       <CommandPaletteProvider>
         <IdleNudgeMount />
         <Routes>
@@ -126,6 +128,7 @@ function ProtectedRoutes() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </CommandPaletteProvider>
+      </PlanningPeriodProvider>
       </NextStepProvider>
       </WalkthroughProvider>
       </SafetyStockProvider>

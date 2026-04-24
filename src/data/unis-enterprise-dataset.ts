@@ -1666,3 +1666,70 @@ export const KPI_TARGETS: KpiTarget[] = [
 export function getKpiTarget(key: string): KpiTarget | undefined {
   return KPI_TARGETS.find((k) => k.kpiKey === key);
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §M18  PLANNING_CYCLES — Kỳ kế hoạch tháng (state machine)
+ *
+ *  DRAFT → ACTIVE → LOCKED → ARCHIVED
+ *
+ *  Các screen monthly planning (Demand / S&OP / Hub / Gap) đều scope theo
+ *  một PlanningCycle. Tháng locked → read-only; tháng DRAFT → disabled.
+ * ════════════════════════════════════════════════════════════════════════════ */
+export type PlanningCycleStatus = "DRAFT" | "ACTIVE" | "LOCKED" | "ARCHIVED";
+export type PlanningStepKey = "demand" | "sop" | "commitment" | "hub" | "gap" | "scenario";
+
+export const PLANNING_STEPS: { key: PlanningStepKey; label: string; route: string }[] = [
+  { key: "demand",     label: "Rà soát nhu cầu", route: "/demand" },
+  { key: "sop",        label: "Đồng thuận S&OP", route: "/sop" },
+  { key: "commitment", label: "Cam kết NM",      route: "/hub" },
+  { key: "hub",        label: "Đặt hàng Hub",    route: "/hub" },
+  { key: "gap",        label: "Phân tích Gap",   route: "/gap-scenario" },
+  { key: "scenario",   label: "Kịch bản",        route: "/gap-scenario" },
+];
+
+export interface PlanningCycle {
+  id: string;                       // "PLAN-2026-05"
+  year: number;
+  month: number;
+  label: string;                    // "Tháng 5/2026"
+  status: PlanningCycleStatus;
+  version: number;                  // v3
+  startedAt: string | null;         // "01/05/2026"
+  lockedAt: string | null;
+  lockedBy: string | null;
+  stepsCompleted: PlanningStepKey[];
+  totalExceptions: number;
+  approvalStatus: "pending" | "approved" | "rejected";
+}
+
+export const PLANNING_CYCLES: PlanningCycle[] = [
+  {
+    id: "PLAN-2026-04", year: 2026, month: 4, label: "Tháng 4/2026",
+    status: "LOCKED", version: 4,
+    startedAt: "01/04/2026", lockedAt: "28/04/2026", lockedBy: "SC Manager Thùy",
+    stepsCompleted: ["demand", "sop", "commitment", "hub", "gap", "scenario"],
+    totalExceptions: 8, approvalStatus: "approved",
+  },
+  {
+    id: "PLAN-2026-05", year: 2026, month: 5, label: "Tháng 5/2026",
+    status: "ACTIVE", version: 3,
+    startedAt: "01/05/2026", lockedAt: null, lockedBy: null,
+    stepsCompleted: ["demand", "sop", "commitment"],
+    totalExceptions: 14, approvalStatus: "pending",
+  },
+  {
+    id: "PLAN-2026-06", year: 2026, month: 6, label: "Tháng 6/2026",
+    status: "DRAFT", version: 0,
+    startedAt: null, lockedAt: null, lockedBy: null,
+    stepsCompleted: [], totalExceptions: 0, approvalStatus: "pending",
+  },
+];
+
+export function getActivePlanningCycle(): PlanningCycle {
+  return PLANNING_CYCLES.find((c) => c.status === "ACTIVE") ?? PLANNING_CYCLES[1];
+}
+
+export function getPlanningCycleById(id: string): PlanningCycle | undefined {
+  return PLANNING_CYCLES.find((c) => c.id === id);
+}
+

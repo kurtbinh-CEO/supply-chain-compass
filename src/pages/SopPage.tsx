@@ -8,6 +8,8 @@ import { BalanceLockTab } from "@/components/sop/BalanceLockTab";
 import { SopDeadlineStepper } from "@/components/sop/SopDeadlineStepper";
 import { FileText, Loader2, PackageOpen } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
+import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
+import { PlanningPeriodSelector } from "@/components/PlanningPeriodSelector";
 import { AvatarBar, AutoSaveIndicator, useCellPresence } from "@/components/CellPresence";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PreLockDialog } from "@/components/BatchLockBanner";
@@ -126,6 +128,7 @@ export default function SopPage() {
   const [activeTab, setActiveTab] = useState("consensus");
   const { tenant } = useTenant();
   const { markDone } = useNextStep();
+  const { current: planCycle, isReadOnly: planLocked } = usePlanningPeriod();
 
   const [locked, setLocked] = useState(false);
   const [showPreLock, setShowPreLock] = useState(false);
@@ -206,15 +209,19 @@ export default function SopPage() {
   return (
     <AppLayout>
       <ScreenHeader
-        title="S&OP Consensus — Tháng 5"
-        subtitle="Digital Curator — Consensus Planning"
+        title="Đồng thuận S&OP"
+        subtitle={planLocked ? `Chế độ chỉ xem — ${planCycle.label} đã khóa` : "Digital Curator — Consensus Planning"}
         actions={
-          <>
+          <div className="flex items-center gap-2 flex-wrap">
+            <PlanningPeriodSelector />
             <LogicLink tab="monthly" node={1} tooltip="Logic S&OP Consensus → Lock" />
-            <button className="rounded-button bg-gradient-primary text-white px-4 py-2 text-table-sm font-medium flex items-center gap-2">
+            <button
+              disabled={planLocked}
+              className="rounded-button bg-gradient-primary text-white px-4 py-2 text-table-sm font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <FileText className="h-4 w-4" /> Pre-meeting report
             </button>
-          </>
+          </div>
         }
       />
 

@@ -12,6 +12,8 @@ import { B2B_DEALS, B2B_STAGE_PROB, DEMAND_FC, AOP_PLAN, getFcActualYtd, type Ao
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
+import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
+import { PlanningPeriodSelector } from "@/components/PlanningPeriodSelector";
 import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
 import { AopPlanDialog } from "@/components/AopPlanDialog";
 import { toast } from "sonner";
@@ -119,6 +121,7 @@ export default function DemandPage() {
   const { tenant } = useTenant();
   const { cnSummaries, loading: forecastLoading } = useDemandForecasts();
   const { markDone } = useNextStep();
+  const { current: planCycle, isReadOnly: planLocked } = usePlanningPeriod();
   const [importerOpen, setImporterOpen] = useState(false);
   const [actualOpen, setActualOpen] = useState(false);
   const [aopOpen, setAopOpen] = useState(false);
@@ -215,8 +218,8 @@ export default function DemandPage() {
       {/* Header */}
       <div data-tour="demand-header">
         <ScreenHeader
-          title="Demand Review — Tháng 5"
-          subtitle=""
+          title="Rà soát nhu cầu"
+          subtitle={planLocked ? `Chế độ chỉ xem — ${planCycle.label} đã khóa` : ""}
           badges={
             <>
               <button
@@ -234,18 +237,25 @@ export default function DemandPage() {
             </>
           }
           actions={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <PlanningPeriodSelector />
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setActualOpen(true)}
+                disabled={planLocked}
                 className="h-8 gap-1.5"
-                title="Cập nhật doanh thu thực tế (Bravo / Excel / Tay)"
+                title={planLocked ? "Kỳ đã khóa — chỉ xem" : "Cập nhật doanh thu thực tế (Bravo / Excel / Tay)"}
               >
                 <Inbox className="h-3.5 w-3.5" />
                 Nhập thực tế
               </Button>
-              <Button size="sm" onClick={() => setImporterOpen(true)} className="h-8 gap-1.5">
+              <Button
+                size="sm"
+                onClick={() => setImporterOpen(true)}
+                disabled={planLocked}
+                className="h-8 gap-1.5"
+              >
                 <Inbox className="h-3.5 w-3.5" />
                 {activeTab === "b2b" ? "Nhập B2B" : "Nhập FC"}
               </Button>
