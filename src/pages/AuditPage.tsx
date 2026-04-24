@@ -280,7 +280,7 @@ export default function AuditPage() {
               preset="filtered-out"
               title="Không có sự kiện nào khớp"
               description="Thử mở rộng khoảng thời gian hoặc xóa bột lọc"
-              primaryAction={{
+              action={{
                 label: "Xóa bộ lọc",
                 onClick: () => {
                   setTypeFilter("all"); setRouteFilter("all"); setUserFilter("all");
