@@ -31,6 +31,7 @@ import DemandPage from "./pages/DemandPage";
 import SopPage from "./pages/SopPage";
 import HubPage from "./pages/HubPage";
 import GapScenarioPage from "./pages/GapScenarioPage";
+import DemoScenariosPage from "./pages/DemoScenariosPage";
 // M2 — /inventory page (đã đổi tên SupplyPage → InventoryPage)
 import InventoryPage from "./pages/InventoryPage";
 import DemandWeeklyPage from "./pages/DemandWeeklyPage";
