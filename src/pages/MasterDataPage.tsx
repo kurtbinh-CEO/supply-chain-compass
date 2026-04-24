@@ -777,6 +777,16 @@ const CONTAINER_FIELDS: FormField[] = [
   { key: "note",          label: "Ghi chú", type: "textarea", placeholder: "Đường dài, fill ≥ 60%...", span: 2 },
 ];
 
+const CONTAINER_IMPORT_FIELDS: ImportField[] = [
+  { key: "code",          label: "Mã loại", required: true, aliases: ["ma", "code"] },
+  { key: "name",          label: "Tên loại", required: true, aliases: ["ten", "name"] },
+  { key: "capacityM2",    label: "Sức chứa (m²)", required: true, type: "number", aliases: ["capacity", "suc_chua"] },
+  { key: "palletLimit",   label: "Số pallet", required: true, type: "number", aliases: ["pallet", "pallet_limit"] },
+  { key: "weightLimitKg", label: "Tải trọng (kg)", required: true, type: "number", aliases: ["tai_trong", "weight"] },
+  { key: "costPerKm",     label: "Cước (VND/km)", required: true, type: "number", aliases: ["cuoc", "cost_per_km"] },
+  { key: "note",          label: "Ghi chú", aliases: ["ghi_chu", "note"] },
+];
+
 function ContainersTab() {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState(false);
