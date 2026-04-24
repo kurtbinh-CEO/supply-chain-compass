@@ -711,9 +711,16 @@ function RowActionButton({
     }
     // pickup / in_transit — has primary advance + cancel
   }
+  const overdue = isOverdue(row);
   return (
     <div className="flex items-center justify-center gap-1">
-      <Button size="sm" onClick={(e) => { e.stopPropagation(); onClick(); }} className="h-7 text-[11px] px-2.5 gap-1">
+      <Button
+        size="sm"
+        variant={overdue ? "destructive" : "default"}
+        onClick={(e) => { e.stopPropagation(); onClick(); }}
+        className="h-7 text-[11px] px-2.5 gap-1"
+        title={overdue ? `Quá SLA ${STAGE_SLA_HOURS[row.stage]}h. Cần xử lý ngay.` : undefined}
+      >
         {cfg?.icon && <cfg.icon className="h-3.5 w-3.5" />}
         {cfg?.label || ACTION_CONFIG_FALLBACK[row.stage]?.label || "Cập nhật"}
       </Button>
