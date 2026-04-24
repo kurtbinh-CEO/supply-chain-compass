@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronUp, AlertTriangle, TrendingDown, TrendingUp, Info } from "lucide-react";
+import { ChevronDown, ChevronUp, AlertTriangle, TrendingDown, TrendingUp, Info, Handshake, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from "recharts";
@@ -287,6 +287,11 @@ export function HubOverviewTab({ scale, totals }: Props) {
                 ),
                 reason: "",
               }}
+              emptyState={{
+                icon: <Handshake />,
+                title: "Chưa có cam kết NM nào",
+                description: "Cam kết tháng sẽ xuất hiện sau khi các NM trả lời đề nghị đặt hàng. Kiểm tra tab \"Đặt hàng NM\" để gửi yêu cầu.",
+              }}
             />
           </div>
         )}
@@ -355,6 +360,11 @@ export function HubOverviewTab({ scale, totals }: Props) {
             columns={changeLogColumns}
             data={changeLog}
             getRowId={(r, i) => `${r.time}-${i}`}
+            emptyState={{
+              icon: <History />,
+              title: "Chưa có thay đổi nào",
+              description: "Mọi điều chỉnh tồn kho Hub (nhập / xuất / điều chuyển) sẽ được ghi nhận tại đây để truy vết audit.",
+            }}
           />
         </div>
       </section>
