@@ -220,35 +220,72 @@ export function PriceListsTab() {
 
         {showVersionCompare && (
           <div className="rounded-card border border-surface-3 bg-surface-2 p-4 space-y-3">
-            <div className="overflow-x-auto">
-              <table className="w-full text-table-sm">
-                <thead className="bg-surface-1/60 border-b border-surface-3">
-                  <tr>
-                    {["SKU", "v2 (Q1)", "v3 (Q2)", "Δ", "%", ""].map((h, i) => (
-                      <th key={i} className="px-3 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {versionDiff.map((d) => {
-                    const tone =
-                      d.deltaPct >= 4 ? "text-warning" :
-                      d.deltaPct > 0 ? "text-success" : "text-text-2";
-                    const icon = d.deltaPct >= 4 ? "🟡" : d.deltaPct > 0 ? "🟢" : "⚪";
+            {(() => {
+              const cmpCols: SmartTableColumn<VersionDiffRow>[] = [
+                {
+                  key: "sku",
+                  label: "SKU",
+                  sortable: true,
+                  accessor: (r) => r.sku,
+                  render: (r) => <span className="font-medium text-text-1">{r.sku}</span>,
+                  priority: "high",
+                },
+                {
+                  key: "p2",
+                  label: "v2 (Q1)",
+                  numeric: true,
+                  sortable: true,
+                  accessor: (r) => r.p2,
+                  render: (r) => <span className="tabular-nums text-text-2">{fmtVnd(r.p2)}</span>,
+                },
+                {
+                  key: "p3",
+                  label: "v3 (Q2)",
+                  numeric: true,
+                  sortable: true,
+                  accessor: (r) => r.p3,
+                  render: (r) => <span className="tabular-nums text-text-1 font-medium">{fmtVnd(r.p3)}</span>,
+                },
+                {
+                  key: "delta",
+                  label: "Δ",
+                  numeric: true,
+                  sortable: true,
+                  accessor: (r) => r.delta,
+                  render: (r) => {
+                    const tone = r.deltaPct >= 4 ? "text-warning" : r.deltaPct > 0 ? "text-success" : "text-text-2";
+                    return <span className={cn("tabular-nums font-medium", tone)}>+{fmtVnd(r.delta)}</span>;
+                  },
+                },
+                {
+                  key: "deltaPct",
+                  label: "%",
+                  numeric: true,
+                  sortable: true,
+                  accessor: (r) => r.deltaPct,
+                  render: (r) => {
+                    const tone = r.deltaPct >= 4 ? "text-warning" : r.deltaPct > 0 ? "text-success" : "text-text-2";
+                    const icon = r.deltaPct >= 4 ? "🟡" : r.deltaPct > 0 ? "🟢" : "⚪";
                     return (
-                      <tr key={d.sku} className="border-b border-surface-3/30">
-                        <td className="px-3 py-2 font-medium text-text-1">{d.sku}</td>
-                        <td className="px-3 py-2 tabular-nums text-text-2">{fmtVnd(d.p2)}</td>
-                        <td className="px-3 py-2 tabular-nums text-text-1 font-medium">{fmtVnd(d.p3)}</td>
-                        <td className={cn("px-3 py-2 tabular-nums font-medium", tone)}>+{fmtVnd(d.delta)}</td>
-                        <td className={cn("px-3 py-2 tabular-nums font-medium", tone)}>+{d.deltaPct.toFixed(1)}%</td>
-                        <td className="px-3 py-2">{icon}</td>
-                      </tr>
+                      <span className={cn("tabular-nums font-medium", tone)}>
+                        +{r.deltaPct.toFixed(1)}% {icon}
+                      </span>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                  },
+                },
+              ];
+              return (
+                <SmartTable<VersionDiffRow>
+                  screenId="master-price-version-compare"
+                  exportFilename="toko-v2-v3-compare"
+                  columns={cmpCols}
+                  data={versionDiff}
+                  getRowId={(r) => r.sku}
+                  rowSeverity={(r) => (r.deltaPct >= 4 ? "watch" : undefined)}
+                  emptyMessage="Không có dữ liệu so sánh."
+                />
+              );
+            })()}
 
             <div className="rounded-button bg-warning-bg/40 border border-warning/30 p-3 flex items-start gap-2">
               <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
