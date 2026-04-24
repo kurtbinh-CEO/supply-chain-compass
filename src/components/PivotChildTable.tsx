@@ -205,6 +205,7 @@ export function PivotChildTable({
         />
       </div>
       <SkuDetailSheet open={skuSheet !== null} onClose={() => setSkuSheet(null)} sku={skuSheet} />
+      <EntityDetailSheet open={entitySheet !== null} onClose={() => setEntitySheet(null)} entity={entitySheet} />
     </>
   );
 }
