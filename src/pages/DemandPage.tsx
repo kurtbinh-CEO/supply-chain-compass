@@ -121,6 +121,7 @@ export default function DemandPage() {
   const { tenant } = useTenant();
   const { cnSummaries, loading: forecastLoading } = useDemandForecasts();
   const { markDone } = useNextStep();
+  const { current: planCycle, isReadOnly: planLocked } = usePlanningPeriod();
   const [importerOpen, setImporterOpen] = useState(false);
   const [actualOpen, setActualOpen] = useState(false);
   const [aopOpen, setAopOpen] = useState(false);
