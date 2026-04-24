@@ -32,6 +32,7 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
 import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
+import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 import { BRANCHES, TRUST_BY_CN, DEMAND_FC } from "@/data/unis-enterprise-dataset";
 import { PhasingDialog } from "@/components/PhasingDialog";
 import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
