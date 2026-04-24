@@ -23,6 +23,21 @@ import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
 import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
+import {
+  BPO_TRACKER, BPO_DEMO_DAY_OF_MONTH, BPO_DEMO_DAYS_IN_MONTH, BPO_EXPECTED_PCT,
+} from "@/lib/bpo-tracker";
+
+/** Extract SKU base code from "GA-300 A4" → "GA-300" */
+function skuBase(sku: string): string {
+  return sku.split(/\s+/)[0];
+}
+
+/** Released qty cho 1 NM + SKU base — tổng từ BPO_TRACKER mock */
+function releasedFor(nmName: string, sku: string): number {
+  const base = skuBase(sku);
+  const match = BPO_TRACKER.find(t => t.nmName === nmName && t.skuBaseCode === base);
+  return match?.releasedQty ?? 0;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    §  Types
