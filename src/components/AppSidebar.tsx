@@ -4,7 +4,7 @@ import {
   Package, CalendarDays, GitBranch,
   Truck, Database, FileBarChart, Settings,
   ChevronLeft, Play, BookOpen, Building, GraduationCap, LayoutDashboard,
-  AlertTriangle, RefreshCw,
+  AlertTriangle, RefreshCw, Crown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/components/SidebarContext";
@@ -50,6 +50,13 @@ const navGroups: NavGroup[] = [
     labelKey: "nav.overview",
     items: [
       { kind: "item", titleKey: "nav.dashboard", icon: LayoutDashboard, url: "/" },
+    ],
+  },
+  {
+    labelKey: "nav.executive",
+    items: [
+      // M16 — Tổng quan lãnh đạo (chỉ SC_MANAGER thấy; Director/CEO khi roles được mở rộng)
+      { kind: "item", titleKey: "nav.executiveItem", icon: Crown, url: "/executive", roles: ["SC_MANAGER"] },
     ],
   },
   {
