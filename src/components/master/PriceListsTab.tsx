@@ -104,6 +104,7 @@ export function PriceListsTab() {
               key: "nm",
               label: "NM",
               sortable: true,
+              width: 200,
               accessor: (r) => nmName(r.nmId),
               render: (r) => <span className="font-medium text-text-1">{nmName(r.nmId)}</span>,
               priority: "high",
@@ -112,6 +113,8 @@ export function PriceListsTab() {
               key: "version",
               label: "Ver.",
               sortable: true,
+              width: 80,
+              align: "center",
               accessor: (r) => r.version,
               render: (r) => <span className="tabular-nums text-text-2">v{r.version}</span>,
             },
@@ -119,6 +122,7 @@ export function PriceListsTab() {
               key: "effectiveDate",
               label: "Hiệu lực từ",
               sortable: true,
+              width: 130,
               accessor: (r) => r.effectiveDate,
               render: (r) => <span className="tabular-nums text-text-2">{r.effectiveDate}</span>,
             },
@@ -126,6 +130,7 @@ export function PriceListsTab() {
               key: "expiryDate",
               label: "Hết hạn",
               sortable: true,
+              width: 170,
               accessor: (r) => r.expiryDate,
               render: (r) => {
                 const days = daysUntil(r.expiryDate);
@@ -142,6 +147,8 @@ export function PriceListsTab() {
               key: "status",
               label: "Trạng thái",
               sortable: true,
+              width: 130,
+              align: "center",
               filter: "enum",
               filterOptions: [
                 { value: "Hiệu lực", label: "🟢 Hiệu lực" },
@@ -161,6 +168,7 @@ export function PriceListsTab() {
             {
               key: "paymentTerms",
               label: "Điều khoản",
+              width: 220,
               accessor: (r) => r.paymentTerms,
               render: (r) => (
                 <span className="text-text-2 max-w-[200px] truncate inline-block" title={r.paymentTerms}>
@@ -173,6 +181,7 @@ export function PriceListsTab() {
               key: "approvedBy",
               label: "Người duyệt",
               sortable: true,
+              width: 140,
               accessor: (r) => r.approvedBy,
               render: (r) => <span className="text-text-2">{r.approvedBy}</span>,
               priority: "low",
@@ -230,8 +239,9 @@ export function PriceListsTab() {
                   key: "sku",
                   label: "SKU",
                   sortable: true,
+                  width: 140,
                   accessor: (r) => r.sku,
-                  render: (r) => <span className="font-medium text-text-1">{r.sku}</span>,
+                  render: (r) => <span className="font-medium text-text-1 font-mono">{r.sku}</span>,
                   priority: "high",
                 },
                 {
@@ -239,6 +249,8 @@ export function PriceListsTab() {
                   label: "v2 (Q1)",
                   numeric: true,
                   sortable: true,
+                  width: 130,
+                  align: "right",
                   accessor: (r) => r.p2,
                   render: (r) => <span className="tabular-nums text-text-2">{fmtVnd(r.p2)}</span>,
                 },
@@ -247,6 +259,8 @@ export function PriceListsTab() {
                   label: "v3 (Q2)",
                   numeric: true,
                   sortable: true,
+                  width: 130,
+                  align: "right",
                   accessor: (r) => r.p3,
                   render: (r) => <span className="tabular-nums text-text-1 font-medium">{fmtVnd(r.p3)}</span>,
                 },
@@ -255,6 +269,8 @@ export function PriceListsTab() {
                   label: "Δ",
                   numeric: true,
                   sortable: true,
+                  width: 120,
+                  align: "right",
                   accessor: (r) => r.delta,
                   render: (r) => {
                     const tone = r.deltaPct >= 4 ? "text-warning" : r.deltaPct > 0 ? "text-success" : "text-text-2";
@@ -266,6 +282,8 @@ export function PriceListsTab() {
                   label: "%",
                   numeric: true,
                   sortable: true,
+                  width: 100,
+                  align: "right",
                   accessor: (r) => r.deltaPct,
                   render: (r) => {
                     const tone = r.deltaPct >= 4 ? "text-warning" : r.deltaPct > 0 ? "text-success" : "text-text-2";
