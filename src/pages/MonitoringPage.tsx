@@ -18,9 +18,11 @@ import { TrustScoreCnPanel } from "@/components/monitoring/TrustScoreCnPanel";
 import { PlannerOverridePanel } from "@/components/monitoring/PlannerOverridePanel";
 import { NmRiskTab } from "@/components/monitoring/NmRiskTab";
 import { RoiFlywheelTab } from "@/components/monitoring/RoiFlywheelTab";
+import { FcAccuracyTab } from "@/components/monitoring/FcAccuracyTab";
 import { TermTooltip } from "@/components/TermTooltip";
 import { SYSTEM_ACCURACY } from "@/data/unis-enterprise-dataset";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
+import { MonitoringHeroCards } from "@/components/monitoring/MonitoringHeroCards";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -343,10 +345,11 @@ function TrendIcon({ trend }: { trend: string }) {
 
 const tabs = [
   { key: "overview", label: "Tổng quan" },
-  { key: "inv", label: "Tồn kho & SS" },
-  { key: "perf", label: "Hiệu suất" },
+  { key: "inv", label: "Tồn kho an toàn" },
+  { key: "perf", label: "Tiến độ đặt hàng" },
   { key: "nm-risk", label: "Rủi ro NM" },
-  { key: "roi", label: "ROI & Bánh đà" },
+  { key: "roi", label: "ROI" },
+  { key: "fc", label: "Dự báo" },
   { key: "activity", label: "Activity Log" },
 ];
 
@@ -394,7 +397,7 @@ export default function MonitoringPage() {
 
   return (
     <AppLayout>
-      <ScreenHeader title="Monitoring" subtitle="Giám sát chuỗi cung ứng" />
+      <ScreenHeader title="Giám sát" subtitle="Sức khoẻ chuỗi cung ứng — KPI & cảnh báo" />
 
       {/* SS Batch Banner */}
       {ssBatch.batch && (
@@ -409,8 +412,14 @@ export default function MonitoringPage() {
         </div>
       )}
 
-      {/* Tab bar */}
-      <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
+      {/* M15 — 5 hero KPI cards (always visible above tabs) */}
+      <MonitoringHeroCards onTabChange={(k) => { setActiveTab(k); setDrillCn(null); }} />
+
+      {/* Tab bar — section "Chi tiết" */}
+      <div className="px-1 mb-2 text-caption uppercase tracking-wide text-text-3 font-semibold">
+        Chi tiết
+      </div>
+      <div className="flex items-center gap-0 border-b border-surface-3 mb-6 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -935,6 +944,9 @@ export default function MonitoringPage() {
 
       {/* ═══ TAB: ROI & Flywheel ═══ */}
       {activeTab === "roi" && <RoiFlywheelTab />}
+
+      {/* ═══ TAB: Dự báo (FC accuracy) ═══ */}
+      {activeTab === "fc" && <FcAccuracyTab />}
 
       {/* ═══ TAB: Activity Log ═══ */}
       {activeTab === "activity" && <ActivityLogTab />}
