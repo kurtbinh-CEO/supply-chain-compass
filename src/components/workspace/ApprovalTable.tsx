@@ -15,6 +15,23 @@ const rejectReasons = [
   "Lý do khác",
 ];
 
+/** Map raw English approval types to Vietnamese labels (M14). */
+const approvalTypeLabel: Record<string, string> = {
+  "S&OP": "S&OP",
+  "CN Adjust": "CN điều chỉnh",
+  "PO Release": "Phát hành PO",
+  "Force-release": "Phát hành khẩn",
+  "SS Change": "Thay đổi tồn kho an toàn",
+  "TO Source": "Nguồn TO",
+  "Nguồn TO": "Nguồn TO",
+  "CN điều chỉnh": "CN điều chỉnh",
+  "Phát hành PO": "Phát hành PO",
+  "Phát hành khẩn": "Phát hành khẩn",
+  "Thay đổi tồn kho an toàn": "Thay đổi tồn kho an toàn",
+};
+
+const localizeType = (raw: string) => approvalTypeLabel[raw] ?? raw;
+
 export function ApprovalTable() {
   const { approvals, pendingCount, removeApproval } = useWorkspace();
   const [approveId, setApproveId] = useState<string | null>(null);
