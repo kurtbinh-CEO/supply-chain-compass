@@ -824,6 +824,12 @@ function TransportActionCell({ row, onAssignCarrier, onShipNow, onWaitMore }: {
 /* ═══════════════════════════════════════════════════════════════════════════
    §  TAB 3 — Theo dõi
    ═══════════════════════════════════════════════════════════════════════════ */
+type TrackingRowT = {
+  id: string; kind: PoKind; route: string; carrier: string | null;
+  driver: string | null; phone: string | null; vehicle: string | null;
+  eta: string; status: string; orderDate: string;
+};
+
 function TrackingTab({ orders, effective, effectiveTo, carrierAssign, scale }: {
   orders: PurchaseOrderRow[];
   effective: (po: PurchaseOrderRow) => string;
