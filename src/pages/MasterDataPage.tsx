@@ -160,7 +160,12 @@ function ItemsTab() {
         search={search}
         onSearchChange={setSearch}
         onAdd={() => setAdding(true)}
-        onImport={(src) => toast.success(`Nhập mã hàng từ ${src} (demo)`)}
+        excelImport={{
+          entityName: "mã hàng",
+          fields: ITEM_IMPORT_FIELDS,
+          onCommit: (rows) => toast.success(`Demo: nhận ${rows.length} mã hàng (chưa persist)`),
+        }}
+        onImport={(src) => toast.success(`Nhập mã hàng qua ${src} (demo)`)}
         onExport={() =>
           exportToCsv(
             "ma_hang",
