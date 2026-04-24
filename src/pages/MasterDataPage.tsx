@@ -767,7 +767,7 @@ function BranchesTab() {
                   <td className="px-4 py-2.5 text-text-2">{sl}</td>
                   <td className="px-4 py-2.5 text-text-2">{b.manager}</td>
                   <td className="px-4 py-2.5">
-                    <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} />
+                    <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} onHistory={() => setHistoryCode(b.code)} />
                   </td>
                 </tr>
               );
