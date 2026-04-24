@@ -68,6 +68,16 @@ export default function OrdersPage() {
   const [kindFilter, setKindFilter] = useState<"all" | "RPO" | "TO">("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
+  // Read URL params on mount: ?filter=TO|RPO sets KindToggle, defaults filter pill to "all"
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const f = searchParams.get("filter");
+    if (f === "TO" || f === "RPO") {
+      setKindFilter(f);
+      setFilter("all");
+    }
+  }, [searchParams]);
+
   // Dialog state — only one dialog open at a time
   const [actionRow, setActionRow] = useState<PoLifecycleRow | null>(null);
   const [cancelRow, setCancelRow] = useState<PoLifecycleRow | null>(null);
