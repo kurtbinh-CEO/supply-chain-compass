@@ -112,6 +112,7 @@ const navGroups: NavGroup[] = [
     items: [
       { kind: "item", titleKey: "nav.logicOps", icon: BookOpen, url: "/logic" },
       { kind: "item", titleKey: "nav.guide", icon: GraduationCap, url: "/guide" },
+      { kind: "item", titleKey: "nav.scenarios", icon: FlaskConical, url: "/scenarios" },
     ],
   },
 ];
