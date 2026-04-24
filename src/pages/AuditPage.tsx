@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { ScreenHeader } from "@/components/ScreenShell";
+import { AppLayout } from "@/components/AppLayout";
 import { useActivityLog, LogEntry, LogEventType } from "@/components/ActivityLogContext";
 import { Search, Filter, Calendar, User2, MapPin, Download, Clock, GitBranch, Database, Shield, Cpu, FileText, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -137,7 +138,7 @@ export default function AuditPage() {
   };
 
   return (
-    <main className="p-6 max-w-[1400px] mx-auto">
+    <AppLayout>
       <ScreenHeader
         title="Audit Trail"
         subtitle="Lịch sử thao tác toàn hệ thống — ai đã làm gì, khi nào, ở đâu"
