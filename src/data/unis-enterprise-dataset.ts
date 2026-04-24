@@ -937,6 +937,9 @@ export const CONFIG_KEYS: ConfigKey[] = [
   { key: "drp.batch.unresolved_block",   group: "DRP", defaultValue: true, description: "Chặn Release nếu còn unresolved" },
   { key: "lcnb.suggest.cooldown_h",      group: "LCNB", defaultValue: 6, unit: "hour", description: "Cooldown đề xuất LCNB lặp lại" },
   { key: "feedback.honoring.target",     group: "Feedback", defaultValue: 90, unit: "%", description: "Honoring NM mục tiêu" },
+  // Scenario engine config (M9)
+  { key: "scenario.negotiation_cost_per_m2", group: "Scenario", defaultValue: 9500, unit: "₫/m²", description: "Chi phí thương lượng / m² (kịch bản C)" },
+  { key: "scenario.hybrid_split_pct",        group: "Scenario", defaultValue: 50,   unit: "%",     description: "Tỷ lệ chia kịch bản hybrid D (% × A + % × C)" },
 ];
 
 /* ────────────────────────────────────────────────────────────────────────── */
