@@ -763,8 +763,10 @@ export function CommitmentTab({ scale, onTotalsChange }: {
 /* ═══════════════════════════════════════════════════════════════════════════
    §  Row component
    ═══════════════════════════════════════════════════════════════════════════ */
-function CommitmentRow({ row, onUpdate, onOpenEvidence, onConfirm }: {
+function CommitmentRow({ row, preset, highlight, onUpdate, onOpenEvidence, onConfirm }: {
   row: CommitRow;
+  preset: "simple" | "full";
+  highlight?: boolean;
   onUpdate: (patch: Partial<CommitRow>) => void;
   onOpenEvidence: () => void;
   onConfirm: () => void;
@@ -777,14 +779,22 @@ function CommitmentRow({ row, onUpdate, onOpenEvidence, onConfirm }: {
   const releasePct = row.committed > 0 ? Math.round((released / row.committed) * 100) : 0;
   const expectedPct = Math.round(BPO_EXPECTED_PCT);
   const lateRelease = row.committed > 0 && releasePct < expectedPct && remaining > 0;
+  const full = preset === "full";
 
   return (
-    <tr className={cn("border-b border-surface-3 transition-colors",
-      row.locked ? "bg-success-bg/20" : "hover:bg-surface-1/40"
-    )}>
+    <tr
+      id={`commit-row-${row.id}`}
+      className={cn(
+        "border-b border-surface-3 transition-colors scroll-mt-32",
+        row.locked ? "bg-success-bg/20" : "hover:bg-surface-1/40",
+        highlight && "ring-2 ring-primary ring-inset bg-primary/10 animate-pulse",
+      )}
+    >
       <td className="px-3 py-2 text-table-sm text-text-1 font-medium">{row.nmName}</td>
       <td className="px-3 py-2 text-table-sm text-text-2 font-mono">{row.sku}</td>
-      <td className="px-3 py-2 text-right text-table-sm text-text-2 tabular-nums">{row.fcSent.toLocaleString()}</td>
+      {full && (
+        <td className="px-3 py-2 text-right text-table-sm text-text-2 tabular-nums">{row.fcSent.toLocaleString()}</td>
+      )}
 
       {/* COMMITTED INPUT */}
       <td className="px-3 py-2 text-right">
@@ -804,59 +814,69 @@ function CommitmentRow({ row, onUpdate, onOpenEvidence, onConfirm }: {
       </td>
 
       {/* DELTA */}
-      <td className="px-3 py-2 text-right text-table-sm tabular-nums">
-        {row.committed > 0 ? (
-          <span className={cn("font-medium",
-            delta >= 0 ? "text-success" : "text-danger"
-          )}>
-            {delta > 0 ? "+" : ""}{delta.toLocaleString()}
-            <span className="text-caption text-text-3 ml-0.5">({deltaPct >= 0 ? "+" : ""}{deltaPct.toFixed(0)}%)</span>
-          </span>
-        ) : <span className="text-text-3">—</span>}
-      </td>
+      {full && (
+        <td className="px-3 py-2 text-right text-table-sm tabular-nums">
+          {row.committed > 0 ? (
+            <span className={cn("font-medium",
+              delta >= 0 ? "text-success" : "text-danger"
+            )}>
+              {delta > 0 ? "+" : ""}{delta.toLocaleString()}
+              <span className="text-caption text-text-3 ml-0.5">({deltaPct >= 0 ? "+" : ""}{deltaPct.toFixed(0)}%)</span>
+            </span>
+          ) : <span className="text-text-3">—</span>}
+        </td>
+      )}
 
       {/* ĐÃ RELEASE */}
-      <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
-        {released > 0 ? (
-          <span className="font-medium text-text-1">{released.toLocaleString()}</span>
-        ) : <span className="text-text-3">—</span>}
-      </td>
+      {full && (
+        <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
+          {released > 0 ? (
+            <span className="font-medium text-text-1">{released.toLocaleString()}</span>
+          ) : <span className="text-text-3">—</span>}
+        </td>
+      )}
 
       {/* CÒN LẠI */}
-      <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
-        {row.committed > 0 ? (
-          remaining > 0 ? (
-            <span className={cn("font-medium", lateRelease ? "text-danger" : "text-warning")}>
-              {remaining.toLocaleString()}
-            </span>
-          ) : <span className="text-success font-medium">0</span>
-        ) : <span className="text-text-3">—</span>}
-      </td>
+      {full && (
+        <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
+          {row.committed > 0 ? (
+            remaining > 0 ? (
+              <span className={cn("font-medium", lateRelease ? "text-danger" : "text-warning")}>
+                {remaining.toLocaleString()}
+              </span>
+            ) : <span className="text-success font-medium">0</span>
+          ) : <span className="text-text-3">—</span>}
+        </td>
+      )}
 
       {/* % RELEASE */}
-      <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
-        {row.committed > 0 && released > 0 ? (
-          <span
-            title={lateRelease ? `Cần release nhanh — kỳ vọng ≥ ${expectedPct}% tại ngày ${BPO_DEMO_DAY_OF_MONTH}/${BPO_DEMO_DAYS_IN_MONTH}` : undefined}
-            className={cn(
-              "inline-flex items-center gap-1 font-semibold",
-              lateRelease ? "text-danger" :
-              releasePct >= expectedPct ? "text-success" : "text-warning",
-            )}
-          >
-            {releasePct}%
-            {lateRelease && <span title="Cần release nhanh">🔴</span>}
-          </span>
-        ) : <span className="text-text-3">—</span>}
-      </td>
+      {full && (
+        <td className="px-3 py-2 text-right text-table-sm tabular-nums bg-info-bg/10">
+          {row.committed > 0 && released > 0 ? (
+            <span
+              title={lateRelease ? `Cần release nhanh — kỳ vọng ≥ ${expectedPct}% tại ngày ${BPO_DEMO_DAY_OF_MONTH}/${BPO_DEMO_DAYS_IN_MONTH}` : undefined}
+              className={cn(
+                "inline-flex items-center gap-1 font-semibold",
+                lateRelease ? "text-danger" :
+                releasePct >= expectedPct ? "text-success" : "text-warning",
+              )}
+            >
+              {releasePct}%
+              {lateRelease && <span title="Cần release nhanh">🔴</span>}
+            </span>
+          ) : <span className="text-text-3">—</span>}
+        </td>
+      )}
 
       {/* TIER */}
-      <td className="px-3 py-2">
-        <span title={tierMeta.tol}
-          className={cn("inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold tracking-wide", tierMeta.cls)}>
-          {tierMeta.label}
-        </span>
-      </td>
+      {full && (
+        <td className="px-3 py-2">
+          <span title={tierMeta.tol}
+            className={cn("inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold tracking-wide", tierMeta.cls)}>
+            {tierMeta.label}
+          </span>
+        </td>
+      )}
 
       {/* CONTACT METHOD */}
       <td className="px-3 py-2 hidden md:table-cell">
