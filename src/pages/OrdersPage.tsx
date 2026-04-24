@@ -14,8 +14,7 @@
  * dialog here to log the transition. SLA-based reminders surface as row
  * tone + summary banner; nothing fires automatically.
  */
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useMemo, useState } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
 import { useNavigate } from "react-router-dom";
@@ -67,16 +66,6 @@ export default function OrdersPage() {
   const [filter, setFilter] = useState<FilterKey>("todo");
   const [kindFilter, setKindFilter] = useState<"all" | "RPO" | "TO">("all");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-
-  // Read URL params on mount: ?filter=TO|RPO sets KindToggle, defaults filter pill to "all"
-  const [searchParams] = useSearchParams();
-  useEffect(() => {
-    const f = searchParams.get("filter");
-    if (f === "TO" || f === "RPO") {
-      setKindFilter(f);
-      setFilter("all");
-    }
-  }, [searchParams]);
 
   // Dialog state — only one dialog open at a time
   const [actionRow, setActionRow] = useState<PoLifecycleRow | null>(null);

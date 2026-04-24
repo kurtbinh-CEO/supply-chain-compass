@@ -947,19 +947,31 @@ export default function DrpPage() {
                           {cnTotals.onHand > 0 && <span className="tabular-nums">Tồn <span className="text-text-1 font-medium">{cnTotals.onHand.toLocaleString()}</span></span>}
                           {cnTotals.pipeline > 0 && <span className="tabular-nums"><span className="text-text-3 mx-1">·</span>Về <span className="text-text-1 font-medium">{cnTotals.pipeline.toLocaleString()}</span></span>}
                           {cnTotals.hubPo > 0 && <span className="tabular-nums"><span className="text-text-3 mx-1">·</span>NM <span className="text-text-1 font-medium">{cnTotals.hubPo.toLocaleString()}</span></span>}
-                          {cnTotals.lcnb > 0 && (
-                            <>
-                              <span className="text-text-3 mx-1">·</span>
-                              <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); navigate("/orders?tab=approval&filter=TO"); }}
-                                className="inline-flex items-center gap-0.5 rounded-full bg-warning-bg text-warning border border-warning/30 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums hover:bg-warning hover:text-warning-foreground transition-colors"
-                                title="Mở Đơn hàng → Duyệt TO (LCNB)"
-                              >
-                                TO {cnTotals.lcnb.toLocaleString()}
-                              </button>
-                            </>
-                          )}
+                          {cnTotals.lcnb > 0 && (() => {
+                            // Match TO whose destination is this CN (r.cn like "CN-NA" or "NA")
+                            const cnKey = r.cn.replace(/^CN-/, "");
+                            const toRowsLcnb = [
+                              { code: "TO-HCM-BD-W20-001", from: "HCM", to: "BD" },
+                              { code: "TO-QN-NA-W20-001",  from: "QN",  to: "NA" },
+                              { code: "TO-HN-NA-W20-002",  from: "HN",  to: "NA" },
+                              { code: "TO-DN-CT-W20-001",  from: "DN",  to: "CT" },
+                            ];
+                            const match = toRowsLcnb.find((t) => t.to === cnKey);
+                            const fromLabel = match ? `TO-${match.from}` : "TO";
+                            return (
+                              <>
+                                <span className="text-text-3 mx-1">·</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); navigate("/orders?tab=approval&filter=TO"); }}
+                                  title={match ? `${match.code}: CN-${match.from} → CN-${match.to} · Nháp · click để duyệt` : "Chuyển ngang LCNB · click để duyệt TO"}
+                                  className="inline-flex items-center gap-0.5 rounded-full border border-warning/30 bg-warning-bg px-1.5 py-0.5 text-[11px] font-semibold text-warning tabular-nums hover:bg-warning hover:text-warning-foreground transition-colors"
+                                >
+                                  {fromLabel} {cnTotals.lcnb.toLocaleString()}
+                                </button>
+                              </>
+                            );
+                          })()}
                           {r.gap > 0 && (
                             <span className="ml-2 inline-flex items-center gap-0.5 rounded-full border border-danger/30 bg-danger-bg px-1.5 py-0.5 text-[11px] font-semibold text-danger tabular-nums align-middle">
                               ⚠️ {r.gap.toLocaleString()}
@@ -1076,112 +1088,6 @@ export default function DrpPage() {
               })}
             </tbody>
           </table>
-        </div>
-      </div>
-
-      {/* ═══ DRP SUMMARY — kết quả tóm tắt cuối page ═══ */}
-      <div className="mt-6 rounded-card border border-surface-3 bg-surface-1 overflow-hidden">
-        <div className="px-4 py-3 border-b border-surface-3 bg-gradient-to-r from-primary/5 to-transparent flex items-center justify-between">
-          <div>
-            <h2 className="text-h3 font-display font-semibold text-text-1">Tóm tắt DRP — Tuần 20</h2>
-            <p className="text-caption text-text-3 mt-0.5">Trong kỳ KH {planCycle.label} · {data.length} CN xử lý</p>
-          </div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-success-bg text-success border border-success/30 px-2.5 py-1 text-caption font-medium">
-            <CheckCircle2 className="h-3 w-3" /> DRP batch active
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-surface-3">
-          {/* PHÂN BỔ */}
-          <div className="bg-surface-1 p-4">
-            <div className="text-caption text-text-3 uppercase tracking-wide font-medium mb-3">Phân bổ</div>
-            <dl className="space-y-2 text-table-sm">
-              <div className="flex items-center justify-between">
-                <dt className="text-text-2">Nhu cầu gộp</dt>
-                <dd className="tabular-nums font-semibold text-text-1">{(31632 * s | 0).toLocaleString()} m²</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-text-2">Nhu cầu ròng (sau tồn)</dt>
-                <dd className="tabular-nums font-semibold text-text-1">{(27875 * s | 0).toLocaleString()} m²</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-text-2">LCNB cover</dt>
-                <dd className="tabular-nums font-medium text-warning">{(555 * s | 0).toLocaleString()} m²</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-text-2">Hub cover</dt>
-                <dd className="tabular-nums font-medium text-info">{(780 * s | 0).toLocaleString()} m²</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-text-2">NM ATP</dt>
-                <dd className="tabular-nums font-medium text-success">4/5 PASS</dd>
-              </div>
-            </dl>
-          </div>
-
-          {/* KẾT QUẢ */}
-          <div className="bg-surface-1 p-4">
-            <div className="text-caption text-text-3 uppercase tracking-wide font-medium mb-3">Kết quả</div>
-            <dl className="space-y-2 text-table-sm">
-              <div className="flex items-center justify-between">
-                <dt className="text-text-2">PO nháp tạo</dt>
-                <dd>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/orders?tab=approval&filter=RPO")}
-                    className="inline-flex items-center gap-1 rounded-full bg-success-bg text-success border border-success/30 px-2 py-0.5 tabular-nums font-semibold hover:bg-success hover:text-success-foreground transition-colors"
-                    title="Mở Đơn hàng → Duyệt PO"
-                  >5 PO <ArrowRight className="h-3 w-3" /></button>
-                </dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-text-2">TO nháp tạo (LCNB)</dt>
-                <dd>
-                  <button
-                    type="button"
-                    onClick={() => navigate("/orders?tab=approval&filter=TO")}
-                    className="inline-flex items-center gap-1 rounded-full bg-warning-bg text-warning border border-warning/30 px-2 py-0.5 tabular-nums font-semibold hover:bg-warning hover:text-warning-foreground transition-colors"
-                    title="Mở Đơn hàng → Duyệt TO"
-                  >4 TO <ArrowRight className="h-3 w-3" /></button>
-                </dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-text-2">Tổng container</dt>
-                <dd className="tabular-nums font-semibold text-text-1">8</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-text-2">Cước ước tính</dt>
-                <dd className="tabular-nums font-semibold text-text-1">128 triệu ₫</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-text-2">Exception</dt>
-                <dd className="tabular-nums font-semibold text-danger">{counts.short} CN cần xử lý</dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-
-        {/* Actions footer */}
-        <div className="px-4 py-3 border-t border-surface-3 bg-surface-2/40 flex items-center justify-between flex-wrap gap-2">
-          <span className="text-caption text-text-3">
-            Cập nhật lúc 23:02 đêm qua · Batch DRP-W20
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => toast.success("Đã xuất báo cáo DRP — drp-w20-summary.xlsx")}
-              className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-1 px-3 py-1.5 text-caption font-medium text-text-2 hover:text-text-1 hover:bg-surface-2 transition-colors"
-            >
-              📋 Xuất báo cáo DRP
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/orders?tab=approval")}
-              className="inline-flex items-center gap-1.5 rounded-button bg-gradient-primary text-primary-foreground px-3 py-1.5 text-caption font-semibold hover:opacity-90 transition-opacity"
-            >
-              🔗 Mở Đơn hàng → Duyệt PO/TO <ArrowRight className="h-3 w-3" />
-            </button>
-          </div>
         </div>
       </div>
 

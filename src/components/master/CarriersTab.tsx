@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Phone, Plus, Search, Upload, Pencil } from "lucide-react";
+import { ChevronDown, ChevronRight, Phone, Upload, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   CARRIERS,
@@ -8,6 +8,14 @@ import {
   type Carrier,
   type RateVehicleKind,
 } from "@/data/unis-enterprise-dataset";
+import {
+  CrudToolbar,
+  RowActions,
+  EntityFormDialog,
+  DeleteConfirmDialog,
+  exportToCsv,
+  type FormField,
+} from "./CrudPrimitives";
 
 const VEHICLE_ORDER: RateVehicleKind[] = ["truck_10t", "truck_15t", "20ft", "40ft"];
 
@@ -18,13 +26,36 @@ function statusOf(c: Carrier) {
   return c.status ?? (c.available ? "Hoạt động" : "Tạm ngưng");
 }
 
+const CARRIER_FIELDS: FormField[] = [
+  { key: "code",        label: "Mã NVT",        type: "text",     required: true,  mono: true,  span: 1, readOnlyOnEdit: true, placeholder: "CR-XXX" },
+  { key: "name",        label: "Tên nhà xe",    type: "text",     required: true,  span: 1, placeholder: "VD: Vinatrans" },
+  { key: "type",        label: "Loại",          type: "select",   required: true,  span: 1,
+    options: [
+      { value: "Đối tác", label: "Đối tác" },
+      { value: "Nội bộ",  label: "Nội bộ" },
+      { value: "Spot",    label: "Spot" },
+    ] },
+  { key: "region",      label: "Vùng phục vụ",  type: "text",     required: true,  span: 1, hint: "Phân cách bằng dấu phẩy. VD: Bắc, Trung", placeholder: "Bắc, Trung, Nam" },
+  { key: "contactName", label: "Người liên hệ", type: "text",     span: 1, placeholder: "Nguyễn Văn A" },
+  { key: "phone",       label: "Điện thoại",    type: "text",     required: true, span: 1, placeholder: "0901234567" },
+  { key: "slaOnTimePct",label: "SLA đúng hẹn (%)", type: "number", required: true, span: 1, hint: "0-100" },
+  { key: "note",        label: "Ghi chú",       type: "textarea", span: 2 },
+];
+
 export function CarriersTab() {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
+  // Local working copy of carriers (CRUD persists in-session — matches dataset-only entities)
+  const [carriers, setCarriers] = useState<Carrier[]>(() => [...CARRIERS]);
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState<"create" | "edit">("create");
+  const [editing, setEditing] = useState<Carrier | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Carrier | null>(null);
 
   const rows = useMemo(() => {
     const q = search.toLowerCase().trim();
-    return CARRIERS.filter((c) => {
+    return carriers.filter((c) => {
       if (!q) return true;
       return (
         c.name.toLowerCase().includes(q) ||
@@ -33,34 +64,107 @@ export function CarriersTab() {
         (c.contactName ?? "").toLowerCase().includes(q)
       );
     });
-  }, [search]);
+  }, [search, carriers]);
+
+  const handleAdd = () => {
+    setFormMode("create");
+    setEditing(null);
+    setFormOpen(true);
+  };
+
+  const handleEdit = (c: Carrier) => {
+    setFormMode("edit");
+    setEditing(c);
+    setFormOpen(true);
+  };
+
+  const handleSave = (values: Record<string, string>) => {
+    const region = values.region.split(",").map((s) => s.trim()).filter(Boolean);
+    const sla = Number(values.slaOnTimePct) || 0;
+
+    if (formMode === "create") {
+      const exists = carriers.some((c) => (c.code ?? c.id) === values.code);
+      if (exists) {
+        toast.error(`Mã NVT ${values.code} đã tồn tại`);
+        return;
+      }
+      const next: Carrier = {
+        id: values.code,
+        code: values.code,
+        name: values.name,
+        type: values.type as Carrier["type"],
+        region,
+        contactName: values.contactName,
+        phone: values.phone,
+        rate20ft: 0,
+        rate40ft: 0,
+        slaOnTimePct: sla,
+        available: true,
+        status: "Hoạt động",
+        note: values.note || "",
+      };
+      setCarriers((prev) => [next, ...prev]);
+      toast.success(`Đã thêm nhà xe ${values.name}`);
+    } else if (editing) {
+      setCarriers((prev) =>
+        prev.map((c) =>
+          c.id === editing.id
+            ? {
+                ...c,
+                name: values.name,
+                type: values.type as Carrier["type"],
+                region,
+                contactName: values.contactName,
+                phone: values.phone,
+                slaOnTimePct: sla,
+                note: values.note || "",
+              }
+            : c,
+        ),
+      );
+      toast.success(`Đã cập nhật ${values.name}`);
+    }
+    setFormOpen(false);
+  };
+
+  const handleDelete = () => {
+    if (!deleteTarget) return;
+    setCarriers((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+    toast.success(`Đã xóa ${deleteTarget.name}`);
+    setDeleteTarget(null);
+  };
+
+  const handleExport = () => {
+    exportToCsv(
+      "carriers.csv",
+      rows.map((c) => ({
+        code: c.code ?? c.id,
+        name: c.name,
+        type: c.type,
+        region: c.region.join(", "),
+        contactName: c.contactName ?? "",
+        phone: c.phone,
+        slaOnTimePct: c.slaOnTimePct,
+        status: statusOf(c),
+        note: c.note ?? "",
+      })),
+    );
+    toast.success(`Đã xuất ${rows.length} nhà xe`);
+  };
 
   return (
     <div className="space-y-3">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-3" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm nhà xe, mã NVT, vùng, người liên hệ..."
-            className="w-full h-9 pl-9 pr-3 rounded-button border border-surface-3 bg-surface-0 text-table text-text-1 placeholder:text-text-3"
-          />
-        </div>
-        <button
-          onClick={() => toast("Thêm nhà xe (demo)")}
-          className="h-9 px-3 rounded-button bg-gradient-primary text-primary-foreground text-table-sm font-medium flex items-center gap-1.5 hover:opacity-90 transition-opacity"
-        >
-          <Plus className="h-3.5 w-3.5" /> Thêm nhà xe
-        </button>
-        <button
-          onClick={() => toast("Upload bảng nhà xe (demo)")}
-          className="h-9 px-3 rounded-button border border-surface-3 bg-surface-2 text-text-2 text-table-sm font-medium flex items-center gap-1.5 hover:bg-surface-1 transition-colors"
-        >
-          <Upload className="h-3.5 w-3.5" /> Nhập Excel
-        </button>
-      </div>
+      <CrudToolbar
+        search={search}
+        onSearchChange={setSearch}
+        onAdd={handleAdd}
+        onImport={(src) => toast.message(`Nhập từ ${src} — sắp có`)}
+        onExport={handleExport}
+        addLabel="Thêm nhà xe"
+        importTitle="Nhập danh sách nhà xe"
+        importDescription="Chọn nguồn nhập dữ liệu hàng loạt cho nhà xe"
+        placeholder="Tìm nhà xe, mã NVT, vùng, người liên hệ..."
+      />
 
       {/* Table */}
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
@@ -77,9 +181,10 @@ export function CarriersTab() {
                 "SLA đúng hẹn",
                 "Trạng thái",
                 "Ghi chú",
-              ].map((h) => (
+                "",
+              ].map((h, i) => (
                 <th
-                  key={h}
+                  key={`${h}-${i}`}
                   className="text-left px-3 py-2.5 text-table-header uppercase text-text-3 font-medium"
                 >
                   {h}
@@ -102,7 +207,7 @@ export function CarriersTab() {
                     key={c.id}
                     className={`${
                       i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"
-                    } hover:bg-surface-3 cursor-pointer transition-colors`}
+                    } hover:bg-surface-3 cursor-pointer transition-colors group`}
                     onClick={() => setExpanded(isOpen ? null : c.id)}
                   >
                     <td className="px-2 py-2.5 text-text-3">
@@ -170,11 +275,17 @@ export function CarriersTab() {
                     <td className="px-3 py-2.5 text-text-3 max-w-[260px] truncate">
                       {c.note}
                     </td>
+                    <td className="px-2 py-2.5 w-[88px]">
+                      <RowActions
+                        onEdit={() => handleEdit(c)}
+                        onDelete={() => setDeleteTarget(c)}
+                      />
+                    </td>
                   </tr>
 
                   {isOpen && (
                     <tr className="bg-surface-1/60">
-                      <td colSpan={9} className="px-6 py-5 border-t border-surface-3">
+                      <td colSpan={10} className="px-6 py-5 border-t border-surface-3">
                         <CarrierRateDetails
                           carrier={c}
                           routes={routes}
@@ -188,7 +299,7 @@ export function CarriersTab() {
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-text-3 text-table">
+                <td colSpan={10} className="px-4 py-8 text-center text-text-3 text-table">
                   Không tìm thấy nhà xe.
                 </td>
               </tr>
@@ -198,8 +309,39 @@ export function CarriersTab() {
       </div>
 
       <p className="text-table-sm text-text-3">
-        {rows.length} / {CARRIERS.length} nhà xe
+        {rows.length} / {carriers.length} nhà xe
       </p>
+
+      <EntityFormDialog
+        open={formOpen}
+        mode={formMode}
+        entityName="nhà xe"
+        fields={CARRIER_FIELDS}
+        initialValues={
+          editing
+            ? {
+                code: editing.code ?? editing.id,
+                name: editing.name,
+                type: editing.type,
+                region: editing.region.join(", "),
+                contactName: editing.contactName ?? "",
+                phone: editing.phone,
+                slaOnTimePct: editing.slaOnTimePct,
+                note: editing.note ?? "",
+              }
+            : {}
+        }
+        onClose={() => setFormOpen(false)}
+        onSave={handleSave}
+      />
+
+      <DeleteConfirmDialog
+        open={!!deleteTarget}
+        entityLabel={deleteTarget ? `nhà xe ${deleteTarget.name}` : ""}
+        description="Hành động không thể hoàn tác. Cước/tuyến liên kết sẽ mất tham chiếu."
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }
@@ -256,12 +398,6 @@ function CarrierRateDetails({
             className="h-8 px-3 rounded-button border border-surface-3 bg-surface-2 text-text-2 text-table-sm font-medium flex items-center gap-1.5 hover:bg-surface-1 transition-colors"
           >
             <Upload className="h-3.5 w-3.5" /> Upload Excel
-          </button>
-          <button
-            onClick={() => toast("Tạo bảng cước mới (demo)")}
-            className="h-8 px-3 rounded-button bg-gradient-primary text-primary-foreground text-table-sm font-medium flex items-center gap-1.5 hover:opacity-90 transition-opacity"
-          >
-            <Plus className="h-3.5 w-3.5" /> Bảng cước mới
           </button>
         </div>
       </div>
