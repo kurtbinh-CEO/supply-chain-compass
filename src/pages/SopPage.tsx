@@ -134,10 +134,45 @@ export default function SopPage() {
   const [showPreLock, setShowPreLock] = useState(false);
 
   // Mark "S&OP locked" → trigger banner pointing to /supply.
+  // G5 — Lock trigger chain: Booking v1 + NM commitment notification + advance step
   const lockAndMark = useCallback(() => {
     setLocked(true);
     markDone("sop.locked");
-  }, [markDone]);
+
+    // 1) Toast: lock success
+    import("sonner").then(m => {
+      m.toast.success("✅ S&OP T5/2026 đã được khóa", {
+        description: `${consensusData.length} CN · v3 = ${totalV3.toLocaleString("vi-VN")} m². Chuyển sang giai đoạn cam kết NM.`,
+        duration: 5000,
+      });
+
+      // 2) Tạo Booking T5 v1 (mock)
+      const totalBooking = Math.round(totalV3 * 0.78); // ròng = v3 - hub - pipeline
+      const nmCount = 5;
+      setTimeout(() => {
+        m.toast.info(`📦 Đã tạo Booking T5 v1: ${totalBooking.toLocaleString("vi-VN")} m² từ ${nmCount} NM`, {
+          description: "Net Booking = FC 3M − Hub − Pipeline đã sẵn sàng tại Hub & Cam kết",
+          duration: 6000,
+          action: {
+            label: "Mở Hub →",
+            onClick: () => { window.location.href = "/hub?tab=booking"; },
+          },
+        });
+      }, 800);
+
+      // 3) Notification: NM cần cam kết
+      setTimeout(() => {
+        m.toast.warning(`🔔 ${nmCount} NM cần cam kết Net Booking`, {
+          description: "Mikado, Tân Việt, Hà Anh, Phương Nam, An Lộc — pre-fill qty per SKU",
+          duration: 8000,
+          action: {
+            label: "Mở Cam kết NM →",
+            onClick: () => { window.location.href = "/hub?tab=commit"; },
+          },
+        });
+      }, 1600);
+    });
+  }, [markDone, consensusData.length, totalV3]);
 
   // Mock current S&OP day-of-cycle (Day 5/30 — Cân đối phase)
   const [currentDay] = useState(5);
