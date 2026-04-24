@@ -65,8 +65,21 @@ const models: ModelRow[] = [
 
 export function FcAccuracyTab() {
   const [showSwitchModal, setShowSwitchModal] = useState(false);
+  const [actualOpen, setActualOpen] = useState(false);
   const { weeklyData } = useFcAccuracy();
   const mapeData = weeklyData.length > 0 ? weeklyData : fallbackMapeData;
+
+  const handleActualSelect = (key: string) => {
+    setActualOpen(false);
+    const labels: Record<string, string> = {
+      api_sync: "Tích hợp Bravo (sắp có)",
+      excel_upload: "Upload Excel thực tế — mở wizard",
+      manual_input: "Nhập thực tế tay",
+    };
+    toast.success(labels[key] ?? key, {
+      description: "MAPE và FC vs Actual sẽ tính lại tự động.",
+    });
+  };
 
   const modelColumns: SmartTableColumn<ModelRow>[] = [
     {
