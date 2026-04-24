@@ -290,7 +290,7 @@ function ItemsTab() {
                   </span>
                 </td>
                 <td className="px-4 py-2.5">
-                  <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} />
+                  <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} onHistory={() => setHistoryCode(b.code)} />
                 </td>
               </tr>
             ))}
