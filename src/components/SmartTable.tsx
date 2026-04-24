@@ -660,7 +660,7 @@ export function SmartTable<T = any>({
           fullscreen ? "h-[calc(100vh-44px)]" : "max-h-[70vh]",
         )}
       >
-        <table className={cn("w-full border-collapse", ds.fontSize)}>
+        <table data-smart-table="true" className={cn("w-full border-collapse", ds.fontSize)}>
           <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur">
             <tr className={ds.headerH}>
               {drillDown && <th className="w-7 border-b border-border" />}
