@@ -20,6 +20,10 @@ import { HubOverviewTab } from "@/components/hub/HubOverviewTab";
 import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
+import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
+import { Button } from "@/components/ui/button";
+import { Inbox, Zap, FileSpreadsheet, PenLine } from "lucide-react";
+import { toast } from "sonner";
 
 // Hub-level mock totals (m²) — derived from S&OP locked + NM commitments
 function getHubTotals(scale: number, nmConfirmedOverride?: number) {
@@ -38,11 +42,42 @@ const tabs = [
   { key: "recon",      label: "Đối chiếu" },
 ];
 
+const COMMITMENT_SOURCES: DataSource[] = [
+  {
+    key: "api_sync",
+    icon: <Zap />,
+    title: "NM xác nhận trực tuyến",
+    description: "Gửi link cho NM xác nhận cam kết online. NM click → confirm từng SKU.",
+    badge: "Sắp có",
+    badgeColor: "gray",
+    disabled: true,
+    configurable: true,
+    configRoute: "/config?tab=integration",
+  },
+  {
+    key: "excel_upload",
+    icon: <FileSpreadsheet />,
+    title: "Upload Excel cam kết",
+    description: "Upload file cam kết NM theo template. Cột: NM, SKU, Qty cam kết, Tier.",
+    badge: "Dự phòng",
+    badgeColor: "amber",
+  },
+  {
+    key: "manual_input",
+    icon: <PenLine />,
+    title: "Gõ tay (gọi NM)",
+    description: "Planner gọi điện/Zalo NM → nhập cam kết trực tiếp vào bảng. Upload ảnh minh chứng.",
+    badge: "Khuyến nghị",
+    badgeColor: "green",
+  },
+];
+
 export default function HubPage() {
   const [activeTab, setActiveTab] = useState("commitment");
   const { tenant } = useTenant();
   const { markDone } = useNextStep();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
+  const [importerOpen, setImporterOpen] = useState(false);
 
   // M6: Hub Available recalculates when Planner edits commitments
   const [confirmedM2, setConfirmedM2] = useState<number | undefined>(undefined);
@@ -53,6 +88,18 @@ export default function HubPage() {
     const t = window.setTimeout(() => markDone("hub.reviewed"), 1500);
     return () => window.clearTimeout(t);
   }, [markDone]);
+
+  const handleSourceSelect = (key: string) => {
+    setImporterOpen(false);
+    const labels: Record<string, string> = {
+      api_sync: "Gửi link cho NM (sắp có)",
+      excel_upload: "Upload Excel cam kết — wizard 5 bước",
+      manual_input: "Gõ tay trực tiếp vào bảng",
+    };
+    toast.success(labels[key] ?? key, {
+      description: "Áp dụng cho cam kết NM tháng này.",
+    });
+  };
 
   return (
     <AppLayout>
