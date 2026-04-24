@@ -367,7 +367,14 @@ export function InventorySSTab({ scale: s }: Props) {
                           <>
                             <tr key={key} className={cn("border-b border-surface-3/30 bg-surface-0 animate-fade-in", sk.ssGap < 0 && "bg-danger-bg/10")}>
                               <td />
-                              <td className="px-3 py-2 text-table text-text-2 pl-6">↳ {sk.item} {sk.variant}</td>
+                              <td className="px-3 py-2 text-table text-text-2 pl-6">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setSkuSheet(`${sk.item} ${sk.variant}`); }}
+                                  className="font-mono text-primary hover:underline"
+                                >
+                                  ↳ {sk.item} {sk.variant}
+                                </button>
+                              </td>
                               <td className="px-3 py-2 text-table tabular-nums text-text-3">{sk.ton.toLocaleString()}</td>
                               <td className="px-3 py-2 text-table tabular-nums text-text-3">{sk.pipeline > 0 ? sk.pipeline.toLocaleString() : "—"}</td>
                               <td className="px-3 py-2 text-table tabular-nums text-text-3">{sk.ssTarget.toLocaleString()}</td>
