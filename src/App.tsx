@@ -128,6 +128,7 @@ function ProtectedRoutes() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </CommandPaletteProvider>
+      </PlanningPeriodProvider>
       </NextStepProvider>
       </WalkthroughProvider>
       </SafetyStockProvider>
