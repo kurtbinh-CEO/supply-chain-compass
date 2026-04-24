@@ -30,7 +30,10 @@ import {
 import { TermTooltip } from "@/components/TermTooltip";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
-import { BRANCHES, TRUST_BY_CN } from "@/data/unis-enterprise-dataset";
+import { BRANCHES, TRUST_BY_CN, DEMAND_FC } from "@/data/unis-enterprise-dataset";
+import { PhasingDialog } from "@/components/PhasingDialog";
+import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
+import { Calendar } from "lucide-react";
 
 const tenantScales: Record<string, number> = {
   "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35,
@@ -875,6 +878,14 @@ export default function DemandWeeklyPage() {
   const [persona, setPersonaState] = useState<Persona>(() => loadPersona());
   const setPersona = (p: Persona) => { setPersonaState(p); savePersona(p); };
   const [importerOpen, setImporterOpen] = useState(false);
+  const [phasingOpen, setPhasingOpen] = useState(false);
+  const { current: planCycle } = usePlanningPeriod();
+
+  // M19 GAP 1 — FC tháng tổng (scale theo tenant)
+  const monthlyFcTotal = useMemo(
+    () => Math.round(DEMAND_FC.reduce((s, r) => s + r.fcM2, 0) * scale),
+    [scale],
+  );
 
   const cnConfigs = useMemo(buildCnConfigs, []);
 
@@ -1084,6 +1095,15 @@ export default function DemandWeeklyPage() {
                 Nhập điều chỉnh
               </Button>
             )}
+            <button
+              type="button"
+              onClick={() => setPhasingOpen(true)}
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-button border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-table-sm font-medium text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+              title="Phân bổ FC tháng → tuần"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              Phân bổ FC tuần · {planCycle.label.replace("Tháng ", "T")}
+            </button>
             <span className="hidden sm:inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-1 px-2.5 py-1.5 text-table-sm text-text-2">
               <RefreshCw className="h-3.5 w-3.5 text-info" />
               Demand W20 v2 — 18:00 hôm nay
@@ -1093,6 +1113,13 @@ export default function DemandWeeklyPage() {
             </span>
           </div>
         }
+      />
+
+      <PhasingDialog
+        open={phasingOpen}
+        onClose={() => setPhasingOpen(false)}
+        monthlyFcM2={monthlyFcTotal}
+        cycleLabel={planCycle.label}
       />
 
       <DataSourceSelector

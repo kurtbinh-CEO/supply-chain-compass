@@ -17,6 +17,7 @@ import { CommitmentTab } from "@/components/hub/CommitmentTab";
 import { ReconciliationTab } from "@/components/hub/ReconciliationTab";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { HubOverviewTab } from "@/components/hub/HubOverviewTab";
+import { BookingNettingTab } from "@/components/hub/BookingNettingTab";
 import { ChangeLogPanel } from "@/components/ChangeLogPanel";
 import { NextStepBanner } from "@/components/NextStepBanner";
 import { useNextStep } from "@/components/NextStepContext";
@@ -39,6 +40,7 @@ function getHubTotals(scale: number, nmConfirmedOverride?: number) {
 }
 
 const tabs = [
+  { key: "booking",    label: "Booking" },
   { key: "commitment", label: "Cam kết NM" },
   { key: "overview",   label: "Hub ảo" },
   { key: "recon",      label: "Đối chiếu" },
@@ -191,6 +193,16 @@ export default function HubPage() {
         onSelect={handleSourceSelect}
       />
 
+      <div data-tour="hub-booking">
+        {activeTab === "booking" && (
+          <BookingNettingTab
+            cycleLabel={planCycle.label}
+            sopVersion={planCycle.version}
+            scale={scale}
+            autoRanAt={typeof window !== "undefined" ? window.sessionStorage.getItem("scp-booking-autoran") : null}
+          />
+        )}
+      </div>
       <div data-tour="hub-commitment">
         {activeTab === "commitment" && (
           <CommitmentTab scale={scale} onTotalsChange={setConfirmedM2} />

@@ -948,6 +948,15 @@ export const CONFIG_KEYS: ConfigKey[] = [
   // Scenario engine config (M9)
   { key: "scenario.negotiation_cost_per_m2", group: "Scenario", defaultValue: 9500, unit: "₫/m²", description: "Chi phí thương lượng / m² (kịch bản C)" },
   { key: "scenario.hybrid_split_pct",        group: "Scenario", defaultValue: 50,   unit: "%",     description: "Tỷ lệ chia kịch bản hybrid D (% × A + % × C)" },
+  // M19 — Planning phasing (FC tháng → tuần)
+  { key: "planning.phasing.method",          group: "Demand",   defaultValue: "even", description: "Phương pháp phasing FC tháng → tuần (even | 4_4_5 | custom | historical)" },
+  // M19 — Hold/Ship transport rules
+  { key: "transport.fill_threshold_pct",     group: "Transport", defaultValue: 70,   unit: "%",   description: "Container fill < ngưỡng → giữ lại chờ gom" },
+  { key: "transport.hold_max_days",          group: "Transport", defaultValue: 3,    unit: "day", description: "Giữ tối đa N ngày, sau đó xuất dù fill thấp" },
+  { key: "transport.topup_enabled",          group: "Transport", defaultValue: true,              description: "Cho phép gom PO khác cùng NM/tuyến vào container chờ" },
+  // M19 — ERP posting (Phase 2)
+  { key: "erp.auto_post_enabled",            group: "Workflow", defaultValue: false,             description: "Phase 2: tự động đẩy PO sang Bravo sau duyệt" },
+  { key: "erp.post_endpoint",                group: "Workflow", defaultValue: "",                description: "Bravo API endpoint (thiết lập khi kết nối)" },
 ];
 
 /* ────────────────────────────────────────────────────────────────────────── */

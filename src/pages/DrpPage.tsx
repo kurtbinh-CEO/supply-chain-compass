@@ -401,8 +401,10 @@ function StepDetail({ stepId, scale }: { stepId: number; scale: number }) {
       <div className="flex justify-between"><span>Container 40ft</span><span className="tabular-nums font-medium">3 chuyến</span></div>
       <div className="flex justify-between"><span>Container 20ft</span><span className="tabular-nums font-medium">2 chuyến</span></div>
       <div className="flex justify-between"><span>Xe 10 tấn (LCNB)</span><span className="tabular-nums font-medium">3 chuyến</span></div>
-      <div className="rounded border border-info/30 bg-info-bg/30 px-3 py-2 mt-1">
-        <div className="text-info">⏸ TP-003 Toko→DN giữ lại — fill 53%, chờ gom</div>
+      <div className="rounded border border-warning/30 bg-warning-bg/30 px-3 py-2 mt-1 space-y-1">
+        <div className="text-warning font-medium">⏸ TP-003 Toko→DN: fill 53% &lt; ngưỡng 70% → GIỮ LẠI</div>
+        <div className="text-caption text-text-2">Tối đa 3 ngày · hết hạn <span className="font-medium">19/05</span></div>
+        <div className="text-caption text-text-3">Gợi ý gom: <span className="text-text-1">PO-DN-W21</span> cùng NM Toko → +200m² → fill 75% → XUẤT</div>
       </div>
       <div className="flex justify-between border-t border-surface-3 pt-2 font-semibold">
         <span>→ Tổng cước ước</span><span className="tabular-nums text-text-1">128 triệu ₫</span></div>
