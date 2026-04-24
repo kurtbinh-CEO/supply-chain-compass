@@ -1449,21 +1449,174 @@ export function getBestRate(fromCode: string, toCode: string, qtyM2: number): {
 
 export interface PlanRunVersion {
   versionId: string;
-  planType: "DRP" | "SOP" | "BOOKING" | "ALLOCATION" | "PO_BATCH";
+  /** Loại kế hoạch */
+  planType: "DRP" | "SOP" | "BOOKING" | "ALLOCATION" | "PO_BATCH" | "FC";
+  /** Mã thực thể (DRP-W20, SOP-T5, COMMIT-T5, FC-T5) — để lọc theo entityId */
+  entityId: string;
+  /** Nhóm cha để gom trong panel ("Tuần 20", "Tháng 5") */
+  groupId: string;
+  groupLabel: string;
   versionNumber: number;
+  /** Hiển thị: "23:02 đêm qua" / "23:05 thứ 2" */
   runAt: string;
   runBy: string;
   status: "DRAFT" | "ACTIVE" | "LOCKED" | "ARCHIVED";
   lockedBy: string | null;
   lockedAt: string | null;
+  /** Số tổng quát hiển thị card (netReq/totalDemand/confirmed...) */
   summary: Record<string, number>;
+  /** Mô tả input quan trọng — vd "Demand v2, Tồn sync 06:00" */
+  inputSummary: string;
+  /** Số TO nháp (DRP-only) — optional */
+  toDrafted?: number;
 }
 
 export const PLAN_VERSIONS: PlanRunVersion[] = [
-  { versionId: "DRP-W20-v3",   planType: "DRP",     versionNumber: 3, runAt: "23:02",            runBy: "System",            status: "ACTIVE",   lockedBy: null,   lockedAt: null,           summary: { netReq: 27_875, exceptions: 3, poDrafted: 5 } },
-  { versionId: "DRP-W20-v2",   planType: "DRP",     versionNumber: 2, runAt: "22:00 hôm qua",    runBy: "System",            status: "ARCHIVED", lockedBy: null,   lockedAt: null,           summary: { netReq: 26_800, exceptions: 2, poDrafted: 4 } },
-  { versionId: "SOP-T5-v4",    planType: "SOP",     versionNumber: 4, runAt: "15/04",            runBy: "SC Manager Thùy",   status: "LOCKED",   lockedBy: "Thùy", lockedAt: "16/04 08:00",  summary: { totalDemand: 31_632 } },
-  { versionId: "COMMIT-T5-v6", planType: "BOOKING", versionNumber: 6, runAt: "22/04",            runBy: "Planner",           status: "ACTIVE",   lockedBy: null,   lockedAt: null,           summary: { confirmed: 15, pending: 5, notContacted: 5 } },
+  // ── DRP Tuần 20 ─────────────────────────────────────────────────────
+  {
+    versionId: "DRP-W20-v3", planType: "DRP", entityId: "DRP-W20",
+    groupId: "W20", groupLabel: "Tuần 20",
+    versionNumber: 3, runAt: "23:02 đêm qua", runBy: "Hệ thống",
+    status: "ACTIVE", lockedBy: null, lockedAt: null,
+    summary: { netReq: 27_875, exceptions: 3, poDrafted: 5, grossDemand: 31_632, cnInv: 3_200, pipeline: 1_757, lcnbCover: 555, hubCover: 780, nmAtpPartial: 1 },
+    toDrafted: 4,
+    inputSummary: "Demand v2 · Tồn sync 06:00 · SS chuẩn T5",
+  },
+  {
+    versionId: "DRP-W20-v2", planType: "DRP", entityId: "DRP-W20",
+    groupId: "W20", groupLabel: "Tuần 20",
+    versionNumber: 2, runAt: "22:00 hôm qua", runBy: "Hệ thống",
+    status: "ARCHIVED", lockedBy: null, lockedAt: null,
+    summary: { netReq: 26_800, exceptions: 2, poDrafted: 4, grossDemand: 31_200, cnInv: 3_400, pipeline: 1_757, lcnbCover: 380, hubCover: 780, nmAtpPartial: 0 },
+    toDrafted: 2,
+    inputSummary: "Demand v1 (CN-BD chưa adjust) · Tồn sync 22/04 06:00",
+  },
+  {
+    versionId: "DRP-W20-v1", planType: "DRP", entityId: "DRP-W20",
+    groupId: "W20", groupLabel: "Tuần 20",
+    versionNumber: 1, runAt: "23:05 thứ 2", runBy: "Hệ thống",
+    status: "ARCHIVED", lockedBy: null, lockedAt: null,
+    summary: { netReq: 25_400, exceptions: 5, poDrafted: 3, grossDemand: 30_500, cnInv: 3_600, pipeline: 1_500, lcnbCover: 200, hubCover: 780, nmAtpPartial: 0 },
+    toDrafted: 0,
+    inputSummary: "Demand v0 (chưa S&OP lock) · Tồn sync 21/04",
+  },
+  // ── DRP Tuần 19 ─────────────────────────────────────────────────────
+  {
+    versionId: "DRP-W19-v4", planType: "DRP", entityId: "DRP-W19",
+    groupId: "W19", groupLabel: "Tuần 19",
+    versionNumber: 4, runAt: "16/04 23:00", runBy: "Hệ thống",
+    status: "LOCKED", lockedBy: "SC Manager Thùy", lockedAt: "17/04 08:15",
+    summary: { netReq: 25_120, exceptions: 1, poDrafted: 6, grossDemand: 28_900, cnInv: 2_980, pipeline: 800, lcnbCover: 400, hubCover: 600, nmAtpPartial: 0 },
+    toDrafted: 3,
+    inputSummary: "Demand v3 lock · Tồn sync 16/04 06:00",
+  },
+  {
+    versionId: "DRP-W19-v3", planType: "DRP", entityId: "DRP-W19",
+    groupId: "W19", groupLabel: "Tuần 19",
+    versionNumber: 3, runAt: "16/04 12:00", runBy: "Hệ thống",
+    status: "ARCHIVED", lockedBy: null, lockedAt: null,
+    summary: { netReq: 25_400, exceptions: 2, poDrafted: 5 },
+    inputSummary: "Demand v2 · CN-NA adjust giữa tuần",
+  },
+  {
+    versionId: "DRP-W19-v2", planType: "DRP", entityId: "DRP-W19",
+    groupId: "W19", groupLabel: "Tuần 19",
+    versionNumber: 2, runAt: "15/04 23:00", runBy: "Hệ thống",
+    status: "ARCHIVED", lockedBy: null, lockedAt: null,
+    summary: { netReq: 25_900, exceptions: 3, poDrafted: 4 },
+    inputSummary: "Demand v1 · Tồn sync 15/04",
+  },
+  // ── SOP Tháng 5 ─────────────────────────────────────────────────────
+  {
+    versionId: "SOP-T5-v4", planType: "SOP", entityId: "SOP-T5",
+    groupId: "T5", groupLabel: "Tháng 5",
+    versionNumber: 4, runAt: "16/04 08:00", runBy: "SC Manager Thùy",
+    status: "LOCKED", lockedBy: "Thùy", lockedAt: "16/04 08:00",
+    summary: { totalDemand: 31_632, vsAop: 9, cnNeedExplain: 2 },
+    inputSummary: "v3 đồng thuận · FVA v2 (CN Input) · AOP T5",
+  },
+  {
+    versionId: "SOP-T5-v3", planType: "SOP", entityId: "SOP-T5",
+    groupId: "T5", groupLabel: "Tháng 5",
+    versionNumber: 3, runAt: "15/04 17:30", runBy: "SC Manager Thùy",
+    status: "ARCHIVED", lockedBy: null, lockedAt: null,
+    summary: { totalDemand: 31_400, vsAop: 8, cnNeedExplain: 3 },
+    inputSummary: "Đồng thuận sau họp consensus · 12 CN xác nhận",
+  },
+  {
+    versionId: "SOP-T5-v2", planType: "SOP", entityId: "SOP-T5",
+    groupId: "T5", groupLabel: "Tháng 5",
+    versionNumber: 2, runAt: "14/04 16:00", runBy: "12 CN Manager",
+    status: "ARCHIVED", lockedBy: null, lockedAt: null,
+    summary: { totalDemand: 30_800, vsAop: 6, cnNeedExplain: 4 },
+    inputSummary: "12 CN nhập điều chỉnh top-down · FVA v2",
+  },
+  {
+    versionId: "SOP-T5-v1", planType: "SOP", entityId: "SOP-T5",
+    groupId: "T5", groupLabel: "Tháng 5",
+    versionNumber: 1, runAt: "12/04 09:00", runBy: "Hệ thống",
+    status: "ARCHIVED", lockedBy: null, lockedAt: null,
+    summary: { totalDemand: 29_500, vsAop: 2, cnNeedExplain: 0 },
+    inputSummary: "Statistical FC v0 · Sales FC v1 · chưa CN input",
+  },
+  {
+    versionId: "SOP-T4-v5", planType: "SOP", entityId: "SOP-T4",
+    groupId: "T4", groupLabel: "Tháng 4",
+    versionNumber: 5, runAt: "20/03 08:00", runBy: "SC Manager Thùy",
+    status: "LOCKED", lockedBy: "Thùy", lockedAt: "20/03 08:00",
+    summary: { totalDemand: 28_900 },
+    inputSummary: "Đã khóa tháng 4 — phục vụ đối chiếu",
+  },
+  // ── BOOKING/COMMITMENT Tháng 5 ──────────────────────────────────────
+  {
+    versionId: "COMMIT-T5-v6", planType: "BOOKING", entityId: "COMMIT-T5",
+    groupId: "T5", groupLabel: "Tháng 5",
+    versionNumber: 6, runAt: "22/04 16:00", runBy: "Planner Hùng",
+    status: "ACTIVE", lockedBy: null, lockedAt: null,
+    summary: { confirmed: 15, pending: 5, notContacted: 5, gapM2: 1_200 },
+    inputSummary: "SOP T5 v4 lock · cập nhật cam kết Mikado/Toko/DongTam",
+  },
+  {
+    versionId: "COMMIT-T5-v5", planType: "BOOKING", entityId: "COMMIT-T5",
+    groupId: "T5", groupLabel: "Tháng 5",
+    versionNumber: 5, runAt: "21/04 11:00", runBy: "Planner Hùng",
+    status: "ARCHIVED", lockedBy: null, lockedAt: null,
+    summary: { confirmed: 12, pending: 7, notContacted: 6, gapM2: 1_550 },
+    inputSummary: "Trước phản hồi Toko (counter 400/600)",
+  },
+  {
+    versionId: "COMMIT-T5-v4", planType: "BOOKING", entityId: "COMMIT-T5",
+    groupId: "T5", groupLabel: "Tháng 5",
+    versionNumber: 4, runAt: "19/04 09:30", runBy: "Planner Lan",
+    status: "ARCHIVED", lockedBy: null, lockedAt: null,
+    summary: { confirmed: 8, pending: 9, notContacted: 8, gapM2: 2_100 },
+    inputSummary: "Khởi tạo từ SOP T5 v3 · planner gọi NM lần 1",
+  },
+  // ── FC import (DemandPage) ──────────────────────────────────────────
+  {
+    versionId: "FC-T5-v2", planType: "FC", entityId: "FC-T5",
+    groupId: "T5", groupLabel: "Tháng 5",
+    versionNumber: 2, runAt: "14/04 16:30", runBy: "12 CN Manager",
+    status: "ACTIVE", lockedBy: null, lockedAt: null,
+    summary: { totalDemand: 30_800, b2bDeals: 4 },
+    inputSummary: "12 CN nhập điều chỉnh + B2B 4 deals (Hòa Bình, Nam Long...)",
+  },
+  {
+    versionId: "FC-T5-v1", planType: "FC", entityId: "FC-T5",
+    groupId: "T5", groupLabel: "Tháng 5",
+    versionNumber: 1, runAt: "13/04 09:00", runBy: "Sales Director",
+    status: "ARCHIVED", lockedBy: null, lockedAt: null,
+    summary: { totalDemand: 29_900, b2bDeals: 3 },
+    inputSummary: "Sales FC top-down · chưa B2B Hòa Bình",
+  },
+  {
+    versionId: "FC-T5-v0", planType: "FC", entityId: "FC-T5",
+    groupId: "T5", groupLabel: "Tháng 5",
+    versionNumber: 0, runAt: "12/04 06:00", runBy: "Hệ thống",
+    status: "ARCHIVED", lockedBy: null, lockedAt: null,
+    summary: { totalDemand: 28_700, b2bDeals: 0 },
+    inputSummary: "Statistical baseline (lịch sử 12 tháng)",
+  },
 ];
 
 // ════════════════════════════════════════════════════════════════════
