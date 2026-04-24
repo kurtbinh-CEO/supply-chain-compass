@@ -32,6 +32,7 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
 import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
+import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 import { BRANCHES, TRUST_BY_CN, DEMAND_FC } from "@/data/unis-enterprise-dataset";
 import { PhasingDialog } from "@/components/PhasingDialog";
 import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
@@ -569,6 +570,51 @@ function ScManagerTab({
   const adjustedCns = scRows.filter((r) => r.skuCount > 0).length;
   const totalPending = scRows.reduce((s, r) => s + r.pendingCount, 0);
   const totalOver    = scRows.reduce((s, r) => s + r.overCount, 0);
+  const totalAdjust  = scRows.reduce((s, r) => s + r.totalAdjust, 0);
+  const totalDuKien  = scRows.reduce((s, r) => s + r.totalDuKien, 0);
+  const adjustPct    = totalDuKien > 0 ? (totalAdjust / totalDuKien) * 100 : 0;
+  const worstCn      = [...scRows].filter(r => r.overCount > 0).sort((a, b) => Math.abs(b.totalPct) - Math.abs(a.totalPct))[0];
+
+  const scSummary: SummaryCard[] = [
+    {
+      key: "cn_adjusted",
+      label: "CN đã adjust",
+      value: `${adjustedCns}/${BRANCHES.length}`,
+      unit: "CN",
+      severity: adjustedCns < BRANCHES.length / 2 ? "warn" : "ok",
+      trend: { delta: "← cutoff 18:00", direction: "flat", color: "gray" },
+      tooltip: "Số CN đã gửi điều chỉnh nhu cầu tuần.",
+    },
+    {
+      key: "total_adjust",
+      label: "Tổng adjust",
+      value: `${totalAdjust > 0 ? "+" : ""}${totalAdjust.toLocaleString("vi-VN")}`,
+      unit: "m²",
+      severity: Math.abs(adjustPct) > 10 ? "warn" : "ok",
+      trend: { delta: `${adjustPct > 0 ? "+" : ""}${adjustPct.toFixed(1)}% vs FC`, direction: adjustPct > 0 ? "up" : adjustPct < 0 ? "down" : "flat", color: Math.abs(adjustPct) > 10 ? "red" : "gray" },
+      tooltip: "Tổng net adjust m² so với FC gốc.",
+    },
+    {
+      key: "over_band",
+      label: "Vượt biên",
+      value: totalOver,
+      unit: "CN",
+      severity: totalOver > 0 ? "critical" : "ok",
+      trend: worstCn
+        ? { delta: `${worstCn.cnCode} ${worstCn.totalPct > 0 ? "+" : ""}${worstCn.totalPct.toFixed(0)}%`, direction: "up", color: "red" }
+        : { delta: "→ ổn định", direction: "flat", color: "gray" },
+      tooltip: "Số CN có adjust ngoài tolerance band — cần SC xử lý.",
+    },
+    {
+      key: "pending",
+      label: "Chờ duyệt",
+      value: totalPending,
+      unit: "SKU",
+      severity: totalPending > 0 ? "warn" : "ok",
+      trend: { delta: totalPending > 0 ? "Cần SC duyệt" : "→ trống", direction: totalPending > 0 ? "up" : "flat", color: totalPending > 0 ? "red" : "gray" },
+      tooltip: "Số SKU đang chờ SC Manager phê duyệt.",
+    },
+  ];
 
   // Build SKU-first pivot: aggregate adjust per SKU across CNs
   interface SkuAggRow {
@@ -725,6 +771,8 @@ function ScManagerTab({
 
   return (
     <div className="space-y-4">
+      <SummaryCards screenId="demand-weekly-sc" cards={scSummary} />
+
       {/* Summary banner */}
       <div className="rounded-card border border-surface-3 bg-surface-1 px-4 py-3 flex flex-wrap items-center gap-3">
         <Lock className="h-4 w-4 text-text-3 shrink-0" />

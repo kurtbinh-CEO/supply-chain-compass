@@ -40,6 +40,7 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
 import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
+import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -150,6 +151,7 @@ function buildFactorySkuPivot(rows: FactoryRow[]): SkuPivotNmRow[] {
 function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
   const navigate = useNavigate();
   const [pivot, setPivot] = usePivotMode("inv-nm");
+  const [cardFilter, setCardFilter] = useState<"all" | "stale" | "full">("all");
 
   const handleRemind = useCallback((name: string) => {
     toast.success(`Đã gửi nhắc ${name}`, {
@@ -160,10 +162,62 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
   const totals = useMemo(() => {
     const t = rows.reduce((s, r) => s + r.totalOnHand, 0);
     const c = rows.reduce((s, r) => s + r.capacity, 0);
-    return { t, c, pct: c === 0 ? 0 : Math.round((t / c) * 100) };
+    const pct = c === 0 ? 0 : Math.round((t / c) * 100);
+    const stale = rows.filter((r) => r.tone !== "fresh").length;
+    const full = rows.filter((r) => r.utilizationPct >= 90).length;
+    return { t, c, pct, stale, full };
   }, [rows]);
 
-  const skuPivotRows = useMemo(() => buildFactorySkuPivot(rows), [rows]);
+  const filteredRows = useMemo(() => {
+    if (cardFilter === "stale") return rows.filter((r) => r.tone !== "fresh");
+    if (cardFilter === "full") return rows.filter((r) => r.utilizationPct >= 90);
+    return rows;
+  }, [rows, cardFilter]);
+
+  const nmSummary: SummaryCard[] = [
+    {
+      key: "total_stock",
+      label: "Tồn tổng NM",
+      value: totals.t.toLocaleString("vi-VN"),
+      unit: "m²",
+      severity: "ok",
+      trend: { delta: "+5% vs T4", direction: "up", color: "green" },
+      tooltip: "Tổng tồn on-hand toàn bộ 5 nhà máy.",
+    },
+    {
+      key: "avg_capacity",
+      label: "Capacity TB",
+      value: `${totals.pct}`,
+      unit: "%",
+      severity: totals.pct >= 95 ? "critical" : totals.pct >= 85 ? "warn" : "ok",
+      trend: { delta: "→ ổn định", direction: "flat", color: "gray" },
+      tooltip: "Mức sử dụng năng lực sản xuất trung bình các NM.",
+    },
+    {
+      key: "stale_nm",
+      label: "NM dữ liệu cũ",
+      value: totals.stale,
+      unit: "NM",
+      severity: totals.stale > 0 ? "critical" : "ok",
+      trend: totals.stale > 0
+        ? { delta: `${totals.stale} NM cần nhắc`, direction: "up", color: "red" }
+        : { delta: "→ tươi", direction: "flat", color: "gray" },
+      tooltip: "Số NM chưa cập nhật tồn trong 24h gần nhất.",
+      onClick: () => setCardFilter(cardFilter === "stale" ? "all" : "stale"),
+    },
+    {
+      key: "full_nm",
+      label: "NM đầy kho",
+      value: totals.full,
+      unit: "NM",
+      severity: totals.full > 0 ? "warn" : "ok",
+      trend: { delta: "% ≥ 90%", direction: "flat", color: "gray" },
+      tooltip: "Số NM có capacity utilization ≥ 90% — sản xuất sẽ bị nghẽn.",
+      onClick: () => setCardFilter(cardFilter === "full" ? "all" : "full"),
+    },
+  ];
+
+  const skuPivotRows = useMemo(() => buildFactorySkuPivot(filteredRows), [filteredRows]);
 
   const columns: SmartTableColumn<FactoryRow>[] = [
     {
@@ -309,6 +363,24 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
 
   return (
     <div className="space-y-3">
+      <SummaryCards screenId="inv-nm" cards={nmSummary} />
+
+      {cardFilter !== "all" && (
+        <div className="flex items-center gap-2 rounded-lg border border-info/30 bg-info-bg/40 px-3 py-1.5 text-table-sm">
+          <span className="text-text-2">
+            Đang lọc: <span className="font-semibold text-info">
+              {cardFilter === "stale" ? "🔴 NM dữ liệu cũ" : "🟡 NM đầy kho"}
+            </span> ({filteredRows.length} NM)
+          </span>
+          <button
+            className="ml-auto text-info hover:underline text-caption"
+            onClick={() => setCardFilter("all")}
+          >
+            ✕ Xoá lọc
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <PivotToggle mode={pivot} onChange={setPivot} cnLabel="Nhà máy" skuLabel="Mã hàng" />
         <span className="text-caption text-text-3">
@@ -322,7 +394,7 @@ function FactoriesTab({ rows }: { rows: FactoryRow[] }) {
           title="Nhà máy"
           exportFilename="ton-kho-nha-may"
           columns={columns}
-          data={rows}
+          data={filteredRows}
           defaultDensity="compact"
           rowSeverity={(r) => r.tone === "block" ? "shortage" : r.tone === "watch" ? "watch" : "ok"}
           getRowId={(r) => r.nmId}
@@ -488,14 +560,79 @@ function buildBranchSkuPivot(rows: BranchRow[]): SkuPivotInvRow[] {
 function BranchesTab({ rows }: { rows: BranchRow[] }) {
   const navigate = useNavigate();
   const [pivot, setPivot] = usePivotMode("inv-cn");
+  const [cardFilter, setCardFilter] = useState<"all" | "critical" | "low">("all");
 
   const totals = useMemo(() => {
     const t = rows.reduce((s, r) => s + r.totalOnHand, 0);
     const avg = rows.length === 0 ? 0 : Math.round((rows.reduce((s, r) => s + r.hstk, 0) / rows.length) * 10) / 10;
-    return { t, avg };
+    const critical = rows.filter((r) => r.tone === "block").length;
+    const low = rows.filter((r) => r.tone === "watch").length;
+    // Working capital: assume 320,000 VND/m² average (mock UNIS price)
+    const workingCapital = t * 320000;
+    return { t, avg, critical, low, workingCapital };
   }, [rows]);
 
-  const skuPivotRows = useMemo(() => buildBranchSkuPivot(rows), [rows]);
+  const filteredRows = useMemo(() => {
+    if (cardFilter === "critical") return rows.filter((r) => r.tone === "block");
+    if (cardFilter === "low") return rows.filter((r) => r.tone === "watch");
+    return rows;
+  }, [rows, cardFilter]);
+
+  const cnSummary: SummaryCard[] = [
+    {
+      key: "total_stock",
+      label: "Tồn tổng",
+      value: totals.t.toLocaleString("vi-VN"),
+      unit: "m²",
+      severity: "ok",
+      trend: { delta: "+3% vs T4", direction: "up", color: "green" },
+      tooltip: "Tổng on-hand toàn bộ 12 chi nhánh, đã trừ reserved.",
+      onClick: () => setCardFilter("all"),
+    },
+    {
+      key: "avg_hstk",
+      label: "HSTK trung bình",
+      value: totals.avg.toFixed(1),
+      unit: "ngày",
+      severity: totals.avg < 5 ? "critical" : totals.avg < 10 ? "warn" : "ok",
+      trend: { delta: "↓0,3d vs T4", direction: "down", color: "green" },
+      tooltip: "Hạn sử dụng tồn kho trung bình = Tồn / nhu cầu ngày.",
+    },
+    {
+      key: "critical_cn",
+      label: "CN nguy hiểm",
+      value: totals.critical,
+      unit: "CN",
+      severity: totals.critical > 0 ? "critical" : "ok",
+      trend: totals.critical > 0
+        ? { delta: `${totals.critical} CN HSTK <2d`, direction: "up", color: "red" }
+        : { delta: "→ ổn định", direction: "flat", color: "gray" },
+      tooltip: "Số CN có HSTK dưới 2 ngày — cần lệnh điều chuyển khẩn.",
+      onClick: () => setCardFilter(cardFilter === "critical" ? "all" : "critical"),
+    },
+    {
+      key: "low_cn",
+      label: "CN sắp thiếu",
+      value: totals.low,
+      unit: "CN",
+      severity: totals.low > 0 ? "warn" : "ok",
+      trend: { delta: "HSTK 2-5d", direction: "flat", color: "gray" },
+      tooltip: "Số CN có HSTK từ 2-5 ngày — chuẩn bị bổ sung.",
+      onClick: () => setCardFilter(cardFilter === "low" ? "all" : "low"),
+    },
+    {
+      key: "working_capital",
+      label: "Vốn lưu động",
+      value: (totals.workingCapital / 1_000_000_000).toFixed(2),
+      unit: "tỷ ₫",
+      severity: "warn",
+      trend: { delta: "↓2% vs T4", direction: "down", color: "green" },
+      tooltip: "Giá trị tồn kho ước tính (320.000 ₫/m² avg).",
+      defaultHidden: true,
+    },
+  ];
+
+  const skuPivotRows = useMemo(() => buildBranchSkuPivot(filteredRows), [filteredRows]);
 
   const cnColumns: SmartTableColumn<BranchRow>[] = [
     {
@@ -638,6 +775,24 @@ function BranchesTab({ rows }: { rows: BranchRow[] }) {
 
   return (
     <div className="space-y-3">
+      <SummaryCards screenId="inv-cn" cards={cnSummary} />
+
+      {cardFilter !== "all" && (
+        <div className="flex items-center gap-2 rounded-lg border border-info/30 bg-info-bg/40 px-3 py-1.5 text-table-sm">
+          <span className="text-text-2">
+            Đang lọc: <span className="font-semibold text-info">
+              {cardFilter === "critical" ? "🔴 CN nguy hiểm" : "🟡 CN sắp thiếu"}
+            </span> ({filteredRows.length} CN)
+          </span>
+          <button
+            className="ml-auto text-info hover:underline text-caption"
+            onClick={() => setCardFilter("all")}
+          >
+            ✕ Xoá lọc
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <PivotToggle mode={pivot} onChange={setPivot} cnLabel="Chi nhánh" skuLabel="Mã hàng" />
         <span className="text-caption text-text-3">
@@ -651,7 +806,7 @@ function BranchesTab({ rows }: { rows: BranchRow[] }) {
           title="Chi nhánh"
           exportFilename="ton-kho-chi-nhanh"
           columns={cnColumns}
-          data={rows}
+          data={filteredRows}
           defaultDensity="normal"
           rowSeverity={(r) => r.tone === "block" ? "shortage" : r.tone === "watch" ? "watch" : "ok"}
           getRowId={(r) => r.cnCode}
