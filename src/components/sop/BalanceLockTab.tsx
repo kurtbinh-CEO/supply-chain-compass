@@ -52,9 +52,9 @@ const baseBalance: BalanceRow[] = [
 ];
 
 const decisionLog = [
-  { initials: "TH", who: "Trần Hùng (Regional)", when: "2024-05-12 14:20", action: "Override v3 CN-BD +150", note: "Nhà thầu mới Q2" },
-  { initials: "LM", who: "Lê Minh (Supply)", when: "2024-05-11 09:15", action: "Approve balance", note: "Pipeline Toko confirmed" },
-  { initials: "NQ", who: "Nguyễn Quân (Sales)", when: "2024-05-10 17:45", action: "Submit v1 Sales", note: "Flash sale E-commerce" },
+  { initials: "TH", who: "Trần Hùng (Vùng)", when: "2024-05-12 14:20", action: "Ghi đè v3 CN-BD +150", note: "Nhà thầu mới Q2" },
+  { initials: "LM", who: "Lê Minh (Cung ứng)", when: "2024-05-11 09:15", action: "Duyệt cân đối", note: "Toko đã xác nhận hàng đang về" },
+  { initials: "NQ", who: "Nguyễn Quân (Kinh doanh)", when: "2024-05-10 17:45", action: "Gửi v1 Kinh doanh", note: "Flash sale E-commerce" },
 ];
 
 export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant, unresolvedVariance = 0 }: Props) {
@@ -111,7 +111,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   const handleLock = () => {
     onLock();
     setShowLockModal(false);
-    toast.success("✅ S&OP Consensus Locked — Day 7", { description: "Phasing auto-run. FC commitment gửi cho 5 NM." });
+    toast.success("✅ S&OP Đồng thuận đã khóa — Ngày 7", { description: "Phasing tự động chạy. Cam kết FC gửi cho 5 NM." });
     setTimeout(() => navigate("/hub"), 1500);
   };
 
@@ -297,7 +297,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
                       <td className="px-3 py-2.5">
                         <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
                           status === "CRITICAL" ? "bg-danger-bg text-danger" : status === "EXCESS" ? "bg-info-bg text-info" : "bg-success-bg text-success"
-                        )}>{status}</span>
+                        )}>{status === "CRITICAL" ? "NGHIÊM TRỌNG" : status === "EXCESS" ? "DƯ THỪA" : "ĐẠT"}</span>
                       </td>
                       <td className="px-3 py-2.5">
                         {isExp ? <ChevronDown className="h-3.5 w-3.5 text-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-text-3" />}
