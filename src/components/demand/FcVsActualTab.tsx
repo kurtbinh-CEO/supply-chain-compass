@@ -120,12 +120,14 @@ export function FcVsActualTab() {
       {/* Table — Chi tiết theo tháng (SmartTable) */}
       {(() => {
         const monthCols: SmartTableColumn<MonthRow>[] = [
-          { key: "month", label: "Tháng", sortable: true, accessor: (r) => r.month, priority: "high" },
+          { key: "month", label: "Tháng", sortable: true, width: 100, accessor: (r) => r.month, priority: "high" },
           {
             key: "fc",
             label: "Dự báo (m²)",
             numeric: true,
             sortable: true,
+            width: 130,
+            align: "right",
             accessor: (r) => r.fc,
             render: (r) => <span className="tabular-nums text-text-1">{r.fc.toLocaleString()}</span>,
           },
@@ -134,6 +136,8 @@ export function FcVsActualTab() {
             label: "Thực tế (m²)",
             numeric: true,
             sortable: true,
+            width: 130,
+            align: "right",
             accessor: (r) => r.actual ?? 0,
             render: (r) =>
               r.actual !== null ? (
@@ -147,6 +151,8 @@ export function FcVsActualTab() {
             label: "Δ",
             numeric: true,
             sortable: true,
+            width: 110,
+            align: "right",
             accessor: (r) => r.delta ?? 0,
             render: (r) =>
               r.delta !== null ? (
@@ -163,6 +169,8 @@ export function FcVsActualTab() {
             label: "MAPE",
             numeric: true,
             sortable: true,
+            width: 100,
+            align: "right",
             accessor: (r) => r.mape ?? 0,
             render: (r) => {
               if (r.mape === null) return <span className="text-text-3">—</span>;
@@ -178,6 +186,7 @@ export function FcVsActualTab() {
             key: "model",
             label: "Mô hình",
             sortable: true,
+            width: 140,
             filter: "enum",
             filterOptions: [
               { value: "Holt-Winters", label: "Holt-Winters" },
@@ -208,13 +217,15 @@ export function FcVsActualTab() {
       {/* Per-CN MAPE — SmartTable */}
       {(() => {
         const cnCols: SmartTableColumn<CnMapeRow>[] = [
-          { key: "cn", label: "CN", sortable: true, accessor: (r) => r.cn, priority: "high" },
-          { key: "name", label: "Tên", sortable: true, accessor: (r) => r.name },
+          { key: "cn", label: "CN", sortable: true, width: 80, accessor: (r) => r.cn, priority: "high" },
+          { key: "name", label: "Tên", sortable: true, width: 200, accessor: (r) => r.name },
           {
             key: "mape",
             label: "MAPE",
             numeric: true,
             sortable: true,
+            width: 110,
+            align: "right",
             accessor: (r) => r.mape,
             render: (r) => (
               <span className={cn("font-medium tabular-nums", r.mape > target ? "text-danger" : "text-success")}>
@@ -226,6 +237,7 @@ export function FcVsActualTab() {
             key: "model",
             label: "Mô hình",
             sortable: true,
+            width: 140,
             filter: "enum",
             filterOptions: [
               { value: "Holt-Winters", label: "Holt-Winters" },
