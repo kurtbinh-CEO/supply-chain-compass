@@ -186,6 +186,9 @@ const ROLE_LABEL_KEY: Record<UserRole, string> = {
   CN_MANAGER: "role.CN_MANAGER",
   SALES: "role.SALES",
   VIEWER: "role.VIEWER",
+  BUYER: "role.BUYER",
+  DIRECTOR: "role.DIRECTOR",
+  CEO: "role.CEO",
 };
 
 /** Interval (ms) tự re-evaluate badge — bắt kịp các thay đổi không có event
