@@ -238,7 +238,7 @@ export default function DemandPage() {
             </>
           }
           actions={
-            <div className="flex items-center gap-2 flex-wrap">
+            <>
               <PlanningPeriodSelector />
               <VersionHistoryButton entityType="FC" entityId="FC-T5" />
               <Button
@@ -246,7 +246,7 @@ export default function DemandPage() {
                 variant="outline"
                 onClick={() => setActualOpen(true)}
                 disabled={planLocked}
-                className="h-8 gap-1.5"
+                className="h-8 gap-1.5 whitespace-nowrap"
                 title={planLocked ? "Kỳ đã khóa — chỉ xem" : "Cập nhật doanh thu thực tế (Bravo / Excel / Tay)"}
               >
                 <Inbox className="h-3.5 w-3.5" />
@@ -256,12 +256,12 @@ export default function DemandPage() {
                 size="sm"
                 onClick={() => setImporterOpen(true)}
                 disabled={planLocked}
-                className="h-8 gap-1.5"
+                className="h-8 gap-1.5 whitespace-nowrap"
               >
                 <Inbox className="h-3.5 w-3.5" />
                 {activeTab === "b2b" ? "Nhập B2B" : "Nhập FC"}
               </Button>
-            </div>
+            </>
           }
         />
       </div>
