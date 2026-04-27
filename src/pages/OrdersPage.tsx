@@ -72,7 +72,6 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<Set<LifecycleStage>>(new Set());
   const [kindFilter, setKindFilter] = useState<Set<"RPO" | "TO">>(new Set());
   const [overdueOnly, setOverdueOnly] = useState(false);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   // Drill-down popup từ summary cards
   const [drillFocus, setDrillFocus] = useState<DrillFocus>(null);
@@ -81,7 +80,10 @@ export default function OrdersPage() {
   const [actionRow, setActionRow] = useState<PoLifecycleRow | null>(null);
   const [cancelRow, setCancelRow] = useState<PoLifecycleRow | null>(null);
 
-  /* ── Stage counts for summary bar + filter pills ── */
+  /* ── Build PO groups (NM × CN × Tuần) — parent rows ── */
+  const groups = useMemo(() => buildPoGroups(rows), [rows]);
+
+  /* ── Stage counts dựa trên GROUPS (không phải lines) ── */
   const counts = useMemo(() => {
     const stage: Record<LifecycleStage, number> = {
       approved: 0, sent_nm: 0, nm_confirmed: 0, pickup: 0,
@@ -89,26 +91,30 @@ export default function OrdersPage() {
     };
     let todo = 0, transit = 0, done = 0, overdue = 0;
     let po = 0, to = 0;
-    for (const r of rows) {
-      stage[r.stage]++;
-      if (r.kind === "RPO") po++; else to++;
-      if (ACTION_STAGES.includes(r.stage)) todo++;
-      if (r.stage === "pickup" || r.stage === "in_transit") transit++;
-      if (r.stage === "completed") done++;
-      if (isOverdue(r)) overdue++;
+    for (const g of groups) {
+      stage[g.stage]++;
+      if (g.kind === "RPO") po++; else to++;
+      if (ACTION_STAGES.includes(g.stage)) todo++;
+      if (g.stage === "pickup" || g.stage === "in_transit") transit++;
+      if (g.stage === "completed") done++;
+      if (groupOverdue(g)) overdue++;
     }
-    return { stage, todo, transit, done, overdue, total: rows.length, po, to };
-  }, [rows]);
+    return {
+      stage, todo, transit, done, overdue,
+      total: groups.length, totalLines: rows.length,
+      po, to,
+    };
+  }, [groups, rows.length]);
 
-  /* ── Filtered list — multi-select pills ── */
-  const visibleRows = useMemo(() => {
-    return rows.filter(r => {
-      if (kindFilter.size > 0 && !kindFilter.has(r.kind as "RPO" | "TO")) return false;
-      if (overdueOnly && !isOverdue(r)) return false;
-      if (statusFilter.size > 0 && !statusFilter.has(r.stage)) return false;
+  /* ── Filtered groups — multi-select pills ── */
+  const visibleGroups = useMemo(() => {
+    return groups.filter(g => {
+      if (kindFilter.size > 0 && !kindFilter.has(g.kind)) return false;
+      if (overdueOnly && !groupOverdue(g)) return false;
+      if (statusFilter.size > 0 && !statusFilter.has(g.stage)) return false;
       return true;
     });
-  }, [rows, statusFilter, kindFilter, overdueOnly]);
+  }, [groups, statusFilter, kindFilter, overdueOnly]);
 
   // Toggle helpers
   const toggleStatus = (s: LifecycleStage) =>
