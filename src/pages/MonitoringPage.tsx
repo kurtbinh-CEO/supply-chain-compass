@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useFcAccuracy, useNmPerformance } from "@/hooks/useMonitoringData";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
@@ -26,6 +26,7 @@ import { MonitoringHeroCards } from "@/components/monitoring/MonitoringHeroCards
 import { SummaryCards } from "@/components/SummaryCards";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 import { monitoringCompare } from "@/lib/compare-metrics";
+import { TableDownloadButton } from "@/components/TableDownloadButton";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -214,6 +215,7 @@ const conflictWeeklyTrend = [
 /* ═══ Conflict Log Section ═══ */
 function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
   const thisWeek = conflictLogData.slice(0, 12);
   const autoResolved = thisWeek.filter(c => c.result.includes("refresh")).length;
   const manual = thisWeek.length - autoResolved;
@@ -241,9 +243,7 @@ function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggl
               <span className="text-warning font-medium ml-2">Hot spot: S&OP input ({sopCount}/{thisWeek.length}).</span>
             )}
           </span>
-          <button onClick={() => { toast.success("Exporting CSV..."); }} className="shrink-0 rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-caption text-text-2 hover:bg-surface-3 transition-colors">
-            Xuất CSV
-          </button>
+          <TableDownloadButton tableRef={tableRef} filename="conflict-log-7d" size="xs" />
         </div>
 
         {/* Recommend */}
@@ -255,7 +255,7 @@ function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggl
 
         {/* Table */}
         <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-          <table className="w-full text-table-sm">
+          <table ref={tableRef} className="w-full text-table-sm">
             <thead>
               <tr className="bg-surface-1">
                 {["Thời gian", "Loại", "Screen", "User A", "User B", "Entity", "Kết quả", ""].map((h, i) => (
