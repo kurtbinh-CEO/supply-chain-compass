@@ -71,6 +71,7 @@ const FC_PER_SKU = [
 export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: string) => void }) {
   const [open, setOpen] = useState<CardKey | null>(null);
   const navigate = useNavigate();
+  const { enabled: farmer } = useFarmerMode();
 
   const close = () => setOpen(null);
   const goto = (path: string) => { close(); navigate(path); };
@@ -78,7 +79,10 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
 
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-2.5 mb-4 sm:mb-5">
+      <div className={cn(
+        "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 mb-4 sm:mb-5",
+        farmer ? "gap-4 sm:gap-2.5" : "gap-3 sm:gap-2.5",
+      )}>
         <HeroCard
           onClick={() => setOpen("nm-risk")}
           icon={<ShieldAlert className="h-4 w-4" />}
