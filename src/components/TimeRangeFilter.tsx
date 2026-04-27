@@ -234,6 +234,26 @@ export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
    HistoryBanner — banner vàng khi xem dữ liệu quá khứ
    ───────────────────────────────────────────────────────────── */
 
+/* ─────────────────────────────────────────────────────────────
+   Compare metric — số liệu so sánh giữa 2 period
+   ───────────────────────────────────────────────────────────── */
+
+export interface CompareMetric {
+  key: string;
+  label: string;
+  /** Giá trị period đã chọn (history). */
+  past: number | string;
+  /** Giá trị period hiện tại. */
+  current: number | string;
+  unit?: string;
+  /** "up" có lợi (vd: doanh thu) hay "down" có lợi (vd: trễ hạn). */
+  betterDirection?: "up" | "down" | "neutral";
+  /** Format hiển thị; nếu không truyền → toLocaleString("vi-VN"). */
+  format?: (v: number | string) => string;
+  /** Mô tả ngắn dưới số (vd: "200m² bán ra"). */
+  note?: string;
+}
+
 interface HistoryBannerProps {
   range: TimeRange;
   onReset: () => void;
@@ -241,31 +261,194 @@ interface HistoryBannerProps {
   /** Override mô tả entity ("DRP", "Tồn kho", ...). */
   entity?: string;
   className?: string;
+  /** Khi truyền vào → render nút "So sánh với hiện tại" mở dialog delta. */
+  compareMetrics?: CompareMetric[];
+  /** Nhãn period hiện tại để hiển thị trong dialog. Mặc định "Hiện tại". */
+  currentLabel?: string;
 }
 
-export function HistoryBanner({ range, onReset, resetLabel = "Quay về hiện tại", entity, className }: HistoryBannerProps) {
-  if (range.isCurrent) return null;
+function fmtNum(v: number | string, fmt?: (v: number | string) => string): string {
+  if (fmt) return fmt(v);
+  if (typeof v === "number") return v.toLocaleString("vi-VN");
+  return v;
+}
+
+function computeDelta(past: number | string, current: number | string) {
+  const p = typeof past === "number" ? past : parseFloat(String(past).replace(/[^\d.-]/g, ""));
+  const c = typeof current === "number" ? current : parseFloat(String(current).replace(/[^\d.-]/g, ""));
+  if (Number.isNaN(p) || Number.isNaN(c) || p === 0) {
+    return { absDelta: null as number | null, pctDelta: null as number | null, direction: "flat" as const };
+  }
+  const abs = c - p;
+  const pct = (abs / Math.abs(p)) * 100;
+  return {
+    absDelta: abs,
+    pctDelta: pct,
+    direction: abs > 0 ? ("up" as const) : abs < 0 ? ("down" as const) : ("flat" as const),
+  };
+}
+
+function deltaTone(direction: "up" | "down" | "flat", betterDirection?: "up" | "down" | "neutral") {
+  if (direction === "flat" || betterDirection === "neutral" || !betterDirection) return "text-text-2";
+  const isGood = (direction === "up" && betterDirection === "up") || (direction === "down" && betterDirection === "down");
+  return isGood ? "text-success" : "text-danger";
+}
+
+function CompareDialog({
+  open, onClose, range, currentLabel, metrics, entity,
+}: {
+  open: boolean;
+  onClose: () => void;
+  range: TimeRange;
+  currentLabel: string;
+  metrics: CompareMetric[];
+  entity?: string;
+}) {
+  if (!open) return null;
   return (
-    <div
-      className={cn(
-        "sticky top-0 z-30 -mx-1 mb-3 flex items-center justify-between gap-3 rounded-button border border-warning/40 bg-warning-bg px-3 py-2 shadow-sm",
-        className
-      )}
-    >
-      <div className="flex items-center gap-2 text-table-sm text-warning-foreground">
-        <span className="text-base leading-none">⏳</span>
-        <span>
-          Đang xem {entity ? `${entity} ` : "dữ liệu "}
-          <strong>{range.label}</strong>. Chỉ xem — không chỉnh sửa được.
-        </span>
+    <>
+      <div className="fixed inset-0 bg-text-1/40 z-[100]" onClick={onClose} />
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[101] w-[min(720px,92vw)] max-h-[85vh] overflow-y-auto rounded-card bg-surface-0 border border-surface-3 shadow-xl animate-fade-in">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-surface-3 sticky top-0 bg-surface-0 z-10">
+          <div>
+            <h3 className="font-display text-section-header text-text-1">
+              So sánh {entity ?? "dữ liệu"}
+            </h3>
+            <p className="text-caption text-text-3 mt-0.5">
+              <span className="text-warning font-medium">{range.label}</span>
+              <ArrowRight className="inline h-3 w-3 mx-1.5" />
+              <span className="text-success font-medium">{currentLabel}</span>
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-button hover:bg-surface-2 text-text-3 hover:text-text-1 transition-colors"
+            aria-label="Đóng"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="p-4">
+          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-4 gap-y-1 text-table-sm">
+            <div className="text-caption font-semibold uppercase text-text-3 pb-2 border-b border-surface-3">Chỉ số</div>
+            <div className="text-caption font-semibold uppercase text-text-3 pb-2 border-b border-surface-3 text-right">{range.label}</div>
+            <div className="text-caption font-semibold uppercase text-text-3 pb-2 border-b border-surface-3 text-right">{currentLabel}</div>
+            <div className="text-caption font-semibold uppercase text-text-3 pb-2 border-b border-surface-3 text-right">Chênh lệch</div>
+
+            {metrics.map((m) => {
+              const d = computeDelta(m.past, m.current);
+              const tone = deltaTone(d.direction, m.betterDirection);
+              const Icon = d.direction === "up" ? TrendingUp : d.direction === "down" ? TrendingDown : Minus;
+              return (
+                <div key={m.key} className="contents">
+                  <div className="py-2.5 border-b border-surface-3/60">
+                    <div className="font-medium text-text-1">{m.label}</div>
+                    {m.note && <div className="text-caption text-text-3 mt-0.5">{m.note}</div>}
+                  </div>
+                  <div className="py-2.5 border-b border-surface-3/60 text-right tabular-nums text-text-2">
+                    {fmtNum(m.past, m.format)}{m.unit ? ` ${m.unit}` : ""}
+                  </div>
+                  <div className="py-2.5 border-b border-surface-3/60 text-right tabular-nums font-semibold text-text-1">
+                    {fmtNum(m.current, m.format)}{m.unit ? ` ${m.unit}` : ""}
+                  </div>
+                  <div className={cn("py-2.5 border-b border-surface-3/60 text-right tabular-nums font-semibold", tone)}>
+                    {d.absDelta === null ? (
+                      <span className="text-text-3">—</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 justify-end">
+                        <Icon className="h-3.5 w-3.5" />
+                        <span>
+                          {d.absDelta > 0 ? "+" : ""}
+                          {Math.abs(d.absDelta) >= 100
+                            ? Math.round(d.absDelta).toLocaleString("vi-VN")
+                            : d.absDelta.toFixed(1)}
+                          {m.unit ? ` ${m.unit}` : ""}
+                        </span>
+                        {d.pctDelta !== null && (
+                          <span className="text-caption opacity-80">({d.pctDelta > 0 ? "+" : ""}{d.pctDelta.toFixed(1)}%)</span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 rounded-button bg-info-bg border border-info/30 px-3 py-2 text-caption text-info">
+            💡 So sánh chỉ mang tính tham khảo. Dữ liệu lịch sử dựa trên snapshot lưu lại — production sẽ đồng bộ với Bravo.
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 px-5 py-3 border-t border-surface-3 bg-surface-1">
+          <button
+            onClick={onClose}
+            className="rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-table-sm text-text-2 hover:bg-surface-2 transition-colors"
+          >
+            Đóng
+          </button>
+        </div>
       </div>
-      <button
-        onClick={onReset}
-        className="inline-flex items-center gap-1 rounded-button bg-surface-0 border border-warning/40 px-2.5 py-1 text-caption font-medium text-warning hover:bg-warning/10 transition-colors"
-      >
-        {resetLabel}
-        <ArrowRight className="h-3 w-3" />
-      </button>
-    </div>
+    </>
   );
 }
+
+export function HistoryBanner({
+  range, onReset, resetLabel = "Quay về hiện tại", entity, className,
+  compareMetrics, currentLabel = "Hiện tại",
+}: HistoryBannerProps) {
+  const [compareOpen, setCompareOpen] = useState(false);
+  if (range.isCurrent) return null;
+
+  const hasCompare = !!compareMetrics && compareMetrics.length > 0;
+
+  return (
+    <>
+      <div
+        className={cn(
+          "sticky top-0 z-30 -mx-1 mb-3 flex items-center justify-between gap-3 rounded-button border border-warning/40 bg-warning-bg px-3 py-2 shadow-sm",
+          className
+        )}
+      >
+        <div className="flex items-center gap-2 text-table-sm text-warning-foreground">
+          <span className="text-base leading-none">⏳</span>
+          <span>
+            Đang xem {entity ? `${entity} ` : "dữ liệu "}
+            <strong>{range.label}</strong>. Chỉ xem — không chỉnh sửa được.
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {hasCompare && (
+            <button
+              onClick={() => setCompareOpen(true)}
+              className="inline-flex items-center gap-1 rounded-button bg-primary text-primary-foreground px-2.5 py-1 text-caption font-medium hover:bg-primary/90 transition-colors"
+            >
+              <GitCompare className="h-3 w-3" />
+              So sánh với hiện tại
+            </button>
+          )}
+          <button
+            onClick={onReset}
+            className="inline-flex items-center gap-1 rounded-button bg-surface-0 border border-warning/40 px-2.5 py-1 text-caption font-medium text-warning hover:bg-warning/10 transition-colors"
+          >
+            {resetLabel}
+            <ArrowRight className="h-3 w-3" />
+          </button>
+        </div>
+      </div>
+
+      {hasCompare && (
+        <CompareDialog
+          open={compareOpen}
+          onClose={() => setCompareOpen(false)}
+          range={range}
+          currentLabel={currentLabel}
+          metrics={compareMetrics!}
+          entity={entity}
+        />
+      )}
+    </>
+  );
+}
+
