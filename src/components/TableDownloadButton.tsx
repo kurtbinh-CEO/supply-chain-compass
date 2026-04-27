@@ -252,6 +252,12 @@ export function TableDownloadButton({
     } else {
       printMatrixAsPdf(previewData, title + (scope === "all" ? " (tất cả)" : ""), scopeLabel);
     }
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify({ fmt, scope }));
+    } catch {
+      /* ignore */
+    }
+    setLastChoice({ fmt, scope });
     setPreview(null);
   };
 
