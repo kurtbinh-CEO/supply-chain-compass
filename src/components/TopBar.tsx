@@ -48,7 +48,7 @@ const routeGroups: Record<string, string> = {
   "/config": "Cấu hình",
 };
 
-function TenantDropdown({ tenant, setTenant, tenants }: { tenant: string; setTenant: (t: TenantName) => void; tenants: readonly string[] }) {
+export function TenantDropdown({ tenant, setTenant, tenants }: { tenant: string; setTenant: (t: TenantName) => void; tenants: readonly string[] }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -96,7 +96,7 @@ function TenantDropdown({ tenant, setTenant, tenants }: { tenant: string; setTen
  * 🟡 1+ NM cũ (24–72h)
  * 🔴 1+ NM stale > 72h → DRP có thể bị chặn
  */
-function FreshnessIndicator() {
+export function FreshnessIndicator() {
   const navigate = useNavigate();
 
   const { worst, perNm, label, tone, shortLabel } = useMemo(() => {
