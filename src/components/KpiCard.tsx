@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Minus, type LucideIcon } from "lucide-react";
 import type { KpiTrend, KpiUnit } from "@/lib/kpi-format";
 import { formatKpiValue } from "@/lib/kpi-format";
+import { KPI_THRESHOLDS, resolveTier } from "@/lib/kpi-thresholds";
 import { useFarmerMode } from "@/components/FarmerModeContext";
 
 /**
@@ -98,35 +99,32 @@ export function KpiCard({
   const { enabled: farmer } = useFarmerMode();
 
   // ─── Auto-shrink heuristic (mobile <sm) ──────────────────────────────
-  // Khi chuỗi quá dài, hạ 1 nấc font và cho phép ellipsis (1 dòng) để
-  // thẻ giữ chiều cao đều, scan nhanh trên 480px. Desktop giữ nguyên.
-  const titleLen = title?.length ?? 0;
-  const unitLen  = (renderUnit ?? "").length;
-  const hintLen  = (hint ?? "").length;
+  // Cutoffs live in `src/lib/kpi-thresholds.ts` — tune there, not here.
+  const titleTier = resolveTier(title?.length ?? 0,        KPI_THRESHOLDS.title);
+  const valueTier = resolveTier(renderValue.length,        KPI_THRESHOLDS.value);
+  const unitTier  = resolveTier((renderUnit ?? "").length, KPI_THRESHOLDS.unit);
+  const hintTier  = resolveTier((hint ?? "").length,       KPI_THRESHOLDS.hint);
 
-  // Title: >22 ký tự → giảm 1 nấc; >32 → giảm 2 nấc + clamp 2 dòng
   const titleMobileClass =
-    titleLen > 32 ? (farmer ? "text-table sm:text-table-sm" : "text-table-sm sm:text-table-sm")
-    : titleLen > 22 ? (farmer ? "text-table sm:text-table-sm" : "text-table-sm sm:text-table-sm")
+    titleTier === "xl" ? (farmer ? "text-table sm:text-table-sm"   : "text-table-sm sm:text-table-sm")
+    : titleTier === "lg" ? (farmer ? "text-table sm:text-table-sm" : "text-table-sm sm:text-table-sm")
     : (farmer ? "text-body sm:text-table-sm" : "text-table sm:text-table-sm");
-  const titleClampClass = titleLen > 32 ? "line-clamp-2" : "truncate";
+  const titleClampClass = titleTier === "xl" ? "line-clamp-2" : "truncate";
 
-  // Unit: >8 ký tự → giảm 1 nấc; luôn truncate để khỏi đẩy value xuống dòng
   const unitMobileClass =
-    unitLen > 8 ? (farmer ? "text-table-sm sm:text-table-sm font-medium" : "text-table-sm sm:text-table-sm")
-    : (farmer ? "text-body sm:text-table-sm font-medium" : "text-table sm:text-table-sm");
+    unitTier !== "base"
+      ? (farmer ? "text-table-sm sm:text-table-sm font-medium" : "text-table-sm sm:text-table-sm")
+      : (farmer ? "text-body sm:text-table-sm font-medium"     : "text-table sm:text-table-sm");
 
-  // Value: nếu chuỗi value quá dài (vd "1.234,5") trên mobile → giảm 1 nấc
-  const valueLen = renderValue.length;
   const valueMobileClass =
-    valueLen > 7 ? (farmer ? "text-[32px] sm:text-[26px]" : "text-[26px] sm:text-[26px]")
-    : valueLen > 5 ? (farmer ? "text-[34px] sm:text-[26px]" : "text-[28px] sm:text-[26px]")
+    valueTier === "xl" ? (farmer ? "text-[32px] sm:text-[26px]" : "text-[26px] sm:text-[26px]")
+    : valueTier === "lg" ? (farmer ? "text-[34px] sm:text-[26px]" : "text-[28px] sm:text-[26px]")
     : (farmer ? "text-[38px] sm:text-[26px]" : "text-[30px] sm:text-[26px]");
 
-  // Hint: >28 ký tự → giảm 1 nấc + truncate (1 dòng)
   const hintMobileClass =
-    hintLen > 28 ? (farmer ? "text-table-sm sm:text-caption" : "text-caption sm:text-caption")
-    : (farmer ? "text-table sm:text-caption" : "text-table-sm sm:text-caption");
+    hintTier !== "base"
+      ? (farmer ? "text-table-sm sm:text-caption" : "text-caption sm:text-caption")
+      : (farmer ? "text-table sm:text-caption"    : "text-table-sm sm:text-caption");
 
   return (
     <div
