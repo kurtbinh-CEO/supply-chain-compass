@@ -206,17 +206,18 @@ function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
       : { text: "✓", tone: "success" },
 
     // ── Monthly plan ──
-    demand_progress: { text: "8/12 CN", tone: "warning" },
+    // Rút gọn nhãn (bỏ " CN"/" NM" — ngữ cảnh đã rõ từ tên menu) để dành chỗ cho text menu.
+    demand_progress: { text: "8/12", tone: "warning" },
     sop_status:      sopLocked
       ? { text: "Đã chốt", tone: "success" }
       : sopPendingApprovals > 0
         ? { text: "Cần chốt", tone: "warning" }
         : { text: "Chờ phiên", tone: "warning" },
     hub_commitment:  hubReady.confirmed >= hubReady.total
-      ? { text: `${hubReady.total}/${hubReady.total} NM`, tone: "success" }
-      : { text: `${hubReady.confirmed}/${hubReady.total} NM`,
+      ? { text: `${hubReady.total}/${hubReady.total}`, tone: "success" }
+      : { text: `${hubReady.confirmed}/${hubReady.total}`,
           tone: (hubReady.total - hubReady.confirmed) >= 3 ? "danger" : "warning" },
-    gap_pending:     { text: "2 KB", tone: "warning" },
+    gap_pending:     { text: "2", tone: "warning" },
 
     // ── Monitoring & Executive ──
     monitoring_alerts: totalAlerts > 0
