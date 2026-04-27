@@ -642,7 +642,11 @@ export function TableDownloadButton({
                 className="h-8 px-3 rounded-button bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-table-sm font-medium inline-flex items-center gap-1.5"
               >
                 <Download className="h-3.5 w-3.5" />
-                {preview.fmt === "pdf" ? "Mở hộp thoại in" : "Tải về"}
+                {preview.fmt === "pdf"
+                  ? "Mở hộp thoại in"
+                  : preview.fmt === "xlsx"
+                    ? "Tải file Excel"
+                    : "Tải về"}
               </button>
             </div>
           </div>
