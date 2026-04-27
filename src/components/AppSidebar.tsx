@@ -41,6 +41,11 @@ interface NavItem {
   url: string;
   roles?: UserRole[];
   badgeKey?: DailyBadgeKey;
+  /** Override role được phép thấy badge (mặc định: cùng `roles` của item).
+   *  Để undefined → ai thấy item cũng thấy badge.
+   *  Để mảng cụ thể → CHỈ những role này thấy số trên badge,
+   *  giúp tránh lộ data nhạy cảm (vd: rủi ro lãnh đạo, tổng đơn pending). */
+  badgeRoles?: UserRole[];
 }
 
 interface PhaseLabel {
