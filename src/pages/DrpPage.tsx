@@ -1167,6 +1167,8 @@ export default function DrpPage() {
         onReset={() => setTimeRange(defaultTimeRange("weekly"))}
         entity="DRP"
         resetLabel="Quay về tuần này"
+        currentLabel="Tuần này (W20)"
+        compareMetrics={drpCompare(timeRange)}
       />
 
       {/* ── 3-STEP INDICATOR ── (luôn hiện) */}
