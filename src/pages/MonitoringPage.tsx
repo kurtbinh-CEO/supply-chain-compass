@@ -243,9 +243,7 @@ function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggl
               <span className="text-warning font-medium ml-2">Hot spot: S&OP input ({sopCount}/{thisWeek.length}).</span>
             )}
           </span>
-          <button onClick={() => { toast.success("Exporting CSV..."); }} className="shrink-0 rounded-button border border-surface-3 bg-surface-0 px-3 py-1.5 text-caption text-text-2 hover:bg-surface-3 transition-colors">
-            Xuất CSV
-          </button>
+          <TableDownloadButton tableRef={tableRef} filename="conflict-log-7d" size="xs" />
         </div>
 
         {/* Recommend */}
