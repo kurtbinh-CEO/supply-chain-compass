@@ -175,8 +175,25 @@ export function TableDownloadButton({
   getAllRowsCsv,
   pdfTitle,
 }: Props) {
+  const storageKey = `tableDownload:lastChoice:${filename}`;
+  const readLast = (): { fmt: Format; scope: Scope } | null => {
+    try {
+      const raw = sessionStorage.getItem(storageKey);
+      if (!raw) return null;
+      const v = JSON.parse(raw);
+      if ((v.fmt === "csv" || v.fmt === "pdf") && (v.scope === "filtered" || v.scope === "all")) {
+        return v;
+      }
+    } catch {
+      /* ignore */
+    }
+    return null;
+  };
   const [menuOpen, setMenuOpen] = useState(false);
   const [preview, setPreview] = useState<{ fmt: Format; scope: Scope } | null>(null);
+  const [lastChoice, setLastChoice] = useState<{ fmt: Format; scope: Scope } | null>(() =>
+    typeof window === "undefined" ? null : readLast(),
+  );
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
