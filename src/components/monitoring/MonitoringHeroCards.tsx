@@ -75,7 +75,7 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
 
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-2.5 mb-4 sm:mb-5">
         <HeroCard
           onClick={() => setOpen("nm-risk")}
           icon={<ShieldAlert className="h-4 w-4" />}
