@@ -38,6 +38,9 @@ import {
   buildPoGroups, groupOverdue, groupNearSla, leaderSiblingIds, type PoGroup,
 } from "@/lib/po-group-builder";
 import { CARRIERS, CN_REGION } from "@/data/unis-enterprise-dataset";
+import {
+  SplitShipmentBanner, PartialDeliveryBanner, DamageClaimPanel, HoldShipCountdown,
+} from "@/components/orders/OrdersEdgeBanners";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 import { ordersCompare } from "@/lib/compare-metrics";
