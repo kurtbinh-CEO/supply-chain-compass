@@ -136,6 +136,7 @@ export default function SopPage() {
   const { tenant } = useTenant();
   const { markDone } = useNextStep();
   const { current: planCycle, isReadOnly: planLocked } = usePlanningPeriod();
+  const [timeRange, setTimeRange] = useTimeRange("sop", "monthly");
 
   const [locked, setLocked] = useState(false);
   const [showPreLock, setShowPreLock] = useState(false);
