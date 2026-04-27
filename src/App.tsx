@@ -8,6 +8,7 @@ import { WorkflowProvider } from "@/components/WorkflowContext";
 import { WorkspaceProvider } from "@/components/WorkspaceContext";
 import { TenantProvider } from "@/components/TenantContext";
 import { RbacProvider } from "@/components/RbacContext";
+import { RouteGuard } from "@/components/RouteGuard";
 import { SafetyStockProvider } from "@/components/SafetyStockContext";
 import { ThemeProvider } from "@/components/ThemeContext";
 import { I18nProvider } from "@/components/i18n/I18nContext";
