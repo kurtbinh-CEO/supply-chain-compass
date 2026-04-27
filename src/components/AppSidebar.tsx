@@ -458,17 +458,53 @@ export function AppSidebar() {
                               {badge.text}
                             </span>
                           )}
-                          {/* Placeholder khi badge bị ẩn vì role: giữ chỗ + tooltip giải thích.
-                              Tránh để user thắc mắc "tại sao menu này không có số như đồng nghiệp". */}
-                          {hiddenByRole && (
-                            <span
-                              className="shrink-0 inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full bg-surface-3/60 text-text-3 text-[10px] font-semibold leading-tight px-1.5 cursor-help select-none"
-                              title={`Số liệu chỉ hiển thị cho vai trò: ${allowedRolesLabel}. Vai trò hiện tại của bạn (${user.role}) không được xem.`}
-                              aria-label="Badge ẩn theo phân quyền"
-                            >
-                              —
-                            </span>
-                          )}
+                          {/* Khi badge bị ẩn vì role → render placeholder "—" + Tooltip rich
+                              giải thích metric, role nào được xem, và nơi xem chi tiết. */}
+                          {hiddenByRole && item.badgeKey && (() => {
+                            const info = BADGE_INFO[item.badgeKey];
+                            const allowedLabels = (item.badgeRoles ?? [])
+                              .map((r) => ROLE_LABEL[r])
+                              .join(" hoặc ");
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span
+                                    // Span không có button parent → cần tabindex để keyboard focus mở popover.
+                                    tabIndex={0}
+                                    onClick={(e) => e.preventDefault()}
+                                    className="shrink-0 inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full bg-surface-3/60 text-text-3 text-[10px] font-semibold leading-tight px-1.5 cursor-help select-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                    aria-label="Badge ẩn theo phân quyền — hover để xem chi tiết"
+                                  >
+                                    —
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" align="start" className="max-w-[260px] p-0 overflow-hidden">
+                                  <div className="p-3 space-y-2 text-[12px] leading-relaxed">
+                                    <div className="flex items-center gap-1.5 font-semibold text-text-1">
+                                      <Lock className="h-3 w-3 text-text-3" />
+                                      Số liệu bị ẩn
+                                    </div>
+                                    <div className="text-text-2">
+                                      <span className="font-medium text-text-1">Đo gì: </span>
+                                      {info.metric}
+                                    </div>
+                                    <div className="text-text-2">
+                                      <span className="font-medium text-text-1">Cần vai trò: </span>
+                                      {allowedLabels || "—"}
+                                    </div>
+                                    <div className="text-text-2">
+                                      <span className="font-medium text-text-1">Xem ở: </span>
+                                      {info.viewAt}
+                                    </div>
+                                    <div className="pt-1.5 border-t border-surface-3 text-text-3 text-[11px]">
+                                      Vai trò hiện tại: <span className="font-medium text-text-2">{ROLE_LABEL[user.role]}</span>.
+                                      Liên hệ quản trị nếu cần nâng quyền.
+                                    </div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })()}
                         </>
                       )}
                     </NavLink>
