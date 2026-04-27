@@ -457,12 +457,22 @@ function Sparkline({ values, tone, target }: { values: number[]; tone: Tone; tar
   );
 }
 
-function DeltaBadge({ delta }: { delta: KpiCardData["delta"] }) {
+/**
+ * DeltaBadge — gọn, có context.
+ *  - `compact`=true: render dạng inline cho footer (icon + value, không pad).
+ *  - mặc định: dùng cho hover/badge contexts khác.
+ *  Color logic: positive → success, flat → muted text-3, negative → danger.
+ */
+function DeltaBadge({ delta, compact = false }: { delta: KpiCardData["delta"]; compact?: boolean }) {
   const Icon = delta.dir === "up" ? TrendingUp : delta.dir === "down" ? TrendingDown : ArrowRight;
   const colorClass = delta.positive ? "text-success" : delta.dir === "flat" ? "text-text-3" : "text-danger";
   return (
-    <span className={cn("inline-flex items-center gap-1 text-table-sm font-medium", colorClass)}>
-      <Icon className="h-3.5 w-3.5" />
+    <span className={cn(
+      "inline-flex items-center gap-0.5 font-semibold tabular-nums shrink-0",
+      compact ? "text-caption" : "text-table-sm",
+      colorClass,
+    )}>
+      <Icon className={compact ? "h-3 w-3" : "h-3.5 w-3.5"} />
       {delta.value}
     </span>
   );
@@ -603,29 +613,50 @@ export default function ExecutivePage() {
       />
       {/* ════ ZONE 1: 6 KPI cards ═══════════════════════════════════════ */}
       <section className="mb-8">
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2.5">
           {KPIS.map((k) => (
             <button
               key={k.key}
               onClick={() => { setOpenKpi(k.key); setDrillTab("cn"); }}
               className={cn(
-                "rounded-card border border-surface-3 border-l-4 bg-surface-1 p-4 text-left transition-all",
-                "hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary",
-                toneBorder(k.tone)
+                "group relative overflow-hidden rounded-card border border-surface-3 border-l-[3px] bg-surface-1",
+                "p-3.5 text-left transition-all hover:shadow-sm hover:-translate-y-px",
+                "focus:outline-none focus:ring-2 focus:ring-primary/40",
+                toneBorder(k.tone),
               )}
             >
-              <div className="flex items-center gap-2 mb-2">
-                <k.icon className="h-4 w-4 text-text-3" />
-                <span className="text-caption font-medium uppercase tracking-wide text-text-3 truncate">{k.label}</span>
+              {/* Header: icon chip + label (1 dòng, không uppercase → đọc nhanh) */}
+              <div className="flex items-center gap-1.5 mb-2">
+                <div className={cn(
+                  "shrink-0 rounded-md p-1",
+                  k.tone === "ok" && "bg-success/10 text-success",
+                  k.tone === "near" && "bg-warning/10 text-warning",
+                  k.tone === "miss" && "bg-danger/10 text-danger",
+                )}>
+                  <k.icon className="h-3.5 w-3.5" />
+                </div>
+                <span className="text-table-sm font-medium text-text-2 truncate">{k.label}</span>
               </div>
-              <div className="flex items-baseline gap-1.5 mb-1.5">
-                <span className="font-display text-h2 font-bold text-text-1 tabular-nums">{k.value}</span>
-                {k.unit && <span className="text-table-sm text-text-2">{k.unit}</span>}
+
+              {/* Row: value + sparkline cùng hàng → tiết kiệm chiều cao */}
+              <div className="flex items-end justify-between gap-2 mb-2">
+                <div className="flex items-baseline gap-1 min-w-0">
+                  <span className="font-display text-[26px] leading-none font-bold text-text-1 tabular-nums">
+                    {k.value}
+                  </span>
+                  {k.unit && <span className="text-table-sm text-text-3">{k.unit}</span>}
+                </div>
+                <Sparkline values={k.trend12w} tone={k.tone} />
               </div>
-              <Sparkline values={k.trend12w} tone={k.tone} />
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <span className="text-caption text-text-3 truncate">{kpiTargetLabel(k.key, k.target)}</span>
-                <DeltaBadge delta={k.delta} />
+
+              {/* Footer 1 dòng: Mục tiêu · Delta vs kỳ trước
+                  Gom 2 dòng cũ → 1 dòng compact, có context "vs T4" cho farmer hiểu */}
+              <div className="flex items-center justify-between gap-2 text-caption text-text-3">
+                <span className="truncate">{kpiTargetLabel(k.key, k.target)}</span>
+                <span className="inline-flex items-center gap-1 shrink-0">
+                  <DeltaBadge delta={k.delta} compact />
+                  <span className="text-text-3/70">vs T4</span>
+                </span>
               </div>
             </button>
           ))}
