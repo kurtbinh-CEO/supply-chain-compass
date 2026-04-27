@@ -437,6 +437,22 @@ export function TableDownloadButton({
                 )}
               </button>
             )}
+            {showXlsx && (
+              <button
+                type="button"
+                onClick={() => openPreview("xlsx", "filtered")}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-button hover:bg-surface-2 text-left"
+                role="menuitem"
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5 text-info" />
+                <span className="flex-1">Excel — đang lọc</span>
+                {lastChoice?.fmt === "xlsx" && lastChoice?.scope === "filtered" ? (
+                  <span className="text-caption text-primary font-medium">● lần trước</span>
+                ) : (
+                  <span className="text-caption text-text-3">xem trước</span>
+                )}
+              </button>
+            )}
             {showPdf && (
               <button
                 type="button"
