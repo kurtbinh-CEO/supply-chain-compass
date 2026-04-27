@@ -110,6 +110,35 @@ function loadPersisted(screenId: string, mode: TimeRangeMode): TimeRange {
   return defaultTimeRange(mode);
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Draft custom range — giữ giá trị Từ/Đến user đang gõ ngay cả khi
+   chưa bấm Áp dụng / đóng popover / reload trang. Persist theo screenId
+   nên mỗi screen có draft riêng.
+   ───────────────────────────────────────────────────────────── */
+interface CustomDraft { customFrom: string; customTo: string }
+
+function draftKey(screenId: string) {
+  return `scp.timerange.draft.${screenId}`;
+}
+
+function loadDraft(screenId: string): CustomDraft {
+  try {
+    const raw = localStorage.getItem(draftKey(screenId));
+    if (!raw) return { customFrom: "", customTo: "" };
+    const parsed = JSON.parse(raw) as CustomDraft;
+    return {
+      customFrom: typeof parsed.customFrom === "string" ? parsed.customFrom : "",
+      customTo:   typeof parsed.customTo   === "string" ? parsed.customTo   : "",
+    };
+  } catch {
+    return { customFrom: "", customTo: "" };
+  }
+}
+
+function saveDraft(screenId: string, draft: CustomDraft) {
+  try { localStorage.setItem(draftKey(screenId), JSON.stringify(draft)); } catch {/* */}
+}
+
 export function useTimeRange(screenId: string, mode: TimeRangeMode) {
   const [range, setRange] = useState<TimeRange>(() => loadPersisted(screenId, mode));
   useEffect(() => {
