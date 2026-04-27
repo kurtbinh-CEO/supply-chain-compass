@@ -94,6 +94,8 @@ export default function HubPage() {
         onReset={() => setTimeRange(defaultTimeRange("monthly"))}
         entity="cam kết"
         resetLabel="Quay về tháng này"
+        currentLabel="Tháng này (T5)"
+        compareMetrics={hubCompare(timeRange)}
       />
 
       <div className="space-y-4">
