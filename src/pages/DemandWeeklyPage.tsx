@@ -1202,18 +1202,44 @@ export default function DemandWeeklyPage() {
       toast.error(`Thiếu lý do cho ${missingReason.item} ${missingReason.variant}`);
       return;
     }
+    const cfg = cnConfigs[cnCode];
+    const tol = cfg?.tolerancePct ?? 30;
+    // Phân loại từng dòng để báo cáo cụ thể (Edge 1 — P3)
+    const overRows = cnRows.filter((r) => {
+      const pct = r.duKien > 0 ? (r.adjust / r.duKien) * 100 : 0;
+      return Math.abs(pct) > tol;
+    });
+    const autoRows = cfg?.autoApprove ? cnRows.filter((r) => !overRows.includes(r)) : [];
+    const pendingRows = cnRows.length - overRows.length - autoRows.length;
+
     setRows((all) => all.map((r) =>
       r.cnCode === cnCode && r.adjust !== 0 ? { ...r, submitted: true } : r,
     ));
-    const cfg = cnConfigs[cnCode];
-    if (cfg?.autoApprove) {
-      toast.success(`Đã gửi ${cnRows.length} mã hàng cho ${cnCode}.`, {
-        description: `Trust ${cfg.trustPct}% ≥ 85% → Tự duyệt.`,
-      });
+
+    if (overRows.length > 0) {
+      // Edge 1: ≥1 dòng vượt biên → bắt buộc SC Manager duyệt
+      const sample = overRows[0];
+      const samplePct = sample.duKien > 0
+        ? Math.round((sample.adjust / sample.duKien) * 100)
+        : 0;
+      toast.warning(
+        `${overRows.length}/${cnRows.length} mã vượt biên ±${tol}% — đã gửi SC Manager duyệt.`,
+        {
+          description: `Ví dụ: ${sample.item} ${sample.variant} ${samplePct > 0 ? "+" : ""}${samplePct}%${
+            cfg ? ` · Trust ${cfg.trustPct}%` : ""
+          }`,
+        },
+      );
+    } else if (autoRows.length > 0 && pendingRows === 0) {
+      toast.success(
+        `Đã gửi ${cnRows.length} mã cho ${cnCode}.`,
+        { description: `Trust ${cfg!.trustPct}% ≥ 85% → Tự duyệt toàn bộ.` },
+      );
     } else {
-      toast.success(`Đã gửi ${cnRows.length} mã hàng cho ${cnCode}.`, {
-        description: "Đang chờ SC Manager duyệt.",
-      });
+      toast.success(
+        `Đã gửi ${cnRows.length} mã cho ${cnCode}.`,
+        { description: "Đang chờ SC Manager duyệt." },
+      );
     }
   };
 
