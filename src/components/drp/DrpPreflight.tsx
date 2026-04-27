@@ -65,6 +65,8 @@ const TIER_LABEL: Record<Tier, string> = {
 };
 
 export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
+  const { canForceRelease: rbacCanForce, canForceReleaseDirector, canForceReleaseCeo, user } = useRbac();
+
   const blocking = items.filter((i) => i.level === "block");
   const warnings = items.filter((i) => i.level === "warn");
   const okCount = items.filter((i) => i.level === "ok").length;
@@ -77,7 +79,7 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
     [blocking],
   );
   const onlyStaleBlocks = blocking.length > 0 && blocking.every((b) => b.key === "nm-stock");
-  const canForceRelease = !!staleBlock && onlyStaleBlocks;
+  const canForceRelease = !!staleBlock && onlyStaleBlocks && rbacCanForce;
 
   const requiredTier: Tier = useMemo(() => {
     const h = staleBlock?.staleHours ?? 0;
