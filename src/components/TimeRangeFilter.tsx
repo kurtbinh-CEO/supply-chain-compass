@@ -110,6 +110,35 @@ function loadPersisted(screenId: string, mode: TimeRangeMode): TimeRange {
   return defaultTimeRange(mode);
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Draft custom range — giữ giá trị Từ/Đến user đang gõ ngay cả khi
+   chưa bấm Áp dụng / đóng popover / reload trang. Persist theo screenId
+   nên mỗi screen có draft riêng.
+   ───────────────────────────────────────────────────────────── */
+interface CustomDraft { customFrom: string; customTo: string }
+
+function draftKey(screenId: string) {
+  return `scp.timerange.draft.${screenId}`;
+}
+
+function loadDraft(screenId: string): CustomDraft {
+  try {
+    const raw = localStorage.getItem(draftKey(screenId));
+    if (!raw) return { customFrom: "", customTo: "" };
+    const parsed = JSON.parse(raw) as CustomDraft;
+    return {
+      customFrom: typeof parsed.customFrom === "string" ? parsed.customFrom : "",
+      customTo:   typeof parsed.customTo   === "string" ? parsed.customTo   : "",
+    };
+  } catch {
+    return { customFrom: "", customTo: "" };
+  }
+}
+
+function saveDraft(screenId: string, draft: CustomDraft) {
+  try { localStorage.setItem(draftKey(screenId), JSON.stringify(draft)); } catch {/* */}
+}
+
 export function useTimeRange(screenId: string, mode: TimeRangeMode) {
   const [range, setRange] = useState<TimeRange>(() => loadPersisted(screenId, mode));
   useEffect(() => {
@@ -187,13 +216,43 @@ function validateCustomRange(from: string, to: string): string | null {
   return null;
 }
 
-export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
+export function TimeRangeFilter({ mode, value, onChange, screenId, className }: Props) {
   const [open, setOpen] = useState(false);
-  const [customFrom, setCustomFrom] = useState(value.customFrom ?? "");
-  const [customTo, setCustomTo] = useState(value.customTo ?? "");
+  // Init: ưu tiên giá trị đã apply (value.customFrom/To), fallback về draft đã persist theo screenId.
+  const [customFrom, setCustomFrom] = useState(() => {
+    if (value.customFrom) return value.customFrom;
+    return loadDraft(screenId).customFrom;
+  });
+  const [customTo, setCustomTo] = useState(() => {
+    if (value.customTo) return value.customTo;
+    return loadDraft(screenId).customTo;
+  });
   const [customError, setCustomError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  // Khi đổi screenId (vd: re-mount với screen khác) → load lại draft tương ứng.
+  useEffect(() => {
+    const draft = loadDraft(screenId);
+    setCustomFrom(value.customFrom ?? draft.customFrom);
+    setCustomTo(value.customTo ?? draft.customTo);
+    setTouched(false);
+    setCustomError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screenId]);
+
+  // Sync khi value bên ngoài đổi sang custom với cặp ngày khác (vd: reset hoặc set programmatic).
+  useEffect(() => {
+    if (value.type === "custom" && value.customFrom && value.customTo) {
+      setCustomFrom(value.customFrom);
+      setCustomTo(value.customTo);
+    }
+  }, [value.type, value.customFrom, value.customTo]);
+
+  // Persist draft theo screenId mỗi khi user gõ — không cần đợi Áp dụng.
+  useEffect(() => {
+    saveDraft(screenId, { customFrom, customTo });
+  }, [screenId, customFrom, customTo]);
 
   // Live re-validate khi user sửa input (chỉ sau khi đã touch).
   useEffect(() => {
