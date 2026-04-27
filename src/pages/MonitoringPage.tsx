@@ -26,6 +26,7 @@ import { MonitoringHeroCards } from "@/components/monitoring/MonitoringHeroCards
 import { SummaryCards } from "@/components/SummaryCards";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 import { monitoringCompare } from "@/lib/compare-metrics";
+import { SectionTableHeader } from "@/components/SectionTableHeader";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
