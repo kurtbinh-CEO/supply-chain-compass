@@ -23,7 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type Format = "csv" | "pdf";
+type Format = "csv" | "xlsx" | "pdf";
 type Scope = "filtered" | "all";
 
 interface Props {
@@ -111,6 +111,60 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+/** Convert "1.234,5" / "1,234.5" / "12%" → number nếu hợp lệ, ngược lại giữ string. */
+function coerceCell(v: string): string | number {
+  const s = v.trim();
+  if (!s) return "";
+  // Bỏ qua mã/SKU bắt đầu bằng 0 hoặc chứa ký tự đặc biệt → giữ chuỗi
+  if (/^0\d/.test(s)) return v;
+  const isPercent = s.endsWith("%");
+  const core = (isPercent ? s.slice(0, -1) : s).replace(/\s/g, "");
+  // Pattern: chỉ số, dấu phẩy/chấm/âm, có thể trong ngoặc (kế toán)
+  const negParen = /^\((.+)\)$/.exec(core);
+  const raw = negParen ? "-" + negParen[1] : core;
+  if (!/^-?[\d.,]+$/.test(raw)) return v;
+  // Heuristic locale: nếu có cả . và , → dấu cuối cùng là phần thập phân
+  let normalized = raw;
+  const lastDot = raw.lastIndexOf(".");
+  const lastComma = raw.lastIndexOf(",");
+  if (lastDot >= 0 && lastComma >= 0) {
+    if (lastComma > lastDot) {
+      normalized = raw.replace(/\./g, "").replace(",", ".");
+    } else {
+      normalized = raw.replace(/,/g, "");
+    }
+  } else if (lastComma >= 0) {
+    // chỉ có dấu phẩy → nếu phần sau dài 3 → ngăn cách hàng nghìn, ngược lại thập phân
+    const after = raw.length - lastComma - 1;
+    normalized = after === 3 ? raw.replace(/,/g, "") : raw.replace(",", ".");
+  } else {
+    normalized = raw.replace(/,/g, "");
+  }
+  const n = Number(normalized);
+  if (!Number.isFinite(n)) return v;
+  return isPercent ? n / 100 : n;
+}
+
+async function exportMatrixAsXlsx(matrix: string[][], baseName: string, sheetName: string) {
+  const XLSX = await import("xlsx");
+  const aoa = matrix.map((row, ri) =>
+    ri === 0 ? row : row.map((c) => coerceCell(c)),
+  );
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  // Auto-width đơn giản theo độ dài chuỗi của mỗi cột
+  const colWidths = (matrix[0] ?? []).map((_, ci) => {
+    const maxLen = matrix.reduce((m, r) => Math.max(m, String(r[ci] ?? "").length), 0);
+    return { wch: Math.min(40, Math.max(8, maxLen + 2)) };
+  });
+  ws["!cols"] = colWidths;
+  // Freeze header row
+  ws["!freeze"] = { xSplit: 0, ySplit: 1 } as never;
+  const wb = XLSX.utils.book_new();
+  const safeSheet = sheetName.replace(/[\\/?*[\]:]/g, "_").slice(0, 31) || "Sheet1";
+  XLSX.utils.book_append_sheet(wb, ws, safeSheet);
+  XLSX.writeFile(wb, `${baseName}.xlsx`);
+}
+
 function printMatrixAsPdf(matrix: string[][], title: string, scopeLabel?: string) {
   if (!matrix.length) return;
   const [head, ...body] = matrix;
@@ -171,7 +225,7 @@ export function TableDownloadButton({
   className,
   label = "Xuất",
   size = "sm",
-  formats = ["csv", "pdf"],
+  formats = ["csv", "xlsx", "pdf"],
   scopeLabel,
   getAllRowsCsv,
   pdfTitle,
@@ -182,7 +236,10 @@ export function TableDownloadButton({
       const raw = sessionStorage.getItem(storageKey);
       if (!raw) return null;
       const v = JSON.parse(raw);
-      if ((v.fmt === "csv" || v.fmt === "pdf") && (v.scope === "filtered" || v.scope === "all")) {
+      if (
+        (v.fmt === "csv" || v.fmt === "xlsx" || v.fmt === "pdf") &&
+        (v.scope === "filtered" || v.scope === "all")
+      ) {
         return v;
       }
     } catch {
@@ -241,28 +298,36 @@ export function TableDownloadButton({
     setPreview({ fmt, scope });
   };
 
-  const confirmDownload = () => {
+  const confirmDownload = async () => {
     if (!preview || !previewData) return;
     const { fmt, scope } = preview;
     const suffix = scope === "all" ? "-all" : "";
     const fileName = `${baseName}${suffix}.${fmt}`;
     const rowCount = Math.max(0, previewData.length - 1);
     const scopeText = scope === "all" ? "Tất cả (bỏ filter)" : scopeLabel ?? "Đang lọc hiện tại";
+    const descBase = `${fileName} · ${rowCount.toLocaleString("vi-VN")} dòng · Phạm vi: ${scopeText}`;
 
-    if (fmt === "csv") {
-      downloadBlob(
-        new Blob([matrixToCsv(previewData)], { type: "text/csv;charset=utf-8;" }),
-        fileName,
-      );
-      toast.success("Xuất CSV thành công", {
-        description: `${fileName} · ${rowCount.toLocaleString("vi-VN")} dòng · Phạm vi: ${scopeText}`,
+    try {
+      if (fmt === "csv") {
+        downloadBlob(
+          new Blob([matrixToCsv(previewData)], { type: "text/csv;charset=utf-8;" }),
+          fileName,
+        );
+        toast.success("Xuất CSV thành công", { description: descBase });
+      } else if (fmt === "xlsx") {
+        await exportMatrixAsXlsx(previewData, `${baseName}${suffix}`, title);
+        toast.success("Xuất Excel thành công", { description: descBase });
+      } else {
+        printMatrixAsPdf(previewData, title + (scope === "all" ? " (tất cả)" : ""), scopeLabel);
+        toast.success("Đã mở hộp thoại in PDF", { description: descBase });
+      }
+    } catch (err) {
+      toast.error("Xuất file thất bại", {
+        description: err instanceof Error ? err.message : String(err),
       });
-    } else {
-      printMatrixAsPdf(previewData, title + (scope === "all" ? " (tất cả)" : ""), scopeLabel);
-      toast.success("Đã mở hộp thoại in PDF", {
-        description: `${fileName} · ${rowCount.toLocaleString("vi-VN")} dòng · Phạm vi: ${scopeText}`,
-      });
+      return;
     }
+
     try {
       sessionStorage.setItem(storageKey, JSON.stringify({ fmt, scope }));
     } catch {
@@ -280,6 +345,7 @@ export function TableDownloadButton({
 
   const showCsv = formats.includes("csv");
   const showPdf = formats.includes("pdf");
+  const showXlsx = formats.includes("xlsx");
   const showAllScope = !!getAllRowsCsv;
 
   const PREVIEW_ROWS = 8;
@@ -289,7 +355,7 @@ export function TableDownloadButton({
   const totalRows = bodyRows.length;
   const totalCols = headRow.length;
 
-  const fmtLabel = preview?.fmt === "pdf" ? "PDF" : "CSV";
+  const fmtLabel = preview?.fmt === "pdf" ? "PDF" : preview?.fmt === "xlsx" ? "Excel" : "CSV";
   const scopeText =
     preview?.scope === "all"
       ? "Tất cả (bỏ filter)"
@@ -341,11 +407,14 @@ export function TableDownloadButton({
                 >
                   {lastChoice.fmt === "pdf" ? (
                     <FileText className="h-3.5 w-3.5 text-danger" />
+                  ) : lastChoice.fmt === "xlsx" ? (
+                    <FileSpreadsheet className="h-3.5 w-3.5 text-info" />
                   ) : (
                     <FileSpreadsheet className="h-3.5 w-3.5 text-success" />
                   )}
                   <span className="flex-1">
-                    Lặp lại: {lastChoice.fmt.toUpperCase()} —{" "}
+                    Lặp lại:{" "}
+                    {lastChoice.fmt === "xlsx" ? "Excel" : lastChoice.fmt.toUpperCase()} —{" "}
                     {lastChoice.scope === "all" ? "tất cả" : "đang lọc"}
                   </span>
                   <span className="text-caption text-primary font-medium">↵</span>
@@ -365,6 +434,22 @@ export function TableDownloadButton({
                 <FileSpreadsheet className="h-3.5 w-3.5 text-success" />
                 <span className="flex-1">CSV — đang lọc</span>
                 {lastChoice?.fmt === "csv" && lastChoice?.scope === "filtered" ? (
+                  <span className="text-caption text-primary font-medium">● lần trước</span>
+                ) : (
+                  <span className="text-caption text-text-3">xem trước</span>
+                )}
+              </button>
+            )}
+            {showXlsx && (
+              <button
+                type="button"
+                onClick={() => openPreview("xlsx", "filtered")}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-button hover:bg-surface-2 text-left"
+                role="menuitem"
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5 text-info" />
+                <span className="flex-1">Excel — đang lọc</span>
+                {lastChoice?.fmt === "xlsx" && lastChoice?.scope === "filtered" ? (
                   <span className="text-caption text-primary font-medium">● lần trước</span>
                 ) : (
                   <span className="text-caption text-text-3">xem trước</span>
@@ -411,6 +496,22 @@ export function TableDownloadButton({
                     )}
                   </button>
                 )}
+                {showXlsx && (
+                  <button
+                    type="button"
+                    onClick={() => openPreview("xlsx", "all")}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-button hover:bg-surface-2 text-left"
+                    role="menuitem"
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5 text-info" />
+                    <span className="flex-1">Excel — tất cả</span>
+                    {lastChoice?.fmt === "xlsx" && lastChoice?.scope === "all" ? (
+                      <span className="text-caption text-primary font-medium">● lần trước</span>
+                    ) : (
+                      <span className="text-caption text-text-3">xem trước</span>
+                    )}
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -440,6 +541,8 @@ export function TableDownloadButton({
                 >
                   {preview.fmt === "pdf" ? (
                     <FileText className="h-4 w-4 text-danger shrink-0" />
+                  ) : preview.fmt === "xlsx" ? (
+                    <FileSpreadsheet className="h-4 w-4 text-info shrink-0" />
                   ) : (
                     <FileSpreadsheet className="h-4 w-4 text-success shrink-0" />
                   )}
@@ -539,7 +642,11 @@ export function TableDownloadButton({
                 className="h-8 px-3 rounded-button bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-table-sm font-medium inline-flex items-center gap-1.5"
               >
                 <Download className="h-3.5 w-3.5" />
-                {preview.fmt === "pdf" ? "Mở hộp thoại in" : "Tải về"}
+                {preview.fmt === "pdf"
+                  ? "Mở hộp thoại in"
+                  : preview.fmt === "xlsx"
+                    ? "Tải file Excel"
+                    : "Tải về"}
               </button>
             </div>
           </div>
