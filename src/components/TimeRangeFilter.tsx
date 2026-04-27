@@ -298,6 +298,30 @@ export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
               Lưu trữ: {RETENTION_MONTHS} tháng
             </div>
           </div>
+          <div className="px-3 pt-1 pb-1 flex items-center gap-1.5 flex-wrap">
+            <span className="text-caption text-text-3">Gần nhất:</span>
+            {QUICK_FILLS.map((q) => {
+              const active =
+                !!customFrom &&
+                customTo === todayIso() &&
+                diffDays(customFrom, customTo) === q.days - 1;
+              return (
+                <button
+                  key={q.days}
+                  type="button"
+                  onClick={() => quickFillLastDays(q.days)}
+                  className={cn(
+                    "rounded-button border px-2 py-0.5 text-caption font-medium transition-colors",
+                    active
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-surface-3 bg-surface-0 text-text-2 hover:bg-surface-3"
+                  )}
+                >
+                  {q.label}
+                </button>
+              );
+            })}
+          </div>
           <div className="px-3 pb-3 space-y-2">
             <div className="flex items-center gap-2">
               <label className="text-caption text-text-3 w-12">Từ</label>
