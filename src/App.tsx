@@ -15,6 +15,7 @@ import { ActivityLogProvider } from "@/components/ActivityLogContext";
 import { WalkthroughProvider } from "@/components/WalkthroughContext";
 import { AuthProvider, useAuth } from "@/components/AuthContext";
 import { ZoomProvider } from "@/components/ZoomControls";
+import { FarmerModeProvider } from "@/components/FarmerModeContext";
 import { CommandPaletteProvider } from "@/components/CommandPalette";
 import { NextStepProvider } from "@/components/NextStepContext";
 import { OnboardingProvider, useOnboarding } from "@/components/onboarding/OnboardingContext";
@@ -191,6 +192,7 @@ const App = () => (
     <ThemeProvider>
     <I18nProvider>
     <ZoomProvider>
+    <FarmerModeProvider>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -203,6 +205,7 @@ const App = () => (
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
+    </FarmerModeProvider>
     </ZoomProvider>
     </I18nProvider>
     </ThemeProvider>
