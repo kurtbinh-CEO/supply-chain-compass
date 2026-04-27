@@ -194,7 +194,7 @@ function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
 
   return {
     // ── Daily ops ──
-    nm_cn_fresh:  { text: "5/5 · 12 CN", tone: "success" },
+    nm_cn_fresh:  { text: "5/5", tone: "success" },
     cn_adjust:    cnAdjustPending > 0
       ? { text: `${4 + cnAdjustPending}/12`, tone: cnAdjustPending > 3 ? "danger" : "warning" }
       : { text: "12/12", tone: "success" },
@@ -206,17 +206,18 @@ function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
       : { text: "✓", tone: "success" },
 
     // ── Monthly plan ──
-    demand_progress: { text: "8/12 CN", tone: "warning" },
+    // Rút gọn nhãn (bỏ " CN"/" NM" — ngữ cảnh đã rõ từ tên menu) để dành chỗ cho text menu.
+    demand_progress: { text: "8/12", tone: "warning" },
     sop_status:      sopLocked
       ? { text: "Đã chốt", tone: "success" }
       : sopPendingApprovals > 0
         ? { text: "Cần chốt", tone: "warning" }
         : { text: "Chờ phiên", tone: "warning" },
     hub_commitment:  hubReady.confirmed >= hubReady.total
-      ? { text: `${hubReady.total}/${hubReady.total} NM`, tone: "success" }
-      : { text: `${hubReady.confirmed}/${hubReady.total} NM`,
+      ? { text: `${hubReady.total}/${hubReady.total}`, tone: "success" }
+      : { text: `${hubReady.confirmed}/${hubReady.total}`,
           tone: (hubReady.total - hubReady.confirmed) >= 3 ? "danger" : "warning" },
-    gap_pending:     { text: "2 KB", tone: "warning" },
+    gap_pending:     { text: "2", tone: "warning" },
 
     // ── Monitoring & Executive ──
     monitoring_alerts: totalAlerts > 0
@@ -225,7 +226,7 @@ function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
     executive_risk:    { text: "3 rủi ro", tone: "warning" },
 
     // ── Partners ──
-    cn_portal_pending: { text: "4 CN", tone: "warning" },
+    cn_portal_pending: { text: "4", tone: "warning" },
   };
 }
 
@@ -258,7 +259,7 @@ export function AppSidebar() {
     <aside
       className={cn(
         "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-surface-3 frosted-glass transition-all duration-200",
-        collapsed ? "w-16" : "w-[260px]"
+        collapsed ? "w-16" : "w-[280px]"
       )}
     >
       {/* Logo area */}
@@ -352,7 +353,7 @@ export function AppSidebar() {
                       end
                       onClick={handleNavClick}
                       className={cn(
-                        "group relative flex items-center gap-3 rounded-button px-3 py-2 text-body text-text-2 hover:bg-surface-3 hover:text-text-1 transition-colors",
+                        "group relative flex items-center gap-2.5 rounded-button px-2.5 py-2 text-body text-text-2 hover:bg-surface-3 hover:text-text-1 transition-colors",
                         collapsed && "justify-center px-0",
                         isActive && "bg-surface-3 text-text-1 font-medium"
                       )}
@@ -364,7 +365,7 @@ export function AppSidebar() {
                       <item.icon className="h-[18px] w-[18px] shrink-0" />
                       {!collapsed && (
                         <>
-                          <span className="flex-1 truncate">{t(item.titleKey)}</span>
+                          <span className="flex-1 truncate" title={t(item.titleKey)}>{t(item.titleKey)}</span>
                           {/* ── Sidebar badge — chuẩn chung ──
                            * Tất cả badge (workspace pending + daily ops dynamic) dùng cùng:
                            *   - font-size 10px (text-[10px]) · font-semibold · leading-tight
@@ -372,14 +373,14 @@ export function AppSidebar() {
                            *   - tabular-nums (số khớp cột) · h-[18px] (canh hàng với icon 18px)
                            * Tone (bg/text color) là biến số duy nhất giữa các badge. */}
                           {item.url === "/workspace" && pendingCount > 0 && (
-                            <span className="inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full bg-danger-bg text-danger text-[10px] font-semibold leading-tight tabular-nums px-1.5">
+                            <span className="shrink-0 inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full bg-danger-bg text-danger text-[10px] font-semibold leading-tight tabular-nums px-1.5">
                               {pendingCount}
                             </span>
                           )}
                           {badge && (
                             <span
                               className={cn(
-                                "inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full text-[10px] font-semibold leading-tight tabular-nums px-1.5",
+                                "shrink-0 inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full text-[10px] font-semibold leading-tight tabular-nums px-1.5",
                                 badgeClasses(badge.tone),
                               )}
                             >
