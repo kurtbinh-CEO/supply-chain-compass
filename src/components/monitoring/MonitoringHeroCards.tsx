@@ -191,6 +191,29 @@ function HeroCard({
 
   const { enabled: farmer } = useFarmerMode();
 
+  // ─── Auto-shrink heuristic (mobile <sm) ─────────────────────────────
+  const labelLen = label.length;
+  const unitLen2 = (renderUnit ?? "").length;
+  const subLen   = sub.length;
+  const valueLen2 = renderValue.length;
+
+  const labelMobileClass =
+    labelLen > 18 ? (farmer ? "text-table sm:text-table-sm" : "text-table-sm sm:text-table-sm")
+    : (farmer ? "text-body sm:text-table-sm" : "text-table sm:text-table-sm");
+
+  const valueMobileClass2 =
+    valueLen2 > 7 ? (farmer ? "text-[28px] sm:text-[24px]" : "text-[22px] sm:text-[24px]")
+    : valueLen2 > 5 ? (farmer ? "text-[30px] sm:text-[24px]" : "text-[24px] sm:text-[24px]")
+    : (farmer ? "text-[34px] sm:text-[24px]" : "text-[28px] sm:text-[24px]");
+
+  const unitMobileClass2 =
+    unitLen2 > 8 ? (farmer ? "text-table-sm sm:text-caption font-medium" : "text-caption sm:text-caption")
+    : (farmer ? "text-table sm:text-caption font-medium" : "text-table-sm sm:text-caption");
+
+  const subMobileClass =
+    subLen > 28 ? (farmer ? "text-table-sm sm:text-caption" : "text-caption sm:text-caption")
+    : (farmer ? "text-table sm:text-caption" : "text-table-sm sm:text-caption");
+
   return (
     <button
       onClick={onClick}
@@ -204,39 +227,45 @@ function HeroCard({
       )}
     >
       {/* Header */}
-      <div className={cn("flex items-center gap-2", farmer ? "mb-2.5 sm:mb-1.5" : "mb-2 sm:mb-1.5")}>
+      <div className={cn("flex items-center gap-2 min-w-0", farmer ? "mb-2.5 sm:mb-1.5" : "mb-2 sm:mb-1.5")}>
         <div className={cn("shrink-0 rounded-md", farmer ? "p-2 sm:p-1" : "p-1.5 sm:p-1", chipClasses[tone])}>
           {icon}
         </div>
-        <span className={cn(
-          "font-semibold sm:font-medium text-text-2 truncate",
-          farmer ? "text-body sm:text-table-sm" : "text-table sm:text-table-sm",
-        )}>{label}</span>
+        <span
+          title={labelLen > 18 ? label : undefined}
+          className={cn(
+            "font-semibold sm:font-medium text-text-2 truncate min-w-0 flex-1",
+            labelMobileClass,
+          )}
+        >{label}</span>
         <ChevronRight className={cn(
-          "ml-auto text-text-3/40 group-hover:text-text-3 transition-colors",
+          "ml-auto shrink-0 text-text-3/40 group-hover:text-text-3 transition-colors",
           farmer ? "h-5 w-5 sm:h-3.5 sm:w-3.5" : "h-4 w-4 sm:h-3.5 sm:w-3.5",
         )} />
       </div>
       {/* Value */}
-      <div className="flex items-baseline gap-1.5">
+      <div className="flex items-baseline gap-1.5 min-w-0">
         <span className={cn(
-          "font-display leading-none font-bold text-text-1 tabular-nums",
-          farmer ? "text-[34px] sm:text-[24px]" : "text-[28px] sm:text-[24px]",
+          "font-display leading-none font-bold text-text-1 tabular-nums shrink-0",
+          valueMobileClass2,
         )}>
           {renderValue}
         </span>
         {renderUnit && (
-          <span className={cn(
-            "text-text-3",
-            farmer ? "text-table sm:text-caption font-medium" : "text-table-sm sm:text-caption",
-          )}>{renderUnit}</span>
+          <span
+            title={unitLen2 > 8 ? renderUnit : undefined}
+            className={cn(
+              "text-text-3 truncate min-w-0",
+              unitMobileClass2,
+            )}
+          >{renderUnit}</span>
         )}
       </div>
       {/* Trend (optional) + Sub */}
-      <div className={cn("flex items-center gap-1.5 flex-wrap", farmer ? "mt-1.5" : "mt-1")}>
+      <div className={cn("flex items-center gap-1.5 flex-wrap min-w-0", farmer ? "mt-1.5" : "mt-1")}>
         {trend && (
           <span className={cn(
-            "inline-flex items-center gap-0.5 font-semibold tabular-nums",
+            "inline-flex items-center gap-0.5 font-semibold tabular-nums shrink-0",
             farmer ? "text-table-sm sm:text-caption" : "text-caption",
             trend.isGood ? "text-success" : "text-danger",
           )}>
@@ -247,10 +276,13 @@ function HeroCard({
             {trend.vs && <span className="ml-0.5 font-normal text-text-3">vs {trend.vs}</span>}
           </span>
         )}
-        <span className={cn(
-          "text-text-3 truncate",
-          farmer ? "text-table sm:text-caption" : "text-table-sm sm:text-caption",
-        )}>{sub}</span>
+        <span
+          title={subLen > 28 ? sub : undefined}
+          className={cn(
+            "text-text-3 truncate min-w-0 flex-1",
+            subMobileClass,
+          )}
+        >{sub}</span>
       </div>
     </button>
   );
