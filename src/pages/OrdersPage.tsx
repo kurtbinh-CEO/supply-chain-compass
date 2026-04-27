@@ -630,7 +630,7 @@ function GroupDrillDown({
             }
             className="text-primary font-medium underline-offset-2 hover:underline"
           >
-            {commitment.nmName} · {commitment.skuBase} · {planCycle.label}
+            {commitment.nmName} · {commitment.skuBase}
             {" — "}
             <span className="tabular-nums">{commitment.committed.toLocaleString()} m²</span>
           </button>
