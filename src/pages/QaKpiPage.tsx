@@ -17,6 +17,7 @@
 import { ShieldAlert, Repeat, ShieldCheck, Truck, LineChart, AlertTriangle, Zap } from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
 import { HeroCard } from "@/components/monitoring/MonitoringHeroCards";
+import { StatusChip } from "@/components/StatusChip";
 import { kpiTrend } from "@/lib/kpi-format";
 import { KPI_THRESHOLDS } from "@/lib/kpi-thresholds";
 import { useFarmerMode } from "@/components/FarmerModeContext";
@@ -166,6 +167,23 @@ export default function QaKpiPage() {
             trend={{ value: "+3", direction: "up", isGood: false, vs: "tuần trước" }}
           />
         </div>
+      </section>
+
+      {/* ─── StatusChip matrix ──────────────────────────────────────── */}
+      <section className="space-y-3">
+        <h2 className="font-display text-lg font-semibold text-text-1">StatusChip — edge cases</h2>
+        <div className="flex flex-wrap gap-2 max-w-md border border-dashed border-surface-3 p-3 rounded-card">
+          <StatusChip status="success" label="OK" />
+          <StatusChip status="info" label="Đang xử lý" />
+          <StatusChip status="warning" label="Trễ giao hàng nhẹ" />
+          <StatusChip status="danger" label="Đã quá hạn 3 ngày làm việc" />
+          <StatusChip status="warning" label="Mondelez Vietnam Ltd. — chi nhánh HCM kho 3" />
+          <StatusChip status="info" label="Chờ duyệt từ Giám đốc Chuỗi cung ứng tháng 4 quý 2 năm 2026" />
+        </div>
+        <p className="text-caption text-text-3">
+          Container width 28rem — chips must truncate, never push width beyond container.
+          Hover for full label.
+        </p>
       </section>
     </div>
   );

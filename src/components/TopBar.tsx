@@ -12,6 +12,7 @@ import { useCommandPalette } from "@/components/CommandPalette";
 import { NM_INVENTORY, FACTORIES } from "@/data/unis-enterprise-dataset";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { KPI_THRESHOLDS, resolveTier } from "@/lib/kpi-thresholds";
 
 const routeKeys: Record<string, string> = {
   "/workspace": "route.workspace",
@@ -60,15 +61,27 @@ function TenantDropdown({ tenant, setTenant, tenants }: { tenant: string; setTen
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // Auto-shrink: tenant names like "Mondelez Vietnam Ltd." are long enough
+  // to push the breadcrumb off-screen on 480px. Same heuristic as KPI chips.
+  const tenantTier = resolveTier(tenant.length, KPI_THRESHOLDS.chip);
+
   return (
-    <div ref={ref} className="relative shrink-0">
+    <div ref={ref} className="relative shrink-0 min-w-0">
       <button
         onClick={() => setOpen(!open)}
-        className="flex h-8 items-center gap-2 rounded-lg bg-surface-0 border border-surface-3 px-2.5 text-table-sm font-semibold text-text-1 hover:border-primary/40 hover:bg-surface-1 transition-all whitespace-nowrap"
+        title={tenantTier !== "base" ? tenant : undefined}
+        style={{
+          maxWidth: KPI_THRESHOLDS.chipMaxWidthMobile,
+          ["--tenant-max-w-md" as never]: KPI_THRESHOLDS.chipMaxWidthDesktop,
+        } as React.CSSProperties}
+        className={cn(
+          "flex h-8 items-center gap-2 rounded-lg bg-surface-0 border border-surface-3 px-2.5 font-semibold text-text-1 hover:border-primary/40 hover:bg-surface-1 transition-all min-w-0 sm:[max-width:var(--tenant-max-w-md)]",
+          tenantTier === "xl" ? "text-caption" : "text-table-sm",
+        )}
       >
-        <span className="h-1.5 w-1.5 rounded-full bg-success" />
-        <span>{tenant}</span>
-        <ChevronDown className={`h-3 w-3 text-text-3 transition-transform ${open ? "rotate-180" : ""}`} />
+        <span className="h-1.5 w-1.5 rounded-full bg-success shrink-0" />
+        <span className="truncate min-w-0">{tenant}</span>
+        <ChevronDown className={`h-3 w-3 text-text-3 transition-transform shrink-0 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <div className="absolute top-full left-0 mt-1.5 w-52 rounded-lg border border-surface-3 bg-surface-1 shadow-xl py-1 z-50 animate-fade-in">
@@ -80,8 +93,8 @@ function TenantDropdown({ tenant, setTenant, tenants }: { tenant: string; setTen
                 t === tenant ? "bg-primary/5 text-primary font-semibold" : "text-text-2 hover:bg-surface-2"
               }`}
             >
-              <span className={`h-1.5 w-1.5 rounded-full ${t === tenant ? "bg-primary" : "bg-text-3/30"}`} />
-              {t}
+              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${t === tenant ? "bg-primary" : "bg-text-3/30"}`} />
+              <span className="truncate min-w-0">{t}</span>
             </button>
           ))}
         </div>
@@ -154,19 +167,20 @@ function FreshnessIndicator() {
       <TooltipTrigger asChild>
         <button
           onClick={() => navigate("/sync")}
+          style={{ maxWidth: KPI_THRESHOLDS.chipMaxWidthDesktop }}
           className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 h-8 text-caption font-medium transition-all whitespace-nowrap",
+            "flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 h-8 text-caption font-medium transition-all min-w-0",
             tone.border,
             tone.text,
             tone.bg,
           )}
-          title="Mở Đồng bộ dữ liệu"
+          title={`Mở Đồng bộ dữ liệu — ${shortLabel}`}
         >
-          <span className="relative flex h-2 w-2 items-center justify-center">
+          <span className="relative flex h-2 w-2 items-center justify-center shrink-0">
             <span className={cn("absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping", tone.dot)} />
             <span className={cn("relative inline-flex h-2 w-2 rounded-full", tone.dot)} />
           </span>
-          <span className="hidden md:inline">{shortLabel}</span>
+          <span className="hidden md:inline truncate min-w-0">{shortLabel}</span>
         </button>
       </TooltipTrigger>
       <TooltipContent
