@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "@/components/NavLink";
 import {
   ClipboardCheck, Activity, BarChart3, Handshake, Boxes,
@@ -12,13 +13,10 @@ import { useWorkflow } from "@/components/WorkflowContext";
 import { useWorkspace } from "@/components/WorkspaceContext";
 import { useRbac, UserRole } from "@/components/RbacContext";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useI18n } from "@/components/i18n/I18nContext";
 import { useOnboarding } from "@/components/onboarding/OnboardingContext";
 import { getTourForRoute } from "@/components/onboarding/tours";
 import smartlogIcon from "@/assets/smartlog-icon.png";
-import { BRANCHES, FACTORIES } from "@/data/unis-enterprise-dataset";
-import { DEMO_SCENARIOS, getCriticalScenarios } from "@/data/demo-scenarios";
 
 /* M1 — Sidebar restructure
  *  - Daily ops: 4 items split bởi 3 phase labels (Chuẩn bị / Kết quả / Thực thi)
@@ -153,100 +151,81 @@ const navGroups: NavGroup[] = [
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * Badge value resolver — CHUẨN HÓA THEO DỮ LIỆU THẬT.
+ * Badge value resolver
  *
- * Nguồn dữ liệu:
- *   - useWorkspace(): approvals, exceptions, notifications (state runtime).
- *   - BRANCHES (CN), FACTORIES (NM) — master data từ enterprise dataset.
- *   - DEMO_SCENARIOS — tổng kịch bản; getCriticalScenarios() — kịch bản nghiêm trọng.
- *
- * Nguyên tắc: badge phản ánh đúng trạng thái runtime — KHÔNG hardcode "8/12 CN",
- * "6/8 NM", "2 KB" nữa. Khi pending = 0 → tone success + text rỗng/✓.
+ * Tạm thời dùng dữ liệu giả lập từ WorkspaceContext (exceptions, approvals).
+ * Khi data thật có sẵn (M0: NM/CN freshness, /demand-weekly adjust progress,
+ * /orders pending PO list) sẽ wire vào đây.
  * ─────────────────────────────────────────────────────────────────────────── */
 interface BadgeData { text: string; tone: "success" | "warning" | "danger" }
 
-function pickTone(pending: number, warnAt: number, dangerAt: number): BadgeData["tone"] {
-  if (pending === 0) return "success";
-  if (pending >= dangerAt) return "danger";
-  if (pending >= warnAt) return "warning";
-  return "warning";
-}
+/** Interval (ms) tự re-evaluate badge — bắt kịp các thay đổi không có event
+ *  (vd: timer aging "PO quá hạn", freshness data). 30s đủ mượt cho ops UI. */
+const BADGE_TICK_MS = 30_000;
 
 function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
-  const { exceptions, approvals, notifications, criticalCount } = useWorkspace();
+  const { exceptions, approvals, sopLock, hubCommit, badgeRevision } = useWorkspace();
 
-  // ── Counters từ approvals (text tiếng Việt match WorkspaceContext) ──
-  const cnAdjustPending = approvals.filter(a => a.type === "CN điều chỉnh").length;
-  const poPending       = approvals.filter(a => a.type === "Phát hành PO" || a.type === "Phát hành khẩn").length;
-  const sopPending      = approvals.filter(a => a.type === "S&OP").length;
-  const ssPending       = approvals.filter(a => a.type === "Thay đổi tồn kho an toàn").length;
-  // Tập CN có pending bất kỳ (dùng cho cn_portal_pending).
-  // Mock approvals chứa tên CN trong description (vd "CN-BD …") — trích bằng regex.
-  const cnPendingSet = new Set<string>();
-  approvals.forEach(a => {
-    const m = a.description.match(/CN-[A-Z]{2,4}/g);
-    if (m) m.forEach(c => cnPendingSet.add(c));
-  });
+  // ── Tick định kỳ: tăng nonce mỗi BADGE_TICK_MS để hook re-render
+  //    ngay cả khi state context không đổi (vd: PO aging warning theo thời gian). ──
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), BADGE_TICK_MS);
+    return () => clearInterval(id);
+  }, []);
+  // `tick` & `badgeRevision` được "sử dụng" trong scope này → mỗi lần đổi
+  //  buộc closure re-tính → re-render consumer. Để rõ ý, gắn vào void expression:
+  void tick; void badgeRevision;
 
-  // ── Master totals ──
-  const totalCn = BRANCHES.length;       // số CN thực
-  const totalNm = FACTORIES.length;      // số NM thực
-  const totalScenarios = DEMO_SCENARIOS.length;
-  const criticalScenarios = getCriticalScenarios().length;
+  // Pending counters (mock-derived).
+  const poPending = approvals.filter(a => a.type === "PO Release" || a.type === "Force-release" || a.type === "Phát hành PO" || a.type === "Phát hành khẩn").length;
+  const cnAdjustPending = approvals.filter(a => a.type === "CN Adjust" || a.type === "CN điều chỉnh").length;
+  const drpExceptions = exceptions.filter(e => e.type === "SHORTAGE").length;
+  const sopPendingApprovals = approvals.filter(a => a.type === "S&OP Lock" || a.type === "S&OP").length;
 
-  // ── DRP exceptions ──
-  const drpShortages = exceptions.filter(e => e.type === "SHORTAGE").length;
+  // Tổng exceptions hệ thống (monitoring + executive).
+  const totalAlerts = exceptions.length;
 
-  // ── Monitoring/Executive ──
-  // Alerts = unread notifications (real-time signal); critical = danger unread.
-  const unreadAlerts = notifications.filter(n => !n.read).length;
-
-  // ── Demand progress: bao nhiêu CN đã submit (tổng − CN còn pending điều chỉnh) ──
-  const cnSubmitted = Math.max(0, totalCn - cnAdjustPending);
-
-  // ── Hub commitment: NM đã confirm (tổng − pending PO) ──
-  // Approximation: mỗi PO pending = 1 NM chưa khóa cam kết.
-  const nmConfirmed = Math.max(0, totalNm - poPending);
+  // ── S&OP & Hub: ưu tiên state thật từ context; fallback approvals/heuristic. ──
+  const sopLocked = sopLock.locked;
+  const hubReady = hubCommit.total > 0
+    ? { confirmed: hubCommit.confirmed, total: hubCommit.total }
+    : { confirmed: 6, total: 8 }; // fallback demo
 
   return {
     // ── Daily ops ──
-    nm_cn_fresh:  { text: `5/${totalNm} · ${totalCn} CN`, tone: "success" }, // freshness mock = OK
+    nm_cn_fresh:  { text: "5/5 · 12 CN", tone: "success" },
     cn_adjust:    cnAdjustPending > 0
-      ? { text: `${cnSubmitted}/${totalCn}`, tone: pickTone(cnAdjustPending, 1, 4) }
-      : { text: `${totalCn}/${totalCn}`, tone: "success" },
-    exceptions:   drpShortages > 0
-      ? { text: String(drpShortages), tone: pickTone(drpShortages, 1, 4) }
+      ? { text: `${4 + cnAdjustPending}/12`, tone: cnAdjustPending > 3 ? "danger" : "warning" }
+      : { text: "12/12", tone: "success" },
+    exceptions:   drpExceptions > 0
+      ? { text: String(drpExceptions), tone: drpExceptions > 3 ? "danger" : "warning" }
       : { text: "✓", tone: "success" },
     po_pending:   poPending > 0
-      ? { text: String(poPending), tone: pickTone(poPending, 1, 4) }
+      ? { text: String(poPending), tone: poPending > 3 ? "danger" : "warning" }
       : { text: "✓", tone: "success" },
 
     // ── Monthly plan ──
-    demand_progress: cnAdjustPending > 0
-      ? { text: `${cnSubmitted}/${totalCn} CN`, tone: pickTone(cnAdjustPending, 1, 4) }
-      : { text: `${totalCn}/${totalCn} CN`, tone: "success" },
-    sop_status:      sopPending > 0
-      ? { text: "Cần chốt", tone: "warning" }
-      : { text: "Đã chốt", tone: "success" },
-    hub_commitment:  poPending > 0
-      ? { text: `${nmConfirmed}/${totalNm} NM`, tone: pickTone(poPending, 1, 3) }
-      : { text: `${totalNm}/${totalNm} NM`, tone: "success" },
-    gap_pending:     totalScenarios > 0
-      ? { text: `${totalScenarios} KB`, tone: pickTone(criticalScenarios, 1, 3) }
-      : null,
+    demand_progress: { text: "8/12 CN", tone: "warning" },
+    sop_status:      sopLocked
+      ? { text: "Đã chốt", tone: "success" }
+      : sopPendingApprovals > 0
+        ? { text: "Cần chốt", tone: "warning" }
+        : { text: "Chờ phiên", tone: "warning" },
+    hub_commitment:  hubReady.confirmed >= hubReady.total
+      ? { text: `${hubReady.total}/${hubReady.total} NM`, tone: "success" }
+      : { text: `${hubReady.confirmed}/${hubReady.total} NM`,
+          tone: (hubReady.total - hubReady.confirmed) >= 3 ? "danger" : "warning" },
+    gap_pending:     { text: "2 KB", tone: "warning" },
 
     // ── Monitoring & Executive ──
-    monitoring_alerts: unreadAlerts > 0
-      ? { text: String(unreadAlerts), tone: pickTone(unreadAlerts, 1, 5) }
+    monitoring_alerts: totalAlerts > 0
+      ? { text: String(totalAlerts), tone: totalAlerts > 5 ? "danger" : "warning" }
       : { text: "✓", tone: "success" },
-    executive_risk:    criticalCount > 0 || ssPending > 0
-      ? { text: `${criticalCount + ssPending} rủi ro`, tone: pickTone(criticalCount + ssPending, 1, 3) }
-      : { text: "Ổn định", tone: "success" },
+    executive_risk:    { text: "3 rủi ro", tone: "warning" },
 
     // ── Partners ──
-    cn_portal_pending: cnPendingSet.size > 0
-      ? { text: `${cnPendingSet.size} CN`, tone: pickTone(cnPendingSet.size, 1, 4) }
-      : null,
+    cn_portal_pending: { text: "4 CN", tone: "warning" },
   };
 }
 
@@ -257,41 +236,6 @@ function badgeClasses(tone: BadgeData["tone"]) {
     case "danger":  return "bg-danger-bg text-danger";
   }
 }
-
-/* Metadata mô tả mỗi badge để render trong tooltip:
- *  - metric: badge đang đo cái gì
- *  - thresholds: điều kiện chuyển tone success / warning / danger
- * Giữ tách riêng để dễ bảo trì khi đổi công thức trong useDailyBadges. */
-const BADGE_META: Record<DailyBadgeKey, { metric: string; thresholds: string }> = {
-  nm_cn_fresh:       { metric: "Độ tươi dữ liệu NM/CN (số NM cập nhật / tổng · số CN)",
-                       thresholds: "✓ khi tất cả nguồn còn fresh; warning khi có nguồn quá hạn." },
-  cn_adjust:         { metric: "Tiến độ CN gửi điều chỉnh tuần (đã gửi / tổng CN).",
-                       thresholds: "✓ khi 0 CN pending · warning 1–3 · danger ≥ 4 CN chưa gửi." },
-  exceptions:        { metric: "Số dòng SHORTAGE đang treo trong DRP.",
-                       thresholds: "✓ khi 0 · warning 1–3 · danger ≥ 4 shortage." },
-  po_pending:        { metric: "Số PO/lệnh phát hành đang chờ duyệt.",
-                       thresholds: "✓ khi 0 · warning 1–3 · danger ≥ 4 PO pending." },
-  demand_progress:   { metric: "Tiến độ submit Demand tháng (CN đã chốt / tổng CN).",
-                       thresholds: "✓ khi đủ 100 % · warning 1–3 CN trễ · danger ≥ 4 CN trễ." },
-  sop_status:        { metric: "Trạng thái phiên S&OP tháng.",
-                       thresholds: "✓ Đã chốt khi không còn approval S&OP · warning Cần chốt khi còn pending." },
-  hub_commitment:    { metric: "Cam kết NM với Hub (NM đã confirm / tổng NM).",
-                       thresholds: "✓ khi đủ NM · warning 1–2 NM thiếu · danger ≥ 3 NM thiếu." },
-  gap_pending:       { metric: "Số kịch bản gap-scenario đang theo dõi.",
-                       thresholds: "✓ ẩn khi 0 KB · warning khi có KB thường · danger khi ≥ 3 KB nghiêm trọng." },
-  monitoring_alerts: { metric: "Số cảnh báo hệ thống chưa đọc.",
-                       thresholds: "✓ khi 0 · warning 1–4 · danger ≥ 5 alert." },
-  executive_risk:    { metric: "Tổng rủi ro lãnh đạo (critical exception + thay đổi SS chờ duyệt).",
-                       thresholds: "✓ Ổn định khi 0 · warning 1–2 · danger ≥ 3 rủi ro." },
-  cn_portal_pending: { metric: "Số CN có ít nhất 1 yêu cầu pending trên Cổng CN.",
-                       thresholds: "✓ ẩn khi 0 CN · warning 1–3 · danger ≥ 4 CN pending." },
-};
-
-const TONE_LABEL: Record<BadgeData["tone"], string> = {
-  success: "Ổn định",
-  warning: "Cần chú ý",
-  danger:  "Khẩn cấp",
-};
 
 export function AppSidebar() {
   const { collapsed, toggle } = useSidebarState();
@@ -427,32 +371,16 @@ export function AppSidebar() {
                               {pendingCount}
                             </span>
                           )}
-                          {/* Daily-ops dynamic badge — kèm tooltip giải thích metric & ngưỡng tone */}
-                          {badge && item.badgeKey && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span
-                                  className={cn(
-                                    "rounded-full text-[10px] font-semibold px-1.5 py-0.5 leading-tight tabular-nums cursor-help",
-                                    badgeClasses(badge.tone),
-                                  )}
-                                >
-                                  {badge.text}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="right" align="center" className="max-w-[260px] text-[11px] leading-relaxed">
-                                <div className="font-semibold text-text-1 mb-1">
-                                  {BADGE_META[item.badgeKey].metric}
-                                </div>
-                                <div className="text-text-2 mb-1.5">
-                                  {BADGE_META[item.badgeKey].thresholds}
-                                </div>
-                                <div className="flex items-center gap-1.5 pt-1 border-t border-surface-3">
-                                  <span className={cn("inline-block h-2 w-2 rounded-full", badgeClasses(badge.tone))} aria-hidden />
-                                  <span className="text-text-3">Hiện tại: <span className="font-medium text-text-2">{TONE_LABEL[badge.tone]}</span> · {badge.text}</span>
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
+                          {/* Daily-ops dynamic badge */}
+                          {badge && (
+                            <span
+                              className={cn(
+                                "rounded-full text-[10px] font-semibold px-1.5 py-0.5 leading-tight tabular-nums",
+                                badgeClasses(badge.tone),
+                              )}
+                            >
+                              {badge.text}
+                            </span>
                           )}
                         </>
                       )}
