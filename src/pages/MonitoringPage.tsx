@@ -400,7 +400,25 @@ export default function MonitoringPage() {
 
   return (
     <AppLayout>
-      <ScreenHeader title="Giám sát" subtitle="Sức khoẻ chuỗi cung ứng — KPI & cảnh báo" />
+      <ScreenHeader
+        title="Giám sát"
+        subtitle={timeRange.isCurrent ? "Sức khoẻ chuỗi cung ứng — KPI & cảnh báo" : `Snapshot ${timeRange.label}`}
+        actions={
+          <TimeRangeFilter
+            mode="monthly"
+            value={timeRange}
+            onChange={setTimeRange}
+            screenId="monitoring"
+          />
+        }
+      />
+
+      <HistoryBanner
+        range={timeRange}
+        onReset={() => setTimeRange(defaultTimeRange("monthly"))}
+        entity="giám sát"
+        resetLabel="Quay về tháng này"
+      />
 
       {/* SS Batch Banner */}
       {ssBatch.batch && (
