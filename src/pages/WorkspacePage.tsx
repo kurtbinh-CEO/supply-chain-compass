@@ -201,7 +201,7 @@ export default function WorkspacePage() {
       sub: "vs tuần trước",
       logicTab: "ss" as const,
       logicNode: 0,
-      logicTooltip: "Logic Safety Stock",
+      logicTooltip: "Logic tồn kho an toàn",
       clickable: {
         value: "8,5d",
         breakdown: [
@@ -326,7 +326,7 @@ export default function WorkspacePage() {
             <div className="flex items-center gap-2">
               <h2 className="font-display text-body font-semibold text-text-1">Cần làm</h2>
               <LogicTooltip
-                title="Priority Sort Rule"
+                title="Quy tắc sắp xếp ưu tiên"
                 content={"Sắp xếp theo:\n 1. Severity: 🔴 Critical → 🟡 Warning → 🔵 Info\n 2. Cùng severity: theo thời gian (cũ nhất trước)\n 3. Cùng severity + thời gian: theo risk ₫ (cao nhất trước)\n Config tại /config → Notifications."}
               />
             </div>

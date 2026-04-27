@@ -66,7 +66,7 @@ function buildLayers(args: {
   return [
     { name: "L0 Chuyển ngang (LCNB)", qty: lcnbCover, pass: lcnbCover > 0,
       explain: lcnbCover > 0 ? `Cover ${lcnbCover.toLocaleString()}m² từ CN sibling.` : "Không có CN sibling thừa hàng." },
-    { name: "L1 Hub Pool (PO mới NM)", qty: hubCover, pass: true,
+    { name: "L1 Phân bổ Hub (PO mới NM)", qty: hubCover, pass: true,
       explain: hubCover > 0 ? `Phần LCNB chưa cover = ${hubCover.toLocaleString()}m² → đặt PO mới.` : "LCNB đã cover 100%." },
     { name: "L2 Đuôi màu (Variant)", qty: netReq, pass: variantOk, explain: "Phân rã mã gốc → variant theo tỷ trọng tồn." },
     { name: "L3 FIFO", qty: netReq, pass: fifoOk, explain: "Lot cũ trước." },
@@ -231,7 +231,7 @@ const PHASES: { name: string; steps: FlowStep[] }[] = [
     name: "PHÂN BỔ",
     steps: [
       { id: 6, label: "Chuyển ngang", badge: { kind: "ok" } },
-      { id: 7, label: "Hub Pool", badge: { kind: "ok" } },
+      { id: 7, label: "Phân bổ Hub", badge: { kind: "ok" } },
       { id: 8, label: "Variant", badge: { kind: "warn", count: 1 } },
       { id: 9, label: "Container", badge: { kind: "ok" } },
       { id: 10, label: "Tồn NM", badge: { kind: "danger", count: 1 } },
@@ -838,7 +838,7 @@ export default function DrpPage() {
     { id: 3, label: "Trừ đang về", result: "−1.757 m² → 26.675 m²" },
     { id: 4, label: "Cộng tồn an toàn", result: "+1.200 m² → 27.875 m²" },
     { id: 5, label: "Phân bổ LCNB", result: "4 TO · 555 m²" },
-    { id: 6, label: "Hub Pool", result: "780 m²" },
+    { id: 6, label: "Phân bổ Hub", result: "780 m²" },
     { id: 7, label: "Variant split", result: "1 cảnh báo MOQ" },
     { id: 8, label: "Đóng container", result: "8 chuyến · 1 giữ" },
     { id: 9, label: "Kiểm tồn NM (ATP)", result: "4/5 PASS" },

@@ -985,7 +985,7 @@ const NM_SOURCES: DataSource[] = [
   {
     key: "excel_upload",
     icon: <FileSpreadsheet />,
-    title: "Upload Excel",
+    title: "Tải lên Excel",
     description: "Upload file tồn kho NM theo template. Mỗi NM 1 file hoặc gộp chung.",
     badge: "Khuyến nghị",
     badgeColor: "green",
@@ -1038,7 +1038,7 @@ export default function InventoryPage() {
     setImporterOpen(false);
     const labels: Record<string, string> = {
       api_sync: "Tích hợp tự động",
-      excel_upload: "Upload Excel",
+      excel_upload: "Tải lên Excel",
       manual_input: "Nhập tay / Cập nhật từ NM",
     };
     toast.success(`Đã chọn: ${labels[key] ?? key}`, {

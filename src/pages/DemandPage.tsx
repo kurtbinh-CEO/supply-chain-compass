@@ -48,7 +48,7 @@ const FC_SOURCES: DataSource[] = [
   {
     key: "excel_upload",
     icon: <FileSpreadsheet />,
-    title: "Upload Excel",
+    title: "Tải lên Excel",
     description: "Upload file .xlsx theo template. Wizard 5 bước: tải template → validate → áp dụng.",
     badge: "Khuyến nghị",
     badgeColor: "green",
@@ -76,7 +76,7 @@ const B2B_SOURCES: DataSource[] = [
   {
     key: "excel_upload",
     icon: <FileSpreadsheet />,
-    title: "Upload Excel",
+    title: "Tải lên Excel",
     description: "Upload danh sách deals theo template. Cột: Khách hàng, SKU, Qty, Xác suất, Giai đoạn.",
     badge: "Khuyến nghị",
     badgeColor: "green",
@@ -104,7 +104,7 @@ const ACTUAL_SOURCES: DataSource[] = [
   {
     key: "excel_upload",
     icon: <FileSpreadsheet />,
-    title: "Upload Excel thực tế",
+    title: "Tải lên Excel thực tế",
     description: "Upload file thực tế bán per CN × SKU × tháng. Template: CN | SKU | Tháng | Thực tế (m²) | Doanh thu (VND) | Ghi chú.",
     badge: "Khuyến nghị",
     badgeColor: "green",
@@ -132,7 +132,7 @@ export default function DemandPage() {
     setImporterOpen(false);
     const labels: Record<string, string> = {
       api_sync: "Tích hợp tự động (sắp có)",
-      excel_upload: "Upload Excel — mở wizard 5 bước",
+      excel_upload: "Tải lên Excel — mở wizard 5 bước",
       generate: "Tự sinh Baseline Holt-Winters",
       manual_input: "Nhập tay",
     };
@@ -147,7 +147,7 @@ export default function DemandPage() {
     setActualOpen(false);
     const labels: Record<string, string> = {
       api_sync: "Tích hợp Bravo (sắp có)",
-      excel_upload: "Upload Excel thực tế — mở wizard",
+      excel_upload: "Tải lên Excel thực tế — mở wizard",
       manual_input: "Nhập thực tế tay",
     };
     toast.success(labels[key] ?? key, {

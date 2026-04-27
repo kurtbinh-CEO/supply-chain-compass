@@ -849,7 +849,7 @@ const tabs = [
   { key: "monthly", label: "Kế hoạch tháng", nodes: tab1Nodes },
   { key: "daily", label: "Vận hành ngày", nodes: tab2Nodes },
   { key: "forecast", label: "Forecast & Độ tin cậy", nodes: tab3Nodes },
-  { key: "ss", label: "Safety Stock", nodes: tab4Nodes },
+  { key: "ss", label: "Tồn kho an toàn", nodes: tab4Nodes },
 ];
 
 export default function LogicPage() {

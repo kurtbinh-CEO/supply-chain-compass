@@ -353,7 +353,7 @@ const tabs = [
   { key: "nm-risk", label: "Rủi ro NM" },
   { key: "roi", label: "ROI" },
   { key: "fc", label: "Dự báo" },
-  { key: "activity", label: "Activity Log" },
+  { key: "activity", label: "Nhật ký hoạt động" },
 ];
 
 export default function MonitoringPage() {
@@ -855,8 +855,8 @@ export default function MonitoringPage() {
             </div>
           </CollapsibleSection>
 
-          {/* Section C: Execution Quality */}
-          <CollapsibleSection title="Execution Quality" summary="Fill 95,5% · Resolve avg 4,2h 🔴 · PO on-time 78%" expanded={expandedSections.has("exec")} onToggle={() => toggleSection("exec")}>
+          {/* Section C: Chất lượng thực thi */}
+          <CollapsibleSection title="Chất lượng thực thi" summary="Fill 95,5% · Resolve avg 4,2h 🔴 · PO on-time 78%" expanded={expandedSections.has("exec")} onToggle={() => toggleSection("exec")}>
             <div className="p-5 space-y-4">
               <div className="grid grid-cols-3 gap-4">
                 {[
@@ -1017,7 +1017,7 @@ export default function MonitoringPage() {
       {/* ═══ TAB: Dự báo (FC accuracy) ═══ */}
       {activeTab === "fc" && <FcAccuracyTab />}
 
-      {/* ═══ TAB: Activity Log ═══ */}
+      {/* ═══ TAB: Nhật ký hoạt động ═══ */}
       {activeTab === "activity" && <ActivityLogTab />}
 
       <ScreenFooter actionCount={11} />
