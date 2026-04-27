@@ -255,7 +255,7 @@ function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggl
 
         {/* Table */}
         <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-          <table className="w-full text-table-sm">
+          <table ref={tableRef} className="w-full text-table-sm">
             <thead>
               <tr className="bg-surface-1">
                 {["Thời gian", "Loại", "Screen", "User A", "User B", "Entity", "Kết quả", ""].map((h, i) => (
