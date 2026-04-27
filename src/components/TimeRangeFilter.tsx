@@ -222,6 +222,26 @@ export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
     setOpen(false);
   };
 
+  /** Quick-fill: điền nhanh "N ngày gần nhất" → Đến = hôm nay, Từ = hôm nay − (N−1). */
+  const quickFillLastDays = (days: number) => {
+    const today = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - (days - 1));
+    const fromIso = toLocalIso(from);
+    const toIso = toLocalIso(today);
+    setCustomFrom(fromIso);
+    setCustomTo(toIso);
+    setTouched(true);
+    // Vẫn chạy validation — retention/khoảng tối đa được tôn trọng.
+    setCustomError(validateCustomRange(fromIso, toIso));
+  };
+
+  const QUICK_FILLS = [
+    { days: 7,  label: "7 ngày" },
+    { days: 30, label: "30 ngày" },
+    { days: 90, label: "90 ngày" },
+  ];
+
   const todayMax = todayIso();
   const floorMin = retentionFloorIso();
 
@@ -277,6 +297,30 @@ export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
             <div className="text-caption text-text-3">
               Lưu trữ: {RETENTION_MONTHS} tháng
             </div>
+          </div>
+          <div className="px-3 pt-1 pb-1 flex items-center gap-1.5 flex-wrap">
+            <span className="text-caption text-text-3">Gần nhất:</span>
+            {QUICK_FILLS.map((q) => {
+              const active =
+                !!customFrom &&
+                customTo === todayIso() &&
+                diffDays(customFrom, customTo) === q.days - 1;
+              return (
+                <button
+                  key={q.days}
+                  type="button"
+                  onClick={() => quickFillLastDays(q.days)}
+                  className={cn(
+                    "rounded-button border px-2 py-0.5 text-caption font-medium transition-colors",
+                    active
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-surface-3 bg-surface-0 text-text-2 hover:bg-surface-3"
+                  )}
+                >
+                  {q.label}
+                </button>
+              );
+            })}
           </div>
           <div className="px-3 pb-3 space-y-2">
             <div className="flex items-center gap-2">
