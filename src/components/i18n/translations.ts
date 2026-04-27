@@ -147,6 +147,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     "theme.dark": "Tối",
     "theme.system": "Hệ thống",
 
+    // Farmer mode
+    "farmer.toggle": "Chế độ Farmer",
+    "farmer.tooltip.on": "Tắt chế độ Farmer (cỡ chữ thường)",
+    "farmer.tooltip.off": "Bật chế độ Farmer — chữ to, giãn cách rộng, dễ xem nhanh trên mobile",
+
     // Demand page
     "demand.title": "Demand Review",
     "demand.totalTab": "Demand tổng",
@@ -362,6 +367,11 @@ export const translations: Record<Locale, Record<string, string>> = {
     "theme.light": "Light",
     "theme.dark": "Dark",
     "theme.system": "System",
+
+    // Farmer mode
+    "farmer.toggle": "Farmer mode",
+    "farmer.tooltip.on": "Turn off Farmer mode (normal text size)",
+    "farmer.tooltip.off": "Turn on Farmer mode — bigger text and spacing for quick scanning on mobile",
 
     // Demand page
     "demand.title": "Demand Review",
