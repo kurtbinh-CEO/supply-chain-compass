@@ -9,6 +9,8 @@ import {
   Minimize2, Maximize2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Lock } from "lucide-react";
 import { useSidebarState } from "@/components/SidebarContext";
 import { useWorkflow } from "@/components/WorkflowContext";
 import { useWorkspace } from "@/components/WorkspaceContext";
