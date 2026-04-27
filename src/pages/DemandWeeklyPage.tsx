@@ -1143,6 +1143,8 @@ export default function DemandWeeklyPage() {
   const [importerOpen, setImporterOpen] = useState(false);
   const [phasingOpen, setPhasingOpen] = useState(false);
   const { current: planCycle } = usePlanningPeriod();
+  const [timeRange, setTimeRange] = useTimeRange("demand-weekly", "weekly");
+  const isHistory = !timeRange.isCurrent;
 
   // M19 GAP 1 — FC tháng tổng (scale theo tenant)
   const monthlyFcTotal = useMemo(
