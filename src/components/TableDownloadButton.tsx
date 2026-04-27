@@ -236,7 +236,10 @@ export function TableDownloadButton({
       const raw = sessionStorage.getItem(storageKey);
       if (!raw) return null;
       const v = JSON.parse(raw);
-      if ((v.fmt === "csv" || v.fmt === "pdf") && (v.scope === "filtered" || v.scope === "all")) {
+      if (
+        (v.fmt === "csv" || v.fmt === "xlsx" || v.fmt === "pdf") &&
+        (v.scope === "filtered" || v.scope === "all")
+      ) {
         return v;
       }
     } catch {
