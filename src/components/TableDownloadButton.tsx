@@ -23,7 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
-type Format = "csv" | "pdf";
+type Format = "csv" | "xlsx" | "pdf";
 type Scope = "filtered" | "all";
 
 interface Props {
