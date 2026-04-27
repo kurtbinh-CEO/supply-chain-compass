@@ -560,6 +560,14 @@ function GroupDrillDown({
 
   return (
     <div className="bg-surface-1 border-t border-surface-3 p-4 space-y-3">
+      {/* ── Edge case banners (P3) ── */}
+      <SplitShipmentBanner group={group} />
+      <HoldShipCountdown group={group} />
+      <PartialDeliveryBanner group={group} />
+      {group.stage === "delivering" && group.lines[0] && (
+        <DamageClaimPanel row={group.lines[0]} />
+      )}
+
       {/* ── Bảng SKU compact ── */}
       <SmartTable<PoLifecycleRow>
         data={group.lines}
