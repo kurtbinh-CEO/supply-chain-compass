@@ -204,7 +204,7 @@ export default function AppearancePage() {
     <AppLayout>
       <ScreenHeader
         title="Giao diện"
-        breadcrumbs={[{ label: "Cá nhân hoá" }, { label: "Giao diện" }]}
+        subtitle="Tuỳ chỉnh chế độ hiển thị và bố cục theo sở thích của bạn."
       />
       <div className="space-y-8 max-w-3xl">
         <p className="text-body text-text-2">
