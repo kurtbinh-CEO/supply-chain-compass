@@ -258,6 +258,41 @@ function badgeClasses(tone: BadgeData["tone"]) {
   }
 }
 
+/* Metadata mô tả mỗi badge để render trong tooltip:
+ *  - metric: badge đang đo cái gì
+ *  - thresholds: điều kiện chuyển tone success / warning / danger
+ * Giữ tách riêng để dễ bảo trì khi đổi công thức trong useDailyBadges. */
+const BADGE_META: Record<DailyBadgeKey, { metric: string; thresholds: string }> = {
+  nm_cn_fresh:       { metric: "Độ tươi dữ liệu NM/CN (số NM cập nhật / tổng · số CN)",
+                       thresholds: "✓ khi tất cả nguồn còn fresh; warning khi có nguồn quá hạn." },
+  cn_adjust:         { metric: "Tiến độ CN gửi điều chỉnh tuần (đã gửi / tổng CN).",
+                       thresholds: "✓ khi 0 CN pending · warning 1–3 · danger ≥ 4 CN chưa gửi." },
+  exceptions:        { metric: "Số dòng SHORTAGE đang treo trong DRP.",
+                       thresholds: "✓ khi 0 · warning 1–3 · danger ≥ 4 shortage." },
+  po_pending:        { metric: "Số PO/lệnh phát hành đang chờ duyệt.",
+                       thresholds: "✓ khi 0 · warning 1–3 · danger ≥ 4 PO pending." },
+  demand_progress:   { metric: "Tiến độ submit Demand tháng (CN đã chốt / tổng CN).",
+                       thresholds: "✓ khi đủ 100 % · warning 1–3 CN trễ · danger ≥ 4 CN trễ." },
+  sop_status:        { metric: "Trạng thái phiên S&OP tháng.",
+                       thresholds: "✓ Đã chốt khi không còn approval S&OP · warning Cần chốt khi còn pending." },
+  hub_commitment:    { metric: "Cam kết NM với Hub (NM đã confirm / tổng NM).",
+                       thresholds: "✓ khi đủ NM · warning 1–2 NM thiếu · danger ≥ 3 NM thiếu." },
+  gap_pending:       { metric: "Số kịch bản gap-scenario đang theo dõi.",
+                       thresholds: "✓ ẩn khi 0 KB · warning khi có KB thường · danger khi ≥ 3 KB nghiêm trọng." },
+  monitoring_alerts: { metric: "Số cảnh báo hệ thống chưa đọc.",
+                       thresholds: "✓ khi 0 · warning 1–4 · danger ≥ 5 alert." },
+  executive_risk:    { metric: "Tổng rủi ro lãnh đạo (critical exception + thay đổi SS chờ duyệt).",
+                       thresholds: "✓ Ổn định khi 0 · warning 1–2 · danger ≥ 3 rủi ro." },
+  cn_portal_pending: { metric: "Số CN có ít nhất 1 yêu cầu pending trên Cổng CN.",
+                       thresholds: "✓ ẩn khi 0 CN · warning 1–3 · danger ≥ 4 CN pending." },
+};
+
+const TONE_LABEL: Record<BadgeData["tone"], string> = {
+  success: "Ổn định",
+  warning: "Cần chú ý",
+  danger:  "Khẩn cấp",
+};
+
 export function AppSidebar() {
   const { collapsed, toggle } = useSidebarState();
   const { startWorkflow, isBarVisible, isRouteInWorkflow, requestLeave } = useWorkflow();
