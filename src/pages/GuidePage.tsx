@@ -54,6 +54,7 @@ interface FlowNode {
 interface FormulaViz {
   title: string;
   detail: string;
+  visual?: React.ReactNode;
 }
 
 interface RoleFlows {
