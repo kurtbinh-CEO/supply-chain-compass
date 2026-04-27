@@ -360,63 +360,13 @@ function useCountUp(target: number, inView: boolean, duration = 800) {
 /*  VISUAL COMPONENTS                         */
 /* ═══════════════════════════════════════════ */
 
-/* Formula bar visualization */
-function FormulaBarViz({ parts }: { parts: { label: string; value: string; sub: string; highlight?: boolean; result?: boolean }[] }) {
-  const { ref, inView } = useInView();
+/* Plain text formula display (replaces legacy FormulaBarViz) */
+function FormulaText({ text }: { text: string }) {
   return (
-    <div ref={ref} className="flex items-center gap-1.5 flex-wrap py-2">
-      {parts.map((p, i) => {
-        if (p.label === "×" || p.label === "+" || p.label === "−" || p.label === "=" || p.label === "/")
-          return <span key={i} className="text-text-3 font-mono text-body font-light mx-1">{p.label}</span>;
-        return (
-          <AnimatedFormulaCell key={i} part={p} inView={inView} delay={i * 80} />
-        );
-      })}
-    </div>
-  );
-}
-
-function AnimatedFormulaCell({ part: p, inView, delay }: {
-  part: { label: string; value: string; sub: string; highlight?: boolean; result?: boolean };
-  inView: boolean; delay: number;
-}) {
-  const numericValue = parseFloat(p.value.replace(/[,.]/g, ""));
-  const isNumeric = !isNaN(numericValue) && p.value.length > 0;
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    if (!inView) return;
-    const t = setTimeout(() => setShow(true), delay);
-    return () => clearTimeout(t);
-  }, [inView, delay]);
-
-  const countedValue = useCountUp(isNumeric ? numericValue : 0, show, 700);
-
-  const formatValue = (v: number) => {
-    if (p.value.includes(".")) {
-      const parts = p.value.split(".");
-      return v.toLocaleString("vi-VN") + (parts[1] ? "" : "");
-    }
-    if (p.value.includes(",")) return v.toLocaleString("vi-VN");
-    return v.toLocaleString("vi-VN");
-  };
-
-  return (
-    <div className={cn(
-      "flex flex-col items-center px-3 py-2 rounded-lg min-w-[56px] transition-all duration-500",
-      p.result ? "bg-primary/15 ring-2 ring-primary/30" :
-      p.highlight ? "bg-[#b45309]/10 ring-1 ring-[#b45309]/30" :
-      "bg-surface-1",
-      show ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95"
-    )}>
-      <span className={cn(
-        "font-mono text-body font-bold tabular-nums",
-        p.result ? "text-primary" : p.highlight ? "text-[#b45309]" : "text-text-1"
-      )}>
-        {isNumeric && show ? formatValue(countedValue) : p.value}
-      </span>
-      <span className="text-[10px] text-text-3 font-medium mt-0.5">{p.label}</span>
-      {p.sub && <span className="text-[9px] text-text-3/60">{p.sub}</span>}
+    <div className="py-2">
+      <code className="block font-mono text-body text-text-1 bg-surface-1 rounded-lg px-3 py-2 leading-relaxed whitespace-pre-wrap">
+        {text}
+      </code>
     </div>
   );
 }
