@@ -792,23 +792,21 @@ export default function GapScenarioPage() {
           ? `Chế độ chỉ xem — ${planCycle.label} đã khóa`
           : `Tổng gap ${fmtM2(totalGap)} (${overallGapPct}% so với cam kết)`}
         actions={
-          <div className="flex items-center gap-2 flex-wrap">
+          <>
             <PlanningPeriodSelector />
-            <div className="flex items-center gap-2 text-table-sm">
-              <span className="rounded-full bg-danger-bg text-danger px-2.5 py-1 border border-danger/30 inline-flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                {rows.filter((r) => r.status === "critical").length} NM nguy hiểm
-              </span>
-              <span className="rounded-full bg-warning-bg text-warning px-2.5 py-1 border border-warning/30 inline-flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                {rows.filter((r) => r.status === "watch").length} cần theo dõi
-              </span>
-              <span className="rounded-full bg-success-bg text-success px-2.5 py-1 border border-success/30 inline-flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3" />
-                {rows.filter((r) => r.status === "on_track").length} đúng tiến độ
-              </span>
-            </div>
-          </div>
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-button border border-danger/30 bg-danger-bg px-3 text-table-sm font-medium text-danger whitespace-nowrap">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {rows.filter((r) => r.status === "critical").length} NM nguy hiểm
+            </span>
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-button border border-warning/30 bg-warning-bg px-3 text-table-sm font-medium text-warning whitespace-nowrap">
+              <Clock className="h-3.5 w-3.5" />
+              {rows.filter((r) => r.status === "watch").length} cần theo dõi
+            </span>
+            <span className="inline-flex h-8 items-center gap-1.5 rounded-button border border-success/30 bg-success-bg px-3 text-table-sm font-medium text-success whitespace-nowrap">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {rows.filter((r) => r.status === "on_track").length} đúng tiến độ
+            </span>
+          </>
         }
       />
 
