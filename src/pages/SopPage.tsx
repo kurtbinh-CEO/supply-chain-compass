@@ -302,6 +302,13 @@ export default function SopPage() {
         }
       />
 
+      <HistoryBanner
+        range={timeRange}
+        onReset={() => setTimeRange(defaultTimeRange("monthly"))}
+        entity="S&OP"
+        resetLabel="Quay về tháng này"
+      />
+
       {/* LỚP 2 — Tiến trình (1 dòng nhỏ) + 4 Summary Cards */}
       {consensusData.length > 0 && (
         <>
