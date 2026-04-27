@@ -100,6 +100,21 @@ function fmtDateVi(iso?: string): string {
   return `${d}/${m}/${y}`;
 }
 
+/** Format kèm thứ tiếng Việt — vd: "Th 2, 27/04/2026". Dùng noon-local
+ *  để tránh DST/timezone shift. Chỉ hiện khi ISO hợp lệ. */
+function fmtDateViLong(iso?: string): string {
+  if (!iso) return "";
+  try {
+    const d = parseLocalIso(iso);
+    const weekday = new Intl.DateTimeFormat("vi-VN", { weekday: "short" }).format(d);
+    // weekday "vi-VN" trả "Th 2", "CN", ... — viết hoa chữ đầu cho gọn.
+    const wd = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+    return `${wd}, ${fmtDateVi(iso)}`;
+  } catch {
+    return fmtDateVi(iso);
+  }
+}
+
 function loadPersisted(screenId: string, mode: TimeRangeMode): TimeRange {
   try {
     const raw = localStorage.getItem(`scp.timerange.${screenId}`);
@@ -443,9 +458,30 @@ export function TimeRangeFilter({ mode, value, onChange, screenId, className }: 
                 <span>{customError}</span>
               </div>
             )}
-            {!customError && touched && customFrom && customTo && (
-              <div className="text-caption text-text-3 px-1">
-                Phạm vi: <strong className="text-text-2">{diffDays(customFrom, customTo) + 1} ngày</strong>
+            {!customError && customFrom && customTo && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="rounded-button border border-info/30 bg-info-bg/60 px-2.5 py-1.5 text-caption text-info"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold uppercase tracking-wide opacity-80">
+                    Xem trước
+                  </span>
+                  <span className="tabular-nums opacity-80">
+                    {diffDays(customFrom, customTo) + 1} ngày
+                  </span>
+                </div>
+                <div className="mt-0.5 flex items-center gap-1.5 text-text-1">
+                  <span className="font-medium">{fmtDateViLong(customFrom)}</span>
+                  <ArrowRight className="h-3 w-3 opacity-60 shrink-0" />
+                  <span className="font-medium">{fmtDateViLong(customTo)}</span>
+                </div>
+                {!touched && (
+                  <div className="mt-0.5 text-text-3">
+                    Bấm <strong>Áp dụng</strong> để lọc theo phạm vi này.
+                  </div>
+                )}
               </div>
             )}
 
