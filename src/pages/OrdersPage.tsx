@@ -539,7 +539,6 @@ function GroupDrillDown({
         getRowId={(r) => r.id}
         screenId={`order-${group.groupId}-lines`}
         defaultDensity="compact"
-        toolbar={false}
         columns={[
           {
             key: "skuLabel", label: "Mã hàng", width: 140,
