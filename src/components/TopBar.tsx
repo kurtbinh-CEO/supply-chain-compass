@@ -1,4 +1,4 @@
-import { Search, Bell, ChevronRight, Sun, Moon, Monitor, Globe, ChevronDown, LogOut, Palette } from "lucide-react";
+import { Search, Bell, ChevronRight, Sun, Moon, Monitor, Globe, ChevronDown, LogOut, Palette, Sprout } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTenant, TenantName } from "@/components/TenantContext";
 import { useThemeMode } from "@/components/ThemeContext";
@@ -7,6 +7,7 @@ import type { Locale } from "@/components/i18n/translations";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useAuth } from "@/components/AuthContext";
 import { ZoomControls } from "@/components/ZoomControls";
+import { useFarmerMode } from "@/components/FarmerModeContext";
 import { useCommandPalette } from "@/components/CommandPalette";
 import { NM_INVENTORY, FACTORIES } from "@/data/unis-enterprise-dataset";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -206,6 +207,7 @@ export function TopBar() {
   const { locale, setLocale, t } = useI18n();
   const { profile, signOut } = useAuth();
   const { open: openPalette } = useCommandPalette();
+  const { enabled: farmerOn, toggle: toggleFarmer } = useFarmerMode();
 
   const routeKey = routeKeys[location.pathname];
   const pageName = routeKey ? t(routeKey) : t("route.overview");
