@@ -178,7 +178,7 @@ function diffDays(fromIso: string, toIso: string): number {
 }
 
 /** Cộng N ngày vào ISO date theo giờ LOCAL. */
-function addDaysIso(iso: string, days: number): string {
+export function addDaysIso(iso: string, days: number): string {
   const d = parseLocalIso(iso);
   d.setDate(d.getDate() + days);
   return toLocalIso(d);
