@@ -183,30 +183,12 @@ const scFlows: RoleFlows = {
   formulas: [
     {
       title: "Safety Stock",
-      visual: <FormulaBarViz parts={[
-        { label: "Z", value: "1.65", sub: "SL 95%" },
-        { label: "×", value: "", sub: "" },
-        { label: "σ_fc_err", value: "28.5", sub: "forecast error", highlight: true },
-        { label: "×", value: "", sub: "" },
-        { label: "√LT", value: "√14", sub: "lead time" },
-        { label: "=", value: "", sub: "" },
-        { label: "SS", value: "176", sub: "m²/SKU", result: true },
-      ]} />,
+      visual: <FormulaText text="SS = Z × σ_fc_err × √LT  =  1,65 × 28,5 × √14  =  176 m²/SKU" />,
       detail: "σ_fc_error (sai số FC) KHÔNG PHẢI σ_demand → tiết kiệm 54% vốn",
     },
     {
       title: "Demand Total",
-      visual: <FormulaBarViz parts={[
-        { label: "FC", value: "4.800", sub: "statistical" },
-        { label: "+", value: "", sub: "" },
-        { label: "B2B", value: "2.200", sub: "weighted" },
-        { label: "+", value: "", sub: "" },
-        { label: "PO", value: "1.100", sub: "confirmed" },
-        { label: "−", value: "", sub: "" },
-        { label: "Overlap", value: "450", sub: "" },
-        { label: "=", value: "", sub: "" },
-        { label: "Demand", value: "7.650", sub: "m²", result: true },
-      ]} />,
+      visual: <FormulaText text="Demand = FC + B2B + PO − Overlap  =  4.800 + 2.200 + 1.100 − 450  =  7.650 m²" />,
       detail: "FC: Holt-Winters/XGBoost, MAPE 18,4%. B2B: deals ≥30% prob.",
     },
     {
