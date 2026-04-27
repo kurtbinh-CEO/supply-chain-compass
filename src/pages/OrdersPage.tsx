@@ -534,6 +534,16 @@ function GroupDrillDown({
   onAction: (line: PoLifecycleRow) => void;
   onCancel: (line: PoLifecycleRow) => void;
 }) {
+  const navigate = useNavigate();
+  // Mock cam kết gốc (commitment): suy ra từ NM/SKU base + tháng plan
+  const commitment = useMemo(() => {
+    const skuBase = (group.lines[0]?.skuLabel ?? "GA-600").split(" ")[0];
+    const nmName = group.kind === "RPO" ? group.fromName : "—";
+    const committed = Math.max(group.totalQty * 5, 4200); // mock cam kết tháng
+    const releaseNumber = 1;
+    const releasedPct = Math.min(100, Math.round((group.totalQty / committed) * 100));
+    return { skuBase, nmName, committed, releaseNumber, releasedPct };
+  }, [group]);
   // Đơn giá ước tính theo SKU (mock — KHÔNG ảnh hưởng business logic)
   const unitPrice = (skuLabel: string) => {
     if (skuLabel.startsWith("GA-600")) return 185_000;
