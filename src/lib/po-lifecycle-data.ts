@@ -118,7 +118,7 @@ export interface PoLifecycleRow {
 
 /** Minimal seed — 15 rows covering every stage incl. overdue cases. */
 export const SEED_PO_LIFECYCLE: PoLifecycleRow[] = [
-  // 1. APPROVED — fresh
+  // 1. APPROVED — fresh (multi-SKU group: PO-BD-W20-001 has 2 lines)
   {
     id: "1", kind: "RPO", poNumber: "PO-BD-W20-001",
     sku: "GA-600", skuLabel: "GA-600 B2", qty: 800,
@@ -129,10 +129,31 @@ export const SEED_PO_LIFECYCLE: PoLifecycleRow[] = [
       { stage: "approved", ts: "20/05 09:00", actor: "Planner Linh", note: "Duyệt từ DRP batch W20" },
     ],
   },
-  // 2. SENT_NM — 1 day
+  {
+    id: "1b", kind: "RPO", poNumber: "PO-BD-W20-001",
+    sku: "GA-300", skuLabel: "GA-300 A4", qty: 400,
+    fromName: "NM Đồng Tâm", toName: "CN-BD", region: "Nam",
+    stage: "approved", hoursInStage: 1,
+    evidence: [],
+    timeline: [
+      { stage: "approved", ts: "20/05 09:00", actor: "Planner Linh", note: "Duyệt từ DRP batch W20" },
+    ],
+  },
+  // 2. SENT_NM — 1 day (multi-SKU group: PO-HN-W20-001 has 2 lines)
   {
     id: "2", kind: "RPO", poNumber: "PO-HN-W20-001",
     sku: "GA-300", skuLabel: "GA-300 A4", qty: 1500,
+    fromName: "NM Mikado", toName: "CN-HN", region: "Bắc",
+    stage: "sent_nm", hoursInStage: 26,
+    evidence: [{ label: "Ảnh Zalo gửi anh Tân", kind: "screenshot" }],
+    timeline: [
+      { stage: "approved", ts: "18/05 14:00", actor: "Planner Linh" },
+      { stage: "sent_nm",  ts: "19/05 08:00", actor: "Planner Linh", note: "Zalo + gọi điện anh Tân Mikado" },
+    ],
+  },
+  {
+    id: "2b", kind: "RPO", poNumber: "PO-HN-W20-001",
+    sku: "GA-600", skuLabel: "GA-600 A4", qty: 700,
     fromName: "NM Mikado", toName: "CN-HN", region: "Bắc",
     stage: "sent_nm", hoursInStage: 26,
     evidence: [{ label: "Ảnh Zalo gửi anh Tân", kind: "screenshot" }],

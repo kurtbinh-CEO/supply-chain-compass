@@ -1,31 +1,23 @@
 ---
 name: Orders module
-description: Orders module — 3 tabs (Duyệt PO/TO · Vận chuyển · Theo dõi) all migrated to SmartTable with drillDown lineage, action cells, and stage pipeline header
+description: Orders page (/orders) — 2-tier PO group table (parent NM×CN×Tuần → SKU children), single SmartTable drill-down chevron, status pills only (no extra "Tiến trình" line)
 type: feature
 ---
-The Orders module (`/orders`) was redesigned (M5) inspired by Oracle/SAP/Blue Yonder/Coupa patterns and **fully migrated to SmartTable** (Lô B refactor).
+The Orders page (/orders) was redesigned (ORDERS-FINAL-FIX) into a single-table 2-tier hierarchy:
 
-**Header pipeline rail**: 1-line `FlowSummary` showing 4 clickable stage chips (chờ duyệt → chờ nhà xe → đang giao → đã nhận) that jump to the relevant tab.
+**Parent rows = `PoGroup`** built by `src/lib/po-group-builder.ts` — gộp các `PoLifecycleRow` theo `poNumber` (NM × CN × Tuần). Group stage = stage SỚM NHẤT chưa hoàn thành. Container fill ước tính (40ft = 1.800m², 20ft = 900m²).
 
-**Tab 1 — Duyệt PO/TO** (`ApprovalTab`): Combines PO drafts (`status=draft|submitted`) and TO drafts into one unified `ApprovalRow` union (`type: "po" | "to"`). Renders via `SmartTable<ApprovalRow>` with:
-- Columns: PO/TO #, Loại (enum filter RPO/BPO/TO), Tuyến, Mã hàng, Số lượng, Container, Trạng thái (enum), Hành động.
-- Action cell renders Send/Duyệt button (stops propagation, calls `sendPo`/`sendTo` to mutate `setOverrides`/`setToOverrides`).
-- `drillDown` renders `PoLineage` for PO rows or `ToLineage` for TO rows.
-- Toolbar above with "Duyệt tất cả" button. Mock fallback when DB empty.
-- `screenId="orders-approval"` for localStorage persistence.
+**Child rows = SKU lines** in compact `SmartTable<PoLifecycleRow>` shown via parent's `drillDown` (`GroupDrillDown`). Cột child: Mã hàng · Số lượng · Đơn giá · Thành tiền (mock từ skuLabel) · Trạng thái · nút "Cập nhật" per line.
 
-**Tab 2 — Vận chuyển** (`TransportTab`): Combines `TRANSPORT_PLANS` and approved `TO_DRAFT` into `TransportRowT[]`. Filter chips (Tất cả / PO / TO / Chờ nhà xe / Đang chuyển) above SmartTable.
-- Columns include Chuyến, Loại, Tuyến, Số lượng (with container/fill subtext), Nhà xe, Ngày dự kiến, Trạng thái (enum: wait/hold/ready/moving), Hành động.
-- Action cell delegated to `TransportActionCell` which handles 4 states: carrier picker dropdown (wait), Xuất ngay/Chờ gom (hold), Khởi hành (ready), "Đang chạy" label (moving). All buttons stop propagation.
-- `screenId="orders-transport"`.
+**Một chevron duy nhất**: chỉ dùng SmartTable's built-in drillDown chevron — **không có** custom expand column và không có manual `expanded` state. Bỏ luôn `LifecycleFlowMini` ("Tiến trình:" inline) vì pills đã filter đủ.
 
-**Tab 3 — Theo dõi** (`TrackingTab`): Combines confirmed/shipped/received POs and TOs into `TrackingRowT[]`. Pure SmartTable with `drillDown` rendering `ShipmentTimeline` (full vertical 6-stage timeline with carrier/driver bar and tel: link).
-- Columns: PO/TO # (with KindBadge inline), Tuyến, Nhà xe, Tài xế·SĐT (priority="low" hidden on mobile), ETA, Trạng thái (enum filter).
-- Mock fallback (3 example shipments) when DB+overrides empty.
-- `screenId="orders-tracking"`.
+**Action cascade**: khi user bấm nút action ở parent (operates on `group.leader`), `advance()` cập nhật TẤT CẢ lines cùng stage trong group qua `leaderSiblingIds(group)`.
 
-**Status overrides**: `overrides` (PO) and `toOverrides` (TO) maps for approval simulation without DB writes. `effective(po)`/`effectiveTo(t)` derive current state. `carrierAssign` map for transport carrier assignment.
+**Pill counts dựa trên GROUPS** (không phải lines). Header phụ hiện "Tổng X đơn (Y dòng chi tiết)".
 
-**SmartTable benefits inherited by all 3 tabs**: density toggle, fullscreen (⌘⇧F), column hide, sort/filter persistence per `screenId`, CSV/PDF export, row severity highlighting (watch/overdue/ok).
+**Drill-down child** include: SKU pricing table → tổng + lifecycle inline dots (✅/●/○) → 2-cột Vận chuyển + Minh chứng (gộp evidence từ all lines) → Lịch sử timeline của leader.
 
-**Mock data**: `PO_DRAFT`, `TRANSPORT_PLANS`, `CARRIERS`, `CN_REGION`, `TO_DRAFT` from `unis-enterprise-dataset.ts`. Tenant scaling via `tenantScales` map.
+**Files**:
+- `src/lib/po-group-builder.ts` — `buildPoGroups`, `groupOverdue`, `groupNearSla`, `leaderSiblingIds`
+- `src/lib/po-lifecycle-data.ts` — seed `SEED_PO_LIFECYCLE` (15+ rows; 2 PO numbers chia sẻ qua nhiều SKU lines để demo multi-SKU group)
+- `src/pages/OrdersPage.tsx` — main page; `GroupDrillDown` component

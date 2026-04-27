@@ -34,11 +34,14 @@ import {
   type PoLifecycleRow, type LifecycleStage, type PoEvidence,
   nextStage, isOverdue, isNearSla, fmtTimeInStage, fmtEta,
 } from "@/lib/po-lifecycle-data";
+import {
+  buildPoGroups, groupOverdue, groupNearSla, leaderSiblingIds, type PoGroup,
+} from "@/lib/po-group-builder";
 import { CARRIERS, CN_REGION } from "@/data/unis-enterprise-dataset";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 import {
   Send, CheckCircle2, Truck, Package, Flag, ClipboardCheck,
-  Phone, AlertTriangle, ChevronDown, ChevronRight,
+  Phone, AlertTriangle,
   Camera, FileText, X, Image, PenLine, ShieldAlert,
 } from "lucide-react";
 
@@ -69,7 +72,6 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<Set<LifecycleStage>>(new Set());
   const [kindFilter, setKindFilter] = useState<Set<"RPO" | "TO">>(new Set());
   const [overdueOnly, setOverdueOnly] = useState(false);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   // Drill-down popup từ summary cards
   const [drillFocus, setDrillFocus] = useState<DrillFocus>(null);
@@ -78,7 +80,10 @@ export default function OrdersPage() {
   const [actionRow, setActionRow] = useState<PoLifecycleRow | null>(null);
   const [cancelRow, setCancelRow] = useState<PoLifecycleRow | null>(null);
 
-  /* ── Stage counts for summary bar + filter pills ── */
+  /* ── Build PO groups (NM × CN × Tuần) — parent rows ── */
+  const groups = useMemo(() => buildPoGroups(rows), [rows]);
+
+  /* ── Stage counts dựa trên GROUPS (không phải lines) ── */
   const counts = useMemo(() => {
     const stage: Record<LifecycleStage, number> = {
       approved: 0, sent_nm: 0, nm_confirmed: 0, pickup: 0,
@@ -86,26 +91,30 @@ export default function OrdersPage() {
     };
     let todo = 0, transit = 0, done = 0, overdue = 0;
     let po = 0, to = 0;
-    for (const r of rows) {
-      stage[r.stage]++;
-      if (r.kind === "RPO") po++; else to++;
-      if (ACTION_STAGES.includes(r.stage)) todo++;
-      if (r.stage === "pickup" || r.stage === "in_transit") transit++;
-      if (r.stage === "completed") done++;
-      if (isOverdue(r)) overdue++;
+    for (const g of groups) {
+      stage[g.stage]++;
+      if (g.kind === "RPO") po++; else to++;
+      if (ACTION_STAGES.includes(g.stage)) todo++;
+      if (g.stage === "pickup" || g.stage === "in_transit") transit++;
+      if (g.stage === "completed") done++;
+      if (groupOverdue(g)) overdue++;
     }
-    return { stage, todo, transit, done, overdue, total: rows.length, po, to };
-  }, [rows]);
+    return {
+      stage, todo, transit, done, overdue,
+      total: groups.length, totalLines: rows.length,
+      po, to,
+    };
+  }, [groups, rows.length]);
 
-  /* ── Filtered list — multi-select pills ── */
-  const visibleRows = useMemo(() => {
-    return rows.filter(r => {
-      if (kindFilter.size > 0 && !kindFilter.has(r.kind as "RPO" | "TO")) return false;
-      if (overdueOnly && !isOverdue(r)) return false;
-      if (statusFilter.size > 0 && !statusFilter.has(r.stage)) return false;
+  /* ── Filtered groups — multi-select pills ── */
+  const visibleGroups = useMemo(() => {
+    return groups.filter(g => {
+      if (kindFilter.size > 0 && !kindFilter.has(g.kind)) return false;
+      if (overdueOnly && !groupOverdue(g)) return false;
+      if (statusFilter.size > 0 && !statusFilter.has(g.stage)) return false;
       return true;
     });
-  }, [rows, statusFilter, kindFilter, overdueOnly]);
+  }, [groups, statusFilter, kindFilter, overdueOnly]);
 
   // Toggle helpers
   const toggleStatus = (s: LifecycleStage) =>
@@ -126,14 +135,18 @@ export default function OrdersPage() {
     setOverdueOnly(false);
   };
 
-  /* ── Mutations from dialogs ── */
+  /* ── Mutations from dialogs (cascade qua tất cả SKU lines cùng stage trong group) ── */
   const advance = (id: string, patch: Partial<PoLifecycleRow>) => {
-    setRows(prev => prev.map(r => r.id === id ? { ...r, ...patch, hoursInStage: 0, overdueFlag: false } : r));
+    // Tìm group chứa line `id`, lấy các line cùng stage để cascade.
+    const group = groups.find(g => g.lines.some(l => l.id === id));
+    const idSet = new Set<string>(group ? leaderSiblingIds(group) : [id]);
+    setRows(prev => prev.map(r => idSet.has(r.id)
+      ? { ...r, ...patch, hoursInStage: 0, overdueFlag: false }
+      : r));
 
-    // G4 — ERP posting: khi PO/TO hoàn tất POD → đăng sang ERP
+    // G4 — ERP posting: khi PO/TO hoàn tất POD → đăng sang ERP (1 lần / group)
     if (patch.stage === "completed") {
-      const row = rows.find(r => r.id === id);
-      const docNo = row?.id || id;
+      const docNo = group?.poNumber || id;
       const erpDoc = `MIGO-${Date.now().toString().slice(-6)}`;
       const t = toast.loading(`Đang đăng ERP cho ${docNo}...`, { description: "Tạo MIGO/Goods Receipt → SAP/Odoo" });
       setTimeout(() => {
@@ -190,7 +203,7 @@ export default function OrdersPage() {
             {planCycle.label}
           </button>
           <span>·</span>
-          <span>Tổng <span className="text-text-1 font-semibold tabular-nums">{counts.total}</span> đơn</span>
+          <span>Tổng <span className="text-text-1 font-semibold tabular-nums">{counts.total}</span> đơn <span className="text-text-3">({counts.totalLines} dòng chi tiết)</span></span>
           {counts.overdue > 0 && (
             <> · <span className="text-danger font-semibold">{counts.overdue} trễ hạn</span></>
           )}
@@ -301,21 +314,13 @@ export default function OrdersPage() {
         />
       </div>
 
-      {/* ═══ LIFECYCLE FLOW — 1 dòng text nhỏ trong header bảng ═══ */}
-      <LifecycleFlowMini
-        counts={counts.stage}
-        active={statusFilter}
-        onToggle={toggleStatus}
-      />
-
-      {/* ═══ MAIN TABLE ═══ */}
-      <SmartTable<PoLifecycleRow>
-        data={visibleRows}
-        getRowId={(r) => r.id}
+      {/* ═══ MAIN TABLE — PO GROUPS (NM × CN × Tuần) ═══ */}
+      <SmartTable<PoGroup>
+        data={visibleGroups}
+        getRowId={(g) => g.groupId}
         screenId="orders-lifecycle"
         defaultDensity="compact"
-        rowSeverity={(r) => isOverdue(r) ? "shortage" : isNearSla(r) ? "watch" : undefined}
-        autoExpandWhen={(r) => expanded.has(r.id)}
+        rowSeverity={(g) => groupOverdue(g) ? "shortage" : groupNearSla(g) ? "watch" : undefined}
         emptyState={{
           icon: overdueOnly ? <CheckCircle2 /> : <ClipboardCheck />,
           title: overdueOnly ? "Không có đơn trễ hạn" : "Không có đơn nào",
@@ -323,70 +328,70 @@ export default function OrdersPage() {
             ? "Chưa có đơn trong tuần. Tải đơn mới từ DRP batch."
             : "Thử bỏ bớt bộ lọc hoặc bấm \"Tất cả\" để xem toàn bộ.",
         }}
-        drillDown={(r) => <ExpandedRow row={r} />}
+        drillDown={(g) => (
+          <GroupDrillDown
+            group={g}
+            onAction={(line) => setActionRow(line)}
+            onCancel={(line) => setCancelRow(line)}
+          />
+        )}
         columns={[
-          {
-            key: "expand", label: "", width: 32, hideable: false,
-            render: (r) => (
-              <button
-                aria-label={expanded.has(r.id) ? "Thu gọn" : "Mở rộng"}
-                className="text-text-3 hover:text-text-1 transition-transform"
-                onClick={(e) => { e.stopPropagation(); setExpanded(prev => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; }); }}
-              >
-                {expanded.has(r.id) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </button>
-            ),
-          },
           {
             key: "poNumber", label: "Mã đơn", width: 180, sortable: true, hideable: false, priority: "high",
             filter: "text",
-            accessor: (r) => r.poNumber,
-            render: (r) => (
+            accessor: (g) => g.poNumber,
+            render: (g) => (
               <div className="flex flex-col">
-                <span className="font-mono text-table-sm font-semibold text-text-1">{r.poNumber}</span>
-                {r.cancelReason && <span className="text-[10px] text-danger">Hủy: {r.cancelReason}</span>}
+                <span className="font-mono text-table-sm font-semibold text-text-1">{g.poNumber}</span>
+                {g.lineCount > 1 && (
+                  <span className="text-[10px] text-text-3">{g.lineCount} mã hàng</span>
+                )}
               </div>
             ),
           },
           {
             key: "kind", label: "Loại", width: 70, align: "center",
             filter: "enum", filterOptions: [{ label: "RPO", value: "RPO" }, { label: "TO", value: "TO" }],
-            accessor: (r) => r.kind,
-            render: (r) => (
+            accessor: (g) => g.kind,
+            render: (g) => (
               <Badge variant="outline" className={cn("text-[10px] font-mono",
-                r.kind === "TO" ? "border-warning/40 text-warning bg-warning-bg/40" : "border-success/40 text-success bg-success-bg/40"
-              )}>{r.kind}</Badge>
+                g.kind === "TO" ? "border-warning/40 text-warning bg-warning-bg/40" : "border-success/40 text-success bg-success-bg/40"
+              )}>{g.kind}</Badge>
             ),
           },
           {
             key: "route", label: "Tuyến", width: 240,
             filter: "text",
-            accessor: (r) => `${r.fromName} → ${r.toName}`,
-            render: (r) => (
+            accessor: (g) => `${g.fromName} → ${g.toName}`,
+            render: (g) => (
               <div className="flex flex-col text-table-sm">
-                <span className="text-text-1 font-medium truncate">{r.fromName}</span>
-                <span className="text-text-3 text-[11px]">→ {r.toName}</span>
+                <span className="text-text-1 font-medium truncate">{g.fromName}</span>
+                <span className="text-text-3 text-[11px]">→ {g.toName}</span>
               </div>
             ),
           },
           {
-            key: "sku", label: "Mã hàng", width: 130,
-            filter: "text",
-            accessor: (r) => r.skuLabel,
-            render: (r) => <span className="font-mono text-table-sm text-text-2">{r.skuLabel}</span>,
+            key: "qty", label: "Số lượng", width: 150, numeric: true, align: "right", sortable: true,
+            accessor: (g) => g.totalQty,
+            render: (g) => (
+              <div className="text-right tabular-nums text-table-sm">
+                <div className="text-text-1 font-medium">{g.totalQty.toLocaleString()} m²</div>
+                <div className="text-[10px] text-text-3">
+                  {g.lineCount} SKU
+                </div>
+              </div>
+            ),
           },
           {
-            key: "qty", label: "Số lượng", width: 120, numeric: true, align: "right", sortable: true,
-            accessor: (r) => r.qty,
-            render: (r) => (
-              <div className="text-right tabular-nums text-table-sm">
-                <div className="text-text-1 font-medium">{r.qty.toLocaleString()} m²</div>
-                {r.qtyConfirmed !== undefined && r.qtyConfirmed < r.qty && (
-                  <div className="text-[10px] text-warning">NM: {r.qtyConfirmed.toLocaleString()}</div>
-                )}
-                {r.qtyDelivered !== undefined && r.qtyDelivered < (r.qtyConfirmed ?? r.qty) && (
-                  <div className="text-[10px] text-danger">Nhận: {r.qtyDelivered.toLocaleString()}</div>
-                )}
+            key: "container", label: "Container", width: 110, align: "center",
+            accessor: (g) => g.containerFill.type,
+            render: (g) => (
+              <div className="flex flex-col items-center text-table-sm">
+                <span className="font-mono text-text-1">{g.containerFill.type}</span>
+                <span className={cn(
+                  "text-[10px]",
+                  g.containerFill.pct >= 85 ? "text-success" : g.containerFill.pct >= 60 ? "text-warning" : "text-text-3",
+                )}>{g.containerFill.pct}%</span>
               </div>
             ),
           },
@@ -394,18 +399,19 @@ export default function OrdersPage() {
             key: "stage", label: "Trạng thái", width: 140, align: "center",
             filter: "enum",
             filterOptions: STAGE_ORDER.concat(["cancelled"]).map(s => ({ label: STAGE_META[s].short, value: s })),
-            accessor: (r) => r.stage,
-            render: (r) => (
-              <Badge variant="outline" className={cn("text-[10px] font-bold tracking-wide", STAGE_META[r.stage].tone)}>
-                {STAGE_META[r.stage].label}
+            accessor: (g) => g.stage,
+            render: (g) => (
+              <Badge variant="outline" className={cn("text-[10px] font-bold tracking-wide", STAGE_META[g.stage].tone)}>
+                {STAGE_META[g.stage].label}
               </Badge>
             ),
           },
           {
             key: "time", label: "Thời gian", width: 130, align: "center",
             sortable: true,
-            accessor: (r) => r.hoursInStage,
-            render: (r) => {
+            accessor: (g) => g.leader.hoursInStage,
+            render: (g) => {
+              const r = g.leader;
               if (r.stage === "completed" || r.stage === "cancelled") {
                 return <span className="text-text-3 text-table-sm">{fmtTimeInStage(r.hoursInStage)}</span>;
               }
@@ -441,11 +447,10 @@ export default function OrdersPage() {
           },
           {
             key: "action", label: "Hành động", width: 200, align: "center", hideable: false,
-            render: (r) => <RowActionButton row={r} onClick={() => setActionRow(r)} onCancel={() => setCancelRow(r)} />,
+            render: (g) => <RowActionButton row={g.leader} onClick={() => setActionRow(g.leader)} onCancel={() => setCancelRow(g.leader)} />,
           },
-        ] satisfies SmartTableColumn<PoLifecycleRow>[]}
+        ] satisfies SmartTableColumn<PoGroup>[]}
       />
-
       {/* ═══ DIALOG ROUTER ═══ */}
       {actionRow && (
         <ActionDialog
@@ -483,7 +488,7 @@ export default function OrdersPage() {
             else if (typeof s === "object") setStatusFilter(new Set([s.stage]));
             setDrillFocus(null);
           }}
-          onOpenRow={(r) => { setDrillFocus(null); setExpanded(prev => new Set(prev).add(r.id)); }}
+          onOpenRow={(_r) => { setDrillFocus(null); }}
         />
       )}
     </AppLayout>
@@ -491,47 +496,185 @@ export default function OrdersPage() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Lifecycle flow — 1 dòng nhỏ trong header bảng (M5-UX-PATCH)
-   "Tiến trình: Duyệt(1) → NM(1) → Xe(2) → Lấy(2) → Chở(3) → Giao(2) → Xong(4)"
+   GroupDrillDown — child table cho 1 PO group:
+     1. Bảng SKU compact (Mã hàng · SL · Đơn giá · Thành tiền)
+     2. Lifecycle inline icons (1 dòng nhỏ, không heading)
+     3. Per-line action (cho phép thao tác từng SKU nếu cần)
+     4. Vận chuyển + Minh chứng (gộp từ leader)
+     5. Lịch sử timeline
    ═══════════════════════════════════════════════════════════════════════════ */
-function LifecycleFlowMini({
-  counts, active, onToggle,
+function GroupDrillDown({
+  group, onAction, onCancel,
 }: {
-  counts: Record<LifecycleStage, number>;
-  active: Set<LifecycleStage>;
-  onToggle: (s: LifecycleStage) => void;
+  group: PoGroup;
+  onAction: (line: PoLifecycleRow) => void;
+  onCancel: (line: PoLifecycleRow) => void;
 }) {
+  // Đơn giá ước tính theo SKU (mock — KHÔNG ảnh hưởng business logic)
+  const unitPrice = (skuLabel: string) => {
+    if (skuLabel.startsWith("GA-600")) return 185_000;
+    if (skuLabel.startsWith("GA-300")) return 145_000;
+    return 160_000;
+  };
+  const totalValue = group.lines.reduce((s, l) => s + l.qty * unitPrice(l.skuLabel), 0);
+
+  // Gộp evidence từ tất cả lines (dedupe theo label)
+  const allEvidence = useMemo(() => {
+    const seen = new Set<string>();
+    const out: PoEvidence[] = [];
+    group.lines.forEach(l => l.evidence.forEach(e => {
+      if (!seen.has(e.label)) { seen.add(e.label); out.push(e); }
+    }));
+    return out;
+  }, [group]);
+
+  // Timeline: dùng leader (đại diện)
+  const leader = group.leader;
+
   return (
-    <div className="flex items-center gap-1 text-[11px] text-text-3 mb-2 overflow-x-auto pb-1">
-      <span className="font-medium text-text-2 shrink-0">Tiến trình:</span>
-      {STAGE_ORDER.map((s, i) => {
-        const n = counts[s];
-        const isActive = active.has(s);
-        const enabled = n > 0;
-        return (
-          <span key={s} className="flex items-center gap-1 shrink-0">
-            <button
-              type="button"
-              disabled={!enabled}
-              onClick={() => onToggle(s)}
-              className={cn(
-                "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded transition-colors",
-                isActive
-                  ? "text-primary font-semibold bg-primary/10"
-                  : enabled ? "hover:text-text-1 hover:bg-surface-2" : "opacity-40 cursor-not-allowed",
-              )}
-              title={`${STAGE_META[s].label} — ${n} đơn`}
-            >
-              <span className={cn("h-1.5 w-1.5 rounded-full", enabled ? "bg-primary/60" : "bg-surface-3")} />
-              <span>{STAGE_META[s].short}</span>
-              <span className="tabular-nums font-semibold">({n})</span>
-            </button>
-            {i < STAGE_ORDER.length - 1 && (
-              <span className="text-text-3/50">→</span>
+    <div className="bg-surface-1 border-t border-surface-3 p-4 space-y-3">
+      {/* ── Bảng SKU compact ── */}
+      <SmartTable<PoLifecycleRow>
+        data={group.lines}
+        getRowId={(r) => r.id}
+        screenId={`order-${group.groupId}-lines`}
+        defaultDensity="compact"
+        columns={[
+          {
+            key: "skuLabel", label: "Mã hàng", width: 140,
+            render: (r) => <span className="font-mono text-table-sm text-text-1">{r.skuLabel}</span>,
+          },
+          {
+            key: "qty", label: "Số lượng", numeric: true, align: "right", width: 110,
+            render: (r) => <span className="tabular-nums text-table-sm">{r.qty.toLocaleString()} m²</span>,
+          },
+          {
+            key: "unitPrice", label: "Đơn giá", numeric: true, align: "right", width: 130,
+            render: (r) => <span className="tabular-nums text-table-sm text-text-2">{unitPrice(r.skuLabel).toLocaleString()} ₫/m²</span>,
+          },
+          {
+            key: "totalPrice", label: "Thành tiền", numeric: true, align: "right", width: 130,
+            render: (r) => {
+              const v = r.qty * unitPrice(r.skuLabel);
+              return <span className="tabular-nums text-table-sm font-medium">{(v / 1e6).toFixed(1)} triệu</span>;
+            },
+          },
+          {
+            key: "stage", label: "Trạng thái", align: "center", width: 130,
+            render: (r) => (
+              <Badge variant="outline" className={cn("text-[10px]", STAGE_META[r.stage].tone)}>
+                {STAGE_META[r.stage].short}
+              </Badge>
+            ),
+          },
+          {
+            key: "lineAction", label: "", width: 90, align: "center",
+            render: (r) => {
+              if (r.stage === "completed" || r.stage === "cancelled") return null;
+              return (
+                <Button
+                  size="sm" variant="ghost"
+                  onClick={(e) => { e.stopPropagation(); onAction(r); }}
+                  className="h-6 px-2 text-[10px]"
+                >Cập nhật</Button>
+              );
+            },
+          },
+        ] satisfies SmartTableColumn<PoLifecycleRow>[]}
+      />
+
+      {/* ── Tổng + lifecycle inline (KHÔNG heading) ── */}
+      <div className="flex items-center justify-between gap-3 px-1 text-table-sm">
+        <div className="text-text-3">
+          Tổng: <span className="text-text-1 font-semibold tabular-nums">{group.totalQty.toLocaleString()} m²</span>
+          <span className="mx-2">·</span>
+          <span className="text-text-1 font-semibold tabular-nums">{(totalValue / 1e6).toFixed(1)} triệu ₫</span>
+        </div>
+        {/* Lifecycle inline dots */}
+        <div className="flex items-center gap-1 text-[11px] overflow-x-auto">
+          {STAGE_ORDER.map((s, i) => {
+            const rank = STAGE_ORDER.indexOf(group.stage);
+            const myRank = i;
+            const isCurrent = s === group.stage;
+            const reached = myRank < rank;
+            return (
+              <span key={s} className="inline-flex items-center gap-0.5 shrink-0">
+                <span className={cn(
+                  isCurrent && "text-primary font-semibold",
+                  reached && "text-success",
+                  !isCurrent && !reached && "text-text-3",
+                )}>
+                  {reached ? "✅" : isCurrent ? "●" : "○"} {STAGE_META[s].short}
+                </span>
+                {i < STAGE_ORDER.length - 1 && <span className="text-text-3/50">→</span>}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Vận chuyển + Minh chứng (2 cột) ── */}
+      <div className="grid md:grid-cols-2 gap-3">
+        {leader.carrierName && (
+          <div className="rounded-card border border-surface-3 bg-surface-0 p-3 space-y-1.5">
+            <div className="text-caption uppercase tracking-wide text-text-3 font-semibold mb-1">Vận chuyển</div>
+            <div className="text-table-sm"><span className="text-text-3">NVT:</span> <span className="font-medium text-text-1">{leader.carrierName}</span></div>
+            {leader.vehiclePlate && <div className="text-table-sm font-mono"><span className="text-text-3 font-sans">Xe:</span> {leader.vehiclePlate}</div>}
+            {leader.containerNo && <div className="text-table-sm font-mono"><span className="text-text-3 font-sans">Cont:</span> {leader.containerNo}</div>}
+            {leader.driverName && (
+              <div className="text-table-sm flex items-center gap-2">
+                <span className="text-text-3">Tài xế:</span>
+                <span className="text-text-1 font-medium">{leader.driverName}</span>
+                {leader.driverPhone && (
+                  <a href={`tel:${leader.driverPhone.replace(/\s/g, "")}`}
+                    className="inline-flex items-center gap-1 text-primary hover:underline text-[11px]">
+                    <Phone className="h-3 w-3" /> {leader.driverPhone}
+                  </a>
+                )}
+              </div>
             )}
-          </span>
-        );
-      })}
+            {leader.deliveryEta && (
+              <div className="text-table-sm flex items-center gap-2 mt-1.5 pt-1.5 border-t border-surface-3">
+                <span className="text-text-3">ETA:</span>
+                <span className="font-medium text-text-1">{leader.deliveryEta}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="rounded-card border border-surface-3 bg-surface-0 p-3">
+          <div className="text-caption uppercase tracking-wide text-text-3 font-semibold mb-2">Minh chứng</div>
+          {allEvidence.length === 0
+            ? <div className="text-table-sm text-text-3 italic">Chưa có minh chứng</div>
+            : (
+              <div className="space-y-1">
+                {allEvidence.map((e, i) => <EvidenceBadge key={i} ev={e} />)}
+              </div>
+            )
+          }
+        </div>
+      </div>
+
+      {/* ── Lịch sử (timeline gộp leader) ── */}
+      {leader.timeline.length > 0 && (
+        <div className="rounded-card border border-surface-3 bg-surface-0 p-3">
+          <div className="text-caption uppercase tracking-wide text-text-3 font-semibold mb-2">Lịch sử</div>
+          <div className="space-y-1.5">
+            {leader.timeline.map((e, i) => (
+              <div key={i} className="flex items-start gap-2 text-table-sm">
+                <div className="text-text-3 tabular-nums w-20 shrink-0">{e.ts}</div>
+                <Badge variant="outline" className={cn("text-[10px] shrink-0", STAGE_META[e.stage].tone)}>
+                  {STAGE_META[e.stage].short}
+                </Badge>
+                <div className="flex-1">
+                  <div className="text-text-1">{e.actor}</div>
+                  {e.note && <div className="text-[11px] text-text-3">{e.note}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
