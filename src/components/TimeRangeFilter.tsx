@@ -156,9 +156,9 @@ interface Props {
 }
 
 /** Số tháng tối đa được phép xem ngược về quá khứ (retention policy). */
-const RETENTION_MONTHS = 24;
+export const RETENTION_MONTHS = 24;
 
-function todayIso(): string {
+export function todayIso(): string {
   // Dùng giờ LOCAL — KHÔNG dùng toISOString() vì sẽ lệch sang UTC.
   return toLocalIso(new Date());
 }
