@@ -238,6 +238,7 @@ export function TableDownloadButton({
   size = "sm",
   formats = ["csv", "xlsx", "pdf"],
   scopeLabel,
+  activeFilters,
   getAllRowsCsv,
   pdfTitle,
 }: Props) {
