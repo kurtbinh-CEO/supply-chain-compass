@@ -16,20 +16,54 @@ interface ScreenHeaderProps {
 // "Xuất" dropdown was removed to avoid duplication and tighten the header.
 
 
+/**
+ * ScreenHeader — chuẩn hoá header mọi page.
+ *
+ * Layout rules (không đổi theo breakpoint):
+ *   - 2 cột: [title block] ⟷ [actions]. `min-w-0` ở cột trái để ellipsis hoạt động.
+ *   - Title: 1 dòng, `truncate`, font-display, line-height cố định.
+ *   - Subtitle: 1 dòng, `truncate`, body font, color text-2.
+ *   - Badges: cùng dòng title, không wrap, shrink-0.
+ *   - Actions: `flex-nowrap`, `shrink-0`, mọi control bên trong nên dùng `h-8`.
+ *   - `gap-x-4` giữa 2 cột; `gap-y-2` chỉ kích hoạt khi thực sự xuống dòng (rất hiếm).
+ *
+ * Nguyên tắc: KHÔNG bao giờ wrap. Nếu title/tenant dài → ellipsis + native title tooltip.
+ */
 export function ScreenHeader({ title, subtitle, actions, badges }: ScreenHeaderProps) {
   return (
-    <div className="flex items-start justify-between mb-6">
-      <div className="flex items-center gap-4">
-        <div>
-          <h1 className="font-display text-screen-title text-text-1 leading-tight">{title}</h1>
-          {subtitle && <p className="text-table text-text-2 mt-0.5">{subtitle}</p>}
+    <header className="mb-6 flex items-center justify-between gap-x-4 gap-y-2 flex-wrap">
+      {/* Title block — co lại được, ellipsis */}
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="min-w-0">
+          <h1
+            className="font-display text-screen-title font-semibold leading-[1.15] text-text-1 truncate"
+            title={title}
+          >
+            {title}
+          </h1>
+          {subtitle && (
+            <p
+              className="text-table text-text-2 leading-snug truncate mt-0.5"
+              title={subtitle}
+            >
+              {subtitle}
+            </p>
+          )}
         </div>
-        {badges && <div className="flex items-center gap-2 ml-1">{badges}</div>}
+        {badges && (
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+            {badges}
+          </div>
+        )}
       </div>
-      <div className="flex items-center gap-2">
-        {actions}
-      </div>
-    </div>
+
+      {/* Actions — không bao giờ wrap, mọi control cao 32px */}
+      {actions && (
+        <div className="flex items-center gap-2 shrink-0 flex-nowrap [&>*]:h-8">
+          {actions}
+        </div>
+      )}
+    </header>
   );
 }
 

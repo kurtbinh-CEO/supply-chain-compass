@@ -1061,7 +1061,7 @@ export default function InventoryPage() {
           ? "5 nhà máy · 12 chi nhánh · Cập nhật 06:00 sáng nay"
           : `5 nhà máy · 12 chi nhánh · Snapshot ${timeRange.label}`}
         actions={
-          <div className="flex items-center gap-2">
+          <>
             <TimeRangeFilter
               mode="daily"
               value={timeRange}
@@ -1069,7 +1069,7 @@ export default function InventoryPage() {
               screenId="inventory"
             />
             <div
-              className="hidden md:inline-flex h-8 items-center gap-1.5 rounded-button border border-surface-3 bg-surface-1 px-3 text-table-sm text-text-2"
+              className="hidden md:inline-flex h-8 items-center gap-1.5 rounded-button border border-surface-3 bg-surface-1 px-3 text-table-sm text-text-2 leading-none"
               title="Bravo sync v12 — đồng bộ lúc 06:00 sáng nay"
             >
               <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
@@ -1082,12 +1082,12 @@ export default function InventoryPage() {
               onClick={() => setImporterOpen(true)}
               disabled={isHistory}
               title={isHistory ? "Dữ liệu quá khứ — chỉ xem" : undefined}
-              className="h-8 gap-1.5"
+              className="h-8 gap-1.5 whitespace-nowrap"
             >
               <Inbox className="h-3.5 w-3.5" />
               {tab === "nm" ? "Nhập tồn NM" : "Nhập tồn CN"}
             </Button>
-          </div>
+          </>
         }
       />
 
