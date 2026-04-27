@@ -20,6 +20,7 @@ import { SopActionBar } from "@/components/sop/SopActionBar";
 import { Loader2, PackageOpen, FileDown, ChevronDown } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
 import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
+import { useWorkspace } from "@/components/WorkspaceContext";
 import { PlanningPeriodSelector } from "@/components/PlanningPeriodSelector";
 import { useCellPresence } from "@/components/CellPresence";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
@@ -136,11 +137,17 @@ function buildEnterpriseConsensus(): ConsensusRow[] {
 export default function SopPage() {
   const { tenant } = useTenant();
   const { markDone } = useNextStep();
-  const { current: planCycle, isReadOnly: planLocked } = usePlanningPeriod();
+  const {
+    current: planCycle,
+    isReadOnly: planLocked,
+    markStepCompleted,
+  } = usePlanningPeriod();
   const [timeRange, setTimeRange] = useTimeRange("sop", "monthly");
+  const { setSopLock, addNotification } = useWorkspace();
 
   const [locked, setLocked] = useState(false);
   const [showPreLock, setShowPreLock] = useState(false);
+  const [lockBlockedDialog, setLockBlockedDialog] = useState<{ count: number } | null>(null);
 
   // Mock current S&OP day-of-cycle (Ngày 5/30 — Cân đối phase)
   const [currentDay] = useState(5);
@@ -197,10 +204,35 @@ export default function SopPage() {
   const totalAop = consensusData.reduce((a, r) => a + r.aop, 0);
   const totalV3 = consensusData.reduce((a, r) => a + r.v3, 0);
 
-  // Trigger chain khi khóa
+  // Variance chưa giải trình: |Σ(SKU v3) − v0_topdown| / v0_topdown > 10% & explanation < 6 chars
+  const unresolvedVariance = useMemo(() => {
+    return consensusData.filter((r) => {
+      if (r.v0 <= 0) return false;
+      const bottomUp = r.skus.reduce((a, s) => a + s.v3, 0);
+      const variancePct = Math.abs(bottomUp - r.v0) / r.v0;
+      if (variancePct <= 0.1) return false;
+      return (varianceExplanations[r.cn] ?? "").trim().length < 6;
+    }).length;
+  }, [consensusData, varianceExplanations]);
+
+  // Trigger chain khi khóa (đã pass tất cả check)
   const lockAndMark = useCallback(() => {
     setLocked(true);
     markDone("sop.locked");
+    // 1. Cập nhật state machine kỳ kế hoạch
+    markStepCompleted("sop");
+    // 2. Cập nhật badge sidebar / Workspace
+    setSopLock({ locked: true, lockedAt: Date.now() });
+    // 3. Notification cho Workspace inbox
+    addNotification({
+      id: `NTF-SOP-LOCK-${Date.now()}`,
+      type: "SOP_LOCKED",
+      typeColor: "info",
+      message: `S&OP ${planCycle.label} đã khoá. 5 NM cần cam kết Net Booking — mở Hub để bắt đầu.`,
+      timeAgo: "vừa xong",
+      read: false,
+      url: "/hub?tab=booking",
+    });
 
     import("sonner").then(m => {
       m.toast.success("✅ S&OP T5/2026 đã được khóa", {
@@ -226,18 +258,20 @@ export default function SopPage() {
         });
       }, 1600);
     });
-  }, [markDone, consensusData.length, totalV3]);
+  }, [markDone, markStepCompleted, setSopLock, addNotification, planCycle.label, consensusData.length, totalV3]);
 
-  // Variance chưa giải trình: |Σ(SKU v3) − v0_topdown| / v0_topdown > 10% & explanation < 6 chars
-  const unresolvedVariance = useMemo(() => {
-    return consensusData.filter((r) => {
-      if (r.v0 <= 0) return false;
-      const bottomUp = r.skus.reduce((a, s) => a + s.v3, 0);
-      const variancePct = Math.abs(bottomUp - r.v0) / r.v0;
-      if (variancePct <= 0.1) return false;
-      return (varianceExplanations[r.cn] ?? "").trim().length < 6;
-    }).length;
-  }, [consensusData, varianceExplanations]);
+  /** Gate trước khi gọi lockAndMark — chặn nếu còn variance chưa giải trình. */
+  const attemptLock = useCallback(() => {
+    if (unresolvedVariance > 0) {
+      setLockBlockedDialog({ count: unresolvedVariance });
+      return;
+    }
+    if (cellPresence.onlineUsers.length > 1) {
+      setShowPreLock(true);
+    } else {
+      lockAndMark();
+    }
+  }, [unresolvedVariance, cellPresence.onlineUsers.length, lockAndMark]);
 
   // CN cần xem = số CN có |Δ vs AOP| > 10%
   const cnNeedReview = useMemo(() => {
@@ -442,13 +476,7 @@ export default function SopPage() {
             totalCn={consensusData.length}
             currentDay={currentDay}
             locked={locked}
-            onLock={() => {
-              if (cellPresence.onlineUsers.length > 1) {
-                setShowPreLock(true);
-              } else {
-                lockAndMark();
-              }
-            }}
+            onLock={attemptLock}
             detailSlot={
               <BalanceLockTab
                 data={consensusData}
@@ -456,13 +484,7 @@ export default function SopPage() {
                 totalAop={totalAop}
                 locked={locked}
                 unresolvedVariance={unresolvedVariance}
-                onLock={() => {
-                  if (cellPresence.onlineUsers.length > 1) {
-                    setShowPreLock(true);
-                  } else {
-                    lockAndMark();
-                  }
-                }}
+                onLock={attemptLock}
                 tenant={tenant}
               />
             }
@@ -491,6 +513,39 @@ export default function SopPage() {
           onForceUpdate={() => { clearConflict(); import("sonner").then(m => m.toast.success("Đã ghi đè. Audit logged.")); }}
           onClose={clearConflict}
         />
+      )}
+
+      {/* Lock blocked: variance chưa giải trình */}
+      {lockBlockedDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setLockBlockedDialog(null); }}>
+          <div role="dialog" aria-modal="true"
+            className="w-full max-w-md rounded-card border border-danger/40 bg-surface-0 shadow-xl p-5">
+            <div className="flex items-start gap-3">
+              <div className="h-9 w-9 rounded-full bg-danger-bg flex items-center justify-center text-danger text-h3">⛔</div>
+              <div className="flex-1">
+                <h3 className="text-h3 font-display font-semibold text-text-1">Không thể khóa S&OP</h3>
+                <p className="text-table-sm text-text-2 mt-1">
+                  Còn <strong className="text-danger">{lockBlockedDialog.count} CN</strong> chênh lệch &gt;10% chưa giải trình.
+                  Vui lòng nhập lý do tại cột "Giải trình" trước khi khóa.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setLockBlockedDialog(null)}
+                className="h-8 px-3 rounded-button border border-surface-3 bg-surface-0 text-text-2 hover:bg-surface-2 text-table-sm font-medium"
+              >Đóng</button>
+              <button
+                onClick={() => {
+                  setLockBlockedDialog(null);
+                  document.querySelector('[data-variance-row]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+                className="h-8 px-3 rounded-button bg-danger text-primary-foreground hover:opacity-90 text-table-sm font-medium"
+              >Xem chi tiết →</button>
+            </div>
+          </div>
+        </div>
       )}
 
       <AutoSaveIndicator lastSaved={cellPresence.lastSaved} offline={cellPresence.offline} />
