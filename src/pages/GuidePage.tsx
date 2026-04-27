@@ -166,6 +166,13 @@ const scFlows: RoleFlows = {
     { icon: <Layers className="h-4 w-4" />, text: "📊 Bảng nào cũng có: Thu gọn · Lọc · Toàn màn hình" },
     { icon: <Zap className="h-4 w-4" />, text: "▶ [Chạy DRP] bất kỳ lúc nào" },
     { icon: <TrendingUp className="h-4 w-4" />, text: "🔄 Xoay bảng: CN ↔ Mã hàng — 2 góc nhìn" },
+    { icon: <CalendarDays className="h-4 w-4" />, text: "📅 Xem lịch sử: [📅 Tuần này ▼] → chọn tuần/tháng trước. Quá khứ = chỉ xem." },
+    { icon: <MousePointerClick className="h-4 w-4" />, text: "🔍 Tìm nhanh: Cmd+K → gõ CN, SKU, PO → nhảy đến ngay." },
+    { icon: <TrendingUp className="h-4 w-4" />, text: "📊 Xoay bảng: [CN → SKU] ↔ [SKU → CN] — 2 góc nhìn cho cùng dữ liệu." },
+    { icon: <Package className="h-4 w-4" />, text: "📦 PO khẩn: Hub → Bước 2 → row 🟢 → [📦 Tạo PO thủ công]." },
+    { icon: <Clock className="h-4 w-4" />, text: "⏳ Nhắc tự động: NM 3d, xe trễ 4h, POD 2h — hệ thống nhắc." },
+    { icon: <Sparkles className="h-4 w-4" />, text: "⚙ Tùy chỉnh thẻ: [⚙] góc phải → chọn thẻ hiện/ẩn." },
+    { icon: <GitBranch className="h-4 w-4" />, text: "🔄 So sánh: DRP/S&OP/Hub có [Lịch sử] [So sánh] phiên bản." },
   ],
   formulas: [
     {
