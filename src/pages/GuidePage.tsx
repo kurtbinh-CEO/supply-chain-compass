@@ -380,56 +380,6 @@ function TrustScoreViz() {
   );
 }
 
-/* Probability pipeline viz */
-function ProbabilityViz() {
-  const stages = [
-    { pct: "10%", label: "Tiềm năng", included: false },
-    { pct: "30%", label: "Đủ điều kiện", included: true },
-    { pct: "70%", label: "Đề xuất", included: true },
-    { pct: "85%", label: "Cam kết", included: true },
-    { pct: "100%", label: "Đã ký PO", included: true },
-  ];
-  return (
-    <div className="flex items-center gap-0 py-3">
-      {stages.map((s, i) => (
-        <React.Fragment key={s.pct}>
-          <div className={cn(
-            "flex flex-col items-center px-3 py-2 rounded-lg border transition-all flex-1 text-center",
-            s.included ? "border-primary/30 bg-primary/5" : "border-surface-3 bg-surface-1 opacity-50"
-          )}>
-            <span className={cn("font-mono text-body font-bold", s.included ? "text-primary" : "text-text-3")}>{s.pct}</span>
-            <span className="text-[10px] text-text-2 mt-0.5">{s.label}</span>
-            {!s.included && <XCircle className="h-3 w-3 text-status-danger mt-1" />}
-            {s.included && <CheckCircle2 className="h-3 w-3 text-status-success mt-1" />}
-          </div>
-          {i < stages.length - 1 && <ArrowRight className="h-3 w-3 text-text-3 shrink-0 mx-0.5" />}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-}
-
-/* NM Grade viz */
-function NmGradeViz() {
-  const grades = [
-    { grade: "A", min: "≥90%", action: "ATP đầy đủ ×1.0", color: "text-status-success", bg: "bg-status-success" },
-    { grade: "B", min: "≥80%", action: "Tiêu chuẩn ×0.9", color: "text-primary", bg: "bg-primary" },
-    { grade: "C", min: "≥60%", action: "Giảm theo đúng hạn", color: "text-status-warning", bg: "bg-status-warning" },
-    { grade: "D", min: "<60%", action: "Xem xét thay NM", color: "text-status-danger", bg: "bg-status-danger" },
-  ];
-  return (
-    <div className="grid grid-cols-4 gap-2 py-2">
-      {grades.map((g) => (
-        <div key={g.grade} className="rounded-lg border border-surface-3 p-3 text-center">
-          <div className={cn("font-display text-section-header font-bold", g.color)}>{g.grade}</div>
-          <div className={cn("h-1.5 rounded-full mx-auto w-12 my-1.5", g.bg)} />
-          <div className="font-mono text-caption text-text-2">{g.min}</div>
-          <div className="text-[10px] text-text-3 mt-1">{g.action}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════ */
 /*  FLOW TIMELINE COMPONENT                   */
