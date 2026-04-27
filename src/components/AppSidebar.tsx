@@ -141,12 +141,17 @@ interface BadgeData { text: string; tone: "success" | "warning" | "danger" }
 function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
   const { exceptions, approvals } = useWorkspace();
 
-  // Số PO/CN-adjust pending (mock: derive từ approvals)
+  // Pending counters (mock-derived).
   const poPending = approvals.filter(a => a.type === "PO Release" || a.type === "Force-release").length;
   const cnAdjustPending = approvals.filter(a => a.type === "CN Adjust").length;
   const drpExceptions = exceptions.filter(e => e.type === "SHORTAGE").length;
+  const sopPending = approvals.filter(a => a.type === "S&OP Lock").length;
+
+  // Tổng exceptions hệ thống (monitoring + executive).
+  const totalAlerts = exceptions.length;
 
   return {
+    // ── Daily ops (giữ nguyên hành vi cũ) ──
     nm_cn_fresh:  { text: "5/5 · 12 CN", tone: "success" },
     cn_adjust:    cnAdjustPending > 0
       ? { text: `${4 + cnAdjustPending}/12`, tone: cnAdjustPending > 3 ? "danger" : "warning" }
@@ -157,6 +162,23 @@ function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
     po_pending:   poPending > 0
       ? { text: String(poPending), tone: poPending > 3 ? "danger" : "warning" }
       : { text: "✓", tone: "success" },
+
+    // ── Monthly plan ──
+    demand_progress: { text: "8/12 CN", tone: "warning" },
+    sop_status:      sopPending > 0
+      ? { text: "Cần chốt", tone: "warning" }
+      : { text: "Đã chốt", tone: "success" },
+    hub_commitment:  { text: "6/8 NM", tone: "warning" },
+    gap_pending:     { text: "2 KB", tone: "warning" },
+
+    // ── Monitoring & Executive ──
+    monitoring_alerts: totalAlerts > 0
+      ? { text: String(totalAlerts), tone: totalAlerts > 5 ? "danger" : "warning" }
+      : { text: "✓", tone: "success" },
+    executive_risk:    { text: "3 rủi ro", tone: "warning" },
+
+    // ── Partners ──
+    cn_portal_pending: { text: "4 CN", tone: "warning" },
   };
 }
 
