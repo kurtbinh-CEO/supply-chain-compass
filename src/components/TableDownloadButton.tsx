@@ -295,28 +295,36 @@ export function TableDownloadButton({
     setPreview({ fmt, scope });
   };
 
-  const confirmDownload = () => {
+  const confirmDownload = async () => {
     if (!preview || !previewData) return;
     const { fmt, scope } = preview;
     const suffix = scope === "all" ? "-all" : "";
     const fileName = `${baseName}${suffix}.${fmt}`;
     const rowCount = Math.max(0, previewData.length - 1);
     const scopeText = scope === "all" ? "Tất cả (bỏ filter)" : scopeLabel ?? "Đang lọc hiện tại";
+    const descBase = `${fileName} · ${rowCount.toLocaleString("vi-VN")} dòng · Phạm vi: ${scopeText}`;
 
-    if (fmt === "csv") {
-      downloadBlob(
-        new Blob([matrixToCsv(previewData)], { type: "text/csv;charset=utf-8;" }),
-        fileName,
-      );
-      toast.success("Xuất CSV thành công", {
-        description: `${fileName} · ${rowCount.toLocaleString("vi-VN")} dòng · Phạm vi: ${scopeText}`,
+    try {
+      if (fmt === "csv") {
+        downloadBlob(
+          new Blob([matrixToCsv(previewData)], { type: "text/csv;charset=utf-8;" }),
+          fileName,
+        );
+        toast.success("Xuất CSV thành công", { description: descBase });
+      } else if (fmt === "xlsx") {
+        await exportMatrixAsXlsx(previewData, `${baseName}${suffix}`, title);
+        toast.success("Xuất Excel thành công", { description: descBase });
+      } else {
+        printMatrixAsPdf(previewData, title + (scope === "all" ? " (tất cả)" : ""), scopeLabel);
+        toast.success("Đã mở hộp thoại in PDF", { description: descBase });
+      }
+    } catch (err) {
+      toast.error("Xuất file thất bại", {
+        description: err instanceof Error ? err.message : String(err),
       });
-    } else {
-      printMatrixAsPdf(previewData, title + (scope === "all" ? " (tất cả)" : ""), scopeLabel);
-      toast.success("Đã mở hộp thoại in PDF", {
-        description: `${fileName} · ${rowCount.toLocaleString("vi-VN")} dòng · Phạm vi: ${scopeText}`,
-      });
+      return;
     }
+
     try {
       sessionStorage.setItem(storageKey, JSON.stringify({ fmt, scope }));
     } catch {
