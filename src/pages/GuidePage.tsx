@@ -1274,14 +1274,17 @@ export default function GuidePage() {
         <div className="space-y-4 animate-fade-in">
           {flows.formulas.map((f, i) => (
             <div key={i} className="rounded-xl border border-surface-3 bg-surface-0 overflow-hidden">
-              <div className="px-5 py-3 border-b border-surface-3">
+              <div className="px-5 py-3 border-b border-surface-3 flex items-center gap-2">
+                <Calculator className="h-4 w-4 text-primary" />
                 <h3 className="font-display text-body font-semibold text-text-1">{f.title}</h3>
               </div>
-              <div className="px-5 py-3">
-                {f.visual}
-              </div>
-              <div className="px-5 py-2 bg-surface-1/50 border-t border-surface-3">
-                <p className="text-table-sm text-text-3">{f.detail}</p>
+              {f.visual && (
+                <div className="px-5 py-3 border-b border-surface-3">
+                  {f.visual}
+                </div>
+              )}
+              <div className="px-5 py-3 bg-surface-1/40">
+                <pre className="text-table-sm text-text-2 font-mono whitespace-pre-wrap leading-relaxed">{f.detail}</pre>
               </div>
             </div>
           ))}
