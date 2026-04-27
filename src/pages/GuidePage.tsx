@@ -277,13 +277,13 @@ const salesFlows: RoleFlows = {
 const buyerFlows: RoleFlows = {
   daily: [
     {
-      route: "/supply", label: "Tồn NM", time: "5'", icon: <Package className="h-5 w-5" />,
+      route: "/inventory", label: "Tồn kho", time: "5'", icon: <Package className="h-5 w-5" />,
       keyAction: "Upload → Xác nhận", kpi: "Fresh <24h",
       why: "DRP cần data NM fresh. Stale → PO fail.", what: "Upload Excel. UNIS dùng = tồn × share%.",
       how: "1. Drag-drop file\n2. [Xác nhận]\n3. Stale → [Nhắc NM]", formula: "UNIS_dùng = on_hand × share%",
     },
     {
-      route: "/orders", label: "Duyệt PO", time: "5'", icon: <CheckCircle2 className="h-5 w-5" />,
+      route: "/orders", label: "PO Lifecycle", time: "5'", icon: <CheckCircle2 className="h-5 w-5" />,
       keyAction: "ATP → Duyệt → Post", kpi: "0 draft",
       why: "Bạn duyệt cuối cùng trước khi NM nhận đơn.", what: "ATP check → Duyệt → Post Bravo. Force 3 cấp.",
       how: "1. [Gửi ATP tất cả]\n2. Pass → [Duyệt]\n3. [Post Bravo]", formula: "ATP = on_hand × share% × honoring\nPass: ATP ≥ RPO qty",
