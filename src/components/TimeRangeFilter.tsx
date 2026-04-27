@@ -163,7 +163,7 @@ export function todayIso(): string {
   return toLocalIso(new Date());
 }
 
-function retentionFloorIso(): string {
+export function retentionFloorIso(): string {
   const d = new Date();
   d.setMonth(d.getMonth() - RETENTION_MONTHS);
   return toLocalIso(d);
