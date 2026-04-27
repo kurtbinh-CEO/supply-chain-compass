@@ -4,7 +4,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenShell";
 import { cn } from "@/lib/utils";
 import { useRbac, UserRole } from "@/components/RbacContext";
-import { ChevronDown, ChevronRight, ExternalLink, Clock, ArrowRight, Zap, Target, Building2, Briefcase, Factory, TrendingUp, BarChart3, ShieldCheck, Package, Truck, Calculator, MousePointerClick, Mic, AlertTriangle, CheckCircle2, XCircle, PlayCircle, Sparkles, GitBranch, Layers, Activity, CalendarDays } from "lucide-react";
+import { ChevronDown, ChevronRight, ExternalLink, Clock, ArrowRight, Zap, Target, Building2, Briefcase, Factory, TrendingUp, BarChart3, ShieldCheck, Package, Truck, Calculator, MousePointerClick, Mic, AlertTriangle, CheckCircle2, XCircle, PlayCircle, Sparkles, GitBranch, Layers, Activity, CalendarDays, LayoutDashboard, CheckSquare, Crown, Camera } from "lucide-react";
 import { useWalkthrough, TourHighlight } from "@/components/WalkthroughContext";
 
 /* ═══ TYPES ═══ */
@@ -52,7 +52,9 @@ interface FlowNode {
 }
 
 interface FormulaViz {
-  title: string; visual: React.ReactNode; detail: string;
+  title: string;
+  detail: string;
+  visual?: React.ReactNode;
 }
 
 interface RoleFlows {
@@ -65,20 +67,43 @@ interface RoleFlows {
 const scFlows: RoleFlows = {
   daily: [
     {
-      route: "/inventory", label: "Kiểm tra data", time: "~2'", icon: <Package className="h-5 w-5" />,
+      route: "/", label: "Tổng quan", time: "~3'", icon: <LayoutDashboard className="h-5 w-5" />,
+      keyAction: "Nhìn sức khỏe chuỗi cung ứng", kpi: "0 critical",
+      why: "Farmer mở app → 30 giây biết: fill rate bao nhiêu? exception nào? cần làm gì?",
+      what: "4 KPI cards clickable + exception table inline expand + gợi ý hành động.",
+      how: "1. 4 KPI cards → click 'Fill Rate' → popup per CN\n2. Exception table → click row → expand context + [Chấp nhận gợi ý]\n3. [Xem tất cả →] mở Workspace",
+      formula: "",
+    },
+    {
+      route: "/workspace", label: "Việc cần làm", time: "~5'", icon: <CheckSquare className="h-5 w-5" />,
+      keyAction: "Duyệt approval items với đủ context", kpi: "0 pending",
+      why: "Mỗi item expand → thấy context + lịch sử + AI gợi ý → quyết định tự tin.",
+      what: "CN Adjust: tồn + FC + history + trust → [Duyệt/Cắt/Từ chối]. PO Release: container + cước + NM → [Duyệt].",
+      how: "1. Mở → filter [Cần duyệt]\n2. Click item → expand context\n3. Xem AI gợi ý → [Duyệt ✅] hoặc [Cắt %]",
+      formula: "",
+    },
+    {
+      route: "/inventory", label: "Kiểm tra tồn kho", time: "~2'", icon: <Package className="h-5 w-5" />,
       keyAction: "Kiểm tra NM cập nhật tồn", kpi: "5/5 NM mới",
-      why: "DRP cần data NM fresh. Stale >24h → DRP sai.", what: "Upload Excel hoặc nhập tay. UNIS dùng = tồn × share%.",
-      how: "1. Drag-drop file NM\n2. Preview → [Xác nhận]\n3. NM chưa gửi → [Nhắc NM]", formula: "UNIS_dùng = on_hand × share%\nMikado: 2.500 × 60% = 1.500 − 120 = 1.380",
+      why: "DRP cần data NM fresh. Stale >24h → DRP sai.", what: "2 tab: NM (5 NM) + CN (12 CN). Pivot 2 chiều, drill SKU.",
+      how: "1. Tab NM: tồn per NM → drill SKU\n2. Tab CN: HSTK <2d → đỏ\n3. Stale → [Nhắc NM]", formula: "UNIS_dùng = on_hand × share%\nMikado: 2.500 × 60% = 1.500 − 120 = 1.380",
       highlights: [
-        { selector: "supply-upload", label: "Upload Excel / Template", description: "Drag-drop file NM vào zone, hoặc click [Upload Excel]. Hệ thống validate trước khi import." },
-        { selector: "supply-nm-table", label: "Bảng tồn kho NM", description: "Per NM: tổng tồn, UNIS dùng (= tồn × share%), đang về. NM stale → hàng đỏ, click [Nhắc NM]." },
+        { selector: "inventory-tabs", label: "2 tab: NM + CN", description: "Tab NM: tồn per NM → drill SKU. Tab CN: tồn per CN → drill SKU. Pivot 2 chiều." },
+        { selector: "inventory-summary", label: "Thẻ tóm tắt", description: "Tồn tổng | HSTK TB | CN nguy hiểm | Vốn LĐ. Click thẻ → lọc bảng." },
+        { selector: "inventory-datasource", label: "Nhập dữ liệu", description: "3 cách: [Tích hợp Bravo] [Tải lên Excel] [Nhập tay]. Per NM hoặc per CN." },
       ],
     },
     {
       route: "/demand-weekly", label: "CN điều chỉnh", time: "~5'", icon: <CalendarDays className="h-5 w-5" />,
       keyAction: "Xem CN điều chỉnh trước cutoff", kpi: "12/12 duyệt xong",
-      why: "CN biết thị trường — adjust giúp DRP chính xác hơn.", what: "Bảng demand tuần per CN: Phased FC | CN adjust | Delta | Lý do.",
-      how: "1. Mở /demand-weekly trước cutoff 18:00\n2. Xem CN nào chưa adjust → [Nhắc CN]\n3. Approve adjust hợp lý", formula: "Demand_tuần = FC_phased + Σ(CN_adjust)\nDelta >5% → cần lý do",
+      why: "CN biết thị trường — adjust giúp DRP chính xác hơn.",
+      what: "2 view: SC Manager (CN tổng + Thực tế T4) vs CN Manager (SKU chi tiết + lý do). Toggle persona.",
+      how: "1. Mở → toggle SC Manager view\n2. Cột 'Thực tế T4': so actual tháng trước vs FC → đánh giá adjust hợp lý\n3. Vượt biên 30% → cần lý do mạnh\n4. [Duyệt] hoặc [✂️ Cắt %]",
+      formula: "Demand_tuần = FC_phased + Σ(CN_adjust)\nDelta >5% → cần lý do",
+      highlights: [
+        { selector: "demand-weekly-actual", label: "Thực tế T4", description: "Cột actual tháng trước. FC tháng này vượt actual 20%? → cần xem xét." },
+        { selector: "demand-weekly-persona", label: "Toggle persona", description: "SC Manager: tổng CN. CN Manager: per SKU + lý do." },
+      ],
     },
     {
       route: "/drp", label: "Xem DRP", time: "~10'", icon: <GitBranch className="h-5 w-5" />,
@@ -176,37 +201,20 @@ const scFlows: RoleFlows = {
   ],
   formulas: [
     {
-      title: "Safety Stock",
-      visual: <FormulaBarViz parts={[
-        { label: "Z", value: "1.65", sub: "SL 95%" },
-        { label: "×", value: "", sub: "" },
-        { label: "σ_fc_err", value: "28.5", sub: "forecast error", highlight: true },
-        { label: "×", value: "", sub: "" },
-        { label: "√LT", value: "√14", sub: "lead time" },
-        { label: "=", value: "", sub: "" },
-        { label: "SS", value: "176", sub: "m²/SKU", result: true },
-      ]} />,
-      detail: "σ_fc_error (sai số FC) KHÔNG PHẢI σ_demand → tiết kiệm 54% vốn",
+      title: "Tồn kho an toàn (SS)",
+      detail: "SS = z × σ_fc_error × √LT\nVD: 1,65 × 28,5 × √14 = 176 m²/SKU\nσ_fc_error (sai số dự báo) KHÔNG PHẢI σ_demand → tiết kiệm 54% vốn",
     },
     {
-      title: "Demand Total",
-      visual: <FormulaBarViz parts={[
-        { label: "FC", value: "4.800", sub: "statistical" },
-        { label: "+", value: "", sub: "" },
-        { label: "B2B", value: "2.200", sub: "weighted" },
-        { label: "+", value: "", sub: "" },
-        { label: "PO", value: "1.100", sub: "confirmed" },
-        { label: "−", value: "", sub: "" },
-        { label: "Overlap", value: "450", sub: "" },
-        { label: "=", value: "", sub: "" },
-        { label: "Demand", value: "7.650", sub: "m²", result: true },
-      ]} />,
-      detail: "FC: Holt-Winters/XGBoost, MAPE 18,4%. B2B: deals ≥30% prob.",
+      title: "Nhu cầu tổng hợp",
+      detail: "Demand = FC + Σ(B2B × prob%) + PO − Overlap\nVD: 4.800 + 2.200 + 1.100 − 450 = 7.650 m²",
     },
     {
-      title: "NM Score",
-      visual: <NmScoreViz />,
-      detail: "Hybrid 50/30/20 · Shortest LT 80/10/10 · Lowest Cost 10/80/10",
+      title: "Hub ảo",
+      detail: "Hub = Σ(NM committed) − Σ(PO released) − SS Hub\nVD: 8.880 − 5.400 − 420 = 3.060 m²",
+    },
+    {
+      title: "DRP nhu cầu ròng",
+      detail: "Net = Demand tuần − Tồn CN − Đang về + SS\nVD: 1.560 − 120 − 557 + 900 = 1.783 m²",
     },
   ],
 };
@@ -220,7 +228,7 @@ const cnFlows: RoleFlows = {
       how: "1. Click ô → nhập 568 (thay 524)\n2. Lý do hoặc 🎤 voice\n3. [Gửi] → <10% auto ✅", formula: "Trust = Σ(|adjust−actual|<20%) / total\n>85% auto-approve · 60-85% SC duyệt · <60% giải trình",
       highlights: [
         { selector: "cn-header", label: "Header & Trust Score", description: "Trust Score 82% 🟢 — auto-approve nếu >85%. Cutoff 18:00 — nhập sớm!" },
-        { selector: "cn-tabs", label: "4 Tab: Adjust / Tồn / Chat / Audit", description: "Tab 1: Điều chỉnh demand. Tab 2: Tồn kho CN. Tab 3: Trao đổi với SC. Tab 4: Lịch sử." },
+        { selector: "cn-tabs", label: "4 Tab: Điều chỉnh / Tồn / Trao đổi / Lịch sử", description: "Tab 1: Điều chỉnh demand. Tab 2: Tồn kho CN. Tab 3: Trao đổi với SC. Tab 4: Lịch sử. CN Manager cũng nhận hàng POD tại /orders (xem bước 'Nhận hàng' bên dưới)." },
         { selector: "cn-adjust-table", label: "Bảng điều chỉnh demand", description: "Per SKU: Dự kiến (HQ) → CN điều chỉnh → Delta auto. Lý do bắt buộc nếu delta >5%." },
       ],
     },
@@ -235,6 +243,14 @@ const cnFlows: RoleFlows = {
       keyAction: "Comment + Evidence", kpi: "Response <4h",
       why: "Evidence = SC Manager duyệt nhanh.", what: "Thread per SKU. Text + file + voice. @mention.",
       how: "1. Comment + 📎 PO scan\n2. @Thúy → push SC", formula: "",
+    },
+    {
+      route: "/orders", label: "Nhận hàng", time: "5'", icon: <Truck className="h-5 w-5" />,
+      keyAction: "Kiểm đếm + Upload POD", kpi: "POD < 2h",
+      why: "PO đến CN → kiểm đếm → chụp ảnh → ký nhận. Không POD = PO chưa hoàn tất.",
+      what: "Filter [Giao hàng] → click PO → form kiểm đếm + 📷 ảnh + ✍ chữ ký.",
+      how: "1. Mở /orders → filter [Giao hàng]\n2. Click PO → [Kiểm đếm & POD]\n3. Nhập số thực nhận + 📷 min 2 ảnh + ✍ ký\n4. Hư hỏng? → chọn 'Hư hỏng' + 📷 3 ảnh + mô tả",
+      formula: "SLA POD: < 2h sau giao. Quá → nhắc CN Manager.",
     },
   ],
   monthly: [],
@@ -274,9 +290,8 @@ const salesFlows: RoleFlows = {
   ],
   formulas: [
     {
-      title: "FVA & Probability",
-      visual: <ProbabilityViz />,
-      detail: "FVA = MAPE(model) − MAPE(bạn). Dương = bạn giỏi hơn AI.",
+      title: "FVA & Xác suất B2B",
+      detail: "Weighted = qty × prob%\nVD: 12.000 × 85% = 10.200 m²\n\nXác suất theo giai đoạn:\n• 10% Tiềm năng — KHÔNG vào FC\n• 30% Đủ điều kiện ✅\n• 70% Đề xuất ✅\n• 85% Cam kết ✅\n• 100% Đã ký PO ✅\n\nFVA = MAPE(model) − MAPE(bạn). Dương = bạn giỏi hơn AI.",
     },
   ],
 };
@@ -290,10 +305,12 @@ const buyerFlows: RoleFlows = {
       how: "1. Drag-drop file\n2. [Xác nhận]\n3. Stale → [Nhắc NM]", formula: "UNIS_dùng = on_hand × share%",
     },
     {
-      route: "/orders", label: "PO Lifecycle", time: "5'", icon: <CheckCircle2 className="h-5 w-5" />,
-      keyAction: "ATP → Duyệt → Post", kpi: "0 draft",
-      why: "Bạn duyệt cuối cùng trước khi NM nhận đơn.", what: "ATP check → Duyệt → Post Bravo. Force 3 cấp.",
-      how: "1. [Gửi ATP tất cả]\n2. Pass → [Duyệt]\n3. [Post Bravo]", formula: "ATP = on_hand × share% × honoring\nPass: ATP ≥ RPO qty",
+      route: "/orders", label: "Duyệt PO", time: "5'", icon: <CheckCircle2 className="h-5 w-5" />,
+      keyAction: "PO 7 lifecycle states", kpi: "0 chờ duyệt",
+      why: "PO 7 trạng thái có SLA tự nhắc. Bạn duyệt cuối cùng trước khi NM nhận.",
+      what: "PO 2 tầng (NM×CN → SKU). 7 trạng thái lifecycle, badge clickable.",
+      how: "1. Filter [⚠️ Trễ] → expand PO\n2. Badge clickable → Gửi NM → NM xác nhận\n3. Đặt xe → Lấy hàng → Vận chuyển → Giao → POD",
+      formula: "Lifecycle: Duyệt → NM → Xe → Lấy → Chở → Giao → Xong\nSLA: NM 3d, Xe 1d, Lấy 4h, ETA+4h, POD 2h",
     },
     {
       route: "/orders", label: "Tracking", time: "5'", icon: <Truck className="h-5 w-5" />,
@@ -304,14 +321,15 @@ const buyerFlows: RoleFlows = {
   ],
   monthly: [
     {
-      route: "/hub", label: "Sourcing", time: "30'", icon: <Factory className="h-5 w-5" />,
-      keyAction: "Rank → Allocate → BPO", kpi: "BPO created",
-      why: "Sai NM = overdue + stockout. Ranking transparent.", what: "4 bước: Cần gì → NM rank → Phân bổ → MOQ + BPO.",
-      how: "1. CRITICAL → 4 NM eligible\n2. Mikado 88★ #1\n3. Primary 700 + Backup 140\n4. [Tạo BPO]",
-      formula: "Score = W₁×LT + W₂×Cost + W₃×Rel\nMOQ = ceil(alloc ÷ MOQ) × MOQ",
+      route: "/hub", label: "Cam kết NM", time: "30'", icon: <Factory className="h-5 w-5" />,
+      keyAction: "Booking → Cam kết → PO", kpi: "Honoring ≥85%",
+      why: "Cam kết NM = cốt lõi. Sai NM = overdue + stockout.",
+      what: "3 bước: ① Booking → ② Cam kết (gõ tay, badge clickable) → ③ PO & Theo dõi.",
+      how: "1. Booking: xem cần đặt per NM (auto)\n2. Gọi NM → gõ cam kết → upload ảnh\n3. [📦 Tạo PO thủ công] nếu khẩn",
+      formula: "Hub = Σ(NM committed) − Σ(PO released) − SS Hub\nMOQ = ceil(alloc ÷ MOQ) × MOQ",
       highlights: [
-        { selector: "hub-tabs", label: "Sourcing & Đối chiếu", description: "Tab 1: Sourcing Workbench 4 bước. Tab 2: Đối chiếu BPO vs NM delivery." },
-        { selector: "hub-sourcing", label: "4-Step Sourcing", description: "① SKU cần mua (CRITICAL/MEDIUM) → ② NM ranking → ③ Primary/Backup phân bổ → ④ MOQ round-up + BPO." },
+        { selector: "hub-steps", label: "3 bước", description: "Booking (auto) → Cam kết (badge clickable) → PO tracking (burn-down)." },
+        { selector: "hub-create-po", label: "Tạo PO thủ công", description: "Row 🟢 → [📦 Tạo PO]. Khẩn cấp không chờ DRP." },
       ],
     },
   ],
@@ -323,8 +341,7 @@ const buyerFlows: RoleFlows = {
   formulas: [
     {
       title: "Hạng NM & ATP",
-      visual: <NmGradeViz />,
-      detail: "Hạng C → giảm ATP. Hạng D → xem xét thay NM.",
+      detail: "Hạng tin cậy theo Honoring%:\n• A ≥90% — ATP đầy đủ ×1.0\n• B ≥80% — Tiêu chuẩn ×0.9\n• C ≥60% — Giảm ATP, theo dõi sát\n• D <60% — Xem xét thay NM\n\nATP = on_hand × share% × honoring\nMOQ = ceil(alloc ÷ MOQ) × MOQ",
     },
   ],
 };
@@ -372,123 +389,9 @@ function useCountUp(target: number, inView: boolean, duration = 800) {
 /*  VISUAL COMPONENTS                         */
 /* ═══════════════════════════════════════════ */
 
-/* Formula bar visualization */
-function FormulaBarViz({ parts }: { parts: { label: string; value: string; sub: string; highlight?: boolean; result?: boolean }[] }) {
-  const { ref, inView } = useInView();
-  return (
-    <div ref={ref} className="flex items-center gap-1.5 flex-wrap py-2">
-      {parts.map((p, i) => {
-        if (p.label === "×" || p.label === "+" || p.label === "−" || p.label === "=" || p.label === "/")
-          return <span key={i} className="text-text-3 font-mono text-body font-light mx-1">{p.label}</span>;
-        return (
-          <AnimatedFormulaCell key={i} part={p} inView={inView} delay={i * 80} />
-        );
-      })}
-    </div>
-  );
-}
+/* Note: FormulaBarViz / NmScoreViz / ProbabilityViz / NmGradeViz removed —
+   formulas now render as plain text + monospace block (see formulas tab). */
 
-function AnimatedFormulaCell({ part: p, inView, delay }: {
-  part: { label: string; value: string; sub: string; highlight?: boolean; result?: boolean };
-  inView: boolean; delay: number;
-}) {
-  const numericValue = parseFloat(p.value.replace(/[,.]/g, ""));
-  const isNumeric = !isNaN(numericValue) && p.value.length > 0;
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    if (!inView) return;
-    const t = setTimeout(() => setShow(true), delay);
-    return () => clearTimeout(t);
-  }, [inView, delay]);
-
-  const countedValue = useCountUp(isNumeric ? numericValue : 0, show, 700);
-
-  const formatValue = (v: number) => {
-    if (p.value.includes(".")) {
-      const parts = p.value.split(".");
-      return v.toLocaleString("vi-VN") + (parts[1] ? "" : "");
-    }
-    if (p.value.includes(",")) return v.toLocaleString("vi-VN");
-    return v.toLocaleString("vi-VN");
-  };
-
-  return (
-    <div className={cn(
-      "flex flex-col items-center px-3 py-2 rounded-lg min-w-[56px] transition-all duration-500",
-      p.result ? "bg-primary/15 ring-2 ring-primary/30" :
-      p.highlight ? "bg-[#b45309]/10 ring-1 ring-[#b45309]/30" :
-      "bg-surface-1",
-      show ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95"
-    )}>
-      <span className={cn(
-        "font-mono text-body font-bold tabular-nums",
-        p.result ? "text-primary" : p.highlight ? "text-[#b45309]" : "text-text-1"
-      )}>
-        {isNumeric && show ? formatValue(countedValue) : p.value}
-      </span>
-      <span className="text-[10px] text-text-3 font-medium mt-0.5">{p.label}</span>
-      {p.sub && <span className="text-[9px] text-text-3/60">{p.sub}</span>}
-    </div>
-  );
-}
-
-/* NM Score radar-like viz */
-function NmScoreViz() {
-  const { ref, inView } = useInView();
-  const nms = [
-    { name: "Mikado", score: 88, lt: 64, cost: 100, rel: 92, star: true },
-    { name: "Đồng Tâm", score: 82, lt: 78, cost: 82, rel: 85, star: false },
-    { name: "Toko", score: 52, lt: 45, cost: 90, rel: 68, star: false },
-  ];
-  return (
-    <div ref={ref} className="space-y-2 py-2">
-      {nms.map((nm, idx) => {
-        const animScore = useCountUp(nm.score, inView, 900 + idx * 200);
-        return (
-          <div key={nm.name} className="flex items-center gap-3">
-            <span className={cn("font-display text-table font-semibold w-20 shrink-0", nm.star ? "text-primary" : nm.score < 60 ? "text-status-danger" : "text-text-1")}>
-              {nm.name} {nm.star && "★"}
-            </span>
-            <div className="flex-1 flex items-center gap-1.5">
-              <ScoreBar label="LT" value={nm.lt} max={100} color="#004AC6" animate={inView} delay={idx * 150} />
-              <ScoreBar label="Cost" value={nm.cost} max={100} color="#00714d" animate={inView} delay={idx * 150 + 50} />
-              <ScoreBar label="Rel" value={nm.rel} max={100} color="#b45309" animate={inView} delay={idx * 150 + 100} />
-            </div>
-            <span className={cn(
-              "font-mono text-body font-bold w-10 text-right tabular-nums",
-              nm.score >= 80 ? "text-primary" : nm.score < 60 ? "text-status-danger" : "text-text-1"
-            )}>{animScore}</span>
-          </div>
-        );
-      })}
-      <div className="flex items-center gap-4 mt-1 text-[10px] text-text-3">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#004AC6]" />Thời gian ×50%</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#00714d]" />Giá ×30%</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#b45309]" />Tin cậy ×20%</span>
-      </div>
-    </div>
-  );
-}
-
-function ScoreBar({ label, value, max, color, animate, delay }: { label: string; value: number; max: number; color: string; animate?: boolean; delay?: number }) {
-  const [width, setWidth] = useState(0);
-  useEffect(() => {
-    if (!animate) return;
-    const t = setTimeout(() => setWidth((value / max) * 100), delay || 0);
-    return () => clearTimeout(t);
-  }, [animate, value, max, delay]);
-  return (
-    <div className="flex-1">
-      <div className="h-3 rounded-full bg-surface-3 overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-700 ease-out"
-          style={{ width: `${animate ? width : (value / max) * 100}%`, backgroundColor: color, opacity: 0.7 }}
-        />
-      </div>
-    </div>
-  );
-}
 
 /* Trust Score tiers */
 function TrustScoreViz() {
@@ -511,56 +414,6 @@ function TrustScoreViz() {
   );
 }
 
-/* Probability pipeline viz */
-function ProbabilityViz() {
-  const stages = [
-    { pct: "10%", label: "Tiềm năng", included: false },
-    { pct: "30%", label: "Đủ điều kiện", included: true },
-    { pct: "70%", label: "Đề xuất", included: true },
-    { pct: "85%", label: "Cam kết", included: true },
-    { pct: "100%", label: "Đã ký PO", included: true },
-  ];
-  return (
-    <div className="flex items-center gap-0 py-3">
-      {stages.map((s, i) => (
-        <React.Fragment key={s.pct}>
-          <div className={cn(
-            "flex flex-col items-center px-3 py-2 rounded-lg border transition-all flex-1 text-center",
-            s.included ? "border-primary/30 bg-primary/5" : "border-surface-3 bg-surface-1 opacity-50"
-          )}>
-            <span className={cn("font-mono text-body font-bold", s.included ? "text-primary" : "text-text-3")}>{s.pct}</span>
-            <span className="text-[10px] text-text-2 mt-0.5">{s.label}</span>
-            {!s.included && <XCircle className="h-3 w-3 text-status-danger mt-1" />}
-            {s.included && <CheckCircle2 className="h-3 w-3 text-status-success mt-1" />}
-          </div>
-          {i < stages.length - 1 && <ArrowRight className="h-3 w-3 text-text-3 shrink-0 mx-0.5" />}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-}
-
-/* NM Grade viz */
-function NmGradeViz() {
-  const grades = [
-    { grade: "A", min: "≥90%", action: "ATP đầy đủ ×1.0", color: "text-status-success", bg: "bg-status-success" },
-    { grade: "B", min: "≥80%", action: "Tiêu chuẩn ×0.9", color: "text-primary", bg: "bg-primary" },
-    { grade: "C", min: "≥60%", action: "Giảm theo đúng hạn", color: "text-status-warning", bg: "bg-status-warning" },
-    { grade: "D", min: "<60%", action: "Xem xét thay NM", color: "text-status-danger", bg: "bg-status-danger" },
-  ];
-  return (
-    <div className="grid grid-cols-4 gap-2 py-2">
-      {grades.map((g) => (
-        <div key={g.grade} className="rounded-lg border border-surface-3 p-3 text-center">
-          <div className={cn("font-display text-section-header font-bold", g.color)}>{g.grade}</div>
-          <div className={cn("h-1.5 rounded-full mx-auto w-12 my-1.5", g.bg)} />
-          <div className="font-mono text-caption text-text-2">{g.min}</div>
-          <div className="text-[10px] text-text-3 mt-1">{g.action}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════ */
 /*  FLOW TIMELINE COMPONENT                   */
@@ -1291,14 +1144,17 @@ export default function GuidePage() {
         <div className="space-y-4 animate-fade-in">
           {flows.formulas.map((f, i) => (
             <div key={i} className="rounded-xl border border-surface-3 bg-surface-0 overflow-hidden">
-              <div className="px-5 py-3 border-b border-surface-3">
+              <div className="px-5 py-3 border-b border-surface-3 flex items-center gap-2">
+                <Calculator className="h-4 w-4 text-primary" />
                 <h3 className="font-display text-body font-semibold text-text-1">{f.title}</h3>
               </div>
-              <div className="px-5 py-3">
-                {f.visual}
-              </div>
-              <div className="px-5 py-2 bg-surface-1/50 border-t border-surface-3">
-                <p className="text-table-sm text-text-3">{f.detail}</p>
+              {f.visual && (
+                <div className="px-5 py-3 border-b border-surface-3">
+                  {f.visual}
+                </div>
+              )}
+              <div className="px-5 py-3 bg-surface-1/40">
+                <pre className="text-table-sm text-text-2 font-mono whitespace-pre-wrap leading-relaxed">{f.detail}</pre>
               </div>
             </div>
           ))}
