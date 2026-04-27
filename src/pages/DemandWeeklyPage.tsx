@@ -435,16 +435,18 @@ function CnManagerTab({
             </span>
           );
         }
+        const tol = config?.tolerancePct ?? 30;
+        const trust = config?.trustPct ?? 0;
         const meta = {
-          auto:    { icon: CheckCircle2, label: "Sẽ tự duyệt", cls: "text-success" },
-          pending: { icon: Clock,        label: "Chờ duyệt",    cls: "text-warning" },
-          over:    { icon: AlertTriangle,label: `Vượt biên`,    cls: "text-danger"  },
-          ok:      { icon: CheckCircle2, label: "—",            cls: "text-text-3"  },
+          auto:    { icon: CheckCircle2, label: `Tự duyệt (trust ${trust}%)`, cls: "text-success" },
+          pending: { icon: Clock,        label: "Chờ duyệt",                  cls: "text-warning" },
+          over:    { icon: AlertTriangle,label: `Chờ duyệt (vượt ±${tol}%)`,  cls: "text-danger"  },
+          ok:      { icon: CheckCircle2, label: "—",                          cls: "text-text-3"  },
         }[sev];
         const Icon = meta.icon;
         return (
-          <span className={cn("inline-flex items-center gap-1 text-table-sm", meta.cls)}>
-            <Icon className="h-3 w-3" /> {meta.label}
+          <span className={cn("inline-flex items-center gap-1 text-table-sm whitespace-nowrap", meta.cls)}>
+            <Icon className="h-3 w-3 shrink-0" /> {meta.label}
           </span>
         );
       },
