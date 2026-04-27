@@ -883,8 +883,11 @@ export default function MonitoringPage() {
                 ))}
               </div>
               <div>
-                <h4 className="text-table-sm font-medium text-text-2 mb-2">Top 5 recurring exceptions</h4>
-                <table className="w-full">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <h4 className="text-table-sm font-medium text-text-2">Top 5 recurring exceptions</h4>
+                  <TableDownloadButton targetId="monitoring-recurring-exceptions" filename="recurring-exceptions" size="xs" />
+                </div>
+                <table id="monitoring-recurring-exceptions" className="w-full">
                   <thead>
                     <tr className="border-b border-surface-3 bg-surface-1/50">
                       {["Exception", "SKU", "CN", "Frequency", "Avg resolve", "Trend"].map((h, i) => (
