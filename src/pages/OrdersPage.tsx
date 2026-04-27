@@ -1450,6 +1450,48 @@ function PodForm({ row, onSubmit }: { row: PoLifecycleRow; onSubmit: (p: Partial
 /* ═══════════════════════════════════════════════════════════════════════════
    CANCEL DIALOG
    ═══════════════════════════════════════════════════════════════════════════ */
+/**
+ * Edge 2 — Cancel rules per lifecycle stage:
+ *   approved / sent_nm / nm_confirmed → cho hủy + reason + ghi chú
+ *     (sent_nm → cảnh báo notify NM, nm_confirmed → cảnh báo notify NVT)
+ *   pickup → cho hủy nhưng cần SC Manager duyệt (xác nhận SC role)
+ *   in_transit → KHÔNG hủy, gợi ý "Trả hàng về NM"
+ *   delivering / completed → KHÔNG hủy
+ *   cancelled → đã hủy rồi
+ */
+type CancelRule =
+  | { kind: "allow"; warn?: string }
+  | { kind: "needs_sc"; warn: string }
+  | { kind: "block"; reason: string; alt?: string };
+
+function evalCancelRule(stage: LifecycleStage, row: PoLifecycleRow): CancelRule {
+  switch (stage) {
+    case "approved":
+      return { kind: "allow" };
+    case "sent_nm":
+      return { kind: "allow", warn: `Đã gửi NM ${row.fromName} — sẽ tự thông báo hủy qua Zalo/Email.` };
+    case "nm_confirmed":
+      return { kind: "allow", warn: `NM đã xác nhận${row.carrierName ? ` và đã book ${row.carrierName}` : ""} — sẽ thông báo hủy.` };
+    case "pickup":
+      return {
+        kind: "needs_sc",
+        warn: `Hàng đang được bốc tại NM ${row.fromName}. Cần SC Manager duyệt trước khi hủy.`,
+      };
+    case "in_transit":
+      return {
+        kind: "block",
+        reason: "Hàng đang trên xe — không thể hủy đơn.",
+        alt: "Dùng luồng \"Trả hàng về NM\" nếu thực sự cần.",
+      };
+    case "delivering":
+      return { kind: "block", reason: "Đơn đang giao tại CN — không thể hủy. Liên hệ thủ kho CN để xử lý." };
+    case "completed":
+      return { kind: "block", reason: "Đơn đã hoàn tất — không thể hủy." };
+    case "cancelled":
+      return { kind: "block", reason: "Đơn đã ở trạng thái Đã hủy." };
+  }
+}
+
 function CancelDialog({
   row, onClose, onConfirm,
 }: {
@@ -1457,24 +1499,52 @@ function CancelDialog({
   onClose: () => void;
   onConfirm: (reason: string, note: string) => void;
 }) {
+  const rule = evalCancelRule(row.stage, row);
   const [reason, setReason] = useState("NM không đáp ứng");
   const [note, setNote] = useState("");
-  const inTransit = row.stage === "in_transit";
+  const [scConfirm, setScConfirm] = useState(false);
+
+  const canSubmit =
+    rule.kind !== "block" &&
+    note.trim().length > 0 &&
+    (rule.kind !== "needs_sc" || scConfirm);
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-danger inline-flex items-center gap-2">
-            <X className="h-4 w-4" /> Hủy {row.poNumber}
+            <X className="h-4 w-4" /> Hủy {row.poNumber}?
           </DialogTitle>
           <DialogDescription>
-            {inTransit
-              ? "Đơn đang vận chuyển — không thể hủy. Liên hệ tài xế để trả hàng về NM."
-              : "Hành động này không thể hoàn tác. Lý do hủy sẽ được ghi vào lịch sử."}
+            Trạng thái hiện tại:{" "}
+            <span className="font-semibold text-text-1">{STAGE_META[row.stage].label}</span>
           </DialogDescription>
         </DialogHeader>
-        {!inTransit && (
+
+        {rule.kind === "block" && (
+          <div className="rounded-md border border-danger/40 bg-danger-bg/50 px-3 py-2.5 text-table-sm text-danger space-y-1">
+            <div className="font-semibold inline-flex items-center gap-1.5">
+              <X className="h-3.5 w-3.5" /> {rule.reason}
+            </div>
+            {rule.alt && <div className="text-text-2 text-table-sm">→ {rule.alt}</div>}
+          </div>
+        )}
+
+        {rule.kind !== "block" && (
           <div className="space-y-3">
+            {rule.kind === "needs_sc" ? (
+              <div className="rounded-md border border-warning/40 bg-warning-bg/50 px-3 py-2 text-table-sm text-warning inline-flex items-start gap-2">
+                <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <span>{rule.warn}</span>
+              </div>
+            ) : rule.warn ? (
+              <div className="rounded-md border border-info/30 bg-info-bg/40 px-3 py-2 text-table-sm text-info inline-flex items-start gap-2">
+                <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <span>{rule.warn}</span>
+              </div>
+            ) : null}
+
             <div>
               <Label className="text-caption">Lý do *</Label>
               <Select value={reason} onValueChange={setReason}>
@@ -1489,15 +1559,39 @@ function CancelDialog({
             </div>
             <div>
               <Label className="text-caption">Ghi chú *</Label>
-              <Textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={3} required />
+              <Textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                maxLength={500}
+                rows={3}
+                placeholder="Mô tả chi tiết để truy vết về sau"
+                required
+              />
             </div>
+            {rule.kind === "needs_sc" && (
+              <label className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning-bg/30 px-3 py-2 text-table-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={scConfirm}
+                  onChange={(e) => setScConfirm(e.target.checked)}
+                  className="mt-0.5 accent-warning"
+                />
+                <span>
+                  Tôi xác nhận đã có <b>SC Manager</b> chấp thuận (qua Zalo/Email) cho phép hủy đơn
+                  ở trạng thái "Lấy hàng".
+                </span>
+              </label>
+            )}
           </div>
         )}
+
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>Đóng</Button>
-          {!inTransit && (
-            <Button variant="destructive" disabled={!note} onClick={() => onConfirm(reason, note)}>
-              Xác nhận hủy
+          <Button variant="ghost" onClick={onClose}>
+            {rule.kind === "block" ? "Đóng" : "Không hủy"}
+          </Button>
+          {rule.kind !== "block" && (
+            <Button variant="destructive" disabled={!canSubmit} onClick={() => onConfirm(reason, note)}>
+              Hủy đơn ✓
             </Button>
           )}
         </DialogFooter>
