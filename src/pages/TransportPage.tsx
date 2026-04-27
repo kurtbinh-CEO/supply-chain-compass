@@ -610,8 +610,11 @@ function RoutesTab() {
             <RouteIcon className="h-4 w-4 text-primary" />
             <span className="font-display text-section-header text-text-1">{nodeName(from)}</span>
             <span className="text-caption text-text-3">· {plans.length} điểm giao</span>
+            <div className="ml-auto">
+              <TableDownloadButton targetId={`transport-route-${from}`} filename={`tuyen-${from}`} size="xs" />
+            </div>
           </div>
-          <table className="w-full">
+          <table id={`transport-route-${from}`} className="w-full">
             <thead className="bg-surface-2/30">
               <tr className="text-caption text-text-3 text-left">
                 <th className="px-4 py-2 font-medium">#</th>
