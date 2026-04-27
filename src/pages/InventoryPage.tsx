@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
+import { inventoryCompare } from "@/lib/compare-metrics";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader, ScreenFooter } from "@/components/ScreenShell";
 import { ChangeLogPanel } from "@/components/ChangeLogPanel";
