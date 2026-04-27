@@ -346,14 +346,14 @@ export function TimeRangeFilter({ mode, value, onChange, screenId, className }: 
         type="button"
         onClick={() => setOpen(!open)}
         className={cn(
-          "inline-flex items-center gap-2 rounded-button border px-3 py-1.5 text-table-sm font-medium transition-colors",
+          "inline-flex h-8 items-center gap-1.5 rounded-button border px-3 text-table-sm font-medium transition-colors",
           value.isCurrent
             ? "border-surface-3 bg-surface-2 text-text-1 hover:bg-surface-1"
             : "border-warning/40 bg-warning-bg text-warning-foreground hover:bg-warning/15"
         )}
       >
         <Calendar className="h-3.5 w-3.5 opacity-70" />
-        <span className="font-semibold">{selectedLabel}</span>
+        <span>{selectedLabel}</span>
         {!value.isCurrent && (
           <span className="text-caption opacity-70">· lịch sử</span>
         )}
