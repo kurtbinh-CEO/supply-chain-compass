@@ -1149,6 +1149,33 @@ export default function GuidePage() {
             </div>
           </div>
 
+          {/* ═══ TÍNH NĂNG CHUNG ═══ */}
+          <div>
+            <h3 className="font-display text-body font-semibold text-text-1 mb-3">Tính năng chung</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { icon: "🔲", title: "SmartTable", desc: "Mọi bảng: chế độ xem · ẩn/hiện cột · lọc · toàn màn hình · xuất" },
+                { icon: "🔀", title: "Pivot 2 chiều", desc: "Xoay [CN → SKU] ↔ [SKU → CN]. Mỗi mode cột + drill-down khác." },
+                { icon: "📊", title: "Thẻ tóm tắt", desc: "3-5 thẻ trên mỗi bảng. Click → lọc/drill. [⚙] tùy chỉnh." },
+                { icon: "📅", title: "Lọc thời gian", desc: "[📅 Tuần này ▼] → xem lịch sử. Quá khứ = chỉ xem." },
+                { icon: "🔢", title: "Click xem nguồn", desc: "Số gạch chấm = clickable → popup phân tích + công thức." },
+                { icon: "📋", title: "Kế hoạch tháng", desc: "[Tháng 5/2026 ▼]. Tháng khóa = read-only." },
+                { icon: "🔄", title: "Lịch sử phiên bản", desc: "[Lịch sử] v1→v3. [So sánh] delta. [Khóa] chốt." },
+                { icon: "📥", title: "Nhập dữ liệu", desc: "[Tích hợp] [Tải lên Excel] [Nhập tay]. Wizard 5 bước." },
+              ].map((f) => (
+                <div key={f.title} className="flex items-start gap-3 rounded-lg border border-surface-3 bg-surface-0 px-4 py-3 hover:shadow-sm transition-shadow">
+                  <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/8 text-body shrink-0">
+                    <span aria-hidden>{f.icon}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-display text-table font-semibold text-text-1">{f.title}</div>
+                    <div className="text-table-sm text-text-2 mt-0.5">{f.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Visual flow preview — daily */}
           {flows.daily.length > 0 && (
             <div>
