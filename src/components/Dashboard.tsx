@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { KpiCard } from "@/components/KpiCard";
+import { kpiTrend } from "@/lib/kpi-format";
 import { StatusChip } from "@/components/StatusChip";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { cn } from "@/lib/utils";
