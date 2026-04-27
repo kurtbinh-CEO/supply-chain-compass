@@ -1,27 +1,29 @@
 /**
- * TableDownloadButton — dropdown xuất dữ liệu bảng (CSV / PDF) với tuỳ chọn phạm vi.
+ * TableDownloadButton — dropdown xuất dữ liệu bảng (CSV / PDF) với preview modal.
  *
- * Cách dùng cơ bản (giữ nguyên API cũ):
- *   const ref = useRef<HTMLTableElement>(null);
- *   <TableDownloadButton tableRef={ref} filename="conflict-log" />
- *   <table ref={ref}>...</table>
+ * Flow: Click nút → menu chọn format + scope → modal preview (tiêu đề, phạm vi,
+ * tên file, số dòng, 5–10 dòng đầu) → nút "Tải về" mới thực sự download.
  *
- * API mở rộng:
- *   - format: "csv" | "pdf" | "both" (default: "both")
- *   - scopeLabel: nhãn mô tả filter hiện tại (vd: "Tuần 47 · CN HCM"); hiển thị trong menu
- *   - allowAllRows: nếu bảng đang bị filter ở tầng React (data prop), truyền hàm
- *       getAllRowsCsv?: () => string  để cho phép xuất "Tất cả (bỏ filter)".
- *     Mặc định không có → menu chỉ hiển thị "Đang lọc hiện tại".
+ * API giữ nguyên backward-compatible — xem JSDoc props.
  *
  * Quy ước cell:
  *   - data-export-skip hoặc class .no-export → bỏ qua khi xuất
  *   - data-export-value="..." → ghi đè giá trị hiển thị
  */
-import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Download, FileSpreadsheet, FileText, Filter, Layers } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ChevronDown,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Filter,
+  Layers,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Format = "csv" | "pdf";
+type Scope = "filtered" | "all";
 
 interface Props {
   tableRef?: React.RefObject<HTMLTableElement>;
@@ -30,13 +32,9 @@ interface Props {
   className?: string;
   label?: string;
   size?: "xs" | "sm";
-  /** Định dạng cho phép — mặc định cả CSV và PDF */
   formats?: Format[];
-  /** Nhãn mô tả phạm vi lọc hiện tại (vd: "Tuần 47 · CN HCM · Status=Open") */
   scopeLabel?: string;
-  /** Nếu cung cấp → hiển thị tuỳ chọn "Tất cả (bỏ filter)"; trả về CSV string đã có BOM */
   getAllRowsCsv?: () => string;
-  /** Tiêu đề khi xuất PDF (in trên đầu trang) */
   pdfTitle?: string;
 }
 
@@ -46,19 +44,59 @@ function escapeCsv(v: string): string {
   return needs ? `"${safe}"` : safe;
 }
 
-function tableToCsv(table: HTMLTableElement): string {
-  const rows: string[] = [];
+/** Convert table → matrix string[][] (đã loại no-export). */
+function tableToMatrix(table: HTMLTableElement): string[][] {
+  const out: string[][] = [];
   for (const tr of Array.from(table.rows)) {
     const cells: string[] = [];
     for (const td of Array.from(tr.cells)) {
       if (td.dataset.exportSkip != null || td.classList.contains("no-export")) continue;
       const raw = td.dataset.exportValue ?? td.innerText ?? td.textContent ?? "";
-      const clean = raw.replace(/\s+/g, " ").trim();
-      cells.push(escapeCsv(clean));
+      cells.push(raw.replace(/\s+/g, " ").trim());
     }
-    if (cells.length > 0) rows.push(cells.join(","));
+    if (cells.length > 0) out.push(cells);
   }
-  return "\uFEFF" + rows.join("\n");
+  return out;
+}
+
+function matrixToCsv(m: string[][]): string {
+  return "\uFEFF" + m.map((r) => r.map(escapeCsv).join(",")).join("\n");
+}
+
+/** Parse CSV string → matrix (cho preview "tất cả"). */
+function csvToMatrix(csv: string): string[][] {
+  const text = csv.replace(/^\uFEFF/, "");
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else inQuotes = false;
+      } else cell += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ",") {
+        row.push(cell);
+        cell = "";
+      } else if (c === "\n") {
+        row.push(cell);
+        rows.push(row);
+        row = [];
+        cell = "";
+      } else if (c !== "\r") cell += c;
+    }
+  }
+  if (cell.length || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
+  return rows;
 }
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -72,23 +110,28 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-function printTableAsPdf(table: HTMLTableElement, title: string, scopeLabel?: string) {
-  // Clone bảng, bỏ các cell .no-export
-  const clone = table.cloneNode(true) as HTMLTableElement;
-  clone.querySelectorAll("[data-export-skip], .no-export").forEach((el) => el.remove());
+function printMatrixAsPdf(matrix: string[][], title: string, scopeLabel?: string) {
+  if (!matrix.length) return;
+  const [head, ...body] = matrix;
+  const thead = `<thead><tr>${head.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>`;
+  const tbody = `<tbody>${body
+    .map((r) => `<tr>${r.map((c) => `<td>${escapeHtml(c)}</td>`).join("")}</tr>`)
+    .join("")}</tbody>`;
 
   const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
-  iframe.style.border = "0";
+  Object.assign(iframe.style, {
+    position: "fixed",
+    right: "0",
+    bottom: "0",
+    width: "0",
+    height: "0",
+    border: "0",
+  });
   document.body.appendChild(iframe);
 
   const doc = iframe.contentDocument!;
   doc.open();
-  doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+  doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
 <style>
   *{box-sizing:border-box}
   body{font:12px/1.4 -apple-system,Segoe UI,Inter,sans-serif;color:#0f172a;margin:24px}
@@ -100,22 +143,24 @@ function printTableAsPdf(table: HTMLTableElement, title: string, scopeLabel?: st
   tr{page-break-inside:avoid}
   @page{size:A4 landscape;margin:12mm}
 </style></head><body>
-<h1>${title}</h1>
-<div class="meta">${scopeLabel ? `Phạm vi: ${scopeLabel} · ` : ""}Xuất lúc ${new Date().toLocaleString("vi-VN")}</div>
-${clone.outerHTML}
+<h1>${escapeHtml(title)}</h1>
+<div class="meta">${scopeLabel ? `Phạm vi: ${escapeHtml(scopeLabel)} · ` : ""}Xuất lúc ${new Date().toLocaleString("vi-VN")}</div>
+<table>${thead}${tbody}</table>
 </body></html>`);
   doc.close();
 
   const win = iframe.contentWindow!;
   const cleanup = () => setTimeout(() => iframe.remove(), 1000);
   win.onafterprint = cleanup;
-  // chờ render
   setTimeout(() => {
     win.focus();
     win.print();
-    // fallback cleanup nếu onafterprint không fire
     setTimeout(cleanup, 60000);
   }, 100);
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
 export function TableDownloadButton({
@@ -130,42 +175,67 @@ export function TableDownloadButton({
   getAllRowsCsv,
   pdfTitle,
 }: Props) {
-  const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [preview, setPreview] = useState<{ fmt: Format; scope: Scope } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!menuOpen) return;
     const onDown = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!wrapRef.current?.contains(e.target as Node)) setMenuOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPreview(null);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [preview]);
 
   const getTable = (): HTMLTableElement | null =>
     tableRef?.current ??
     (targetId ? (document.getElementById(targetId) as HTMLTableElement | null) : null);
 
-  const doExport = (fmt: Format, scope: "filtered" | "all") => {
-    const table = getTable();
-    if (!table) return;
-    const baseName = filename.replace(/\.(csv|pdf)$/i, "");
-    const suffix = scope === "all" ? "-all" : "";
-    const title = pdfTitle ?? baseName;
-
-    if (fmt === "csv") {
-      const csv = scope === "all" && getAllRowsCsv ? getAllRowsCsv() : tableToCsv(table);
-      downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8;" }), `${baseName}${suffix}.csv`);
-    } else {
-      // PDF chỉ in những gì đang render trên DOM (= filtered). Cảnh báo nếu user chọn "all" mà không có nguồn.
-      printTableAsPdf(table, title + (scope === "all" ? " (tất cả)" : ""), scopeLabel);
+  // Compute matrix cho preview
+  const previewData = useMemo(() => {
+    if (!preview) return null;
+    if (preview.scope === "all" && getAllRowsCsv) {
+      return csvToMatrix(getAllRowsCsv());
     }
-    setOpen(false);
+    const t = getTable();
+    return t ? tableToMatrix(t) : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview]);
+
+  const baseName = filename.replace(/\.(csv|pdf)$/i, "");
+  const title = pdfTitle ?? baseName;
+
+  const openPreview = (fmt: Format, scope: Scope) => {
+    setMenuOpen(false);
+    setPreview({ fmt, scope });
+  };
+
+  const confirmDownload = () => {
+    if (!preview || !previewData) return;
+    const { fmt, scope } = preview;
+    const suffix = scope === "all" ? "-all" : "";
+    if (fmt === "csv") {
+      downloadBlob(
+        new Blob([matrixToCsv(previewData)], { type: "text/csv;charset=utf-8;" }),
+        `${baseName}${suffix}.csv`,
+      );
+    } else {
+      printMatrixAsPdf(previewData, title + (scope === "all" ? " (tất cả)" : ""), scopeLabel);
+    }
+    setPreview(null);
   };
 
   const base =
@@ -178,83 +248,233 @@ export function TableDownloadButton({
   const showPdf = formats.includes("pdf");
   const showAllScope = !!getAllRowsCsv;
 
+  const PREVIEW_ROWS = 8;
+  const headRow = previewData?.[0] ?? [];
+  const bodyRows = previewData?.slice(1) ?? [];
+  const shownBody = bodyRows.slice(0, PREVIEW_ROWS);
+  const totalRows = bodyRows.length;
+  const totalCols = headRow.length;
+
+  const fmtLabel = preview?.fmt === "pdf" ? "PDF" : "CSV";
+  const scopeText =
+    preview?.scope === "all"
+      ? "Tất cả (bỏ filter)"
+      : scopeLabel ?? "Đang lọc hiện tại";
+  const fileLabel = preview
+    ? `${baseName}${preview.scope === "all" ? "-all" : ""}.${preview.fmt}`
+    : "";
+
   return (
-    <div ref={wrapRef} className={cn("relative inline-flex", className)}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={cn(base, sizeCls)}
-        title="Tuỳ chọn xuất dữ liệu"
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        <Download className={iconSz} />
-        {label}
-        <ChevronDown className={iconSz} />
-      </button>
-
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-[calc(100%+4px)] z-50 min-w-[240px] rounded-card border border-surface-3 bg-surface-0 shadow-lg p-1.5 text-table-sm"
+    <>
+      <div ref={wrapRef} className={cn("relative inline-flex", className)}>
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          className={cn(base, sizeCls)}
+          title="Tuỳ chọn xuất dữ liệu"
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
         >
-          <div className="px-2 py-1.5 text-caption text-text-3 flex items-center gap-1.5">
-            <Filter className="h-3 w-3" />
-            <span className="truncate">
-              Phạm vi: <span className="text-text-2 font-medium">{scopeLabel ?? "đang lọc hiện tại"}</span>
-            </span>
+          <Download className={iconSz} />
+          {label}
+          <ChevronDown className={iconSz} />
+        </button>
+
+        {menuOpen && (
+          <div
+            role="menu"
+            className="absolute right-0 top-[calc(100%+4px)] z-50 min-w-[240px] rounded-card border border-surface-3 bg-surface-0 shadow-lg p-1.5 text-table-sm"
+          >
+            <div className="px-2 py-1.5 text-caption text-text-3 flex items-center gap-1.5">
+              <Filter className="h-3 w-3" />
+              <span className="truncate">
+                Phạm vi:{" "}
+                <span className="text-text-2 font-medium">
+                  {scopeLabel ?? "đang lọc hiện tại"}
+                </span>
+              </span>
+            </div>
+            <div className="h-px bg-surface-3 my-1" />
+
+            {showCsv && (
+              <button
+                type="button"
+                onClick={() => openPreview("csv", "filtered")}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-button hover:bg-surface-2 text-left"
+                role="menuitem"
+              >
+                <FileSpreadsheet className="h-3.5 w-3.5 text-success" />
+                <span className="flex-1">CSV — đang lọc</span>
+                <span className="text-caption text-text-3">xem trước</span>
+              </button>
+            )}
+            {showPdf && (
+              <button
+                type="button"
+                onClick={() => openPreview("pdf", "filtered")}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-button hover:bg-surface-2 text-left"
+                role="menuitem"
+              >
+                <FileText className="h-3.5 w-3.5 text-danger" />
+                <span className="flex-1">PDF — đang lọc</span>
+                <span className="text-caption text-text-3">xem trước</span>
+              </button>
+            )}
+
+            {showAllScope && (
+              <>
+                <div className="h-px bg-surface-3 my-1" />
+                <div className="px-2 py-1 text-caption text-text-3 flex items-center gap-1.5">
+                  <Layers className="h-3 w-3" />
+                  Bỏ filter — toàn bộ dữ liệu
+                </div>
+                {showCsv && (
+                  <button
+                    type="button"
+                    onClick={() => openPreview("csv", "all")}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-button hover:bg-surface-2 text-left"
+                    role="menuitem"
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5 text-success" />
+                    <span className="flex-1">CSV — tất cả</span>
+                    <span className="text-caption text-text-3">xem trước</span>
+                  </button>
+                )}
+              </>
+            )}
           </div>
-          <div className="h-px bg-surface-3 my-1" />
+        )}
+      </div>
 
-          {showCsv && (
-            <button
-              type="button"
-              onClick={() => doExport("csv", "filtered")}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-button hover:bg-surface-2 text-left"
-              role="menuitem"
-            >
-              <FileSpreadsheet className="h-3.5 w-3.5 text-success" />
-              <span className="flex-1">CSV — đang lọc</span>
-              <span className="text-caption text-text-3">.csv</span>
-            </button>
-          )}
-          {showPdf && (
-            <button
-              type="button"
-              onClick={() => doExport("pdf", "filtered")}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-button hover:bg-surface-2 text-left"
-              role="menuitem"
-            >
-              <FileText className="h-3.5 w-3.5 text-danger" />
-              <span className="flex-1">PDF — đang lọc</span>
-              <span className="text-caption text-text-3">.pdf</span>
-            </button>
-          )}
-
-          {showAllScope && (
-            <>
-              <div className="h-px bg-surface-3 my-1" />
-              <div className="px-2 py-1 text-caption text-text-3 flex items-center gap-1.5">
-                <Layers className="h-3 w-3" />
-                Bỏ filter — toàn bộ dữ liệu
-              </div>
-              {showCsv && (
-                <button
-                  type="button"
-                  onClick={() => doExport("csv", "all")}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-button hover:bg-surface-2 text-left"
-                  role="menuitem"
+      {/* Preview modal */}
+      {preview && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setPreview(null);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="export-preview-title"
+            className="w-full max-w-3xl max-h-[85vh] flex flex-col rounded-card border border-surface-3 bg-surface-0 shadow-xl"
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-surface-3">
+              <div className="min-w-0 flex-1">
+                <h2
+                  id="export-preview-title"
+                  className="text-table-md font-semibold text-text-1 truncate flex items-center gap-2"
                 >
-                  <FileSpreadsheet className="h-3.5 w-3.5 text-success" />
-                  <span className="flex-1">CSV — tất cả</span>
-                  <span className="text-caption text-text-3">.csv</span>
-                </button>
+                  {preview.fmt === "pdf" ? (
+                    <FileText className="h-4 w-4 text-danger shrink-0" />
+                  ) : (
+                    <FileSpreadsheet className="h-4 w-4 text-success shrink-0" />
+                  )}
+                  Xem trước xuất {fmtLabel}
+                </h2>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-caption text-text-3">
+                  <span className="inline-flex items-center gap-1">
+                    <Filter className="h-3 w-3" />
+                    Phạm vi: <span className="text-text-2 font-medium">{scopeText}</span>
+                  </span>
+                  <span>·</span>
+                  <span>
+                    Tên file: <span className="text-text-2 font-mono">{fileLabel}</span>
+                  </span>
+                  <span>·</span>
+                  <span>
+                    {totalRows.toLocaleString("vi-VN")} dòng × {totalCols} cột
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreview(null)}
+                className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-button text-text-3 hover:bg-surface-2 hover:text-text-1"
+                aria-label="Đóng"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-auto p-4">
+              {!previewData || previewData.length === 0 ? (
+                <div className="text-center py-12 text-text-3 text-table-sm">
+                  Không có dữ liệu để xuất.
+                </div>
+              ) : (
+                <>
+                  <div className="text-caption text-text-3 mb-2">
+                    Hiển thị {Math.min(PREVIEW_ROWS, totalRows)} / {totalRows.toLocaleString("vi-VN")}{" "}
+                    dòng đầu
+                  </div>
+                  <div className="overflow-auto rounded-card border border-surface-3">
+                    <table className="w-full text-table-sm border-collapse">
+                      <thead className="bg-surface-2 sticky top-0">
+                        <tr>
+                          {headRow.map((h, i) => (
+                            <th
+                              key={i}
+                              className="text-left font-semibold text-text-1 px-2 py-1.5 border-b border-surface-3 whitespace-nowrap"
+                            >
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {shownBody.map((r, ri) => (
+                          <tr key={ri} className="hover:bg-surface-2/50">
+                            {r.map((c, ci) => (
+                              <td
+                                key={ci}
+                                className="px-2 py-1.5 border-b border-surface-3 text-text-2 whitespace-nowrap max-w-[240px] truncate"
+                                title={c}
+                              >
+                                {c}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {totalRows > PREVIEW_ROWS && (
+                    <div className="mt-2 text-caption text-text-3">
+                      … và {(totalRows - PREVIEW_ROWS).toLocaleString("vi-VN")} dòng khác sẽ có trong
+                      file xuất.
+                    </div>
+                  )}
+                </>
               )}
-            </>
-          )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-surface-3 bg-surface-1/50">
+              <button
+                type="button"
+                onClick={() => setPreview(null)}
+                className="h-8 px-3 rounded-button border border-surface-3 bg-surface-0 text-text-2 hover:bg-surface-3 text-table-sm font-medium"
+              >
+                Huỷ
+              </button>
+              <button
+                type="button"
+                onClick={confirmDownload}
+                disabled={!previewData || previewData.length === 0}
+                className="h-8 px-3 rounded-button bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-table-sm font-medium inline-flex items-center gap-1.5"
+              >
+                <Download className="h-3.5 w-3.5" />
+                {preview.fmt === "pdf" ? "Mở hộp thoại in" : "Tải về"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
