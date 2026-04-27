@@ -407,11 +407,14 @@ export function TableDownloadButton({
                 >
                   {lastChoice.fmt === "pdf" ? (
                     <FileText className="h-3.5 w-3.5 text-danger" />
+                  ) : lastChoice.fmt === "xlsx" ? (
+                    <FileSpreadsheet className="h-3.5 w-3.5 text-info" />
                   ) : (
                     <FileSpreadsheet className="h-3.5 w-3.5 text-success" />
                   )}
                   <span className="flex-1">
-                    Lặp lại: {lastChoice.fmt.toUpperCase()} —{" "}
+                    Lặp lại:{" "}
+                    {lastChoice.fmt === "xlsx" ? "Excel" : lastChoice.fmt.toUpperCase()} —{" "}
                     {lastChoice.scope === "all" ? "tất cả" : "đang lọc"}
                   </span>
                   <span className="text-caption text-primary font-medium">↵</span>
