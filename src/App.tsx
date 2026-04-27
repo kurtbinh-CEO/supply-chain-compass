@@ -53,6 +53,7 @@ import CnPortalPage from "./pages/CnPortalPage";
 import ProfilePage from "./pages/ProfilePage";
 import ExecutivePage from "./pages/ExecutivePage";
 import AuditPage from "./pages/AuditPage";
+import AppearancePage from "./pages/AppearancePage";
 
 const queryClient = new QueryClient();
 
