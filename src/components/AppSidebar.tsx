@@ -9,6 +9,8 @@ import {
   Minimize2, Maximize2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Lock } from "lucide-react";
 import { useSidebarState } from "@/components/SidebarContext";
 import { useWorkflow } from "@/components/WorkflowContext";
 import { useWorkspace } from "@/components/WorkspaceContext";
@@ -159,6 +161,42 @@ const navGroups: NavGroup[] = [
  * /orders pending PO list) sẽ wire vào đây.
  * ─────────────────────────────────────────────────────────────────────────── */
 interface BadgeData { text: string; tone: "success" | "warning" | "danger" }
+
+/** Metadata mô tả mỗi badge: dùng cho popover khi badge bị che vì role.
+ *  - metric: tóm tắt 1 câu nội dung con số đo gì.
+ *  - viewAt: gợi ý nơi user có thể xem chi tiết nếu được cấp quyền. */
+const BADGE_INFO: Record<DailyBadgeKey, { metric: string; viewAt: string }> = {
+  nm_cn_fresh:       { metric: "Độ tươi nguồn dữ liệu NM/CN.",
+                       viewAt: "Trang Tồn kho → tab Master." },
+  cn_adjust:         { metric: "Số CN đã gửi điều chỉnh tuần / tổng CN.",
+                       viewAt: "Trang Demand tuần." },
+  exceptions:        { metric: "Số shortage đang treo trong DRP.",
+                       viewAt: "Trang DRP → bảng exceptions." },
+  po_pending:        { metric: "Số PO/lệnh phát hành đang chờ duyệt.",
+                       viewAt: "Trang Đơn hàng → tab Duyệt PO." },
+  demand_progress:   { metric: "Tiến độ submit Demand tháng (CN đã chốt / tổng).",
+                       viewAt: "Trang Rà soát Demand." },
+  sop_status:        { metric: "Trạng thái phiên S&OP tháng (đã/cần chốt).",
+                       viewAt: "Trang S&OP Consensus." },
+  hub_commitment:    { metric: "NM đã confirm cam kết tuần / tổng NM.",
+                       viewAt: "Trang Hub & Cam kết." },
+  gap_pending:       { metric: "Số kịch bản gap đang theo dõi.",
+                       viewAt: "Trang Khoảng cách & Kịch bản." },
+  monitoring_alerts: { metric: "Số cảnh báo hệ thống chưa đọc.",
+                       viewAt: "Trang Giám sát." },
+  executive_risk:    { metric: "Tổng rủi ro lãnh đạo (critical + thay đổi SS chờ duyệt).",
+                       viewAt: "Trang Điều hành." },
+  cn_portal_pending: { metric: "Số CN có yêu cầu pending trên Cổng CN.",
+                       viewAt: "Cổng CN → tab Pending." },
+};
+
+/** Map UserRole → label thân thiện hiển thị trong popover. */
+const ROLE_LABEL: Record<UserRole, string> = {
+  SC_MANAGER: "Quản lý Supply Chain",
+  CN_MANAGER: "Quản lý Chi nhánh",
+  SALES: "Sales",
+  VIEWER: "Người xem",
+};
 
 /** Interval (ms) tự re-evaluate badge — bắt kịp các thay đổi không có event
  *  (vd: timer aging "PO quá hạn", freshness data). 30s đủ mượt cho ops UI. */
@@ -420,17 +458,53 @@ export function AppSidebar() {
                               {badge.text}
                             </span>
                           )}
-                          {/* Placeholder khi badge bị ẩn vì role: giữ chỗ + tooltip giải thích.
-                              Tránh để user thắc mắc "tại sao menu này không có số như đồng nghiệp". */}
-                          {hiddenByRole && (
-                            <span
-                              className="shrink-0 inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full bg-surface-3/60 text-text-3 text-[10px] font-semibold leading-tight px-1.5 cursor-help select-none"
-                              title={`Số liệu chỉ hiển thị cho vai trò: ${allowedRolesLabel}. Vai trò hiện tại của bạn (${user.role}) không được xem.`}
-                              aria-label="Badge ẩn theo phân quyền"
-                            >
-                              —
-                            </span>
-                          )}
+                          {/* Khi badge bị ẩn vì role → render placeholder "—" + Tooltip rich
+                              giải thích metric, role nào được xem, và nơi xem chi tiết. */}
+                          {hiddenByRole && item.badgeKey && (() => {
+                            const info = BADGE_INFO[item.badgeKey];
+                            const allowedLabels = (item.badgeRoles ?? [])
+                              .map((r) => ROLE_LABEL[r])
+                              .join(" hoặc ");
+                            return (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span
+                                    // Span không có button parent → cần tabindex để keyboard focus mở popover.
+                                    tabIndex={0}
+                                    onClick={(e) => e.preventDefault()}
+                                    className="shrink-0 inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full bg-surface-3/60 text-text-3 text-[10px] font-semibold leading-tight px-1.5 cursor-help select-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+                                    aria-label="Badge ẩn theo phân quyền — hover để xem chi tiết"
+                                  >
+                                    —
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" align="start" className="max-w-[260px] p-0 overflow-hidden">
+                                  <div className="p-3 space-y-2 text-[12px] leading-relaxed">
+                                    <div className="flex items-center gap-1.5 font-semibold text-text-1">
+                                      <Lock className="h-3 w-3 text-text-3" />
+                                      Số liệu bị ẩn
+                                    </div>
+                                    <div className="text-text-2">
+                                      <span className="font-medium text-text-1">Đo gì: </span>
+                                      {info.metric}
+                                    </div>
+                                    <div className="text-text-2">
+                                      <span className="font-medium text-text-1">Cần vai trò: </span>
+                                      {allowedLabels || "—"}
+                                    </div>
+                                    <div className="text-text-2">
+                                      <span className="font-medium text-text-1">Xem ở: </span>
+                                      {info.viewAt}
+                                    </div>
+                                    <div className="pt-1.5 border-t border-surface-3 text-text-3 text-[11px]">
+                                      Vai trò hiện tại: <span className="font-medium text-text-2">{ROLE_LABEL[user.role]}</span>.
+                                      Liên hệ quản trị nếu cần nâng quyền.
+                                    </div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })()}
                         </>
                       )}
                     </NavLink>
