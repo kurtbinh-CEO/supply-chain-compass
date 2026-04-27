@@ -20,6 +20,7 @@ import { SopActionBar } from "@/components/sop/SopActionBar";
 import { Loader2, PackageOpen, FileDown, ChevronDown } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
 import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
+import { useWorkspace } from "@/components/WorkspaceContext";
 import { PlanningPeriodSelector } from "@/components/PlanningPeriodSelector";
 import { useCellPresence } from "@/components/CellPresence";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
