@@ -141,7 +141,7 @@ export function KpiCard({
       {/* Header: title + icon */}
       <div className={cn("flex items-start justify-between gap-2", farmer ? "mb-3 sm:mb-1.5" : "mb-2 sm:mb-1.5")}>
         <p
-          title={titleLen > 22 ? title : undefined}
+          title={titleTier !== "base" ? title : undefined}
           className={cn(
             "font-semibold sm:font-medium text-text-2 leading-snug min-w-0 flex-1",
             titleMobileClass,
@@ -168,9 +168,10 @@ export function KpiCard({
         </span>
         {renderUnit && (
           <span
-            title={unitLen > 8 ? renderUnit : undefined}
+            title={unitTier !== "base" ? renderUnit : undefined}
+            style={{ maxWidth: KPI_THRESHOLDS.unitMaxWidth }}
             className={cn(
-              "text-text-3 truncate min-w-0 max-w-[45%]",
+              "text-text-3 truncate min-w-0",
               unitMobileClass,
             )}
           >{renderUnit}</span>
@@ -180,11 +181,10 @@ export function KpiCard({
       {/* Trend + hint */}
       {(t || hint) && (
         <div
+          style={{ minHeight: KPI_THRESHOLDS.hintRowMinHeight }}
           className={cn(
             // flex-nowrap + min-w-0 → trend giữ nguyên, hint truncate phần thừa
             "flex items-center gap-1.5 flex-nowrap min-w-0 w-full",
-            // reserve dòng cố định để layout không nhảy giữa các thẻ
-            "min-h-[1.25rem]",
             farmer ? "mt-2.5" : "mt-2",
           )}
         >
@@ -205,7 +205,7 @@ export function KpiCard({
           )}
           {hint && (
             <span
-              title={hintLen > 28 ? hint : undefined}
+              title={hintTier !== "base" ? hint : undefined}
               className={cn(
                 "text-text-3 inline-flex items-center gap-1 min-w-0 flex-1 overflow-hidden",
                 hintMobileClass,
