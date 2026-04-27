@@ -67,20 +67,43 @@ interface RoleFlows {
 const scFlows: RoleFlows = {
   daily: [
     {
-      route: "/inventory", label: "Kiểm tra data", time: "~2'", icon: <Package className="h-5 w-5" />,
+      route: "/", label: "Tổng quan", time: "~3'", icon: <LayoutDashboard className="h-5 w-5" />,
+      keyAction: "Nhìn sức khỏe chuỗi cung ứng", kpi: "0 critical",
+      why: "Farmer mở app → 30 giây biết: fill rate bao nhiêu? exception nào? cần làm gì?",
+      what: "4 KPI cards clickable + exception table inline expand + gợi ý hành động.",
+      how: "1. 4 KPI cards → click 'Fill Rate' → popup per CN\n2. Exception table → click row → expand context + [Chấp nhận gợi ý]\n3. [Xem tất cả →] mở Workspace",
+      formula: "",
+    },
+    {
+      route: "/workspace", label: "Việc cần làm", time: "~5'", icon: <CheckSquare className="h-5 w-5" />,
+      keyAction: "Duyệt approval items với đủ context", kpi: "0 pending",
+      why: "Mỗi item expand → thấy context + lịch sử + AI gợi ý → quyết định tự tin.",
+      what: "CN Adjust: tồn + FC + history + trust → [Duyệt/Cắt/Từ chối]. PO Release: container + cước + NM → [Duyệt].",
+      how: "1. Mở → filter [Cần duyệt]\n2. Click item → expand context\n3. Xem AI gợi ý → [Duyệt ✅] hoặc [Cắt %]",
+      formula: "",
+    },
+    {
+      route: "/inventory", label: "Kiểm tra tồn kho", time: "~2'", icon: <Package className="h-5 w-5" />,
       keyAction: "Kiểm tra NM cập nhật tồn", kpi: "5/5 NM mới",
-      why: "DRP cần data NM fresh. Stale >24h → DRP sai.", what: "Upload Excel hoặc nhập tay. UNIS dùng = tồn × share%.",
-      how: "1. Drag-drop file NM\n2. Preview → [Xác nhận]\n3. NM chưa gửi → [Nhắc NM]", formula: "UNIS_dùng = on_hand × share%\nMikado: 2.500 × 60% = 1.500 − 120 = 1.380",
+      why: "DRP cần data NM fresh. Stale >24h → DRP sai.", what: "2 tab: NM (5 NM) + CN (12 CN). Pivot 2 chiều, drill SKU.",
+      how: "1. Tab NM: tồn per NM → drill SKU\n2. Tab CN: HSTK <2d → đỏ\n3. Stale → [Nhắc NM]", formula: "UNIS_dùng = on_hand × share%\nMikado: 2.500 × 60% = 1.500 − 120 = 1.380",
       highlights: [
-        { selector: "supply-upload", label: "Upload Excel / Template", description: "Drag-drop file NM vào zone, hoặc click [Upload Excel]. Hệ thống validate trước khi import." },
-        { selector: "supply-nm-table", label: "Bảng tồn kho NM", description: "Per NM: tổng tồn, UNIS dùng (= tồn × share%), đang về. NM stale → hàng đỏ, click [Nhắc NM]." },
+        { selector: "inventory-tabs", label: "2 tab: NM + CN", description: "Tab NM: tồn per NM → drill SKU. Tab CN: tồn per CN → drill SKU. Pivot 2 chiều." },
+        { selector: "inventory-summary", label: "Thẻ tóm tắt", description: "Tồn tổng | HSTK TB | CN nguy hiểm | Vốn LĐ. Click thẻ → lọc bảng." },
+        { selector: "inventory-datasource", label: "Nhập dữ liệu", description: "3 cách: [Tích hợp Bravo] [Tải lên Excel] [Nhập tay]. Per NM hoặc per CN." },
       ],
     },
     {
       route: "/demand-weekly", label: "CN điều chỉnh", time: "~5'", icon: <CalendarDays className="h-5 w-5" />,
       keyAction: "Xem CN điều chỉnh trước cutoff", kpi: "12/12 duyệt xong",
-      why: "CN biết thị trường — adjust giúp DRP chính xác hơn.", what: "Bảng demand tuần per CN: Phased FC | CN adjust | Delta | Lý do.",
-      how: "1. Mở /demand-weekly trước cutoff 18:00\n2. Xem CN nào chưa adjust → [Nhắc CN]\n3. Approve adjust hợp lý", formula: "Demand_tuần = FC_phased + Σ(CN_adjust)\nDelta >5% → cần lý do",
+      why: "CN biết thị trường — adjust giúp DRP chính xác hơn.",
+      what: "2 view: SC Manager (CN tổng + Thực tế T4) vs CN Manager (SKU chi tiết + lý do). Toggle persona.",
+      how: "1. Mở → toggle SC Manager view\n2. Cột 'Thực tế T4': so actual tháng trước vs FC → đánh giá adjust hợp lý\n3. Vượt biên 30% → cần lý do mạnh\n4. [Duyệt] hoặc [✂️ Cắt %]",
+      formula: "Demand_tuần = FC_phased + Σ(CN_adjust)\nDelta >5% → cần lý do",
+      highlights: [
+        { selector: "demand-weekly-actual", label: "Thực tế T4", description: "Cột actual tháng trước. FC tháng này vượt actual 20%? → cần xem xét." },
+        { selector: "demand-weekly-persona", label: "Toggle persona", description: "SC Manager: tổng CN. CN Manager: per SKU + lý do." },
+      ],
     },
     {
       route: "/drp", label: "Xem DRP", time: "~10'", icon: <GitBranch className="h-5 w-5" />,
