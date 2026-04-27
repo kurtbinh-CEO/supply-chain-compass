@@ -308,6 +308,8 @@ export default function SopPage() {
         onReset={() => setTimeRange(defaultTimeRange("monthly"))}
         entity="S&OP"
         resetLabel="Quay về tháng này"
+        currentLabel="Tháng này (T5)"
+        compareMetrics={sopCompare(timeRange)}
       />
 
       {/* LỚP 2 — Tiến trình (1 dòng nhỏ) + 4 Summary Cards */}
