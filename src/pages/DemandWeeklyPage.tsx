@@ -1395,6 +1395,8 @@ export default function DemandWeeklyPage() {
         onReset={() => setTimeRange(defaultTimeRange("weekly"))}
         entity="nhu cầu tuần"
         resetLabel="Quay về tuần này"
+        currentLabel="Tuần này (W20)"
+        compareMetrics={demandWeeklyCompare(timeRange)}
       />
 
       <PhasingDialog
