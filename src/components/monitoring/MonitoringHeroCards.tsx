@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { formatKpiValue, type KpiTrend, type KpiUnit } from "@/lib/kpi-format";
+import { useFarmerMode } from "@/components/FarmerModeContext";
 
 type CardKey = "nm-risk" | "roi" | "ss-alert" | "bpo-pace" | "fc-accuracy";
 
@@ -184,46 +185,68 @@ function HeroCard({
     renderUnit = renderUnit ?? u;
   }
 
+  const { enabled: farmer } = useFarmerMode();
+
   return (
     <button
       onClick={onClick}
       className={cn(
         "group relative overflow-hidden rounded-card border border-surface-3 border-l-[4px] sm:border-l-[3px] bg-surface-1",
-        "p-3.5 sm:p-3 text-left transition-all hover:shadow-sm hover:-translate-y-px",
+        // Farmer ON (mobile): padding rộng hơn
+        farmer ? "p-4 sm:p-3" : "p-3.5 sm:p-3",
+        "text-left transition-all hover:shadow-sm hover:-translate-y-px",
         "focus:outline-none focus:ring-2 focus:ring-primary/40",
         stripClasses[tone],
       )}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 mb-2 sm:mb-1.5">
-        <div className={cn("shrink-0 rounded-md p-1.5 sm:p-1", chipClasses[tone])}>
+      <div className={cn("flex items-center gap-2", farmer ? "mb-2.5 sm:mb-1.5" : "mb-2 sm:mb-1.5")}>
+        <div className={cn("shrink-0 rounded-md", farmer ? "p-2 sm:p-1" : "p-1.5 sm:p-1", chipClasses[tone])}>
           {icon}
         </div>
-        <span className="text-table sm:text-table-sm font-semibold sm:font-medium text-text-2 truncate">{label}</span>
-        <ChevronRight className="ml-auto h-4 w-4 sm:h-3.5 sm:w-3.5 text-text-3/40 group-hover:text-text-3 transition-colors" />
+        <span className={cn(
+          "font-semibold sm:font-medium text-text-2 truncate",
+          farmer ? "text-body sm:text-table-sm" : "text-table sm:text-table-sm",
+        )}>{label}</span>
+        <ChevronRight className={cn(
+          "ml-auto text-text-3/40 group-hover:text-text-3 transition-colors",
+          farmer ? "h-5 w-5 sm:h-3.5 sm:w-3.5" : "h-4 w-4 sm:h-3.5 sm:w-3.5",
+        )} />
       </div>
       {/* Value */}
       <div className="flex items-baseline gap-1.5">
-        <span className="font-display text-[28px] sm:text-[24px] leading-none font-bold text-text-1 tabular-nums">
+        <span className={cn(
+          "font-display leading-none font-bold text-text-1 tabular-nums",
+          farmer ? "text-[34px] sm:text-[24px]" : "text-[28px] sm:text-[24px]",
+        )}>
           {renderValue}
         </span>
-        {renderUnit && <span className="text-table-sm sm:text-caption text-text-3">{renderUnit}</span>}
+        {renderUnit && (
+          <span className={cn(
+            "text-text-3",
+            farmer ? "text-table sm:text-caption font-medium" : "text-table-sm sm:text-caption",
+          )}>{renderUnit}</span>
+        )}
       </div>
       {/* Trend (optional) + Sub */}
-      <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+      <div className={cn("flex items-center gap-1.5 flex-wrap", farmer ? "mt-1.5" : "mt-1")}>
         {trend && (
           <span className={cn(
-            "inline-flex items-center gap-0.5 text-caption font-semibold tabular-nums",
+            "inline-flex items-center gap-0.5 font-semibold tabular-nums",
+            farmer ? "text-table-sm sm:text-caption" : "text-caption",
             trend.isGood ? "text-success" : "text-danger",
           )}>
-            {trend.direction === "up"   && <TrendingUp   className="h-3 w-3" />}
-            {trend.direction === "down" && <TrendingDown className="h-3 w-3" />}
-            {trend.direction === "flat" && <Minus        className="h-3 w-3" />}
+            {trend.direction === "up"   && <TrendingUp   className={cn(farmer ? "h-3.5 w-3.5 sm:h-3 sm:w-3" : "h-3 w-3")} />}
+            {trend.direction === "down" && <TrendingDown className={cn(farmer ? "h-3.5 w-3.5 sm:h-3 sm:w-3" : "h-3 w-3")} />}
+            {trend.direction === "flat" && <Minus        className={cn(farmer ? "h-3.5 w-3.5 sm:h-3 sm:w-3" : "h-3 w-3")} />}
             {trend.value}
             {trend.vs && <span className="ml-0.5 font-normal text-text-3">vs {trend.vs}</span>}
           </span>
         )}
-        <span className="text-table-sm sm:text-caption text-text-3 truncate">{sub}</span>
+        <span className={cn(
+          "text-text-3 truncate",
+          farmer ? "text-table sm:text-caption" : "text-table-sm sm:text-caption",
+        )}>{sub}</span>
       </div>
     </button>
   );
