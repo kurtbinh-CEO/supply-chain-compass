@@ -345,6 +345,7 @@ export function TableDownloadButton({
 
   const showCsv = formats.includes("csv");
   const showPdf = formats.includes("pdf");
+  const showXlsx = formats.includes("xlsx");
   const showAllScope = !!getAllRowsCsv;
 
   const PREVIEW_ROWS = 8;
