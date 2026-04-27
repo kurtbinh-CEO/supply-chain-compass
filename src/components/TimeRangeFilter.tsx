@@ -222,6 +222,26 @@ export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
     setOpen(false);
   };
 
+  /** Quick-fill: điền nhanh "N ngày gần nhất" → Đến = hôm nay, Từ = hôm nay − (N−1). */
+  const quickFillLastDays = (days: number) => {
+    const today = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - (days - 1));
+    const fromIso = toLocalIso(from);
+    const toIso = toLocalIso(today);
+    setCustomFrom(fromIso);
+    setCustomTo(toIso);
+    setTouched(true);
+    // Vẫn chạy validation — retention/khoảng tối đa được tôn trọng.
+    setCustomError(validateCustomRange(fromIso, toIso));
+  };
+
+  const QUICK_FILLS = [
+    { days: 7,  label: "7 ngày" },
+    { days: 30, label: "30 ngày" },
+    { days: 90, label: "90 ngày" },
+  ];
+
   const todayMax = todayIso();
   const floorMin = retentionFloorIso();
 
