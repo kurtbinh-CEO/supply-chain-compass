@@ -255,13 +255,14 @@ export default function SyncPage() {
 
       {/* SECTION 3: History */}
       <section className="rounded-card border border-surface-3 bg-surface-1 overflow-hidden">
-        <div className="px-5 py-3 border-b border-surface-3 flex items-center justify-between">
-          <div>
+        <div className="px-5 py-3 border-b border-surface-3 flex items-center justify-between gap-2">
+          <div className="min-w-0">
             <h2 className="font-display text-section-header text-text-1">Lịch sử đồng bộ</h2>
             <p className="text-caption text-text-3 mt-0.5">10 lần gần nhất</p>
           </div>
+          <TableDownloadButton targetId="sync-history" filename="lich-su-dong-bo" size="xs" />
         </div>
-        <table className="w-full">
+        <table id="sync-history" className="w-full">
           <thead className="bg-surface-2/50">
             <tr className="text-table-sm text-text-3 text-left">
               <th className="px-4 py-2 font-medium">Thời gian</th>
