@@ -372,14 +372,14 @@ export function AppSidebar() {
                            *   - tabular-nums (số khớp cột) · h-[18px] (canh hàng với icon 18px)
                            * Tone (bg/text color) là biến số duy nhất giữa các badge. */}
                           {item.url === "/workspace" && pendingCount > 0 && (
-                            <span className="inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full bg-danger-bg text-danger text-[10px] font-semibold leading-tight tabular-nums px-1.5">
+                            <span className="shrink-0 inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full bg-danger-bg text-danger text-[10px] font-semibold leading-tight tabular-nums px-1.5">
                               {pendingCount}
                             </span>
                           )}
                           {badge && (
                             <span
                               className={cn(
-                                "inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full text-[10px] font-semibold leading-tight tabular-nums px-1.5",
+                                "shrink-0 inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full text-[10px] font-semibold leading-tight tabular-nums px-1.5",
                                 badgeClasses(badge.tone),
                               )}
                             >
