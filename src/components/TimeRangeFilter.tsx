@@ -100,6 +100,21 @@ function fmtDateVi(iso?: string): string {
   return `${d}/${m}/${y}`;
 }
 
+/** Format kèm thứ tiếng Việt — vd: "Th 2, 27/04/2026". Dùng noon-local
+ *  để tránh DST/timezone shift. Chỉ hiện khi ISO hợp lệ. */
+function fmtDateViLong(iso?: string): string {
+  if (!iso) return "";
+  try {
+    const d = parseLocalIso(iso);
+    const weekday = new Intl.DateTimeFormat("vi-VN", { weekday: "short" }).format(d);
+    // weekday "vi-VN" trả "Th 2", "CN", ... — viết hoa chữ đầu cho gọn.
+    const wd = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+    return `${wd}, ${fmtDateVi(iso)}`;
+  } catch {
+    return fmtDateVi(iso);
+  }
+}
+
 function loadPersisted(screenId: string, mode: TimeRangeMode): TimeRange {
   try {
     const raw = localStorage.getItem(`scp.timerange.${screenId}`);
