@@ -258,9 +258,11 @@ export function AppSidebar() {
 
   return (
     <aside
+      // Width động theo context (collapsed → 64 · compact → 232 · normal → 280).
+      // Dùng inline style thay vì class cố định để hai mode chuyển mượt qua transition-[width].
+      style={{ width }}
       className={cn(
-        "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-surface-3 frosted-glass transition-all duration-200",
-        collapsed ? "w-16" : "w-[280px]"
+        "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-surface-3 frosted-glass transition-[width] duration-200"
       )}
     >
       {/* Logo area */}
@@ -269,21 +271,36 @@ export function AppSidebar() {
         collapsed ? "justify-center px-2" : "justify-between px-4"
       )}>
         {collapsed ? (
-          <button onClick={toggle} className="flex items-center justify-center rounded-button p-1 hover:bg-surface-3 transition-colors">
+          <button onClick={toggle} className="flex items-center justify-center rounded-button p-1 hover:bg-surface-3 transition-colors" title="Mở rộng sidebar">
             <img src={smartlogIcon} alt="Smartlog" className="h-7 w-7 rounded-md object-contain" />
           </button>
         ) : (
           <>
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
               <img src={smartlogIcon} alt="Smartlog" className="h-8 w-8 rounded-lg object-contain shrink-0" />
-              <div className="flex flex-col -space-y-0.5">
-                <span className="font-display text-[12px] font-bold text-text-1 tracking-tight leading-tight">Supply Chain</span>
-                <span className="font-display text-[9px] font-semibold text-primary tracking-[0.15em] uppercase leading-tight">Planning Intelligence</span>
+              <div className="flex flex-col -space-y-0.5 min-w-0">
+                <span className="font-display text-[12px] font-bold text-text-1 tracking-tight leading-tight truncate">Supply Chain</span>
+                <span className="font-display text-[9px] font-semibold text-primary tracking-[0.15em] uppercase leading-tight truncate">Planning Intelligence</span>
               </div>
             </div>
-            <button onClick={toggle} className="rounded-button p-1.5 hover:bg-surface-3 transition-colors">
-              <ChevronLeft className="h-4 w-4 text-text-3" />
-            </button>
+            <div className="flex items-center gap-0.5 shrink-0">
+              {/* Toggle compact mode (chỉ enable khi không collapsed). 
+                  Lưu preference qua localStorage trong SidebarContext. */}
+              <button
+                onClick={toggleCompact}
+                className="rounded-button p-1.5 hover:bg-surface-3 transition-colors"
+                title={compact ? "Chuyển sang sidebar rộng (280px)" : "Chuyển sang sidebar gọn (232px)"}
+                aria-label={compact ? "Tắt compact mode" : "Bật compact mode"}
+                aria-pressed={compact}
+              >
+                {compact
+                  ? <Maximize2 className="h-3.5 w-3.5 text-text-3" />
+                  : <Minimize2 className="h-3.5 w-3.5 text-text-3" />}
+              </button>
+              <button onClick={toggle} className="rounded-button p-1.5 hover:bg-surface-3 transition-colors" title="Thu nhỏ sidebar">
+                <ChevronLeft className="h-4 w-4 text-text-3" />
+              </button>
+            </div>
           </>
         )}
       </div>
