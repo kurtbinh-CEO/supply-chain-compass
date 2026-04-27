@@ -74,7 +74,8 @@ const navGroups: NavGroup[] = [
   {
     labelKey: "nav.executive",
     items: [
-      { kind: "item", titleKey: "nav.executiveItem", icon: Crown, url: "/executive", roles: ["SC_MANAGER"], badgeKey: "executive_risk" },
+      { kind: "item", titleKey: "nav.executiveItem", icon: Crown, url: "/executive",
+        roles: ["SC_MANAGER", "DIRECTOR", "CEO"], badgeKey: "executive_risk" },
     ],
   },
   {
@@ -86,59 +87,70 @@ const navGroups: NavGroup[] = [
   {
     labelKey: "nav.monitoring",
     items: [
-      // Số alerts hệ thống — chỉ SC_MANAGER thấy con số chi tiết.
       { kind: "item", titleKey: "nav.monitoringItem", icon: Activity, url: "/monitoring",
-        badgeKey: "monitoring_alerts", badgeRoles: ["SC_MANAGER"] },
+        roles: ["SC_MANAGER", "CN_MANAGER", "SALES", "VIEWER", "BUYER", "DIRECTOR", "CEO"],
+        badgeKey: "monitoring_alerts", badgeRoles: ["SC_MANAGER", "DIRECTOR", "CEO"] },
     ],
   },
   {
     labelKey: "nav.monthlyPlan",
     items: [
-      // Demand progress (8/12 CN): SC + CN cùng cần biết tiến độ submit.
+      // Demand: SC + CN + SALES + Director/CEO. BUYER không thấy.
       { kind: "item", titleKey: "nav.demandReview",   icon: BarChart3,      url: "/demand",
-        badgeKey: "demand_progress", badgeRoles: ["SC_MANAGER", "CN_MANAGER"] },
-      // S&OP status (Đã chốt / Cần chốt): SC mới biết phiên họp.
+        roles: ["SC_MANAGER", "CN_MANAGER", "SALES", "VIEWER", "DIRECTOR", "CEO"],
+        badgeKey: "demand_progress", badgeRoles: ["SC_MANAGER", "CN_MANAGER", "DIRECTOR", "CEO"] },
+      // S&OP chỉ SC + lãnh đạo.
       { kind: "item", titleKey: "nav.sopConsensus",   icon: Handshake,      url: "/sop",
-        badgeKey: "sop_status", badgeRoles: ["SC_MANAGER"] },
-      // Hub commitment (6/8 NM): nội bộ SC team.
+        roles: ["SC_MANAGER", "VIEWER", "DIRECTOR", "CEO"],
+        badgeKey: "sop_status", badgeRoles: ["SC_MANAGER", "DIRECTOR", "CEO"] },
+      // Hub: SC + BUYER + lãnh đạo.
       { kind: "item", titleKey: "nav.hubCommitment",  icon: Boxes,          url: "/hub",
-        badgeKey: "hub_commitment", badgeRoles: ["SC_MANAGER"] },
-      // Gap/scenario count: SC + CN.
+        roles: ["SC_MANAGER", "BUYER", "VIEWER", "DIRECTOR", "CEO"],
+        badgeKey: "hub_commitment", badgeRoles: ["SC_MANAGER", "BUYER", "DIRECTOR", "CEO"] },
+      // Gap: SC + CN + lãnh đạo.
       { kind: "item", titleKey: "nav.gapScenario",    icon: AlertTriangle,  url: "/gap-scenario",
-        badgeKey: "gap_pending", badgeRoles: ["SC_MANAGER", "CN_MANAGER"] },
+        roles: ["SC_MANAGER", "CN_MANAGER", "VIEWER", "DIRECTOR", "CEO"],
+        badgeKey: "gap_pending", badgeRoles: ["SC_MANAGER", "CN_MANAGER", "DIRECTOR", "CEO"] },
     ],
   },
   {
     labelKey: "nav.dailyOps",
     items: [
-      // Daily ops badges = chỉ số vận hành công khai → ai dùng menu cũng thấy được.
       { kind: "phase", label: "Chuẩn bị" },
-      { kind: "item", titleKey: "nav.inventory",    icon: Package,      url: "/inventory",     badgeKey: "nm_cn_fresh" },
-      { kind: "item", titleKey: "nav.demandWeekly", icon: CalendarDays, url: "/demand-weekly", badgeKey: "cn_adjust" },
+      { kind: "item", titleKey: "nav.inventory",    icon: Package,      url: "/inventory",
+        roles: ["SC_MANAGER", "CN_MANAGER", "BUYER", "VIEWER", "DIRECTOR", "CEO"],
+        badgeKey: "nm_cn_fresh" },
+      { kind: "item", titleKey: "nav.demandWeekly", icon: CalendarDays, url: "/demand-weekly",
+        roles: ["SC_MANAGER", "CN_MANAGER", "VIEWER", "DIRECTOR", "CEO"],
+        badgeKey: "cn_adjust" },
       { kind: "phase", label: "Kết quả" },
-      { kind: "item", titleKey: "nav.drpResult",    icon: GitBranch,    url: "/drp",           badgeKey: "exceptions" },
+      { kind: "item", titleKey: "nav.drpResult",    icon: GitBranch,    url: "/drp",
+        roles: ["SC_MANAGER", "CN_MANAGER", "VIEWER", "DIRECTOR", "CEO"],
+        badgeKey: "exceptions" },
       { kind: "phase", label: "Thực thi" },
-      // Số PO pending = nhạy cảm cho SALES (lộ workload) → giới hạn SC + CN.
+      // Orders: SC + CN + BUYER + lãnh đạo.
       { kind: "item", titleKey: "nav.orders",       icon: Truck,        url: "/orders",
-        badgeKey: "po_pending", badgeRoles: ["SC_MANAGER", "CN_MANAGER"] },
+        roles: ["SC_MANAGER", "CN_MANAGER", "BUYER", "VIEWER", "DIRECTOR", "CEO"],
+        badgeKey: "po_pending", badgeRoles: ["SC_MANAGER", "CN_MANAGER", "BUYER", "DIRECTOR", "CEO"] },
     ],
   },
   {
     labelKey: "nav.partners",
     items: [
-      // Số CN có pending: chỉ SC + CN_MANAGER (SALES không cần thấy số nội bộ partners).
       { kind: "item", titleKey: "nav.cnPortal", icon: Building, url: "/cn-portal",
-        roles: ["CN_MANAGER", "SC_MANAGER", "SALES"],
-        badgeKey: "cn_portal_pending", badgeRoles: ["SC_MANAGER", "CN_MANAGER"] },
+        roles: ["CN_MANAGER", "SC_MANAGER", "SALES", "VIEWER", "DIRECTOR", "CEO"],
+        badgeKey: "cn_portal_pending", badgeRoles: ["SC_MANAGER", "CN_MANAGER", "DIRECTOR", "CEO"] },
     ],
   },
   {
     labelKey: "nav.config",
     items: [
-      { kind: "item", titleKey: "nav.masterData", icon: Database,     url: "/master-data" },
+      { kind: "item", titleKey: "nav.masterData", icon: Database,     url: "/master-data",
+        roles: ["SC_MANAGER", "BUYER", "VIEWER", "DIRECTOR", "CEO"] },
       { kind: "item", titleKey: "nav.sync",       icon: RefreshCw,    url: "/sync" },
       { kind: "item", titleKey: "nav.reports",    icon: FileBarChart, url: "/reports" },
-      { kind: "item", titleKey: "nav.configItem", icon: Settings,     url: "/config", roles: ["SC_MANAGER"] },
+      { kind: "item", titleKey: "nav.configItem", icon: Settings,     url: "/config",
+        roles: ["SC_MANAGER", "DIRECTOR", "CEO"] },
     ],
   },
   {
