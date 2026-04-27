@@ -250,10 +250,12 @@ export function TableDownloadButton({
   };
   const [menuOpen, setMenuOpen] = useState(false);
   const [preview, setPreview] = useState<{ fmt: Format; scope: Scope } | null>(null);
+  const [confirmedLarge, setConfirmedLarge] = useState(false);
   const [lastChoice, setLastChoice] = useState<{ fmt: Format; scope: Scope } | null>(() =>
     typeof window === "undefined" ? null : readLast(),
   );
   const wrapRef = useRef<HTMLDivElement>(null);
+  const LARGE_EXPORT_THRESHOLD = 10_000;
 
   useEffect(() => {
     if (!menuOpen) return;
