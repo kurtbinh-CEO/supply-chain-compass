@@ -97,6 +97,37 @@ export function KpiCard({
   const t = normalizeTrend(trend);
   const { enabled: farmer } = useFarmerMode();
 
+  // ─── Auto-shrink heuristic (mobile <sm) ──────────────────────────────
+  // Khi chuỗi quá dài, hạ 1 nấc font và cho phép ellipsis (1 dòng) để
+  // thẻ giữ chiều cao đều, scan nhanh trên 480px. Desktop giữ nguyên.
+  const titleLen = title?.length ?? 0;
+  const unitLen  = (renderUnit ?? "").length;
+  const hintLen  = (hint ?? "").length;
+
+  // Title: >22 ký tự → giảm 1 nấc; >32 → giảm 2 nấc + clamp 2 dòng
+  const titleMobileClass =
+    titleLen > 32 ? (farmer ? "text-table sm:text-table-sm" : "text-table-sm sm:text-table-sm")
+    : titleLen > 22 ? (farmer ? "text-table sm:text-table-sm" : "text-table-sm sm:text-table-sm")
+    : (farmer ? "text-body sm:text-table-sm" : "text-table sm:text-table-sm");
+  const titleClampClass = titleLen > 32 ? "line-clamp-2" : "truncate";
+
+  // Unit: >8 ký tự → giảm 1 nấc; luôn truncate để khỏi đẩy value xuống dòng
+  const unitMobileClass =
+    unitLen > 8 ? (farmer ? "text-table-sm sm:text-table-sm font-medium" : "text-table-sm sm:text-table-sm")
+    : (farmer ? "text-body sm:text-table-sm font-medium" : "text-table sm:text-table-sm");
+
+  // Value: nếu chuỗi value quá dài (vd "1.234,5") trên mobile → giảm 1 nấc
+  const valueLen = renderValue.length;
+  const valueMobileClass =
+    valueLen > 7 ? (farmer ? "text-[32px] sm:text-[26px]" : "text-[26px] sm:text-[26px]")
+    : valueLen > 5 ? (farmer ? "text-[34px] sm:text-[26px]" : "text-[28px] sm:text-[26px]")
+    : (farmer ? "text-[38px] sm:text-[26px]" : "text-[30px] sm:text-[26px]");
+
+  // Hint: >28 ký tự → giảm 1 nấc + truncate (1 dòng)
+  const hintMobileClass =
+    hintLen > 28 ? (farmer ? "text-table-sm sm:text-caption" : "text-caption sm:text-caption")
+    : (farmer ? "text-table sm:text-caption" : "text-table-sm sm:text-caption");
+
   return (
     <div
       className={cn(
@@ -111,10 +142,14 @@ export function KpiCard({
 
       {/* Header: title + icon */}
       <div className={cn("flex items-start justify-between gap-2", farmer ? "mb-3 sm:mb-1.5" : "mb-2 sm:mb-1.5")}>
-        <p className={cn(
-          "font-semibold sm:font-medium text-text-2 leading-snug",
-          farmer ? "text-body sm:text-table-sm" : "text-table sm:text-table-sm",
-        )}>{title}</p>
+        <p
+          title={titleLen > 22 ? title : undefined}
+          className={cn(
+            "font-semibold sm:font-medium text-text-2 leading-snug min-w-0 flex-1",
+            titleMobileClass,
+            titleClampClass,
+          )}
+        >{title}</p>
         {Icon && (
           <div className={cn("shrink-0 rounded-md", farmer ? "p-2 sm:p-1" : "p-1.5 sm:p-1", TONE_CHIP[tone])}>
             <Icon className={cn(farmer ? "h-5 w-5 sm:h-3.5 sm:w-3.5" : "h-4 w-4 sm:h-3.5 sm:w-3.5")} />
@@ -123,18 +158,21 @@ export function KpiCard({
       </div>
 
       {/* Value + unit */}
-      <div className="flex items-baseline gap-1.5">
+      <div className="flex items-baseline gap-1.5 min-w-0">
         <span className={cn(
-          "font-display leading-none font-bold text-text-1 tabular-nums",
-          farmer ? "text-[38px] sm:text-[26px]" : "text-[30px] sm:text-[26px]",
+          "font-display leading-none font-bold text-text-1 tabular-nums shrink-0",
+          valueMobileClass,
         )}>
           {renderValue}
         </span>
         {renderUnit && (
-          <span className={cn(
-            "text-text-3",
-            farmer ? "text-body sm:text-table-sm font-medium" : "text-table sm:text-table-sm",
-          )}>{renderUnit}</span>
+          <span
+            title={unitLen > 8 ? renderUnit : undefined}
+            className={cn(
+              "text-text-3 truncate min-w-0",
+              unitMobileClass,
+            )}
+          >{renderUnit}</span>
         )}
       </div>
 
@@ -157,12 +195,15 @@ export function KpiCard({
             </span>
           )}
           {hint && (
-            <span className={cn(
-              "text-text-3 inline-flex items-center gap-1",
-              farmer ? "text-table sm:text-caption" : "text-table-sm sm:text-caption",
-            )}>
-              {t && <Minus className="h-2.5 w-2.5 text-text-3/60" />}
-              {hint}
+            <span
+              title={hintLen > 28 ? hint : undefined}
+              className={cn(
+                "text-text-3 inline-flex items-center gap-1 min-w-0 max-w-full",
+                hintMobileClass,
+              )}
+            >
+              {t && <Minus className="h-2.5 w-2.5 text-text-3/60 shrink-0" />}
+              <span className="truncate">{hint}</span>
             </span>
           )}
         </div>
