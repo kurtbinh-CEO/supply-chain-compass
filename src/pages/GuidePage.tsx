@@ -807,7 +807,7 @@ function DemoSection({ onNavigate }: { onNavigate: (route: string) => void }) {
               </span>
             </div>
             <p className="text-table text-text-2 mt-0.5">
-              Đi qua toàn bộ chu kỳ từ Demand → S&OP → Supply → Hub → DRP → Transport → Monitoring trong 7 phút.
+              Đi qua toàn bộ chu kỳ từ Demand → S&OP → Tồn kho → Hub → DRP → Đơn hàng → Giám sát trong 7 phút.
             </p>
           </div>
           <div className="text-right">
