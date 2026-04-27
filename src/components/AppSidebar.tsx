@@ -258,7 +258,7 @@ export function AppSidebar() {
     <aside
       className={cn(
         "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-surface-3 frosted-glass transition-all duration-200",
-        collapsed ? "w-16" : "w-[260px]"
+        collapsed ? "w-16" : "w-[280px]"
       )}
     >
       {/* Logo area */}
