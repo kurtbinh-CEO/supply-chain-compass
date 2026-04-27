@@ -76,8 +76,8 @@ const scFlows: RoleFlows = {
       why: "DRP cần data NM fresh. Stale >24h → DRP sai.", what: "Upload Excel hoặc nhập tay. UNIS dùng = tồn × share%.",
       how: "1. Drag-drop file NM\n2. Preview → [Xác nhận]\n3. NM chưa gửi → [Nhắc NM]", formula: "UNIS_dùng = on_hand × share%\nMikado: 2.500 × 60% = 1.500 − 120 = 1.380",
       highlights: [
-        { selector: "supply-upload", label: "Upload Excel / Template", description: "Drag-drop file NM vào zone, hoặc click [Upload Excel]. Hệ thống validate trước khi import." },
-        { selector: "supply-nm-table", label: "Bảng tồn kho NM", description: "Per NM: tổng tồn, UNIS dùng (= tồn × share%), đang về. NM stale → hàng đỏ, click [Nhắc NM]." },
+        { selector: "inventory-upload", label: "Upload Excel / Template", description: "Kéo-thả file NM vào vùng upload, hoặc bấm [Upload Excel]. Hệ thống kiểm tra trước khi nhập." },
+        { selector: "inventory-nm-table", label: "Bảng tồn kho NM", description: "Theo NM: tổng tồn, UNIS dùng (= tồn × share%), đang về. NM cũ → hàng đỏ, bấm [Nhắc NM]." },
       ],
     },
     {
@@ -183,30 +183,12 @@ const scFlows: RoleFlows = {
   formulas: [
     {
       title: "Safety Stock",
-      visual: <FormulaBarViz parts={[
-        { label: "Z", value: "1.65", sub: "SL 95%" },
-        { label: "×", value: "", sub: "" },
-        { label: "σ_fc_err", value: "28.5", sub: "forecast error", highlight: true },
-        { label: "×", value: "", sub: "" },
-        { label: "√LT", value: "√14", sub: "lead time" },
-        { label: "=", value: "", sub: "" },
-        { label: "SS", value: "176", sub: "m²/SKU", result: true },
-      ]} />,
+      visual: <FormulaText text="SS = Z × σ_fc_err × √LT  =  1,65 × 28,5 × √14  =  176 m²/SKU" />,
       detail: "σ_fc_error (sai số FC) KHÔNG PHẢI σ_demand → tiết kiệm 54% vốn",
     },
     {
       title: "Demand Total",
-      visual: <FormulaBarViz parts={[
-        { label: "FC", value: "4.800", sub: "statistical" },
-        { label: "+", value: "", sub: "" },
-        { label: "B2B", value: "2.200", sub: "weighted" },
-        { label: "+", value: "", sub: "" },
-        { label: "PO", value: "1.100", sub: "confirmed" },
-        { label: "−", value: "", sub: "" },
-        { label: "Overlap", value: "450", sub: "" },
-        { label: "=", value: "", sub: "" },
-        { label: "Demand", value: "7.650", sub: "m²", result: true },
-      ]} />,
+      visual: <FormulaText text="Demand = FC + B2B + PO − Overlap  =  4.800 + 2.200 + 1.100 − 450  =  7.650 m²" />,
       detail: "FC: Holt-Winters/XGBoost, MAPE 18,4%. B2B: deals ≥30% prob.",
     },
     {
@@ -312,12 +294,12 @@ const buyerFlows: RoleFlows = {
     {
       route: "/hub", label: "Sourcing", time: "30'", icon: <Factory className="h-5 w-5" />,
       keyAction: "Rank → Allocate → BPO", kpi: "BPO created",
-      why: "Sai NM = overdue + stockout. Ranking transparent.", what: "4 bước: Cần gì → NM rank → Phân bổ → MOQ + BPO.",
+      why: "Sai NM = overdue + stockout. Ranking transparent.", what: "3 bước: Cần gì → NM rank + Phân bổ → MOQ + BPO.",
       how: "1. CRITICAL → 4 NM eligible\n2. Mikado 88★ #1\n3. Primary 700 + Backup 140\n4. [Tạo BPO]",
       formula: "Score = W₁×LT + W₂×Cost + W₃×Rel\nMOQ = ceil(alloc ÷ MOQ) × MOQ",
       highlights: [
         { selector: "hub-tabs", label: "Sourcing & Đối chiếu", description: "Tab 1: Sourcing Workbench 4 bước. Tab 2: Đối chiếu BPO vs NM delivery." },
-        { selector: "hub-sourcing", label: "4-Step Sourcing", description: "① SKU cần mua (CRITICAL/MEDIUM) → ② NM ranking → ③ Primary/Backup phân bổ → ④ MOQ round-up + BPO." },
+        { selector: "hub-sourcing", label: "3 bước Sourcing", description: "① SKU cần mua (CRITICAL/MEDIUM) → ② NM ranking + Phân bổ Primary/Backup → ③ MOQ round-up + BPO." },
       ],
     },
   ],
@@ -378,63 +360,13 @@ function useCountUp(target: number, inView: boolean, duration = 800) {
 /*  VISUAL COMPONENTS                         */
 /* ═══════════════════════════════════════════ */
 
-/* Formula bar visualization */
-function FormulaBarViz({ parts }: { parts: { label: string; value: string; sub: string; highlight?: boolean; result?: boolean }[] }) {
-  const { ref, inView } = useInView();
+/* Plain text formula display (replaces legacy FormulaBarViz) */
+function FormulaText({ text }: { text: string }) {
   return (
-    <div ref={ref} className="flex items-center gap-1.5 flex-wrap py-2">
-      {parts.map((p, i) => {
-        if (p.label === "×" || p.label === "+" || p.label === "−" || p.label === "=" || p.label === "/")
-          return <span key={i} className="text-text-3 font-mono text-body font-light mx-1">{p.label}</span>;
-        return (
-          <AnimatedFormulaCell key={i} part={p} inView={inView} delay={i * 80} />
-        );
-      })}
-    </div>
-  );
-}
-
-function AnimatedFormulaCell({ part: p, inView, delay }: {
-  part: { label: string; value: string; sub: string; highlight?: boolean; result?: boolean };
-  inView: boolean; delay: number;
-}) {
-  const numericValue = parseFloat(p.value.replace(/[,.]/g, ""));
-  const isNumeric = !isNaN(numericValue) && p.value.length > 0;
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    if (!inView) return;
-    const t = setTimeout(() => setShow(true), delay);
-    return () => clearTimeout(t);
-  }, [inView, delay]);
-
-  const countedValue = useCountUp(isNumeric ? numericValue : 0, show, 700);
-
-  const formatValue = (v: number) => {
-    if (p.value.includes(".")) {
-      const parts = p.value.split(".");
-      return v.toLocaleString("vi-VN") + (parts[1] ? "" : "");
-    }
-    if (p.value.includes(",")) return v.toLocaleString("vi-VN");
-    return v.toLocaleString("vi-VN");
-  };
-
-  return (
-    <div className={cn(
-      "flex flex-col items-center px-3 py-2 rounded-lg min-w-[56px] transition-all duration-500",
-      p.result ? "bg-primary/15 ring-2 ring-primary/30" :
-      p.highlight ? "bg-[#b45309]/10 ring-1 ring-[#b45309]/30" :
-      "bg-surface-1",
-      show ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95"
-    )}>
-      <span className={cn(
-        "font-mono text-body font-bold tabular-nums",
-        p.result ? "text-primary" : p.highlight ? "text-[#b45309]" : "text-text-1"
-      )}>
-        {isNumeric && show ? formatValue(countedValue) : p.value}
-      </span>
-      <span className="text-[10px] text-text-3 font-medium mt-0.5">{p.label}</span>
-      {p.sub && <span className="text-[9px] text-text-3/60">{p.sub}</span>}
+    <div className="py-2">
+      <code className="block font-mono text-body text-text-1 bg-surface-1 rounded-lg px-3 py-2 leading-relaxed whitespace-pre-wrap">
+        {text}
+      </code>
     </div>
   );
 }
@@ -744,7 +676,7 @@ const demoSteps: DemoStep[] = [
       "Thanh chênh lệch giữa các phiên bản → FVA chọn tốt nhất",
       "Thanh công thức 6 ô: D − S − P = Net + SS = FC Min → [🔒 Khoá]",
     ],
-    keyAction: "Lock S&OP → mở /supply",
+    keyAction: "Lock S&OP → mở /inventory",
     metric: [
       { label: "Phiên bản", value: "v0 → v4" },
       { label: "FVA tốt nhất", value: "+5,9%" },
@@ -875,7 +807,7 @@ function DemoSection({ onNavigate }: { onNavigate: (route: string) => void }) {
               </span>
             </div>
             <p className="text-table text-text-2 mt-0.5">
-              Đi qua toàn bộ chu kỳ từ Demand → S&OP → Supply → Hub → DRP → Transport → Monitoring trong 7 phút.
+              Đi qua toàn bộ chu kỳ từ Demand → S&OP → Tồn kho → Hub → DRP → Đơn hàng → Giám sát trong 7 phút.
             </p>
           </div>
           <div className="text-right">
