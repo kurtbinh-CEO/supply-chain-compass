@@ -1136,21 +1136,36 @@ export default function DrpPage() {
             </button>
           </p>
         </div>
-        {wizardStep === 3 && (isPlanLocked || drpLocked ? (
-          <div className="flex items-center gap-2 rounded-button bg-surface-2 text-text-3 px-4 py-2 border border-surface-3">
-            <LockIcon className="h-4 w-4" /> Đã khoá plan
-          </div>
-        ) : (
-          <button
-            onClick={handleRerun}
-            disabled={isViewingOldVersion}
-            title={isViewingOldVersion ? "Phiên bản cũ — chỉ xem" : "Quay lại Bước 1 (Preflight) để chạy phiên bản mới"}
-            className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-3"
-          >
-            <Play className="h-4 w-4" /> Chạy lại DRP
-          </button>
-        ))}
+        <div className="flex items-center gap-2">
+          <TimeRangeFilter
+            mode="weekly"
+            value={timeRange}
+            onChange={setTimeRange}
+            screenId="drp"
+          />
+          {wizardStep === 3 && (isPlanLocked || drpLocked ? (
+            <div className="flex items-center gap-2 rounded-button bg-surface-2 text-text-3 px-4 py-2 border border-surface-3">
+              <LockIcon className="h-4 w-4" /> Đã khoá plan
+            </div>
+          ) : (
+            <button
+              onClick={handleRerun}
+              disabled={isViewingOldVersion || isHistory}
+              title={isHistory ? "Dữ liệu quá khứ — chỉ xem" : isViewingOldVersion ? "Phiên bản cũ — chỉ xem" : "Quay lại Bước 1 (Preflight) để chạy phiên bản mới"}
+              className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-3"
+            >
+              <Play className="h-4 w-4" /> Chạy lại DRP
+            </button>
+          ))}
+        </div>
       </div>
+
+      <HistoryBanner
+        range={timeRange}
+        onReset={() => setTimeRange(defaultTimeRange("weekly"))}
+        entity="DRP"
+        resetLabel="Quay về tuần này"
+      />
 
       {/* ── 3-STEP INDICATOR ── (luôn hiện) */}
       <DrpStepIndicator current={wizardStep} completed={wizardCompleted} />
