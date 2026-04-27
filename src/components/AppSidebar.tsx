@@ -41,6 +41,11 @@ interface NavItem {
   url: string;
   roles?: UserRole[];
   badgeKey?: DailyBadgeKey;
+  /** Override role được phép thấy badge (mặc định: cùng `roles` của item).
+   *  Để undefined → ai thấy item cũng thấy badge.
+   *  Để mảng cụ thể → CHỈ những role này thấy số trên badge,
+   *  giúp tránh lộ data nhạy cảm (vd: rủi ro lãnh đạo, tổng đơn pending). */
+  badgeRoles?: UserRole[];
 }
 
 interface PhaseLabel {
@@ -77,34 +82,50 @@ const navGroups: NavGroup[] = [
   {
     labelKey: "nav.monitoring",
     items: [
-      { kind: "item", titleKey: "nav.monitoringItem", icon: Activity, url: "/monitoring", badgeKey: "monitoring_alerts" },
+      // Số alerts hệ thống — chỉ SC_MANAGER thấy con số chi tiết.
+      { kind: "item", titleKey: "nav.monitoringItem", icon: Activity, url: "/monitoring",
+        badgeKey: "monitoring_alerts", badgeRoles: ["SC_MANAGER"] },
     ],
   },
   {
     labelKey: "nav.monthlyPlan",
     items: [
-      { kind: "item", titleKey: "nav.demandReview",   icon: BarChart3,      url: "/demand",       badgeKey: "demand_progress" },
-      { kind: "item", titleKey: "nav.sopConsensus",   icon: Handshake,      url: "/sop",          badgeKey: "sop_status" },
-      { kind: "item", titleKey: "nav.hubCommitment",  icon: Boxes,          url: "/hub",          badgeKey: "hub_commitment" },
-      { kind: "item", titleKey: "nav.gapScenario",    icon: AlertTriangle,  url: "/gap-scenario", badgeKey: "gap_pending" },
+      // Demand progress (8/12 CN): SC + CN cùng cần biết tiến độ submit.
+      { kind: "item", titleKey: "nav.demandReview",   icon: BarChart3,      url: "/demand",
+        badgeKey: "demand_progress", badgeRoles: ["SC_MANAGER", "CN_MANAGER"] },
+      // S&OP status (Đã chốt / Cần chốt): SC mới biết phiên họp.
+      { kind: "item", titleKey: "nav.sopConsensus",   icon: Handshake,      url: "/sop",
+        badgeKey: "sop_status", badgeRoles: ["SC_MANAGER"] },
+      // Hub commitment (6/8 NM): nội bộ SC team.
+      { kind: "item", titleKey: "nav.hubCommitment",  icon: Boxes,          url: "/hub",
+        badgeKey: "hub_commitment", badgeRoles: ["SC_MANAGER"] },
+      // Gap/scenario count: SC + CN.
+      { kind: "item", titleKey: "nav.gapScenario",    icon: AlertTriangle,  url: "/gap-scenario",
+        badgeKey: "gap_pending", badgeRoles: ["SC_MANAGER", "CN_MANAGER"] },
     ],
   },
   {
     labelKey: "nav.dailyOps",
     items: [
+      // Daily ops badges = chỉ số vận hành công khai → ai dùng menu cũng thấy được.
       { kind: "phase", label: "Chuẩn bị" },
       { kind: "item", titleKey: "nav.inventory",    icon: Package,      url: "/inventory",     badgeKey: "nm_cn_fresh" },
       { kind: "item", titleKey: "nav.demandWeekly", icon: CalendarDays, url: "/demand-weekly", badgeKey: "cn_adjust" },
       { kind: "phase", label: "Kết quả" },
       { kind: "item", titleKey: "nav.drpResult",    icon: GitBranch,    url: "/drp",           badgeKey: "exceptions" },
       { kind: "phase", label: "Thực thi" },
-      { kind: "item", titleKey: "nav.orders",       icon: Truck,        url: "/orders",        badgeKey: "po_pending" },
+      // Số PO pending = nhạy cảm cho SALES (lộ workload) → giới hạn SC + CN.
+      { kind: "item", titleKey: "nav.orders",       icon: Truck,        url: "/orders",
+        badgeKey: "po_pending", badgeRoles: ["SC_MANAGER", "CN_MANAGER"] },
     ],
   },
   {
     labelKey: "nav.partners",
     items: [
-      { kind: "item", titleKey: "nav.cnPortal", icon: Building, url: "/cn-portal", roles: ["CN_MANAGER", "SC_MANAGER", "SALES"], badgeKey: "cn_portal_pending" },
+      // Số CN có pending: chỉ SC + CN_MANAGER (SALES không cần thấy số nội bộ partners).
+      { kind: "item", titleKey: "nav.cnPortal", icon: Building, url: "/cn-portal",
+        roles: ["CN_MANAGER", "SC_MANAGER", "SALES"],
+        badgeKey: "cn_portal_pending", badgeRoles: ["SC_MANAGER", "CN_MANAGER"] },
     ],
   },
   {
@@ -290,7 +311,12 @@ export function AppSidebar() {
                       requestLeave(item.url);
                     }
                   };
-                  const badge = item.badgeKey ? dailyBadges[item.badgeKey] : null;
+                  // Badge chỉ hiện nếu (a) item có badgeKey, (b) data ≠ null,
+                  // và (c) role hiện tại nằm trong badgeRoles (nếu có khai báo).
+                  // Tránh để SALES nhìn thấy số nội bộ như rủi ro/tổng PO pending.
+                  const rawBadge = item.badgeKey ? dailyBadges[item.badgeKey] : null;
+                  const canSeeBadge = !item.badgeRoles || item.badgeRoles.includes(user.role);
+                  const badge = canSeeBadge ? rawBadge : null;
 
                   return (
                     <NavLink
