@@ -6,6 +6,7 @@ import {
   Truck, Database, FileBarChart, Settings,
   ChevronLeft, Play, BookOpen, Building, GraduationCap, LayoutDashboard,
   AlertTriangle, RefreshCw, Crown, FlaskConical, GitCompare, ScrollText, GraduationCap as GradCap,
+  Minimize2, Maximize2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarState } from "@/components/SidebarContext";
