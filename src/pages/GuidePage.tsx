@@ -82,24 +82,28 @@ const scFlows: RoleFlows = {
     },
     {
       route: "/drp", label: "Xem DRP", time: "~10'", icon: <GitBranch className="h-5 w-5" />,
-      keyAction: "DRP chạy 23:00 — xem kết quả", kpi: "0 exception",
-      why: "DRP đêm qua tính 95% OK. Focus 5% exceptions.", what: "3 lớp: Kết quả → Cách tính → Điều chỉnh.",
-      how: "1. CN-BD 86%, 2 exceptions\n2. GA-300 SHORTAGE 345\n3. Lateral / PO mới / Kết hợp", formula: "Net = Demand − On_hand − Pipeline + SS\n617 − 120 − 557 + 900 = 840\nSS = z × σ_fc_error × √LT",
+      keyAction: "DRP chạy 23:00 — xem kết quả", kpi: "0 ngoại lệ",
+      why: "DRP đêm qua tính 95% OK. Focus 5% ngoại lệ.", what: "3 bước: Kiểm tra data → Chạy DRP → Xem kết quả. Exception-first.",
+      how: "1. Preflight: 6 điều kiện (NM tồn, CN tồn, S&OP lock...)\n2. Chạy DRP: progress bar 10 bước\n3. Kết quả: Summary cards + exception table + [Duyệt → Đơn hàng]",
+      formula: "Net = Demand − Tồn_CN − Đang_về + SS",
       highlights: [
-        { selector: "drp-header", label: "Header & Chạy DRP", description: "Xem lần chạy cuối + badge exceptions. Click [Chạy DRP] để chạy lại ngay bất kỳ lúc nào." },
-        { selector: "drp-exceptions-badge", label: "Exceptions Badge", description: "Số exceptions đỏ = các SKU cần xử lý thủ công. Focus 5% này, 95% OK auto." },
-        { selector: "drp-controls", label: "Controls: Tham số & Pivot", description: "Toggle Tham số (Lớp 3) hoặc đổi Pivot CN↔SKU để xem 2 góc nhìn khác nhau." },
-        { selector: "drp-results-table", label: "Bảng kết quả per CN", description: "Click hàng CN-BD (fill 86%) → drill xuống Lớp 2 xem SKU exceptions + 3 options giải quyết." },
+        { selector: "drp-preflight", label: "Kiểm tra trước chạy", description: "6 điều kiện. NM tồn mới? S&OP locked? Đủ → chạy." },
+        { selector: "drp-progress", label: "Tiến trình chạy", description: "10 bước. Mỗi bước xong → hiện kết quả. ~2 phút." },
+        { selector: "drp-results", label: "Kết quả + Ngoại lệ", description: "Summary cards + pills [🟢9 đủ] [🔴1 thiếu]. Exception expand → gợi ý action." },
+        { selector: "drp-version", label: "So sánh phiên bản", description: "[Lịch sử] xem v1→v3. [So sánh] 2 version. [Khóa] chốt." },
       ],
     },
     {
       route: "/orders", label: "Duyệt PO", time: "~5'", icon: <Truck className="h-5 w-5" />,
-      keyAction: "Duyệt PO/TO trước khi gửi NM", kpi: "0 chờ duyệt",
-      why: "NM chỉ sản xuất khi nhận PO trong Bravo.", what: "ATP check → Duyệt → Post. SHIP/HOLD inline.",
-      how: "1. [Gửi ATP tất cả]\n2. Pass → [Duyệt tất cả]\n3. [Post Bravo]", formula: "ATP = on_hand × share% × honoring\n2.500 × 60% × 92% = 1.380",
+      keyAction: "PO group 2 tầng + filter pills", kpi: "0 chờ duyệt",
+      why: "PO 2 tầng (NM×CN → SKU). Lifecycle 7 trạng thái có SLA tự nhắc.",
+      what: "PO group 2 tầng (NM×CN → drill SKU). 7 trạng thái lifecycle. Filter pills.",
+      how: "1. Filter [⚠️ Trễ] → PO quá SLA\n2. Click PO → expand SKU + lifecycle + cam kết gốc\n3. Badge clickable → Gửi NM → NM xác nhận → Đặt xe → ...",
+      formula: "Lifecycle: Duyệt → NM → Xe → Lấy → Chở → Giao → Xong\nSLA: NM 3d, Xe 1d, Lấy 4h, ETA+4h, POD 2h",
       highlights: [
-        { selector: "orders-tabs", label: "3 Tab: Duyệt / Vận chuyển / Theo dõi", description: "Workflow lifecycle PO từ duyệt đến giao hàng." },
-        { selector: "orders-status-table", label: "Status Summary Table", description: "Click hàng status → drill xuống danh sách PO cụ thể. Action buttons per status: [Gửi ATP] → [Duyệt] → [Post Bravo]." },
+        { selector: "orders-group", label: "PO 2 tầng", description: "1 đơn = NM×CN. Expand → SKU lines + giá + cam kết gốc." },
+        { selector: "orders-lifecycle", label: "7 trạng thái", description: "Badge clickable → popup chuyển. Reminder: NM 3d, xe 4h." },
+        { selector: "orders-burndown", label: "Tiến độ cam kết", description: "Cam kết 4.200 → Released 52%. Burn-down per NM." },
       ],
     },
   ],
@@ -118,29 +122,29 @@ const scFlows: RoleFlows = {
     },
     {
       route: "/sop", label: "Đồng thuận S&OP", time: "Ngày 3-5", icon: <ShieldCheck className="h-5 w-5" />,
-      keyAction: "So sánh v0→v4, khóa demand", kpi: "1 số đồng ý",
-      why: "4 bộ phận, 4 con số → phải ĐỒNG Ý 1 số.", what: "Tab 1: 4 versions × FVA. Tab 2: FormulaBar 6 ô → Lock.",
-      how: "1. v0/v1/v2 → FVA chọn best\n2. FormulaBar: D−S−P=Net+SS=FCMin\n3. [🔒 Lock] → phasing auto",
-      formula: "Net = D − S − P = 7.650 − 3.200 − 1.757 = 2.693\nFVA = MAPE(v0) − MAPE(vX)\nFVA_CN = 8,1% − 2,2% = +5,9%",
+      keyAction: "4 thẻ + table CN→SKU + giải trình", kpi: "1 số đồng ý",
+      why: "4 bộ phận, 4 con số → phải ĐỒNG Ý 1 số.",
+      what: "3 lớp: Header + 4 cards + Table CN→SKU drill-down + Action bar. Không tabs.",
+      how: "1. 4 cards: Đồng thuận | So AOP | CN cần xem | Giải trình\n2. Table CN→SKU: expand child compact. Highlight chênh >10%.\n3. Action bar: [Giải trình] [Cân đối] [🔒 Khóa S&OP]",
+      formula: "VS AOP = (V3 − AOP) / AOP × 100%\n|VS AOP| > 10% → cần giải trình",
       highlights: [
-        { selector: "sop-status", label: "Status Strip & Lock Countdown", description: "Day 5/30, Lock Day 7 — còn 2 ngày. Sau lock, demand frozen cho DRP." },
-        { selector: "sop-consensus", label: "Consensus Tab: 4 Versions", description: "v0 (Stat) → v1 (Sales) → v2 (CN) → v3 (Consensus). FVA chọn version tốt nhất per CN." },
-        { selector: "sop-balance", label: "Cân đối & Lock", description: "FormulaBar: D − S − P = Net + SS = FC Min. Click [🔒 Lock] khi đồng ý 1 số." },
+        { selector: "sop-cards", label: "4 thẻ tóm tắt", description: "Mỗi số 1 lần. Đồng thuận · So AOP · CN cần xem · Giải trình." },
+        { selector: "sop-table", label: "Bảng CN→SKU", description: "Pivot 2 chiều. Expand child compact. Highlight đỏ >10%." },
+        { selector: "sop-actions", label: "Giải trình + Khóa", description: "Lock → auto trigger Booking. Chưa giải trình → lock disabled." },
       ],
     },
     {
       route: "/hub", label: "Cam kết NM", time: "Ngày 5-7", icon: <Factory className="h-5 w-5" />,
-      keyAction: "Hard/Firm/Soft → NM xác nhận", kpi: "Honoring ≥ 85%",
-      why: "NM cam kết 3 mức: Hard (chốt) / Firm (90%) / Soft (60%).", what: "Workbench rank NM, gửi cam kết, theo dõi response.",
-      how: "1. Rank NM (Score = LT×50 + Cost×30 + Rel×20)\n2. Gửi Hard/Firm/Soft\n3. NM confirm → tạo BPO",
-      formula: "Score = W₁×LT + W₂×Cost + W₃×Reliability\nHybrid: 50/30/20",
-    },
-    {
-      route: "/hub", label: "Hub ảo", time: "Ngày 7-8", icon: <Layers className="h-5 w-5" />,
-      keyAction: "Hub = Σ confirmed − released − SS", kpi: "Hub balance",
-      why: "Hub ảo = tổng cam kết NM trừ đã release, dùng cho allocation.", what: "Real-time Hub balance per SKU. Dùng cho phân bổ DRP hằng ngày.",
-      how: "1. Xem Hub balance per SKU\n2. So sánh vs Demand tuần\n3. Gap → kích hoạt kịch bản",
-      formula: "Hub = Σ(NM_confirmed) − Σ(Released_PO) − SS_buffer",
+      keyAction: "Booking → Cam kết → PO & Theo dõi", kpi: "Honoring ≥ 85%",
+      why: "Cam kết NM là cốt lõi: gọi NM, gõ tay, upload bằng chứng → PO chính xác.",
+      what: "3 bước: ① Booking (auto) → ② Cam kết (gọi NM, gõ tay) → ③ PO & Theo dõi.",
+      how: "1. Booking: NM cần cung bao nhiêu (auto sau S&OP lock)\n2. Cam kết: gọi NM → gõ cam kết → upload ảnh → badge clickable\n3. PO tracking: burn-down per NM. [📦 Tạo PO thủ công] nếu khẩn.",
+      formula: "Hub = Σ(NM committed) − Σ(PO released) − SS Hub\nCần đặt = S&OP 3M − Hub còn − Pipeline",
+      highlights: [
+        { selector: "hub-steps", label: "3 bước", description: "Booking → Cam kết → PO tracking. Step indicator ngang." },
+        { selector: "hub-commitment", label: "NM→SKU 2 tầng", description: "5 NM groups → expand SKU. Badge clickable chuyển trạng thái." },
+        { selector: "hub-po", label: "PO thủ công + Burn-down", description: "[📦 Tạo PO] khẩn cấp. Progress bar per NM." },
+      ],
     },
     {
       route: "/gap-scenario", label: "Gap", time: "Ngày 8-9", icon: <AlertTriangle className="h-5 w-5" />,
@@ -162,6 +166,13 @@ const scFlows: RoleFlows = {
     { icon: <Layers className="h-4 w-4" />, text: "📊 Bảng nào cũng có: Thu gọn · Lọc · Toàn màn hình" },
     { icon: <Zap className="h-4 w-4" />, text: "▶ [Chạy DRP] bất kỳ lúc nào" },
     { icon: <TrendingUp className="h-4 w-4" />, text: "🔄 Xoay bảng: CN ↔ Mã hàng — 2 góc nhìn" },
+    { icon: <CalendarDays className="h-4 w-4" />, text: "📅 Xem lịch sử: [📅 Tuần này ▼] → chọn tuần/tháng trước. Quá khứ = chỉ xem." },
+    { icon: <MousePointerClick className="h-4 w-4" />, text: "🔍 Tìm nhanh: Cmd+K → gõ CN, SKU, PO → nhảy đến ngay." },
+    { icon: <TrendingUp className="h-4 w-4" />, text: "📊 Xoay bảng: [CN → SKU] ↔ [SKU → CN] — 2 góc nhìn cho cùng dữ liệu." },
+    { icon: <Package className="h-4 w-4" />, text: "📦 PO khẩn: Hub → Bước 2 → row 🟢 → [📦 Tạo PO thủ công]." },
+    { icon: <Clock className="h-4 w-4" />, text: "⏳ Nhắc tự động: NM 3d, xe trễ 4h, POD 2h — hệ thống nhắc." },
+    { icon: <Sparkles className="h-4 w-4" />, text: "⚙ Tùy chỉnh thẻ: [⚙] góc phải → chọn thẻ hiện/ẩn." },
+    { icon: <GitBranch className="h-4 w-4" />, text: "🔄 So sánh: DRP/S&OP/Hub có [Lịch sử] [So sánh] phiên bản." },
   ],
   formulas: [
     {
@@ -273,13 +284,13 @@ const salesFlows: RoleFlows = {
 const buyerFlows: RoleFlows = {
   daily: [
     {
-      route: "/supply", label: "Tồn NM", time: "5'", icon: <Package className="h-5 w-5" />,
+      route: "/inventory", label: "Tồn kho", time: "5'", icon: <Package className="h-5 w-5" />,
       keyAction: "Upload → Xác nhận", kpi: "Fresh <24h",
       why: "DRP cần data NM fresh. Stale → PO fail.", what: "Upload Excel. UNIS dùng = tồn × share%.",
       how: "1. Drag-drop file\n2. [Xác nhận]\n3. Stale → [Nhắc NM]", formula: "UNIS_dùng = on_hand × share%",
     },
     {
-      route: "/orders", label: "Duyệt PO", time: "5'", icon: <CheckCircle2 className="h-5 w-5" />,
+      route: "/orders", label: "PO Lifecycle", time: "5'", icon: <CheckCircle2 className="h-5 w-5" />,
       keyAction: "ATP → Duyệt → Post", kpi: "0 draft",
       why: "Bạn duyệt cuối cùng trước khi NM nhận đơn.", what: "ATP check → Duyệt → Post Bravo. Force 3 cấp.",
       how: "1. [Gửi ATP tất cả]\n2. Pass → [Duyệt]\n3. [Post Bravo]", formula: "ATP = on_hand × share% × honoring\nPass: ATP ≥ RPO qty",
@@ -736,8 +747,8 @@ const demoSteps: DemoStep[] = [
   },
   {
     num: 3,
-    route: "/supply",
-    routeLabel: "NM Supply",
+    route: "/inventory",
+    routeLabel: "Tồn kho",
     title: "Booking 4.500 m² — kiểm tra fresh",
     duration: "1'",
     icon: <Package className="h-5 w-5" />,
@@ -1135,6 +1146,33 @@ export default function GuidePage() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* ═══ TÍNH NĂNG CHUNG ═══ */}
+          <div>
+            <h3 className="font-display text-body font-semibold text-text-1 mb-3">Tính năng chung</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { icon: "🔲", title: "SmartTable", desc: "Mọi bảng: chế độ xem · ẩn/hiện cột · lọc · toàn màn hình · xuất" },
+                { icon: "🔀", title: "Pivot 2 chiều", desc: "Xoay [CN → SKU] ↔ [SKU → CN]. Mỗi mode cột + drill-down khác." },
+                { icon: "📊", title: "Thẻ tóm tắt", desc: "3-5 thẻ trên mỗi bảng. Click → lọc/drill. [⚙] tùy chỉnh." },
+                { icon: "📅", title: "Lọc thời gian", desc: "[📅 Tuần này ▼] → xem lịch sử. Quá khứ = chỉ xem." },
+                { icon: "🔢", title: "Click xem nguồn", desc: "Số gạch chấm = clickable → popup phân tích + công thức." },
+                { icon: "📋", title: "Kế hoạch tháng", desc: "[Tháng 5/2026 ▼]. Tháng khóa = read-only." },
+                { icon: "🔄", title: "Lịch sử phiên bản", desc: "[Lịch sử] v1→v3. [So sánh] delta. [Khóa] chốt." },
+                { icon: "📥", title: "Nhập dữ liệu", desc: "[Tích hợp] [Tải lên Excel] [Nhập tay]. Wizard 5 bước." },
+              ].map((f) => (
+                <div key={f.title} className="flex items-start gap-3 rounded-lg border border-surface-3 bg-surface-0 px-4 py-3 hover:shadow-sm transition-shadow">
+                  <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-primary/8 text-body shrink-0">
+                    <span aria-hidden>{f.icon}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-display text-table font-semibold text-text-1">{f.title}</div>
+                    <div className="text-table-sm text-text-2 mt-0.5">{f.desc}</div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
