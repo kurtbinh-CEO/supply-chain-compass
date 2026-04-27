@@ -230,6 +230,8 @@ export default function OrdersPage() {
         onReset={() => setTimeRange(defaultTimeRange("weekly"))}
         entity="đơn hàng"
         resetLabel="Quay về tuần này"
+        currentLabel="Tuần này (W20)"
+        compareMetrics={ordersCompare(timeRange)}
       />
 
       {/* ═══ LỚP 1: SUMMARY CARDS — chỉ để nhìn, click = drill-down popup ═══ */}
