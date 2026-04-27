@@ -12,6 +12,7 @@ import { useWorkflow } from "@/components/WorkflowContext";
 import { useWorkspace } from "@/components/WorkspaceContext";
 import { useRbac, UserRole } from "@/components/RbacContext";
 import { useLocation, useNavigate } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useI18n } from "@/components/i18n/I18nContext";
 import { useOnboarding } from "@/components/onboarding/OnboardingContext";
 import { getTourForRoute } from "@/components/onboarding/tours";
