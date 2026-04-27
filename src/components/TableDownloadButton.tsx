@@ -403,6 +403,7 @@ export function TableDownloadButton({
               </>
             )}
           </div>
+        )}
       </div>
 
       {/* Preview modal */}
