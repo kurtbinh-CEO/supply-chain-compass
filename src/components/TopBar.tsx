@@ -1,4 +1,4 @@
-import { Search, Bell, ChevronRight, Sun, Moon, Monitor, Globe, ChevronDown, LogOut } from "lucide-react";
+import { Search, Bell, ChevronRight, Sun, Moon, Monitor, Globe, ChevronDown, LogOut, Palette } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTenant, TenantName } from "@/components/TenantContext";
 import { useThemeMode } from "@/components/ThemeContext";
@@ -289,6 +289,18 @@ export function TopBar() {
             <opt.icon className="h-3 w-3" />
           </button>
         ))}
+
+        <div className="h-4 w-px bg-surface-3" />
+
+        {/* Mở trang tuỳ biến giao diện đầy đủ (theme + sidebar style + layout + direction). */}
+        <button
+          onClick={() => navigate("/appearance")}
+          className="rounded-md p-1.5 text-text-3 hover:text-text-1 hover:bg-surface-2 transition-all"
+          title="Tuỳ biến giao diện"
+          aria-label="Mở trang tuỳ biến giao diện"
+        >
+          <Palette className="h-3 w-3" />
+        </button>
       </div>
 
       {/* Bell — standalone */}

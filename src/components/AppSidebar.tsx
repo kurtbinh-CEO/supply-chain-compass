@@ -240,7 +240,7 @@ function badgeClasses(tone: BadgeData["tone"]) {
 }
 
 export function AppSidebar() {
-  const { collapsed, toggle, compact, toggleCompact, width } = useSidebarState();
+  const { collapsed, toggle, compact, toggleCompact, width, sidebarStyle } = useSidebarState();
   const { startWorkflow, isBarVisible, isRouteInWorkflow, requestLeave } = useWorkflow();
   const { pendingCount } = useWorkspace();
   const { user } = useRbac();
@@ -256,13 +256,24 @@ export function AppSidebar() {
     navigate(type === "daily" ? "/inventory" : "/demand");
   };
 
+  // Style variants:
+  //  - sidebar:  full-height sát mép trái, viền phải.
+  //  - inset:    cách mép 8px, bo góc lớn, có shadow nhẹ → giống "inset" trong shadcn.
+  //  - floating: cách mép 12px, bo góc, shadow đậm — nổi trên content.
+  const styleClasses =
+    sidebarStyle === "inset"
+      ? "top-2 left-2 bottom-2 h-[calc(100vh-1rem)] rounded-card border border-surface-3 shadow-md"
+      : sidebarStyle === "floating"
+        ? "top-3 left-3 bottom-3 h-[calc(100vh-1.5rem)] rounded-card border border-surface-3 shadow-2xl"
+        : "top-0 left-0 h-screen border-r border-surface-3";
+
   return (
     <aside
       // Width động theo context (collapsed → 64 · compact → 232 · normal → 280).
-      // Dùng inline style thay vì class cố định để hai mode chuyển mượt qua transition-[width].
       style={{ width }}
       className={cn(
-        "fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-surface-3 frosted-glass transition-[width] duration-200"
+        "fixed z-40 flex flex-col frosted-glass transition-[width] duration-200",
+        styleClasses,
       )}
     >
       {/* Logo area */}
