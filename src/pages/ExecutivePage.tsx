@@ -21,6 +21,7 @@ import {
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenShell";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
+import { executiveCompare } from "@/lib/compare-metrics";
 import { SmartTable, SmartTableColumn } from "@/components/SmartTable";
 import { Button } from "@/components/ui/button";
 import {
