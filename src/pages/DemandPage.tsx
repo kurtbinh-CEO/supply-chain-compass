@@ -226,14 +226,19 @@ export default function DemandPage() {
               <button
                 type="button"
                 onClick={() => setAopOpen(true)}
-                title="Click để xem / chỉnh sửa Kế hoạch năm"
-                className="group inline-flex items-center gap-1.5 rounded-full bg-info-bg text-info px-3 py-1 text-table-sm font-medium hover:bg-info/15 hover:ring-1 hover:ring-info/30 transition-all"
+                title={`AOP ${aopPlan.year}: ${aopPlan.totalTarget.toLocaleString("vi-VN")} m² — click để xem / chỉnh sửa`}
+                className="group inline-flex items-center gap-1.5 rounded-button bg-info-bg text-info px-2.5 text-table-sm font-medium hover:bg-info/15 hover:ring-1 hover:ring-info/30 transition-all"
               >
-                AOP {aopPlan.year}: {aopPlan.totalTarget.toLocaleString("vi-VN")} m²
+                <span className="text-info/70">AOP</span>
+                <span>{(aopPlan.totalTarget / 1000).toFixed(0)}k m²</span>
                 <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
-              <span className="rounded-full bg-success-bg text-success px-3 py-1 text-table-sm font-medium">
-                YTD: {getFcActualYtd(aopPlan.year).toLocaleString("vi-VN")} ({((getFcActualYtd(aopPlan.year) / aopPlan.totalTarget) * 100).toFixed(1)}%)
+              <span
+                className="inline-flex items-center gap-1.5 rounded-button bg-success-bg text-success px-2.5 text-table-sm font-medium"
+                title={`YTD ${getFcActualYtd(aopPlan.year).toLocaleString("vi-VN")} m² / AOP ${aopPlan.totalTarget.toLocaleString("vi-VN")} m²`}
+              >
+                <span className="text-success/70">YTD</span>
+                <span>{((getFcActualYtd(aopPlan.year) / aopPlan.totalTarget) * 100).toFixed(0)}%</span>
               </span>
             </>
           }
