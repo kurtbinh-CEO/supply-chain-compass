@@ -75,13 +75,14 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
 
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5 mb-5">
         <HeroCard
           onClick={() => setOpen("nm-risk")}
           icon={<ShieldAlert className="h-4 w-4" />}
           tone="danger"
           label="Rủi ro NM"
-          value="5 NM"
+          value="5"
+          unit="nhà máy"
           sub="1 rủi ro cao"
         />
         <HeroCard
@@ -89,31 +90,35 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
           icon={<Repeat className="h-4 w-4" />}
           tone="primary"
           label="ROI Bánh đà"
-          value="MAPE → SS → WC"
-          sub="Tiết kiệm 340 triệu ₫"
+          value="340"
+          unit="triệu ₫"
+          sub="Tiết kiệm tháng này"
         />
         <HeroCard
           onClick={() => setOpen("ss-alert")}
           icon={<ShieldCheck className="h-4 w-4" />}
           tone="warning"
-          label="Cảnh báo Tồn kho an toàn"
-          value="2 thay đổi"
-          sub="Vốn lưu động +128 triệu ₫"
+          label="Tồn kho an toàn"
+          value="2"
+          unit="thay đổi"
+          sub="Vốn +128 triệu ₫"
         />
         <HeroCard
           onClick={() => setOpen("bpo-pace")}
           icon={<Truck className="h-4 w-4" />}
           tone="warning"
           label="Tiến độ đặt hàng"
-          value="72%"
-          sub="Pace 🟡"
+          value="72"
+          unit="%"
+          sub="Pace chậm nhẹ"
         />
         <HeroCard
           onClick={() => setOpen("fc-accuracy")}
           icon={<LineIcon className="h-4 w-4" />}
           tone="info"
           label="Độ chính xác dự báo"
-          value="MAPE 18%"
+          value="18"
+          unit="% MAPE"
           sub="↗ tăng 3 tuần"
         />
       </div>
@@ -132,34 +137,63 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
 }
 
 /* ─── Card primitive ──────────────────────────────────────────────────── */
-function HeroCard({ onClick, icon, tone, label, value, sub }: {
+/**
+ * HeroCard — gọn cho farmer/ops:
+ *  - Header 1 dòng: icon chip + label (truncate).
+ *  - Số liệu là điểm neo: font 26px bold, tabular-nums, kèm unit chữ nhỏ.
+ *  - Sub là 1 câu mô tả ngắn — không lặp lại số.
+ *  - Padding p-3 (12px) + gap-1 → ít whitespace, vẫn breathable.
+ *  - Border-l 3px tone strip thay cho viền cả thẻ → bớt noise màu.
+ *  - Chevron mờ ở góc phải = affordance "click để mở".
+ */
+function HeroCard({ onClick, icon, tone, label, value, unit, sub }: {
   onClick: () => void;
   icon: React.ReactNode;
   tone: "danger" | "warning" | "primary" | "info";
   label: string;
   value: string;
+  unit?: string;
   sub: string;
 }) {
-  const toneClasses: Record<typeof tone, string> = {
-    danger:  "bg-danger/5  border-danger/20  text-danger  hover:bg-danger/10",
-    warning: "bg-warning/5 border-warning/20 text-warning hover:bg-warning/10",
-    primary: "bg-primary/5 border-primary/20 text-primary hover:bg-primary/10",
-    info:    "bg-info/5    border-info/20    text-info    hover:bg-info/10",
+  const stripClasses: Record<typeof tone, string> = {
+    danger:  "border-l-danger",
+    warning: "border-l-warning",
+    primary: "border-l-primary",
+    info:    "border-l-info",
+  };
+  const chipClasses: Record<typeof tone, string> = {
+    danger:  "bg-danger/10  text-danger",
+    warning: "bg-warning/10 text-warning",
+    primary: "bg-primary/10 text-primary",
+    info:    "bg-info/10    text-info",
   };
   return (
     <button
       onClick={onClick}
       className={cn(
-        "rounded-xl border p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary",
-        toneClasses[tone]
+        "group relative overflow-hidden rounded-card border border-surface-3 border-l-[3px] bg-surface-1",
+        "p-3 text-left transition-all hover:shadow-sm hover:-translate-y-px",
+        "focus:outline-none focus:ring-2 focus:ring-primary/40",
+        stripClasses[tone],
       )}
     >
-      <div className="flex items-center gap-2 mb-2">
-        <div className={cn("rounded-lg p-1.5 bg-surface-0/80")}>{icon}</div>
-        <span className="text-caption font-medium text-text-2">{label}</span>
+      {/* Header: icon chip + label */}
+      <div className="flex items-center gap-2 mb-1.5">
+        <div className={cn("shrink-0 rounded-md p-1", chipClasses[tone])}>
+          {icon}
+        </div>
+        <span className="text-table-sm font-medium text-text-2 truncate">{label}</span>
+        <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-3/40 group-hover:text-text-3 transition-colors" />
       </div>
-      <div className="font-display text-[20px] leading-tight font-bold text-text-1">{value}</div>
-      <div className="text-caption text-text-3 mt-0.5">{sub}</div>
+      {/* Value — điểm neo */}
+      <div className="flex items-baseline gap-1.5">
+        <span className="font-display text-[24px] leading-none font-bold text-text-1 tabular-nums">
+          {value}
+        </span>
+        {unit && <span className="text-caption text-text-3">{unit}</span>}
+      </div>
+      {/* Sub — 1 câu ngắn */}
+      <div className="text-caption text-text-3 mt-1 truncate">{sub}</div>
     </button>
   );
 }
