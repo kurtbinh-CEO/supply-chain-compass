@@ -890,8 +890,13 @@ function RoutesTab() {
         >
           CN → CN (LCNB) ({TRANSIT_LT.filter(t => t.mode === "CN_TO_CN").length} tuyến)
         </button>
-        <div className="ml-auto text-table-sm text-text-3">
-          Click ô số để chỉnh sửa
+        <div className="ml-auto flex items-center gap-2 text-table-sm text-text-3">
+          <span>Click ô số để chỉnh sửa</span>
+          <TableDownloadButton
+            targetId={mode === "NM_TO_CN" ? "lt-matrix-nm-cn" : "lt-matrix-cn-cn"}
+            filename={mode === "NM_TO_CN" ? "lt-nm-to-cn" : "lt-cn-to-cn"}
+            size="xs"
+          />
         </div>
       </div>
 
