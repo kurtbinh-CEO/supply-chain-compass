@@ -365,17 +365,21 @@ export function AppSidebar() {
                       {!collapsed && (
                         <>
                           <span className="flex-1 truncate">{t(item.titleKey)}</span>
-                          {/* Workspace pending count */}
+                          {/* ── Sidebar badge — chuẩn chung ──
+                           * Tất cả badge (workspace pending + daily ops dynamic) dùng cùng:
+                           *   - font-size 10px (text-[10px]) · font-semibold · leading-tight
+                           *   - padding 1.5×0.5 · rounded-full · min-w 20px (canh giữa cho số 1 chữ số)
+                           *   - tabular-nums (số khớp cột) · h-[18px] (canh hàng với icon 18px)
+                           * Tone (bg/text color) là biến số duy nhất giữa các badge. */}
                           {item.url === "/workspace" && pendingCount > 0 && (
-                            <span className="rounded-full bg-danger-bg text-danger text-caption font-semibold px-1.5 py-0.5 min-w-[20px] text-center">
+                            <span className="inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full bg-danger-bg text-danger text-[10px] font-semibold leading-tight tabular-nums px-1.5">
                               {pendingCount}
                             </span>
                           )}
-                          {/* Daily-ops dynamic badge */}
                           {badge && (
                             <span
                               className={cn(
-                                "rounded-full text-[10px] font-semibold px-1.5 py-0.5 leading-tight tabular-nums",
+                                "inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full text-[10px] font-semibold leading-tight tabular-nums px-1.5",
                                 badgeClasses(badge.tone),
                               )}
                             >
