@@ -72,6 +72,28 @@ function presetLabel(mode: TimeRangeMode, key: TimeRangePreset): string {
   return PRESETS[mode].find((p) => p.key === key)?.label ?? key;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Timezone-safe date helpers.
+   Quy ước: tất cả ISO date string ở dạng "YYYY-MM-DD" và LUÔN
+   được hiểu theo múi giờ LOCAL của người dùng (không phải UTC).
+   Tránh dùng new Date(iso).toISOString() vì sẽ lệch ngày khi
+   user ở UTC+7 (VN) lúc đêm khuya hoặc UTC- vào sáng sớm.
+   ───────────────────────────────────────────────────────────── */
+
+/** Format Date → "YYYY-MM-DD" theo giờ LOCAL. */
+function toLocalIso(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Parse "YYYY-MM-DD" → Date tại 12:00 LOCAL (tránh DST cấn 00:00). */
+function parseLocalIso(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
+}
+
 function fmtDateVi(iso?: string): string {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");
