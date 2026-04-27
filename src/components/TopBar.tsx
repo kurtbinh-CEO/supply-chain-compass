@@ -167,19 +167,20 @@ function FreshnessIndicator() {
       <TooltipTrigger asChild>
         <button
           onClick={() => navigate("/sync")}
+          style={{ maxWidth: KPI_THRESHOLDS.chipMaxWidthDesktop }}
           className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 h-8 text-caption font-medium transition-all whitespace-nowrap",
+            "flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 h-8 text-caption font-medium transition-all min-w-0",
             tone.border,
             tone.text,
             tone.bg,
           )}
-          title="Mở Đồng bộ dữ liệu"
+          title={`Mở Đồng bộ dữ liệu — ${shortLabel}`}
         >
-          <span className="relative flex h-2 w-2 items-center justify-center">
+          <span className="relative flex h-2 w-2 items-center justify-center shrink-0">
             <span className={cn("absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping", tone.dot)} />
             <span className={cn("relative inline-flex h-2 w-2 rounded-full", tone.dot)} />
           </span>
-          <span className="hidden md:inline">{shortLabel}</span>
+          <span className="hidden md:inline truncate min-w-0">{shortLabel}</span>
         </button>
       </TooltipTrigger>
       <TooltipContent
