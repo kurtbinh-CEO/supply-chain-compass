@@ -307,8 +307,7 @@ const buyerFlows: RoleFlows = {
   formulas: [
     {
       title: "Hạng NM & ATP",
-      visual: <NmGradeViz />,
-      detail: "Hạng C → giảm ATP. Hạng D → xem xét thay NM.",
+      detail: "Hạng tin cậy theo Honoring%:\n• A ≥90% — ATP đầy đủ ×1.0\n• B ≥80% — Tiêu chuẩn ×0.9\n• C ≥60% — Giảm ATP, theo dõi sát\n• D <60% — Xem xét thay NM\n\nATP = on_hand × share% × honoring\nMOQ = ceil(alloc ÷ MOQ) × MOQ",
     },
   ],
 };
