@@ -136,11 +136,16 @@ function buildEnterpriseConsensus(): ConsensusRow[] {
 export default function SopPage() {
   const { tenant } = useTenant();
   const { markDone } = useNextStep();
-  const { current: planCycle, isReadOnly: planLocked } = usePlanningPeriod();
+  const {
+    current: planCycle,
+    isReadOnly: planLocked,
+    markStepCompleted,
+  } = usePlanningPeriod();
   const [timeRange, setTimeRange] = useTimeRange("sop", "monthly");
 
   const [locked, setLocked] = useState(false);
   const [showPreLock, setShowPreLock] = useState(false);
+  const [lockBlockedDialog, setLockBlockedDialog] = useState<{ count: number } | null>(null);
 
   // Mock current S&OP day-of-cycle (Ngày 5/30 — Cân đối phase)
   const [currentDay] = useState(5);
