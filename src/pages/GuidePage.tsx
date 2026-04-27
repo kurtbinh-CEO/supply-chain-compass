@@ -177,37 +177,20 @@ const scFlows: RoleFlows = {
   ],
   formulas: [
     {
-      title: "Safety Stock",
-      visual: <FormulaBarViz parts={[
-        { label: "Z", value: "1.65", sub: "SL 95%" },
-        { label: "×", value: "", sub: "" },
-        { label: "σ_fc_err", value: "28.5", sub: "forecast error", highlight: true },
-        { label: "×", value: "", sub: "" },
-        { label: "√LT", value: "√14", sub: "lead time" },
-        { label: "=", value: "", sub: "" },
-        { label: "SS", value: "176", sub: "m²/SKU", result: true },
-      ]} />,
-      detail: "σ_fc_error (sai số FC) KHÔNG PHẢI σ_demand → tiết kiệm 54% vốn",
+      title: "Tồn kho an toàn (SS)",
+      detail: "SS = z × σ_fc_error × √LT\nVD: 1,65 × 28,5 × √14 = 176 m²/SKU\nσ_fc_error (sai số dự báo) KHÔNG PHẢI σ_demand → tiết kiệm 54% vốn",
     },
     {
-      title: "Demand Total",
-      visual: <FormulaBarViz parts={[
-        { label: "FC", value: "4.800", sub: "statistical" },
-        { label: "+", value: "", sub: "" },
-        { label: "B2B", value: "2.200", sub: "weighted" },
-        { label: "+", value: "", sub: "" },
-        { label: "PO", value: "1.100", sub: "confirmed" },
-        { label: "−", value: "", sub: "" },
-        { label: "Overlap", value: "450", sub: "" },
-        { label: "=", value: "", sub: "" },
-        { label: "Demand", value: "7.650", sub: "m²", result: true },
-      ]} />,
-      detail: "FC: Holt-Winters/XGBoost, MAPE 18,4%. B2B: deals ≥30% prob.",
+      title: "Nhu cầu tổng hợp",
+      detail: "Demand = FC + Σ(B2B × prob%) + PO − Overlap\nVD: 4.800 + 2.200 + 1.100 − 450 = 7.650 m²",
     },
     {
-      title: "NM Score",
-      visual: <NmScoreViz />,
-      detail: "Hybrid 50/30/20 · Shortest LT 80/10/10 · Lowest Cost 10/80/10",
+      title: "Hub ảo",
+      detail: "Hub = Σ(NM committed) − Σ(PO released) − SS Hub\nVD: 8.880 − 5.400 − 420 = 3.060 m²",
+    },
+    {
+      title: "DRP nhu cầu ròng",
+      detail: "Net = Demand tuần − Tồn CN − Đang về + SS\nVD: 1.560 − 120 − 557 + 900 = 1.783 m²",
     },
   ],
 };
