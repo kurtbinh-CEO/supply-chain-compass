@@ -215,6 +215,7 @@ const conflictWeeklyTrend = [
 /* ═══ Conflict Log Section ═══ */
 function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
   const thisWeek = conflictLogData.slice(0, 12);
   const autoResolved = thisWeek.filter(c => c.result.includes("refresh")).length;
   const manual = thisWeek.length - autoResolved;
