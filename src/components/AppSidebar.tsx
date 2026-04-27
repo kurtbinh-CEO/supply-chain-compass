@@ -162,6 +162,41 @@ const navGroups: NavGroup[] = [
  * ─────────────────────────────────────────────────────────────────────────── */
 interface BadgeData { text: string; tone: "success" | "warning" | "danger" }
 
+/** Metadata mô tả mỗi badge: dùng cho popover khi badge bị che vì role.
+ *  - metric: tóm tắt 1 câu nội dung con số đo gì.
+ *  - viewAt: gợi ý nơi user có thể xem chi tiết nếu được cấp quyền. */
+const BADGE_INFO: Record<DailyBadgeKey, { metric: string; viewAt: string }> = {
+  nm_cn_fresh:       { metric: "Độ tươi nguồn dữ liệu NM/CN.",
+                       viewAt: "Trang Tồn kho → tab Master." },
+  cn_adjust:         { metric: "Số CN đã gửi điều chỉnh tuần / tổng CN.",
+                       viewAt: "Trang Demand tuần." },
+  exceptions:        { metric: "Số shortage đang treo trong DRP.",
+                       viewAt: "Trang DRP → bảng exceptions." },
+  po_pending:        { metric: "Số PO/lệnh phát hành đang chờ duyệt.",
+                       viewAt: "Trang Đơn hàng → tab Duyệt PO." },
+  demand_progress:   { metric: "Tiến độ submit Demand tháng (CN đã chốt / tổng).",
+                       viewAt: "Trang Rà soát Demand." },
+  sop_status:        { metric: "Trạng thái phiên S&OP tháng (đã/cần chốt).",
+                       viewAt: "Trang S&OP Consensus." },
+  hub_commitment:    { metric: "NM đã confirm cam kết tuần / tổng NM.",
+                       viewAt: "Trang Hub & Cam kết." },
+  gap_pending:       { metric: "Số kịch bản gap đang theo dõi.",
+                       viewAt: "Trang Khoảng cách & Kịch bản." },
+  monitoring_alerts: { metric: "Số cảnh báo hệ thống chưa đọc.",
+                       viewAt: "Trang Giám sát." },
+  executive_risk:    { metric: "Tổng rủi ro lãnh đạo (critical + thay đổi SS chờ duyệt).",
+                       viewAt: "Trang Điều hành." },
+  cn_portal_pending: { metric: "Số CN có yêu cầu pending trên Cổng CN.",
+                       viewAt: "Cổng CN → tab Pending." },
+};
+
+/** Map UserRole → label thân thiện hiển thị trong popover. */
+const ROLE_LABEL: Record<UserRole, string> = {
+  SC_MANAGER: "Quản lý Supply Chain",
+  CN_MANAGER: "Quản lý Chi nhánh",
+  SALES: "Sales",
+};
+
 /** Interval (ms) tự re-evaluate badge — bắt kịp các thay đổi không có event
  *  (vd: timer aging "PO quá hạn", freshness data). 30s đủ mượt cho ops UI. */
 const BADGE_TICK_MS = 30_000;
