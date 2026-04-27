@@ -216,13 +216,43 @@ function validateCustomRange(from: string, to: string): string | null {
   return null;
 }
 
-export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
+export function TimeRangeFilter({ mode, value, onChange, screenId, className }: Props) {
   const [open, setOpen] = useState(false);
-  const [customFrom, setCustomFrom] = useState(value.customFrom ?? "");
-  const [customTo, setCustomTo] = useState(value.customTo ?? "");
+  // Init: ưu tiên giá trị đã apply (value.customFrom/To), fallback về draft đã persist theo screenId.
+  const [customFrom, setCustomFrom] = useState(() => {
+    if (value.customFrom) return value.customFrom;
+    return loadDraft(screenId).customFrom;
+  });
+  const [customTo, setCustomTo] = useState(() => {
+    if (value.customTo) return value.customTo;
+    return loadDraft(screenId).customTo;
+  });
   const [customError, setCustomError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  // Khi đổi screenId (vd: re-mount với screen khác) → load lại draft tương ứng.
+  useEffect(() => {
+    const draft = loadDraft(screenId);
+    setCustomFrom(value.customFrom ?? draft.customFrom);
+    setCustomTo(value.customTo ?? draft.customTo);
+    setTouched(false);
+    setCustomError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screenId]);
+
+  // Sync khi value bên ngoài đổi sang custom với cặp ngày khác (vd: reset hoặc set programmatic).
+  useEffect(() => {
+    if (value.type === "custom" && value.customFrom && value.customTo) {
+      setCustomFrom(value.customFrom);
+      setCustomTo(value.customTo);
+    }
+  }, [value.type, value.customFrom, value.customTo]);
+
+  // Persist draft theo screenId mỗi khi user gõ — không cần đợi Áp dụng.
+  useEffect(() => {
+    saveDraft(screenId, { customFrom, customTo });
+  }, [screenId, customFrom, customTo]);
 
   // Live re-validate khi user sửa input (chỉ sau khi đã touch).
   useEffect(() => {
