@@ -21,6 +21,7 @@ import {
 /* ─────────────────────────────────────────────────────────────────────────── */
 const ROUTES: Array<{ path: string; label: string; group: string }> = [
   { path: "/workspace",       label: "Workspace",            group: "Workspace" },
+  { path: "/executive",       label: "Tổng quan điều hành",  group: "Workspace" },
   { path: "/monitoring",      label: "Giám sát",             group: "Giám sát" },
   { path: "/demand",          label: "Demand Review",        group: "Kế hoạch tháng" },
   { path: "/sop",             label: "S&OP Consensus",       group: "Kế hoạch tháng" },
@@ -31,10 +32,12 @@ const ROUTES: Array<{ path: string; label: string; group: string }> = [
   { path: "/drp",             label: "Kết quả DRP",          group: "Vận hành ngày" },
   { path: "/orders",          label: "Đơn hàng",             group: "Vận hành ngày" },
   { path: "/sync",            label: "Đồng bộ",              group: "Quản trị" },
+  { path: "/config",          label: "Cấu hình hệ thống",    group: "Quản trị" },
   { path: "/cn-portal",       label: "CN Portal",            group: "Đối tác" },
-  { path: "/cn-portal",       label: "Cổng chi nhánh",       group: "Đối tác" },
+  { path: "/supplier-portal", label: "Cổng nhà máy",         group: "Đối tác" },
   { path: "/master-data",     label: "Master Data",          group: "Cấu hình" },
   { path: "/reports",         label: "Báo cáo",              group: "Cấu hình" },
+  { path: "/logic",           label: "Trung tâm logic",      group: "Cấu hình" },
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────── */
