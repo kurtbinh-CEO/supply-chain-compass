@@ -20,6 +20,7 @@ import { HubStepIndicator, type HubStepKey, type HubStep } from "@/components/hu
 import { Step1Booking } from "@/components/hub/Step1Booking";
 import { Step2Commitment } from "@/components/hub/Step2Commitment";
 import { Step3Tracking } from "@/components/hub/Step3Tracking";
+import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 
 export default function HubPage() {
   const { tenant } = useTenant();
