@@ -104,11 +104,56 @@ interface Props {
   className?: string;
 }
 
+/** Số tháng tối đa được phép xem ngược về quá khứ (retention policy). */
+const RETENTION_MONTHS = 24;
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function retentionFloorIso(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() - RETENTION_MONTHS);
+  return d.toISOString().slice(0, 10);
+}
+
+function diffDays(fromIso: string, toIso: string): number {
+  const a = new Date(fromIso).getTime();
+  const b = new Date(toIso).getTime();
+  return Math.round((b - a) / 86400000);
+}
+
+/** Validate custom range. Trả về error message (vi) hoặc null nếu hợp lệ. */
+function validateCustomRange(from: string, to: string): string | null {
+  if (!from && !to) return "Vui lòng chọn ngày bắt đầu và kết thúc.";
+  if (!from) return "Vui lòng chọn ngày bắt đầu (Từ).";
+  if (!to) return "Vui lòng chọn ngày kết thúc (Đến).";
+  const today = todayIso();
+  const floor = retentionFloorIso();
+  if (from > to) return `Ngày "Từ" (${fmtDateVi(from)}) phải ≤ ngày "Đến" (${fmtDateVi(to)}).`;
+  if (to > today) return `Ngày "Đến" không được vượt quá hôm nay (${fmtDateVi(today)}).`;
+  if (from < floor) {
+    return `Hệ thống chỉ lưu dữ liệu ${RETENTION_MONTHS} tháng gần nhất. Ngày "Từ" phải ≥ ${fmtDateVi(floor)}.`;
+  }
+  if (diffDays(from, to) > 366) {
+    return `Khoảng thời gian quá dài (>366 ngày). Vui lòng chọn phạm vi nhỏ hơn.`;
+  }
+  return null;
+}
+
 export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
   const [open, setOpen] = useState(false);
   const [customFrom, setCustomFrom] = useState(value.customFrom ?? "");
   const [customTo, setCustomTo] = useState(value.customTo ?? "");
+  const [customError, setCustomError] = useState<string | null>(null);
+  const [touched, setTouched] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  // Live re-validate khi user sửa input (chỉ sau khi đã touch).
+  useEffect(() => {
+    if (!touched) return;
+    setCustomError(validateCustomRange(customFrom, customTo));
+  }, [customFrom, customTo, touched]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
