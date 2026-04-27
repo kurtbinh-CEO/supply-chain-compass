@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { formatKpiValue, type KpiTrend, type KpiUnit } from "@/lib/kpi-format";
 
 type CardKey = "nm-risk" | "roi" | "ss-alert" | "bpo-pace" | "fc-accuracy";
 
