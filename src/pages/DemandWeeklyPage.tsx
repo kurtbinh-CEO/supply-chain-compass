@@ -20,6 +20,7 @@ import {
   FileSpreadsheet, PenLine,
 } from "lucide-react";
 import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
+import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -1142,6 +1143,8 @@ export default function DemandWeeklyPage() {
   const [importerOpen, setImporterOpen] = useState(false);
   const [phasingOpen, setPhasingOpen] = useState(false);
   const { current: planCycle } = usePlanningPeriod();
+  const [timeRange, setTimeRange] = useTimeRange("demand-weekly", "weekly");
+  const isHistory = !timeRange.isCurrent;
 
   // M19 GAP 1 — FC tháng tổng (scale theo tenant)
   const monthlyFcTotal = useMemo(
@@ -1318,10 +1321,16 @@ export default function DemandWeeklyPage() {
   return (
     <AppLayout>
       <ScreenHeader
-        title="Nhu cầu tuần — Tuần 20"
+        title={`Nhu cầu tuần — ${timeRange.isCurrent ? "Tuần 20" : timeRange.label}`}
         subtitle="CN điều chỉnh dự báo tuần · SC Manager duyệt theo biên trust"
         actions={
           <div className="flex items-center gap-2">
+            <TimeRangeFilter
+              mode="weekly"
+              value={timeRange}
+              onChange={setTimeRange}
+              screenId="demand-weekly"
+            />
             {/* Persona toggle */}
             <div className="inline-flex rounded-button border border-surface-3 bg-surface-1 p-0.5">
               <button
@@ -1351,6 +1360,8 @@ export default function DemandWeeklyPage() {
               <Button
                 size="sm"
                 onClick={() => setImporterOpen(true)}
+                disabled={isHistory}
+                title={isHistory ? "Dữ liệu quá khứ — chỉ xem" : undefined}
                 className="h-8 gap-1.5"
               >
                 <Inbox className="h-3.5 w-3.5" />
@@ -1360,8 +1371,9 @@ export default function DemandWeeklyPage() {
             <button
               type="button"
               onClick={() => setPhasingOpen(true)}
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-button border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-table-sm font-medium text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
-              title="Phân bổ FC tháng → tuần"
+              disabled={isHistory}
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-button border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-table-sm font-medium text-primary hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title={isHistory ? "Dữ liệu quá khứ — chỉ xem" : "Phân bổ FC tháng → tuần"}
             >
               <Calendar className="h-3.5 w-3.5" />
               Phân bổ FC tuần · {planCycle.label.replace("Tháng ", "T")}
@@ -1375,6 +1387,13 @@ export default function DemandWeeklyPage() {
             </span>
           </div>
         }
+      />
+
+      <HistoryBanner
+        range={timeRange}
+        onReset={() => setTimeRange(defaultTimeRange("weekly"))}
+        entity="nhu cầu tuần"
+        resetLabel="Quay về tuần này"
       />
 
       <PhasingDialog

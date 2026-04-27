@@ -24,6 +24,7 @@ import { SYSTEM_ACCURACY } from "@/data/unis-enterprise-dataset";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { MonitoringHeroCards } from "@/components/monitoring/MonitoringHeroCards";
 import { SummaryCards } from "@/components/SummaryCards";
+import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -368,6 +369,7 @@ export default function MonitoringPage() {
   });
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
+  const [timeRange, setTimeRange] = useTimeRange("monitoring", "monthly");
   const [drillCn, setDrillCn] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["fc"]));
   const [invChartFilter, setInvChartFilter] = useState("all");
@@ -398,7 +400,25 @@ export default function MonitoringPage() {
 
   return (
     <AppLayout>
-      <ScreenHeader title="Giám sát" subtitle="Sức khoẻ chuỗi cung ứng — KPI & cảnh báo" />
+      <ScreenHeader
+        title="Giám sát"
+        subtitle={timeRange.isCurrent ? "Sức khoẻ chuỗi cung ứng — KPI & cảnh báo" : `Snapshot ${timeRange.label}`}
+        actions={
+          <TimeRangeFilter
+            mode="monthly"
+            value={timeRange}
+            onChange={setTimeRange}
+            screenId="monitoring"
+          />
+        }
+      />
+
+      <HistoryBanner
+        range={timeRange}
+        onReset={() => setTimeRange(defaultTimeRange("monthly"))}
+        entity="giám sát"
+        resetLabel="Quay về tháng này"
+      />
 
       {/* SS Batch Banner */}
       {ssBatch.batch && (

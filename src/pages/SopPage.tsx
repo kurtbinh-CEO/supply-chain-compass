@@ -32,6 +32,7 @@ import { useNextStep } from "@/components/NextStepContext";
 import { VersionComparePanel } from "@/components/sop/VersionComparePanel";
 import { VersionHistoryButton } from "@/components/VersionHistoryButton";
 import { SummaryCards } from "@/components/SummaryCards";
+import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 import { AutoSaveIndicator } from "@/components/CellPresence";
 import {
   DropdownMenu,
@@ -135,6 +136,7 @@ export default function SopPage() {
   const { tenant } = useTenant();
   const { markDone } = useNextStep();
   const { current: planCycle, isReadOnly: planLocked } = usePlanningPeriod();
+  const [timeRange, setTimeRange] = useTimeRange("sop", "monthly");
 
   const [locked, setLocked] = useState(false);
   const [showPreLock, setShowPreLock] = useState(false);
@@ -266,6 +268,12 @@ export default function SopPage() {
         subtitle={planLocked ? `Chế độ chỉ xem — ${planCycle.label} đã khóa` : undefined}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
+            <TimeRangeFilter
+              mode="monthly"
+              value={timeRange}
+              onChange={setTimeRange}
+              screenId="sop"
+            />
             <PlanningPeriodSelector />
             <VersionHistoryButton entityType="SOP" entityId="SOP-T5" />
             <DropdownMenu>
@@ -292,6 +300,13 @@ export default function SopPage() {
             <LogicLink tab="monthly" node={1} tooltip="Logic S&OP Đồng thuận → Khóa" />
           </div>
         }
+      />
+
+      <HistoryBanner
+        range={timeRange}
+        onReset={() => setTimeRange(defaultTimeRange("monthly"))}
+        entity="S&OP"
+        resetLabel="Quay về tháng này"
       />
 
       {/* LỚP 2 — Tiến trình (1 dòng nhỏ) + 4 Summary Cards */}

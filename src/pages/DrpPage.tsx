@@ -27,6 +27,7 @@ import { DrpProgress, type ProgressStep } from "@/components/drp/DrpProgress";
 import { DrpCalcSummaryLine, type CalcToken } from "@/components/drp/DrpCalcSummaryLine";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -771,6 +772,10 @@ export default function DrpPage() {
   const { canApprove } = useRbac();
   const { current: planCycle } = usePlanningPeriod();
 
+  /* ── Time-range filter (weekly) ── */
+  const [timeRange, setTimeRange] = useTimeRange("drp", "weekly");
+  const isHistory = !timeRange.isCurrent;
+
   /* ── Step navigation ── */
   const [activeStep, setActiveStep] = useState<number>(5);
 
@@ -1110,9 +1115,9 @@ export default function DrpPage() {
       <div className="flex items-center justify-between mb-2">
         <div>
           <h1 className="text-h2 font-display font-bold text-text-1">
-            {wizardStep === 1 && "Chạy DRP — Tuần 20"}
-            {wizardStep === 2 && "Đang chạy DRP — Tuần 20"}
-            {wizardStep === 3 && "Kết quả DRP — Tuần 20"}
+            {wizardStep === 1 && `Chạy DRP — ${timeRange.isCurrent ? "Tuần 20" : timeRange.label}`}
+            {wizardStep === 2 && `Đang chạy DRP — ${timeRange.isCurrent ? "Tuần 20" : timeRange.label}`}
+            {wizardStep === 3 && `Kết quả DRP — ${timeRange.isCurrent ? "Tuần 20" : timeRange.label}`}
           </h1>
           <p className="text-table-sm text-text-3 mt-0.5 flex items-center gap-1.5 flex-wrap">
             <span>
@@ -1132,21 +1137,36 @@ export default function DrpPage() {
             </button>
           </p>
         </div>
-        {wizardStep === 3 && (isPlanLocked || drpLocked ? (
-          <div className="flex items-center gap-2 rounded-button bg-surface-2 text-text-3 px-4 py-2 border border-surface-3">
-            <LockIcon className="h-4 w-4" /> Đã khoá plan
-          </div>
-        ) : (
-          <button
-            onClick={handleRerun}
-            disabled={isViewingOldVersion}
-            title={isViewingOldVersion ? "Phiên bản cũ — chỉ xem" : "Quay lại Bước 1 (Preflight) để chạy phiên bản mới"}
-            className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-3"
-          >
-            <Play className="h-4 w-4" /> Chạy lại DRP
-          </button>
-        ))}
+        <div className="flex items-center gap-2">
+          <TimeRangeFilter
+            mode="weekly"
+            value={timeRange}
+            onChange={setTimeRange}
+            screenId="drp"
+          />
+          {wizardStep === 3 && (isPlanLocked || drpLocked ? (
+            <div className="flex items-center gap-2 rounded-button bg-surface-2 text-text-3 px-4 py-2 border border-surface-3">
+              <LockIcon className="h-4 w-4" /> Đã khoá plan
+            </div>
+          ) : (
+            <button
+              onClick={handleRerun}
+              disabled={isViewingOldVersion || isHistory}
+              title={isHistory ? "Dữ liệu quá khứ — chỉ xem" : isViewingOldVersion ? "Phiên bản cũ — chỉ xem" : "Quay lại Bước 1 (Preflight) để chạy phiên bản mới"}
+              className="flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-5 py-2.5 text-table font-semibold shadow-sm hover:shadow-md transition-shadow disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-3"
+            >
+              <Play className="h-4 w-4" /> Chạy lại DRP
+            </button>
+          ))}
+        </div>
       </div>
+
+      <HistoryBanner
+        range={timeRange}
+        onReset={() => setTimeRange(defaultTimeRange("weekly"))}
+        entity="DRP"
+        resetLabel="Quay về tuần này"
+      />
 
       {/* ── 3-STEP INDICATOR ── (luôn hiện) */}
       <DrpStepIndicator current={wizardStep} completed={wizardCompleted} />

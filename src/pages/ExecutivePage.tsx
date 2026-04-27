@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/AppLayout";
 import { ScreenHeader } from "@/components/ScreenShell";
+import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 import { SmartTable, SmartTableColumn } from "@/components/SmartTable";
 import { Button } from "@/components/ui/button";
 import {
@@ -477,6 +478,7 @@ export default function ExecutivePage() {
   const [openDec, setOpenDec] = useState<string | null>(null);
   const [drillTab, setDrillTab] = useState<"cn" | "sku" | "nm" | "trend">("cn");
   const [trendCell, setTrendCell] = useState<{ kpi: string; period: string; value: number } | null>(null);
+  const [timeRange, setTimeRange] = useTimeRange("executive", "monthly");
 
   // RBAC: only SC_MANAGER (treated as Director/CEO equivalent)
   if (user.role !== "SC_MANAGER") {
@@ -578,10 +580,24 @@ export default function ExecutivePage() {
   return (
     <AppLayout>
       <ScreenHeader
-        title="Tổng quan lãnh đạo — Tháng 5/2026"
+        title={`Tổng quan lãnh đạo — ${timeRange.isCurrent ? "Tháng 5/2026" : timeRange.label}`}
         subtitle="UNIS Group · Cập nhật: 24/04/2026 08:30"
+        actions={
+          <TimeRangeFilter
+            mode="monthly"
+            value={timeRange}
+            onChange={setTimeRange}
+            screenId="executive"
+          />
+        }
       />
 
+      <HistoryBanner
+        range={timeRange}
+        onReset={() => setTimeRange(defaultTimeRange("monthly"))}
+        entity="lãnh đạo"
+        resetLabel="Quay về tháng này"
+      />
       {/* ════ ZONE 1: 6 KPI cards ═══════════════════════════════════════ */}
       <section className="mb-8">
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
