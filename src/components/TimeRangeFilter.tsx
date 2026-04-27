@@ -130,18 +130,21 @@ interface Props {
 const RETENTION_MONTHS = 24;
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  // Dùng giờ LOCAL — KHÔNG dùng toISOString() vì sẽ lệch sang UTC.
+  return toLocalIso(new Date());
 }
 
 function retentionFloorIso(): string {
   const d = new Date();
   d.setMonth(d.getMonth() - RETENTION_MONTHS);
-  return d.toISOString().slice(0, 10);
+  return toLocalIso(d);
 }
 
 function diffDays(fromIso: string, toIso: string): number {
-  const a = new Date(fromIso).getTime();
-  const b = new Date(toIso).getTime();
+  // Parse cả 2 cùng giờ noon LOCAL → khoảng cách luôn là bội số 24h
+  // ngay cả khi qua đợt chuyển DST.
+  const a = parseLocalIso(fromIso).getTime();
+  const b = parseLocalIso(toIso).getTime();
   return Math.round((b - a) / 86400000);
 }
 
