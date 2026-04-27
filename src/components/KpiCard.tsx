@@ -181,11 +181,19 @@ export function KpiCard({
 
       {/* Trend + hint */}
       {(t || hint) && (
-        <div className={cn("flex items-center gap-1.5 flex-wrap", farmer ? "mt-2.5" : "mt-2")}>
+        <div
+          className={cn(
+            // flex-nowrap + min-w-0 → trend giữ nguyên, hint truncate phần thừa
+            "flex items-center gap-1.5 flex-nowrap min-w-0 w-full",
+            // reserve dòng cố định để layout không nhảy giữa các thẻ
+            "min-h-[1.25rem]",
+            farmer ? "mt-2.5" : "mt-2",
+          )}
+        >
           {t && (
             <span
               className={cn(
-                "inline-flex items-center gap-0.5 font-semibold tabular-nums",
+                "inline-flex items-center gap-0.5 font-semibold tabular-nums shrink-0 whitespace-nowrap",
                 farmer ? "text-table sm:text-caption" : "text-table-sm sm:text-caption",
                 t.isGood ? "text-success" : "text-danger",
               )}
@@ -201,12 +209,12 @@ export function KpiCard({
             <span
               title={hintLen > 28 ? hint : undefined}
               className={cn(
-                "text-text-3 inline-flex items-center gap-1 min-w-0 max-w-full",
+                "text-text-3 inline-flex items-center gap-1 min-w-0 flex-1 overflow-hidden",
                 hintMobileClass,
               )}
             >
               {t && <Minus className="h-2.5 w-2.5 text-text-3/60 shrink-0" />}
-              <span className="truncate">{hint}</span>
+              <span className="truncate min-w-0">{hint}</span>
             </span>
           )}
         </div>
