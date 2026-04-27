@@ -195,6 +195,7 @@ const ROLE_LABEL: Record<UserRole, string> = {
   SC_MANAGER: "Quản lý Supply Chain",
   CN_MANAGER: "Quản lý Chi nhánh",
   SALES: "Sales",
+  VIEWER: "Người xem",
 };
 
 /** Interval (ms) tự re-evaluate badge — bắt kịp các thay đổi không có event
