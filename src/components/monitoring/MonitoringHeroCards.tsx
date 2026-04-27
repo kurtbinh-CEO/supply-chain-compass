@@ -75,7 +75,7 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
 
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-2.5 mb-4 sm:mb-5">
         <HeroCard
           onClick={() => setOpen("nm-risk")}
           icon={<ShieldAlert className="h-4 w-4" />}
@@ -171,29 +171,30 @@ function HeroCard({ onClick, icon, tone, label, value, unit, sub }: {
     <button
       onClick={onClick}
       className={cn(
-        "group relative overflow-hidden rounded-card border border-surface-3 border-l-[3px] bg-surface-1",
-        "p-3 text-left transition-all hover:shadow-sm hover:-translate-y-px",
+        "group relative overflow-hidden rounded-card border border-surface-3 border-l-[4px] sm:border-l-[3px] bg-surface-1",
+        // Mobile: padding rộng hơn 1 chút, tap target dễ; sm+: gọn lại
+        "p-3.5 sm:p-3 text-left transition-all hover:shadow-sm hover:-translate-y-px",
         "focus:outline-none focus:ring-2 focus:ring-primary/40",
         stripClasses[tone],
       )}
     >
       {/* Header: icon chip + label */}
-      <div className="flex items-center gap-2 mb-1.5">
-        <div className={cn("shrink-0 rounded-md p-1", chipClasses[tone])}>
+      <div className="flex items-center gap-2 mb-2 sm:mb-1.5">
+        <div className={cn("shrink-0 rounded-md p-1.5 sm:p-1", chipClasses[tone])}>
           {icon}
         </div>
-        <span className="text-table-sm font-medium text-text-2 truncate">{label}</span>
-        <ChevronRight className="ml-auto h-3.5 w-3.5 text-text-3/40 group-hover:text-text-3 transition-colors" />
+        <span className="text-table sm:text-table-sm font-semibold sm:font-medium text-text-2 truncate">{label}</span>
+        <ChevronRight className="ml-auto h-4 w-4 sm:h-3.5 sm:w-3.5 text-text-3/40 group-hover:text-text-3 transition-colors" />
       </div>
-      {/* Value — điểm neo */}
+      {/* Value — điểm neo. Mobile 28px để farmer scan không cần zoom */}
       <div className="flex items-baseline gap-1.5">
-        <span className="font-display text-[24px] leading-none font-bold text-text-1 tabular-nums">
+        <span className="font-display text-[28px] sm:text-[24px] leading-none font-bold text-text-1 tabular-nums">
           {value}
         </span>
-        {unit && <span className="text-caption text-text-3">{unit}</span>}
+        {unit && <span className="text-table-sm sm:text-caption text-text-3">{unit}</span>}
       </div>
       {/* Sub — 1 câu ngắn */}
-      <div className="text-caption text-text-3 mt-1 truncate">{sub}</div>
+      <div className="text-table-sm sm:text-caption text-text-3 mt-1 truncate">{sub}</div>
     </button>
   );
 }
