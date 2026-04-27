@@ -7,11 +7,13 @@ import { useSidebarState } from "@/components/SidebarContext";
 import { WalkthroughOverlay } from "@/components/WalkthroughOverlay";
 
 function LayoutInner({ children }: { children: React.ReactNode }) {
-  const { collapsed } = useSidebarState();
+  // Margin trái khớp với width sidebar hiện tại (collapsed/compact/normal).
+  // Lấy trực tiếp từ context — không hard-code 260/280px nữa.
+  const { width } = useSidebarState();
   return (
     <div className="min-h-screen">
       <AppSidebar />
-      <div className={`transition-all duration-200 ${collapsed ? "ml-16" : "ml-[280px]"}`}>
+      <div className="transition-[margin] duration-200" style={{ marginLeft: width }}>
         <TopBar />
         <WorkflowBar />
         <main className="p-6">
