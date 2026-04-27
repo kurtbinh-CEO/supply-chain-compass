@@ -772,6 +772,9 @@ export default function DrpPage() {
   const { canApprove } = useRbac();
   const { current: planCycle } = usePlanningPeriod();
 
+  /* ── Time-range filter (weekly) ── */
+  const [timeRange, setTimeRange] = useTimeRange("drp", "weekly");
+
   /* ── Step navigation ── */
   const [activeStep, setActiveStep] = useState<number>(5);
 
