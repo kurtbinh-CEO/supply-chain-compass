@@ -11,7 +11,7 @@ function LayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
       <AppSidebar />
-      <div className={`transition-all duration-200 ${collapsed ? "ml-16" : "ml-[260px]"}`}>
+      <div className={`transition-all duration-200 ${collapsed ? "ml-16" : "ml-[280px]"}`}>
         <TopBar />
         <WorkflowBar />
         <main className="p-6">
