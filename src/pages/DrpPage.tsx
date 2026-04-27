@@ -854,6 +854,8 @@ export default function DrpPage() {
               detail: "Cần cập nhật tồn NM trong vòng 48h trước khi chạy DRP.",
               fixHref: "/supply",
               fixLabel: "Mở NM Supply",
+              staleHours: Math.max(...staleNMs.map((n) => staleHours(n.updatedAgo))),
+              staleNmName: staleNMs.map((n) => n.nm).join(", "),
             }
           : warnNMs.length > 0
             ? {
