@@ -111,6 +111,60 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+/** Convert "1.234,5" / "1,234.5" / "12%" → number nếu hợp lệ, ngược lại giữ string. */
+function coerceCell(v: string): string | number {
+  const s = v.trim();
+  if (!s) return "";
+  // Bỏ qua mã/SKU bắt đầu bằng 0 hoặc chứa ký tự đặc biệt → giữ chuỗi
+  if (/^0\d/.test(s)) return v;
+  const isPercent = s.endsWith("%");
+  const core = (isPercent ? s.slice(0, -1) : s).replace(/\s/g, "");
+  // Pattern: chỉ số, dấu phẩy/chấm/âm, có thể trong ngoặc (kế toán)
+  const negParen = /^\((.+)\)$/.exec(core);
+  const raw = negParen ? "-" + negParen[1] : core;
+  if (!/^-?[\d.,]+$/.test(raw)) return v;
+  // Heuristic locale: nếu có cả . và , → dấu cuối cùng là phần thập phân
+  let normalized = raw;
+  const lastDot = raw.lastIndexOf(".");
+  const lastComma = raw.lastIndexOf(",");
+  if (lastDot >= 0 && lastComma >= 0) {
+    if (lastComma > lastDot) {
+      normalized = raw.replace(/\./g, "").replace(",", ".");
+    } else {
+      normalized = raw.replace(/,/g, "");
+    }
+  } else if (lastComma >= 0) {
+    // chỉ có dấu phẩy → nếu phần sau dài 3 → ngăn cách hàng nghìn, ngược lại thập phân
+    const after = raw.length - lastComma - 1;
+    normalized = after === 3 ? raw.replace(/,/g, "") : raw.replace(",", ".");
+  } else {
+    normalized = raw.replace(/,/g, "");
+  }
+  const n = Number(normalized);
+  if (!Number.isFinite(n)) return v;
+  return isPercent ? n / 100 : n;
+}
+
+async function exportMatrixAsXlsx(matrix: string[][], baseName: string, sheetName: string) {
+  const XLSX = await import("xlsx");
+  const aoa = matrix.map((row, ri) =>
+    ri === 0 ? row : row.map((c) => coerceCell(c)),
+  );
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  // Auto-width đơn giản theo độ dài chuỗi của mỗi cột
+  const colWidths = (matrix[0] ?? []).map((_, ci) => {
+    const maxLen = matrix.reduce((m, r) => Math.max(m, String(r[ci] ?? "").length), 0);
+    return { wch: Math.min(40, Math.max(8, maxLen + 2)) };
+  });
+  ws["!cols"] = colWidths;
+  // Freeze header row
+  ws["!freeze"] = { xSplit: 0, ySplit: 1 } as never;
+  const wb = XLSX.utils.book_new();
+  const safeSheet = sheetName.replace(/[\\/?*[\]:]/g, "_").slice(0, 31) || "Sheet1";
+  XLSX.utils.book_append_sheet(wb, ws, safeSheet);
+  XLSX.writeFile(wb, `${baseName}.xlsx`);
+}
+
 function printMatrixAsPdf(matrix: string[][], title: string, scopeLabel?: string) {
   if (!matrix.length) return;
   const [head, ...body] = matrix;
