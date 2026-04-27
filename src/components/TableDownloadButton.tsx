@@ -355,7 +355,7 @@ export function TableDownloadButton({
   const totalRows = bodyRows.length;
   const totalCols = headRow.length;
 
-  const fmtLabel = preview?.fmt === "pdf" ? "PDF" : "CSV";
+  const fmtLabel = preview?.fmt === "pdf" ? "PDF" : preview?.fmt === "xlsx" ? "Excel" : "CSV";
   const scopeText =
     preview?.scope === "all"
       ? "Tất cả (bỏ filter)"
