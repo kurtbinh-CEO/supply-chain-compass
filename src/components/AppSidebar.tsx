@@ -365,7 +365,7 @@ export function AppSidebar() {
                       <item.icon className="h-[18px] w-[18px] shrink-0" />
                       {!collapsed && (
                         <>
-                          <span className="flex-1 truncate">{t(item.titleKey)}</span>
+                          <span className="flex-1 truncate" title={t(item.titleKey)}>{t(item.titleKey)}</span>
                           {/* ── Sidebar badge — chuẩn chung ──
                            * Tất cả badge (workspace pending + daily ops dynamic) dùng cùng:
                            *   - font-size 10px (text-[10px]) · font-semibold · leading-tight
