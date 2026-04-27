@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useRbac } from "@/components/RbacContext";
 
 export type PreflightLevel = "ok" | "warn" | "block";
 
