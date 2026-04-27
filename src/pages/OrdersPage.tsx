@@ -180,11 +180,21 @@ export default function OrdersPage() {
       {/* ═══ HEADER ═══ */}
       <div className="mb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <h1 className="text-h2 font-display font-bold text-text-1">Đơn hàng — Tuần 20</h1>
-          <Badge variant="outline" className="font-mono text-caption gap-1.5 border-success/40 text-success">
-            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-            PO Batch W20 v1 · Active
-          </Badge>
+          <h1 className="text-h2 font-display font-bold text-text-1">
+            Đơn hàng — {timeRange.isCurrent ? "Tuần 20" : timeRange.label}
+          </h1>
+          <div className="flex items-center gap-2">
+            <TimeRangeFilter
+              mode="weekly"
+              value={timeRange}
+              onChange={setTimeRange}
+              screenId="orders"
+            />
+            <Badge variant="outline" className="font-mono text-caption gap-1.5 border-success/40 text-success">
+              <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+              PO Batch W20 v1 · Active
+            </Badge>
+          </div>
         </div>
         <p className="text-table-sm text-text-3 mt-0.5 flex items-center gap-1.5 flex-wrap">
           <span>drp_run:</span>
@@ -213,6 +223,13 @@ export default function OrdersPage() {
           )}
         </p>
       </div>
+
+      <HistoryBanner
+        range={timeRange}
+        onReset={() => setTimeRange(defaultTimeRange("weekly"))}
+        entity="đơn hàng"
+        resetLabel="Quay về tuần này"
+      />
 
       {/* ═══ LỚP 1: SUMMARY CARDS — chỉ để nhìn, click = drill-down popup ═══ */}
       {(() => {
