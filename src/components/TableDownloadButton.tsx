@@ -225,7 +225,7 @@ export function TableDownloadButton({
   className,
   label = "Xuất",
   size = "sm",
-  formats = ["csv", "pdf"],
+  formats = ["csv", "xlsx", "pdf"],
   scopeLabel,
   getAllRowsCsv,
   pdfTitle,
