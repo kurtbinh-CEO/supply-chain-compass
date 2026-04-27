@@ -1068,12 +1068,14 @@ export default function InventoryPage() {
               onChange={setTimeRange}
               screenId="inventory"
             />
-            <div className="hidden sm:flex items-center gap-2 rounded-button border border-surface-3 bg-surface-1 px-3 py-1.5 text-table-sm">
-              <RefreshCw className="h-3.5 w-3.5 text-success" />
-              <span className="text-text-2">Bravo sync v12 — 06:00</span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-success-bg text-success px-1.5 py-0.5 text-[10px] font-medium">
-                ● Active
-              </span>
+            <div
+              className="hidden md:inline-flex h-8 items-center gap-1.5 rounded-button border border-surface-3 bg-surface-1 px-3 text-table-sm text-text-2"
+              title="Bravo sync v12 — đồng bộ lúc 06:00 sáng nay"
+            >
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
+              <RefreshCw className="h-3.5 w-3.5 text-text-3" />
+              <span className="font-medium text-text-1">Bravo v12</span>
+              <span className="text-text-3">· 06:00</span>
             </div>
             <Button
               size="sm"
