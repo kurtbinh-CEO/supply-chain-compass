@@ -135,14 +135,18 @@ export default function OrdersPage() {
     setOverdueOnly(false);
   };
 
-  /* ── Mutations from dialogs ── */
+  /* ── Mutations from dialogs (cascade qua tất cả SKU lines cùng stage trong group) ── */
   const advance = (id: string, patch: Partial<PoLifecycleRow>) => {
-    setRows(prev => prev.map(r => r.id === id ? { ...r, ...patch, hoursInStage: 0, overdueFlag: false } : r));
+    // Tìm group chứa line `id`, lấy các line cùng stage để cascade.
+    const group = groups.find(g => g.lines.some(l => l.id === id));
+    const idSet = new Set<string>(group ? leaderSiblingIds(group) : [id]);
+    setRows(prev => prev.map(r => idSet.has(r.id)
+      ? { ...r, ...patch, hoursInStage: 0, overdueFlag: false }
+      : r));
 
-    // G4 — ERP posting: khi PO/TO hoàn tất POD → đăng sang ERP
+    // G4 — ERP posting: khi PO/TO hoàn tất POD → đăng sang ERP (1 lần / group)
     if (patch.stage === "completed") {
-      const row = rows.find(r => r.id === id);
-      const docNo = row?.id || id;
+      const docNo = group?.poNumber || id;
       const erpDoc = `MIGO-${Date.now().toString().slice(-6)}`;
       const t = toast.loading(`Đang đăng ERP cho ${docNo}...`, { description: "Tạo MIGO/Goods Receipt → SAP/Odoo" });
       setTimeout(() => {
