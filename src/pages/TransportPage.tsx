@@ -422,8 +422,12 @@ export function PackingTab() {
         </span>
       </div>
 
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-table-sm font-medium text-text-2">Containers — kế hoạch vận chuyển</h3>
+        <TableDownloadButton targetId="transport-containers" filename="transport-containers" size="xs" />
+      </div>
       <div className="rounded-card border border-surface-3 bg-surface-1 overflow-visible">
-        <table className="w-full">
+        <table id="transport-containers" className="w-full">
           <thead className="bg-surface-2/50 border-b border-surface-3">
             <tr className="text-table-sm text-text-3 text-left">
               <th className="px-3 py-2.5 font-medium">Container</th>
