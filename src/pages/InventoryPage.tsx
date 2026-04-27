@@ -1094,6 +1094,8 @@ export default function InventoryPage() {
         onReset={() => setTimeRange(defaultTimeRange("daily"))}
         entity="tồn kho"
         resetLabel="Quay về hôm nay"
+        currentLabel="Hôm nay"
+        compareMetrics={inventoryCompare(timeRange)}
       />
 
       <DataSourceSelector
