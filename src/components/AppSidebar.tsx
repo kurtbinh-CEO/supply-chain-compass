@@ -16,6 +16,8 @@ import { useI18n } from "@/components/i18n/I18nContext";
 import { useOnboarding } from "@/components/onboarding/OnboardingContext";
 import { getTourForRoute } from "@/components/onboarding/tours";
 import smartlogIcon from "@/assets/smartlog-icon.png";
+import { BRANCHES, FACTORIES } from "@/data/unis-enterprise-dataset";
+import { DEMO_SCENARIOS, getCriticalScenarios } from "@/data/demo-scenarios";
 
 /* M1 — Sidebar restructure
  *  - Daily ops: 4 items split bởi 3 phase labels (Chuẩn bị / Kết quả / Thực thi)
@@ -150,55 +152,100 @@ const navGroups: NavGroup[] = [
 ];
 
 /* ─────────────────────────────────────────────────────────────────────────────
- * Badge value resolver
+ * Badge value resolver — CHUẨN HÓA THEO DỮ LIỆU THẬT.
  *
- * Tạm thời dùng dữ liệu giả lập từ WorkspaceContext (exceptions, approvals).
- * Khi data thật có sẵn (M0: NM/CN freshness, /demand-weekly adjust progress,
- * /orders pending PO list) sẽ wire vào đây.
+ * Nguồn dữ liệu:
+ *   - useWorkspace(): approvals, exceptions, notifications (state runtime).
+ *   - BRANCHES (CN), FACTORIES (NM) — master data từ enterprise dataset.
+ *   - DEMO_SCENARIOS — tổng kịch bản; getCriticalScenarios() — kịch bản nghiêm trọng.
+ *
+ * Nguyên tắc: badge phản ánh đúng trạng thái runtime — KHÔNG hardcode "8/12 CN",
+ * "6/8 NM", "2 KB" nữa. Khi pending = 0 → tone success + text rỗng/✓.
  * ─────────────────────────────────────────────────────────────────────────── */
 interface BadgeData { text: string; tone: "success" | "warning" | "danger" }
 
+function pickTone(pending: number, warnAt: number, dangerAt: number): BadgeData["tone"] {
+  if (pending === 0) return "success";
+  if (pending >= dangerAt) return "danger";
+  if (pending >= warnAt) return "warning";
+  return "warning";
+}
+
 function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
-  const { exceptions, approvals } = useWorkspace();
+  const { exceptions, approvals, notifications, criticalCount } = useWorkspace();
 
-  // Pending counters (mock-derived).
-  const poPending = approvals.filter(a => a.type === "PO Release" || a.type === "Force-release").length;
-  const cnAdjustPending = approvals.filter(a => a.type === "CN Adjust").length;
-  const drpExceptions = exceptions.filter(e => e.type === "SHORTAGE").length;
-  const sopPending = approvals.filter(a => a.type === "S&OP Lock").length;
+  // ── Counters từ approvals (text tiếng Việt match WorkspaceContext) ──
+  const cnAdjustPending = approvals.filter(a => a.type === "CN điều chỉnh").length;
+  const poPending       = approvals.filter(a => a.type === "Phát hành PO" || a.type === "Phát hành khẩn").length;
+  const sopPending      = approvals.filter(a => a.type === "S&OP").length;
+  const ssPending       = approvals.filter(a => a.type === "Thay đổi tồn kho an toàn").length;
+  // Tập CN có pending bất kỳ (dùng cho cn_portal_pending).
+  // Mock approvals chứa tên CN trong description (vd "CN-BD …") — trích bằng regex.
+  const cnPendingSet = new Set<string>();
+  approvals.forEach(a => {
+    const m = a.description.match(/CN-[A-Z]{2,4}/g);
+    if (m) m.forEach(c => cnPendingSet.add(c));
+  });
 
-  // Tổng exceptions hệ thống (monitoring + executive).
-  const totalAlerts = exceptions.length;
+  // ── Master totals ──
+  const totalCn = BRANCHES.length;       // số CN thực
+  const totalNm = FACTORIES.length;      // số NM thực
+  const totalScenarios = DEMO_SCENARIOS.length;
+  const criticalScenarios = getCriticalScenarios().length;
+
+  // ── DRP exceptions ──
+  const drpShortages = exceptions.filter(e => e.type === "SHORTAGE").length;
+
+  // ── Monitoring/Executive ──
+  // Alerts = unread notifications (real-time signal); critical = danger unread.
+  const unreadAlerts = notifications.filter(n => !n.read).length;
+
+  // ── Demand progress: bao nhiêu CN đã submit (tổng − CN còn pending điều chỉnh) ──
+  const cnSubmitted = Math.max(0, totalCn - cnAdjustPending);
+
+  // ── Hub commitment: NM đã confirm (tổng − pending PO) ──
+  // Approximation: mỗi PO pending = 1 NM chưa khóa cam kết.
+  const nmConfirmed = Math.max(0, totalNm - poPending);
 
   return {
-    // ── Daily ops (giữ nguyên hành vi cũ) ──
-    nm_cn_fresh:  { text: "5/5 · 12 CN", tone: "success" },
+    // ── Daily ops ──
+    nm_cn_fresh:  { text: `5/${totalNm} · ${totalCn} CN`, tone: "success" }, // freshness mock = OK
     cn_adjust:    cnAdjustPending > 0
-      ? { text: `${4 + cnAdjustPending}/12`, tone: cnAdjustPending > 3 ? "danger" : "warning" }
-      : { text: "12/12", tone: "success" },
-    exceptions:   drpExceptions > 0
-      ? { text: String(drpExceptions), tone: drpExceptions > 3 ? "danger" : "warning" }
+      ? { text: `${cnSubmitted}/${totalCn}`, tone: pickTone(cnAdjustPending, 1, 4) }
+      : { text: `${totalCn}/${totalCn}`, tone: "success" },
+    exceptions:   drpShortages > 0
+      ? { text: String(drpShortages), tone: pickTone(drpShortages, 1, 4) }
       : { text: "✓", tone: "success" },
     po_pending:   poPending > 0
-      ? { text: String(poPending), tone: poPending > 3 ? "danger" : "warning" }
+      ? { text: String(poPending), tone: pickTone(poPending, 1, 4) }
       : { text: "✓", tone: "success" },
 
     // ── Monthly plan ──
-    demand_progress: { text: "8/12 CN", tone: "warning" },
+    demand_progress: cnAdjustPending > 0
+      ? { text: `${cnSubmitted}/${totalCn} CN`, tone: pickTone(cnAdjustPending, 1, 4) }
+      : { text: `${totalCn}/${totalCn} CN`, tone: "success" },
     sop_status:      sopPending > 0
       ? { text: "Cần chốt", tone: "warning" }
       : { text: "Đã chốt", tone: "success" },
-    hub_commitment:  { text: "6/8 NM", tone: "warning" },
-    gap_pending:     { text: "2 KB", tone: "warning" },
+    hub_commitment:  poPending > 0
+      ? { text: `${nmConfirmed}/${totalNm} NM`, tone: pickTone(poPending, 1, 3) }
+      : { text: `${totalNm}/${totalNm} NM`, tone: "success" },
+    gap_pending:     totalScenarios > 0
+      ? { text: `${totalScenarios} KB`, tone: pickTone(criticalScenarios, 1, 3) }
+      : null,
 
     // ── Monitoring & Executive ──
-    monitoring_alerts: totalAlerts > 0
-      ? { text: String(totalAlerts), tone: totalAlerts > 5 ? "danger" : "warning" }
+    monitoring_alerts: unreadAlerts > 0
+      ? { text: String(unreadAlerts), tone: pickTone(unreadAlerts, 1, 5) }
       : { text: "✓", tone: "success" },
-    executive_risk:    { text: "3 rủi ro", tone: "warning" },
+    executive_risk:    criticalCount > 0 || ssPending > 0
+      ? { text: `${criticalCount + ssPending} rủi ro`, tone: pickTone(criticalCount + ssPending, 1, 3) }
+      : { text: "Ổn định", tone: "success" },
 
     // ── Partners ──
-    cn_portal_pending: { text: "4 CN", tone: "warning" },
+    cn_portal_pending: cnPendingSet.size > 0
+      ? { text: `${cnPendingSet.size} CN`, tone: pickTone(cnPendingSet.size, 1, 4) }
+      : null,
   };
 }
 
