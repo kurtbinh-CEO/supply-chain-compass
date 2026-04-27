@@ -306,7 +306,7 @@ export function TableDownloadButton({
         {menuOpen && (
           <div
             role="menu"
-            className="absolute right-0 top-[calc(100%+4px)] z-50 min-w-[240px] rounded-card border border-surface-3 bg-surface-0 shadow-lg p-1.5 text-table-sm"
+            className="absolute right-0 top-[calc(100%+4px)] z-50 min-w-[260px] rounded-card border border-surface-3 bg-surface-0 shadow-lg p-1.5 text-table-sm"
           >
             <div className="px-2 py-1.5 text-caption text-text-3 flex items-center gap-1.5">
               <Filter className="h-3 w-3" />
@@ -317,6 +317,31 @@ export function TableDownloadButton({
                 </span>
               </span>
             </div>
+
+            {lastChoice && (
+              <>
+                <div className="h-px bg-surface-3 my-1" />
+                <button
+                  type="button"
+                  onClick={() => openPreview(lastChoice.fmt, lastChoice.scope)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-button bg-primary/5 hover:bg-primary/10 text-left border border-primary/20"
+                  role="menuitem"
+                  title="Lặp lại lựa chọn xuất gần nhất trên trang này"
+                >
+                  {lastChoice.fmt === "pdf" ? (
+                    <FileText className="h-3.5 w-3.5 text-danger" />
+                  ) : (
+                    <FileSpreadsheet className="h-3.5 w-3.5 text-success" />
+                  )}
+                  <span className="flex-1">
+                    Lặp lại: {lastChoice.fmt.toUpperCase()} —{" "}
+                    {lastChoice.scope === "all" ? "tất cả" : "đang lọc"}
+                  </span>
+                  <span className="text-caption text-primary font-medium">↵</span>
+                </button>
+              </>
+            )}
+
             <div className="h-px bg-surface-3 my-1" />
 
             {showCsv && (
@@ -328,7 +353,11 @@ export function TableDownloadButton({
               >
                 <FileSpreadsheet className="h-3.5 w-3.5 text-success" />
                 <span className="flex-1">CSV — đang lọc</span>
-                <span className="text-caption text-text-3">xem trước</span>
+                {lastChoice?.fmt === "csv" && lastChoice?.scope === "filtered" ? (
+                  <span className="text-caption text-primary font-medium">● lần trước</span>
+                ) : (
+                  <span className="text-caption text-text-3">xem trước</span>
+                )}
               </button>
             )}
             {showPdf && (
@@ -340,7 +369,11 @@ export function TableDownloadButton({
               >
                 <FileText className="h-3.5 w-3.5 text-danger" />
                 <span className="flex-1">PDF — đang lọc</span>
-                <span className="text-caption text-text-3">xem trước</span>
+                {lastChoice?.fmt === "pdf" && lastChoice?.scope === "filtered" ? (
+                  <span className="text-caption text-primary font-medium">● lần trước</span>
+                ) : (
+                  <span className="text-caption text-text-3">xem trước</span>
+                )}
               </button>
             )}
 
@@ -358,6 +391,19 @@ export function TableDownloadButton({
                     className="w-full flex items-center gap-2 px-2 py-1.5 rounded-button hover:bg-surface-2 text-left"
                     role="menuitem"
                   >
+                    <FileSpreadsheet className="h-3.5 w-3.5 text-success" />
+                    <span className="flex-1">CSV — tất cả</span>
+                    {lastChoice?.fmt === "csv" && lastChoice?.scope === "all" ? (
+                      <span className="text-caption text-primary font-medium">● lần trước</span>
+                    ) : (
+                      <span className="text-caption text-text-3">xem trước</span>
+                    )}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
                     <FileSpreadsheet className="h-3.5 w-3.5 text-success" />
                     <span className="flex-1">CSV — tất cả</span>
                     <span className="text-caption text-text-3">xem trước</span>
