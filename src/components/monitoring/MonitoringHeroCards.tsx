@@ -150,7 +150,7 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
  *
  * Trend optional: KpiTrend object — render arrow + màu theo `isGood`.
  */
-function HeroCard({
+export function HeroCard({
   onClick, icon, tone, label,
   value, unit,
   valueNum, valueUnit, qtyLabel,
