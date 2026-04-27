@@ -1114,9 +1114,9 @@ export default function DrpPage() {
       <div className="flex items-center justify-between mb-2">
         <div>
           <h1 className="text-h2 font-display font-bold text-text-1">
-            {wizardStep === 1 && "Chạy DRP — Tuần 20"}
-            {wizardStep === 2 && "Đang chạy DRP — Tuần 20"}
-            {wizardStep === 3 && "Kết quả DRP — Tuần 20"}
+            {wizardStep === 1 && `Chạy DRP — ${timeRange.isCurrent ? "Tuần 20" : timeRange.label}`}
+            {wizardStep === 2 && `Đang chạy DRP — ${timeRange.isCurrent ? "Tuần 20" : timeRange.label}`}
+            {wizardStep === 3 && `Kết quả DRP — ${timeRange.isCurrent ? "Tuần 20" : timeRange.label}`}
           </h1>
           <p className="text-table-sm text-text-3 mt-0.5 flex items-center gap-1.5 flex-wrap">
             <span>
