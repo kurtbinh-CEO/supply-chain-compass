@@ -28,6 +28,7 @@ import { DrpCalcSummaryLine, type CalcToken } from "@/components/drp/DrpCalcSumm
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
+import { drpCompare } from "@/lib/compare-metrics";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -1166,6 +1167,8 @@ export default function DrpPage() {
         onReset={() => setTimeRange(defaultTimeRange("weekly"))}
         entity="DRP"
         resetLabel="Quay về tuần này"
+        currentLabel="Tuần này (W20)"
+        compareMetrics={drpCompare(timeRange)}
       />
 
       {/* ── 3-STEP INDICATOR ── (luôn hiện) */}

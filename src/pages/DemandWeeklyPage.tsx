@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
+import { demandWeeklyCompare } from "@/lib/compare-metrics";
 import { Button } from "@/components/ui/button";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -1394,6 +1395,8 @@ export default function DemandWeeklyPage() {
         onReset={() => setTimeRange(defaultTimeRange("weekly"))}
         entity="nhu cầu tuần"
         resetLabel="Quay về tuần này"
+        currentLabel="Tuần này (W20)"
+        compareMetrics={demandWeeklyCompare(timeRange)}
       />
 
       <PhasingDialog

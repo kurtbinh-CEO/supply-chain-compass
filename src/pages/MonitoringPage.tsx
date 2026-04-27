@@ -25,6 +25,7 @@ import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { MonitoringHeroCards } from "@/components/monitoring/MonitoringHeroCards";
 import { SummaryCards } from "@/components/SummaryCards";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
+import { monitoringCompare } from "@/lib/compare-metrics";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -418,6 +419,8 @@ export default function MonitoringPage() {
         onReset={() => setTimeRange(defaultTimeRange("monthly"))}
         entity="giám sát"
         resetLabel="Quay về tháng này"
+        currentLabel="Tháng này (T5)"
+        compareMetrics={monitoringCompare(timeRange)}
       />
 
       {/* SS Batch Banner */}

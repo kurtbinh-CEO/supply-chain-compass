@@ -21,6 +21,7 @@ import { Step1Booking } from "@/components/hub/Step1Booking";
 import { Step2Commitment } from "@/components/hub/Step2Commitment";
 import { Step3Tracking } from "@/components/hub/Step3Tracking";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
+import { hubCompare } from "@/lib/compare-metrics";
 
 export default function HubPage() {
   const { tenant } = useTenant();
@@ -93,6 +94,8 @@ export default function HubPage() {
         onReset={() => setTimeRange(defaultTimeRange("monthly"))}
         entity="cam kết"
         resetLabel="Quay về tháng này"
+        currentLabel="Tháng này (T5)"
+        compareMetrics={hubCompare(timeRange)}
       />
 
       <div className="space-y-4">
