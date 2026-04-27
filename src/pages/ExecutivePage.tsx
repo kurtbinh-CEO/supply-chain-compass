@@ -598,6 +598,8 @@ export default function ExecutivePage() {
         onReset={() => setTimeRange(defaultTimeRange("monthly"))}
         entity="lãnh đạo"
         resetLabel="Quay về tháng này"
+        currentLabel="Tháng này (T5)"
+        compareMetrics={executiveCompare(timeRange)}
       />
       {/* ════ ZONE 1: 6 KPI cards ═══════════════════════════════════════ */}
       <section className="mb-8">

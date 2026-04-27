@@ -419,6 +419,8 @@ export default function MonitoringPage() {
         onReset={() => setTimeRange(defaultTimeRange("monthly"))}
         entity="giám sát"
         resetLabel="Quay về tháng này"
+        currentLabel="Tháng này (T5)"
+        compareMetrics={monitoringCompare(timeRange)}
       />
 
       {/* SS Batch Banner */}
