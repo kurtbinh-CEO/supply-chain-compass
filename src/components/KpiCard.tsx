@@ -1,33 +1,50 @@
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Minus, type LucideIcon } from "lucide-react";
+import type { KpiTrend, KpiUnit } from "@/lib/kpi-format";
+import { formatKpiValue } from "@/lib/kpi-format";
 
 /**
  * KpiCard — gọn, dễ đọc cho farmer / ops user.
  *
- * Nguyên tắc design:
- *  - Số (value) là điểm neo thị giác → font lớn, đậm, tabular-nums.
- *  - Title ngắn, chữ thường, không UPPERCASE (uppercase khó đọc nhanh).
- *  - Padding p-4 (16px) thay vì p-5 (20px) — giảm whitespace lãng phí.
- *  - Tone strip bên trái (4px) thay cho viền cả thẻ → ít noise hơn.
- *  - Trend dùng icon arrow + màu semantic (success/danger/muted), tự suy ra
- *    direction tốt/xấu theo prop `positive`.
- *  - Optional icon ở góc phải, dưới dạng tonal chip mờ — không tranh giành với số.
+ * Hai cách truyền value/unit (chuẩn hoá):
+ *
+ *  1) RAW — caller đã format sẵn:
+ *       <KpiCard title="Doanh thu rủi ro" value="3,17" unit="tỷ ₫" ... />
+ *
+ *  2) NUMERIC — KpiCard tự format theo unit chuẩn (vi-VN, separator, compact):
+ *       <KpiCard title="Tiết kiệm" valueNum={507_000_000} valueUnit="vnd" ... />
+ *       <KpiCard title="Mức phục vụ" valueNum={95.5} valueUnit="pct" ... />
+ *       <KpiCard title="Ngoại lệ"   valueNum={14}    valueUnit="qty" qtyLabel="vấn đề" />
+ *
+ * Trend: ưu tiên `trend` (object KpiTrend chuẩn từ helper `kpiTrend(...)`).
+ * Vẫn giữ lại form `{ value, positive }` (legacy) cho các call site cũ.
  */
+export type KpiTone = "neutral" | "success" | "warning" | "danger" | "info" | "primary";
+
 interface KpiCardProps {
   title: string;
-  value: string;
+  /** Đã format. Bỏ qua nếu dùng `valueNum`. */
+  value?: string;
+  /** Đã format. */
   unit?: string;
-  trend?: { value: string; positive: boolean };
-  /** Tone semantic — đổ màu strip bên trái + tint icon chip. Default: neutral. */
-  tone?: "neutral" | "success" | "warning" | "danger" | "info" | "primary";
-  /** Icon optional. Nếu có sẽ render thành chip nhỏ ở góc phải. */
+
+  /** Numeric path — KpiCard tự format theo unit chuẩn. */
+  valueNum?: number;
+  valueUnit?: KpiUnit;
+  /** Label cho unit khi valueUnit="qty" (vd: "vấn đề", "ngày", "m²"). */
+  qtyLabel?: string;
+
+  /** Trend chuẩn (preferred) — build qua `kpiTrend(...)`. */
+  trend?: KpiTrend | { value: string; positive: boolean };
+
+  tone?: KpiTone;
   icon?: LucideIcon;
-  /** Hint phụ — câu giải thích ngắn dưới trend. Giữ <40 ký tự. */
+  /** Hint ngắn dưới trend, <40 ký tự. */
   hint?: string;
   className?: string;
 }
 
-const TONE_STRIP: Record<NonNullable<KpiCardProps["tone"]>, string> = {
+const TONE_STRIP: Record<KpiTone, string> = {
   neutral: "bg-surface-3",
   success: "bg-success",
   warning: "bg-warning",
@@ -36,7 +53,7 @@ const TONE_STRIP: Record<NonNullable<KpiCardProps["tone"]>, string> = {
   primary: "bg-primary",
 };
 
-const TONE_CHIP: Record<NonNullable<KpiCardProps["tone"]>, string> = {
+const TONE_CHIP: Record<KpiTone, string> = {
   neutral: "bg-surface-2 text-text-2",
   success: "bg-success/10 text-success",
   warning: "bg-warning/10 text-warning",
@@ -45,27 +62,47 @@ const TONE_CHIP: Record<NonNullable<KpiCardProps["tone"]>, string> = {
   primary: "bg-primary/10 text-primary",
 };
 
+/** Normalize trend prop về dạng { value, direction, isGood } để render thống nhất. */
+function normalizeTrend(t: KpiCardProps["trend"]): KpiTrend | undefined {
+  if (!t) return undefined;
+  if ("direction" in t) return t;
+  // Legacy form: { value, positive } → infer direction từ value text
+  const direction = /[-−]/.test(t.value) ? "down" : /\+/.test(t.value) ? "up" : "flat";
+  return { value: t.value, direction, isGood: t.positive };
+}
+
 export function KpiCard({
   title,
   value,
   unit,
+  valueNum,
+  valueUnit,
+  qtyLabel,
   trend,
   tone = "neutral",
   icon: Icon,
   hint,
   className,
 }: KpiCardProps) {
+  // Resolve value/unit — numeric path tự format
+  let renderValue = value ?? "";
+  let renderUnit = unit;
+  if (valueNum !== undefined && valueUnit) {
+    const [v, u] = formatKpiValue(valueNum, valueUnit, qtyLabel);
+    renderValue = v;
+    renderUnit = renderUnit ?? u;
+  }
+
+  const t = normalizeTrend(trend);
+
   return (
     <div
       className={cn(
-        // Strip bên trái = pseudo via overflow-hidden + absolute child
         "relative overflow-hidden rounded-card border border-surface-3 bg-surface-1",
-        // Mobile: padding rộng hơn 1 chút để chạm tay dễ; sm+: thu gọn lại
         "p-3.5 sm:p-4 transition-shadow hover:shadow-sm",
         className,
       )}
     >
-      {/* Tone strip — 4px mobile / 3px desktop để dễ thấy trên màn nhỏ */}
       <span aria-hidden className={cn("absolute left-0 top-0 bottom-0 w-1 sm:w-[3px]", TONE_STRIP[tone])} />
 
       {/* Header: title + icon */}
@@ -78,35 +115,34 @@ export function KpiCard({
         )}
       </div>
 
-      {/* Value + unit — điểm neo. Mobile to hơn (30px) để farmer scan không cần zoom */}
+      {/* Value + unit */}
       <div className="flex items-baseline gap-1.5">
         <span className="font-display text-[30px] sm:text-[26px] leading-none font-bold text-text-1 tabular-nums">
-          {value}
+          {renderValue}
         </span>
-        {unit && <span className="text-table sm:text-table-sm text-text-3">{unit}</span>}
+        {renderUnit && <span className="text-table sm:text-table-sm text-text-3">{renderUnit}</span>}
       </div>
 
       {/* Trend + hint */}
-      {(trend || hint) && (
+      {(t || hint) && (
         <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-          {trend && (
+          {t && (
             <span
               className={cn(
                 "inline-flex items-center gap-0.5 text-table-sm sm:text-caption font-semibold tabular-nums",
-                trend.positive ? "text-success" : "text-danger",
+                t.isGood ? "text-success" : "text-danger",
               )}
             >
-              {trend.positive ? (
-                <TrendingUp className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
-              ) : (
-                <TrendingDown className="h-3.5 w-3.5 sm:h-3 sm:w-3" />
-              )}
-              {trend.value}
+              {t.direction === "up"   && <TrendingUp   className="h-3.5 w-3.5 sm:h-3 sm:w-3" />}
+              {t.direction === "down" && <TrendingDown className="h-3.5 w-3.5 sm:h-3 sm:w-3" />}
+              {t.direction === "flat" && <Minus        className="h-3.5 w-3.5 sm:h-3 sm:w-3" />}
+              {t.value}
+              {t.vs && <span className="ml-1 font-normal text-text-3">vs {t.vs}</span>}
             </span>
           )}
           {hint && (
             <span className="text-table-sm sm:text-caption text-text-3 inline-flex items-center gap-1">
-              {trend && <Minus className="h-2.5 w-2.5 text-text-3/60" />}
+              {t && <Minus className="h-2.5 w-2.5 text-text-3/60" />}
               {hint}
             </span>
           )}
