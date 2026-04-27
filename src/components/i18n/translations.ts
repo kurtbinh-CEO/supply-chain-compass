@@ -49,6 +49,48 @@ export const translations: Record<Locale, Record<string, string>> = {
     "workflow.daily": "Quy trình ngày",
     "workflow.monthly": "Quy trình tháng",
 
+    // Sidebar badge — hidden by role
+    "badge.hidden.aria": "Số liệu bị ẩn theo phân quyền — di chuột để xem chi tiết",
+    "badge.hidden.title": "Số liệu bị ẩn",
+    "badge.hidden.metric": "Đo gì:",
+    "badge.hidden.role": "Cần vai trò:",
+    "badge.hidden.viewAt": "Xem ở:",
+    "badge.hidden.currentRole": "Vai trò hiện tại:",
+    "badge.hidden.contact": "Liên hệ quản trị nếu cần nâng quyền.",
+    "badge.hidden.or": "hoặc",
+
+    // Role labels
+    "role.SC_MANAGER": "Quản lý Supply Chain",
+    "role.CN_MANAGER": "Quản lý Chi nhánh",
+    "role.SALES": "Sales",
+    "role.VIEWER": "Người xem",
+
+    // Badge metric descriptions
+    "badge.metric.nm_cn_fresh": "Độ tươi nguồn dữ liệu NM/CN.",
+    "badge.metric.cn_adjust": "Số CN đã gửi điều chỉnh tuần / tổng CN.",
+    "badge.metric.exceptions": "Số shortage đang treo trong DRP.",
+    "badge.metric.po_pending": "Số PO/lệnh phát hành đang chờ duyệt.",
+    "badge.metric.demand_progress": "Tiến độ submit Demand tháng (CN đã chốt / tổng).",
+    "badge.metric.sop_status": "Trạng thái phiên S&OP tháng (đã/cần chốt).",
+    "badge.metric.hub_commitment": "NM đã confirm cam kết tuần / tổng NM.",
+    "badge.metric.gap_pending": "Số kịch bản gap đang theo dõi.",
+    "badge.metric.monitoring_alerts": "Số cảnh báo hệ thống chưa đọc.",
+    "badge.metric.executive_risk": "Tổng rủi ro lãnh đạo (critical + thay đổi SS chờ duyệt).",
+    "badge.metric.cn_portal_pending": "Số CN có yêu cầu pending trên Cổng CN.",
+
+    // Badge "view at" suggestions
+    "badge.viewAt.nm_cn_fresh": "Trang Tồn kho → tab Master.",
+    "badge.viewAt.cn_adjust": "Trang Demand tuần.",
+    "badge.viewAt.exceptions": "Trang DRP → bảng exceptions.",
+    "badge.viewAt.po_pending": "Trang Đơn hàng → tab Duyệt PO.",
+    "badge.viewAt.demand_progress": "Trang Rà soát Demand.",
+    "badge.viewAt.sop_status": "Trang S&OP Consensus.",
+    "badge.viewAt.hub_commitment": "Trang Hub & Cam kết.",
+    "badge.viewAt.gap_pending": "Trang Khoảng cách & Kịch bản.",
+    "badge.viewAt.monitoring_alerts": "Trang Giám sát.",
+    "badge.viewAt.executive_risk": "Trang Điều hành.",
+    "badge.viewAt.cn_portal_pending": "Cổng CN → tab Pending.",
+
     // Route breadcrumbs
     "route.workspace": "Workspace",
     "route.monitoring": "Monitoring",
@@ -222,6 +264,48 @@ export const translations: Record<Locale, Record<string, string>> = {
     // Sidebar footer
     "workflow.daily": "Daily Workflow",
     "workflow.monthly": "Monthly Workflow",
+
+    // Sidebar badge — hidden by role
+    "badge.hidden.aria": "Badge hidden by role permissions — hover for details",
+    "badge.hidden.title": "Metric hidden",
+    "badge.hidden.metric": "Measures:",
+    "badge.hidden.role": "Required role:",
+    "badge.hidden.viewAt": "View at:",
+    "badge.hidden.currentRole": "Your current role:",
+    "badge.hidden.contact": "Contact your admin to request elevated access.",
+    "badge.hidden.or": "or",
+
+    // Role labels
+    "role.SC_MANAGER": "Supply Chain Manager",
+    "role.CN_MANAGER": "Branch Manager",
+    "role.SALES": "Sales",
+    "role.VIEWER": "Viewer",
+
+    // Badge metric descriptions
+    "badge.metric.nm_cn_fresh": "Freshness of NM/CN data sources.",
+    "badge.metric.cn_adjust": "Branches that submitted weekly adjustments / total branches.",
+    "badge.metric.exceptions": "Open shortages pending in DRP.",
+    "badge.metric.po_pending": "POs / release orders awaiting approval.",
+    "badge.metric.demand_progress": "Monthly Demand submission progress (branches locked / total).",
+    "badge.metric.sop_status": "Status of the monthly S&OP session (locked / pending).",
+    "badge.metric.hub_commitment": "Factories that confirmed weekly commitment / total factories.",
+    "badge.metric.gap_pending": "Gap scenarios under tracking.",
+    "badge.metric.monitoring_alerts": "Unread system alerts.",
+    "badge.metric.executive_risk": "Executive risk total (critical + pending SS changes).",
+    "badge.metric.cn_portal_pending": "Branches with pending requests on the CN Portal.",
+
+    // Badge "view at" suggestions
+    "badge.viewAt.nm_cn_fresh": "Inventory page → Master tab.",
+    "badge.viewAt.cn_adjust": "Weekly Demand page.",
+    "badge.viewAt.exceptions": "DRP page → exceptions table.",
+    "badge.viewAt.po_pending": "Orders page → PO Approval tab.",
+    "badge.viewAt.demand_progress": "Demand Review page.",
+    "badge.viewAt.sop_status": "S&OP Consensus page.",
+    "badge.viewAt.hub_commitment": "Hub & Commitment page.",
+    "badge.viewAt.gap_pending": "Gap & Scenario page.",
+    "badge.viewAt.monitoring_alerts": "Monitoring page.",
+    "badge.viewAt.executive_risk": "Executive page.",
+    "badge.viewAt.cn_portal_pending": "CN Portal → Pending tab.",
 
     // Route breadcrumbs
     "route.workspace": "Workspace",
