@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { KpiCard } from "@/components/KpiCard";
+import { kpiTrend } from "@/lib/kpi-format";
 import { StatusChip } from "@/components/StatusChip";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { cn } from "@/lib/utils";
@@ -175,24 +176,28 @@ export function Dashboard() {
       {/* KPI row — clickable */}
       <div className="grid grid-cols-4 gap-4">
         <ClickableKpi onClick={() => setOpenKpi("revenue_at_risk")}>
-          <KpiCard title="Doanh thu rủi ro" value="3,17" unit="tỷ VND"
+          <KpiCard title="Doanh thu rủi ro"
+            valueNum={3_170_000_000} valueUnit="vnd"
             tone="danger" icon={DollarSign}
-            trend={{ value: "12% vs tuần trước", positive: false }} />
+            trend={kpiTrend(12, "pct", { higherIsBetter: false, vs: "tuần trước" })} />
         </ClickableKpi>
         <ClickableKpi onClick={() => setOpenKpi("open_exceptions")}>
-          <KpiCard title="Ngoại lệ mở" value="14" unit="vấn đề"
+          <KpiCard title="Ngoại lệ mở"
+            valueNum={14} valueUnit="qty" qtyLabel="vấn đề"
             tone="warning" icon={AlertOctagon}
-            trend={{ value: "3 mới hôm nay", positive: false }} />
+            trend={kpiTrend(3, "qty", { higherIsBetter: false, qtyLabel: "mới hôm nay" })} />
         </ClickableKpi>
         <ClickableKpi onClick={() => setOpenKpi("fill_rate")}>
-          <KpiCard title="Tỷ lệ lấp đầy" value="94,2" unit="%"
+          <KpiCard title="Tỷ lệ lấp đầy"
+            valueNum={94.2} valueUnit="pct"
             tone="success" icon={PackageCheck}
-            trend={{ value: "1.3% vs tháng trước", positive: true }} />
+            trend={kpiTrend(1.3, "pct", { higherIsBetter: true, vs: "tháng trước" })} />
         </ClickableKpi>
         <ClickableKpi onClick={() => setOpenKpi("doh")}>
-          <KpiCard title="Ngày tồn kho TB" value="38" unit="ngày"
+          <KpiCard title="Ngày tồn kho TB"
+            valueNum={38} valueUnit="qty" qtyLabel="ngày"
             tone="info" icon={Boxes}
-            trend={{ value: "Trong ngưỡng", positive: true }} />
+            hint="Trong ngưỡng" />
         </ClickableKpi>
       </div>
 
