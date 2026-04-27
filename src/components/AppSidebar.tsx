@@ -453,8 +453,8 @@ export function AppSidebar() {
                           {hiddenByRole && item.badgeKey && (() => {
                             const info = BADGE_INFO[item.badgeKey];
                             const allowedLabels = (item.badgeRoles ?? [])
-                              .map((r) => ROLE_LABEL[r])
-                              .join(" hoặc ");
+                              .map((r) => t(ROLE_LABEL_KEY[r]))
+                              .join(` ${t("badge.hidden.or")} `);
                             return (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -463,7 +463,7 @@ export function AppSidebar() {
                                     tabIndex={0}
                                     onClick={(e) => e.preventDefault()}
                                     className="shrink-0 inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full bg-surface-3/60 text-text-3 text-[10px] font-semibold leading-tight px-1.5 cursor-help select-none focus:outline-none focus:ring-2 focus:ring-primary/40"
-                                    aria-label="Badge ẩn theo phân quyền — hover để xem chi tiết"
+                                    aria-label={t("badge.hidden.aria")}
                                   >
                                     —
                                   </span>
@@ -472,23 +472,23 @@ export function AppSidebar() {
                                   <div className="p-3 space-y-2 text-[12px] leading-relaxed">
                                     <div className="flex items-center gap-1.5 font-semibold text-text-1">
                                       <Lock className="h-3 w-3 text-text-3" />
-                                      Số liệu bị ẩn
+                                      {t("badge.hidden.title")}
                                     </div>
                                     <div className="text-text-2">
-                                      <span className="font-medium text-text-1">Đo gì: </span>
-                                      {info.metric}
+                                      <span className="font-medium text-text-1">{t("badge.hidden.metric")} </span>
+                                      {t(info.metricKey)}
                                     </div>
                                     <div className="text-text-2">
-                                      <span className="font-medium text-text-1">Cần vai trò: </span>
+                                      <span className="font-medium text-text-1">{t("badge.hidden.role")} </span>
                                       {allowedLabels || "—"}
                                     </div>
                                     <div className="text-text-2">
-                                      <span className="font-medium text-text-1">Xem ở: </span>
-                                      {info.viewAt}
+                                      <span className="font-medium text-text-1">{t("badge.hidden.viewAt")} </span>
+                                      {t(info.viewAtKey)}
                                     </div>
                                     <div className="pt-1.5 border-t border-surface-3 text-text-3 text-[11px]">
-                                      Vai trò hiện tại: <span className="font-medium text-text-2">{ROLE_LABEL[user.role]}</span>.
-                                      Liên hệ quản trị nếu cần nâng quyền.
+                                      {t("badge.hidden.currentRole")} <span className="font-medium text-text-2">{t(ROLE_LABEL_KEY[user.role])}</span>.
+                                      {" "}{t("badge.hidden.contact")}
                                     </div>
                                   </div>
                                 </TooltipContent>
