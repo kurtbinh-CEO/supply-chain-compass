@@ -630,6 +630,36 @@ export function TableDownloadButton({
               )}
             </div>
 
+            {/* Cảnh báo xuất lớn — chỉ hiện khi scope=all & vượt ngưỡng */}
+            {preview.scope === "all" && totalRows > LARGE_EXPORT_THRESHOLD && (
+              <div className="mx-4 mb-3 rounded-card border border-warning/30 bg-warning/5 p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-table-sm font-semibold text-text-1">
+                      Cảnh báo: tập dữ liệu lớn ({totalRows.toLocaleString("vi-VN")} dòng)
+                    </div>
+                    <div className="mt-1 text-caption text-text-2 leading-relaxed">
+                      Bạn đang xuất <span className="font-medium">tất cả</span> dữ liệu, vượt ngưỡng{" "}
+                      {LARGE_EXPORT_THRESHOLD.toLocaleString("vi-VN")} dòng. File có thể nặng và mất
+                      vài giây để tạo. Cân nhắc lọc bớt trước khi xuất, hoặc xác nhận để tiếp tục.
+                    </div>
+                    <label className="mt-2 inline-flex items-center gap-2 text-table-sm text-text-1 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={confirmedLarge}
+                        onChange={(e) => setConfirmedLarge(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded border-surface-3 accent-warning"
+                      />
+                      <span>
+                        Tôi xác nhận tải <span className="font-medium">{totalRows.toLocaleString("vi-VN")} dòng</span>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Footer */}
             <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-surface-3 bg-surface-1/50">
               <button
@@ -642,8 +672,17 @@ export function TableDownloadButton({
               <button
                 type="button"
                 onClick={confirmDownload}
-                disabled={!previewData || previewData.length === 0}
+                disabled={
+                  !previewData ||
+                  previewData.length === 0 ||
+                  (preview.scope === "all" && totalRows > LARGE_EXPORT_THRESHOLD && !confirmedLarge)
+                }
                 className="h-8 px-3 rounded-button bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-table-sm font-medium inline-flex items-center gap-1.5"
+                title={
+                  preview.scope === "all" && totalRows > LARGE_EXPORT_THRESHOLD && !confirmedLarge
+                    ? "Cần tích xác nhận để tải tập dữ liệu lớn"
+                    : undefined
+                }
               >
                 <Download className="h-3.5 w-3.5" />
                 {preview.fmt === "pdf"
