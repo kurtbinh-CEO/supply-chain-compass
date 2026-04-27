@@ -488,7 +488,7 @@ export default function OrdersPage() {
             else if (typeof s === "object") setStatusFilter(new Set([s.stage]));
             setDrillFocus(null);
           }}
-          onOpenRow={(r) => { setDrillFocus(null); setExpanded(prev => new Set(prev).add(r.id)); }}
+          onOpenRow={(_r) => { setDrillFocus(null); }}
         />
       )}
     </AppLayout>
