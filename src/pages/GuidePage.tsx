@@ -740,8 +740,8 @@ const demoSteps: DemoStep[] = [
   },
   {
     num: 3,
-    route: "/supply",
-    routeLabel: "NM Supply",
+    route: "/inventory",
+    routeLabel: "Tồn kho",
     title: "Booking 4.500 m² — kiểm tra fresh",
     duration: "1'",
     icon: <Package className="h-5 w-5" />,
