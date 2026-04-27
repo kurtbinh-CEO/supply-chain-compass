@@ -243,29 +243,36 @@ function HeroCard({
           farmer ? "h-5 w-5 sm:h-3.5 sm:w-3.5" : "h-4 w-4 sm:h-3.5 sm:w-3.5",
         )} />
       </div>
-      {/* Value */}
-      <div className="flex items-baseline gap-1.5 min-w-0">
-        <span className={cn(
-          "font-display leading-none font-bold text-text-1 tabular-nums shrink-0",
-          valueMobileClass2,
-        )}>
+      {/* Value — value never wraps; unit truncates within max-width */}
+      <div className="flex items-baseline gap-1.5 min-w-0 w-full whitespace-nowrap">
+        <span
+          className={cn(
+            "font-display leading-none font-bold text-text-1 tabular-nums shrink-0 whitespace-nowrap",
+            valueMobileClass2,
+          )}
+        >
           {renderValue}
         </span>
         {renderUnit && (
           <span
             title={unitLen2 > 8 ? renderUnit : undefined}
             className={cn(
-              "text-text-3 truncate min-w-0",
+              "text-text-3 truncate min-w-0 max-w-[45%]",
               unitMobileClass2,
             )}
           >{renderUnit}</span>
         )}
       </div>
-      {/* Trend (optional) + Sub */}
-      <div className={cn("flex items-center gap-1.5 flex-wrap min-w-0", farmer ? "mt-1.5" : "mt-1")}>
+      {/* Trend (optional) + Sub — single line, sub truncates remaining space */}
+      <div
+        className={cn(
+          "flex items-center gap-1.5 flex-nowrap min-w-0 w-full min-h-[1.125rem]",
+          farmer ? "mt-1.5" : "mt-1",
+        )}
+      >
         {trend && (
           <span className={cn(
-            "inline-flex items-center gap-0.5 font-semibold tabular-nums shrink-0",
+            "inline-flex items-center gap-0.5 font-semibold tabular-nums shrink-0 whitespace-nowrap",
             farmer ? "text-table-sm sm:text-caption" : "text-caption",
             trend.isGood ? "text-success" : "text-danger",
           )}>
