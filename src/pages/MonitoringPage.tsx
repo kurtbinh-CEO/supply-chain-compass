@@ -792,7 +792,11 @@ export default function MonitoringPage() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <table className="w-full">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h4 className="text-table-sm font-medium text-text-2">Bảng NM Performance chi tiết</h4>
+                <TableDownloadButton targetId="monitoring-nm-performance" filename="nm-performance" size="xs" />
+              </div>
+              <table id="monitoring-nm-performance" className="w-full">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
                     {[
