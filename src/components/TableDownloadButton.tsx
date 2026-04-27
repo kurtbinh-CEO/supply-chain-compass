@@ -403,16 +403,6 @@ export function TableDownloadButton({
               </>
             )}
           </div>
-        )}
-                    <FileSpreadsheet className="h-3.5 w-3.5 text-success" />
-                    <span className="flex-1">CSV — tất cả</span>
-                    <span className="text-caption text-text-3">xem trước</span>
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        )}
       </div>
 
       {/* Preview modal */}
