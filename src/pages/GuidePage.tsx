@@ -294,7 +294,7 @@ const buyerFlows: RoleFlows = {
     {
       route: "/hub", label: "Sourcing", time: "30'", icon: <Factory className="h-5 w-5" />,
       keyAction: "Rank → Allocate → BPO", kpi: "BPO created",
-      why: "Sai NM = overdue + stockout. Ranking transparent.", what: "4 bước: Cần gì → NM rank → Phân bổ → MOQ + BPO.",
+      why: "Sai NM = overdue + stockout. Ranking transparent.", what: "3 bước: Cần gì → NM rank + Phân bổ → MOQ + BPO.",
       how: "1. CRITICAL → 4 NM eligible\n2. Mikado 88★ #1\n3. Primary 700 + Backup 140\n4. [Tạo BPO]",
       formula: "Score = W₁×LT + W₂×Cost + W₃×Rel\nMOQ = ceil(alloc ÷ MOQ) × MOQ",
       highlights: [
