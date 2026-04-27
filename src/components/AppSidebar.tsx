@@ -163,39 +163,29 @@ const navGroups: NavGroup[] = [
 interface BadgeData { text: string; tone: "success" | "warning" | "danger" }
 
 /** Metadata mô tả mỗi badge: dùng cho popover khi badge bị che vì role.
- *  - metric: tóm tắt 1 câu nội dung con số đo gì.
- *  - viewAt: gợi ý nơi user có thể xem chi tiết nếu được cấp quyền. */
-const BADGE_INFO: Record<DailyBadgeKey, { metric: string; viewAt: string }> = {
-  nm_cn_fresh:       { metric: "Độ tươi nguồn dữ liệu NM/CN.",
-                       viewAt: "Trang Tồn kho → tab Master." },
-  cn_adjust:         { metric: "Số CN đã gửi điều chỉnh tuần / tổng CN.",
-                       viewAt: "Trang Demand tuần." },
-  exceptions:        { metric: "Số shortage đang treo trong DRP.",
-                       viewAt: "Trang DRP → bảng exceptions." },
-  po_pending:        { metric: "Số PO/lệnh phát hành đang chờ duyệt.",
-                       viewAt: "Trang Đơn hàng → tab Duyệt PO." },
-  demand_progress:   { metric: "Tiến độ submit Demand tháng (CN đã chốt / tổng).",
-                       viewAt: "Trang Rà soát Demand." },
-  sop_status:        { metric: "Trạng thái phiên S&OP tháng (đã/cần chốt).",
-                       viewAt: "Trang S&OP Consensus." },
-  hub_commitment:    { metric: "NM đã confirm cam kết tuần / tổng NM.",
-                       viewAt: "Trang Hub & Cam kết." },
-  gap_pending:       { metric: "Số kịch bản gap đang theo dõi.",
-                       viewAt: "Trang Khoảng cách & Kịch bản." },
-  monitoring_alerts: { metric: "Số cảnh báo hệ thống chưa đọc.",
-                       viewAt: "Trang Giám sát." },
-  executive_risk:    { metric: "Tổng rủi ro lãnh đạo (critical + thay đổi SS chờ duyệt).",
-                       viewAt: "Trang Điều hành." },
-  cn_portal_pending: { metric: "Số CN có yêu cầu pending trên Cổng CN.",
-                       viewAt: "Cổng CN → tab Pending." },
+ *  - metricKey / viewAtKey: i18n keys → resolved qua t() ở runtime.
+ *  Tách ra dạng key (không phải literal string) để switch ngôn ngữ
+ *  không cần re-render constant module. */
+const BADGE_INFO: Record<DailyBadgeKey, { metricKey: string; viewAtKey: string }> = {
+  nm_cn_fresh:       { metricKey: "badge.metric.nm_cn_fresh",       viewAtKey: "badge.viewAt.nm_cn_fresh" },
+  cn_adjust:         { metricKey: "badge.metric.cn_adjust",         viewAtKey: "badge.viewAt.cn_adjust" },
+  exceptions:        { metricKey: "badge.metric.exceptions",        viewAtKey: "badge.viewAt.exceptions" },
+  po_pending:        { metricKey: "badge.metric.po_pending",        viewAtKey: "badge.viewAt.po_pending" },
+  demand_progress:   { metricKey: "badge.metric.demand_progress",   viewAtKey: "badge.viewAt.demand_progress" },
+  sop_status:        { metricKey: "badge.metric.sop_status",        viewAtKey: "badge.viewAt.sop_status" },
+  hub_commitment:    { metricKey: "badge.metric.hub_commitment",    viewAtKey: "badge.viewAt.hub_commitment" },
+  gap_pending:       { metricKey: "badge.metric.gap_pending",       viewAtKey: "badge.viewAt.gap_pending" },
+  monitoring_alerts: { metricKey: "badge.metric.monitoring_alerts", viewAtKey: "badge.viewAt.monitoring_alerts" },
+  executive_risk:    { metricKey: "badge.metric.executive_risk",    viewAtKey: "badge.viewAt.executive_risk" },
+  cn_portal_pending: { metricKey: "badge.metric.cn_portal_pending", viewAtKey: "badge.viewAt.cn_portal_pending" },
 };
 
-/** Map UserRole → label thân thiện hiển thị trong popover. */
-const ROLE_LABEL: Record<UserRole, string> = {
-  SC_MANAGER: "Quản lý Supply Chain",
-  CN_MANAGER: "Quản lý Chi nhánh",
-  SALES: "Sales",
-  VIEWER: "Người xem",
+/** Map UserRole → i18n key cho label thân thiện trong popover. */
+const ROLE_LABEL_KEY: Record<UserRole, string> = {
+  SC_MANAGER: "role.SC_MANAGER",
+  CN_MANAGER: "role.CN_MANAGER",
+  SALES: "role.SALES",
+  VIEWER: "role.VIEWER",
 };
 
 /** Interval (ms) tự re-evaluate badge — bắt kịp các thay đổi không có event
