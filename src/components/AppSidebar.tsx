@@ -159,20 +159,41 @@ const navGroups: NavGroup[] = [
  * ─────────────────────────────────────────────────────────────────────────── */
 interface BadgeData { text: string; tone: "success" | "warning" | "danger" }
 
+/** Interval (ms) tự re-evaluate badge — bắt kịp các thay đổi không có event
+ *  (vd: timer aging "PO quá hạn", freshness data). 30s đủ mượt cho ops UI. */
+const BADGE_TICK_MS = 30_000;
+
 function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
-  const { exceptions, approvals } = useWorkspace();
+  const { exceptions, approvals, sopLock, hubCommit, badgeRevision } = useWorkspace();
+
+  // ── Tick định kỳ: tăng nonce mỗi BADGE_TICK_MS để hook re-render
+  //    ngay cả khi state context không đổi (vd: PO aging warning theo thời gian). ──
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), BADGE_TICK_MS);
+    return () => clearInterval(id);
+  }, []);
+  // `tick` & `badgeRevision` được "sử dụng" trong scope này → mỗi lần đổi
+  //  buộc closure re-tính → re-render consumer. Để rõ ý, gắn vào void expression:
+  void tick; void badgeRevision;
 
   // Pending counters (mock-derived).
-  const poPending = approvals.filter(a => a.type === "PO Release" || a.type === "Force-release").length;
-  const cnAdjustPending = approvals.filter(a => a.type === "CN Adjust").length;
+  const poPending = approvals.filter(a => a.type === "PO Release" || a.type === "Force-release" || a.type === "Phát hành PO" || a.type === "Phát hành khẩn").length;
+  const cnAdjustPending = approvals.filter(a => a.type === "CN Adjust" || a.type === "CN điều chỉnh").length;
   const drpExceptions = exceptions.filter(e => e.type === "SHORTAGE").length;
-  const sopPending = approvals.filter(a => a.type === "S&OP Lock").length;
+  const sopPendingApprovals = approvals.filter(a => a.type === "S&OP Lock" || a.type === "S&OP").length;
 
   // Tổng exceptions hệ thống (monitoring + executive).
   const totalAlerts = exceptions.length;
 
+  // ── S&OP & Hub: ưu tiên state thật từ context; fallback approvals/heuristic. ──
+  const sopLocked = sopLock.locked;
+  const hubReady = hubCommit.total > 0
+    ? { confirmed: hubCommit.confirmed, total: hubCommit.total }
+    : { confirmed: 6, total: 8 }; // fallback demo
+
   return {
-    // ── Daily ops (giữ nguyên hành vi cũ) ──
+    // ── Daily ops ──
     nm_cn_fresh:  { text: "5/5 · 12 CN", tone: "success" },
     cn_adjust:    cnAdjustPending > 0
       ? { text: `${4 + cnAdjustPending}/12`, tone: cnAdjustPending > 3 ? "danger" : "warning" }
@@ -186,10 +207,15 @@ function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
 
     // ── Monthly plan ──
     demand_progress: { text: "8/12 CN", tone: "warning" },
-    sop_status:      sopPending > 0
-      ? { text: "Cần chốt", tone: "warning" }
-      : { text: "Đã chốt", tone: "success" },
-    hub_commitment:  { text: "6/8 NM", tone: "warning" },
+    sop_status:      sopLocked
+      ? { text: "Đã chốt", tone: "success" }
+      : sopPendingApprovals > 0
+        ? { text: "Cần chốt", tone: "warning" }
+        : { text: "Chờ phiên", tone: "warning" },
+    hub_commitment:  hubReady.confirmed >= hubReady.total
+      ? { text: `${hubReady.total}/${hubReady.total} NM`, tone: "success" }
+      : { text: `${hubReady.confirmed}/${hubReady.total} NM`,
+          tone: (hubReady.total - hubReady.confirmed) >= 3 ? "danger" : "warning" },
     gap_pending:     { text: "2 KB", tone: "warning" },
 
     // ── Monitoring & Executive ──
