@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useRbac } from "@/components/RbacContext";
 
 export type PreflightLevel = "ok" | "warn" | "block";
 
@@ -64,6 +65,8 @@ const TIER_LABEL: Record<Tier, string> = {
 };
 
 export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
+  const { canForceRelease: rbacCanForce, canForceReleaseDirector, canForceReleaseCeo, user } = useRbac();
+
   const blocking = items.filter((i) => i.level === "block");
   const warnings = items.filter((i) => i.level === "warn");
   const okCount = items.filter((i) => i.level === "ok").length;
@@ -76,7 +79,7 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
     [blocking],
   );
   const onlyStaleBlocks = blocking.length > 0 && blocking.every((b) => b.key === "nm-stock");
-  const canForceRelease = !!staleBlock && onlyStaleBlocks;
+  const canForceRelease = !!staleBlock && onlyStaleBlocks && rbacCanForce;
 
   const requiredTier: Tier = useMemo(() => {
     const h = staleBlock?.staleHours ?? 0;
@@ -280,7 +283,11 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
             {(["sc_manager", "director", "ceo"] as Tier[]).map((tier, idx) => {
               const tierIdx = idx; // 0,1,2
               const reqIdx = requiredTier === "sc_manager" ? 0 : requiredTier === "director" ? 1 : 2;
-              const allowed = tierIdx >= reqIdx;
+              // Đủ tier theo mức stale + đủ quyền RBAC tương ứng
+              const rbacOk =
+                tier === "sc_manager" ? rbacCanForce :
+                tier === "director" ? canForceReleaseDirector : canForceReleaseCeo;
+              const allowed = tierIdx >= reqIdx && rbacOk;
               const isSelected = selectedTier === tier;
               return (
                 <button
@@ -300,7 +307,11 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
                       Tier {tierIdx + 1} — {TIER_LABEL[tier]}
                     </div>
                     {!allowed && (
-                      <span className="text-caption text-text-3">Không đủ thẩm quyền cho mức stale này</span>
+                      <span className="text-caption text-text-3">
+                        {tierIdx < (requiredTier === "sc_manager" ? 0 : requiredTier === "director" ? 1 : 2)
+                          ? "Không đủ tier cho mức stale này"
+                          : `Vai trò ${user.role} không có quyền duyệt tier này`}
+                      </span>
                     )}
                     {isSelected && (
                       <CheckCircle2 className="h-4 w-4 text-primary" />

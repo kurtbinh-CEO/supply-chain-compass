@@ -8,6 +8,7 @@ import { WorkflowProvider } from "@/components/WorkflowContext";
 import { WorkspaceProvider } from "@/components/WorkspaceContext";
 import { TenantProvider } from "@/components/TenantContext";
 import { RbacProvider } from "@/components/RbacContext";
+import { RouteGuard } from "@/components/RouteGuard";
 import { SafetyStockProvider } from "@/components/SafetyStockContext";
 import { ThemeProvider } from "@/components/ThemeContext";
 import { I18nProvider } from "@/components/i18n/I18nContext";
@@ -111,37 +112,37 @@ function ProtectedRoutes() {
         <OnboardingOverlay />
         <OnboardingAutoStart />
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/workspace" element={<WorkspacePage />} />
-          <Route path="/monitoring" element={<MonitoringPage />} />
-          <Route path="/demand" element={<DemandPage />} />
-          <Route path="/sop" element={<SopPage />} />
-          <Route path="/hub" element={<HubPage />} />
-          <Route path="/gap-scenario" element={<GapScenarioPage />} />
-          <Route path="/scenarios" element={<DemoScenariosPage />} />
-          <Route path="/compare" element={<ComparePage />} />
+          <Route path="/" element={<RouteGuard><Index /></RouteGuard>} />
+          <Route path="/workspace" element={<RouteGuard><WorkspacePage /></RouteGuard>} />
+          <Route path="/monitoring" element={<RouteGuard><MonitoringPage /></RouteGuard>} />
+          <Route path="/demand" element={<RouteGuard><DemandPage /></RouteGuard>} />
+          <Route path="/sop" element={<RouteGuard><SopPage /></RouteGuard>} />
+          <Route path="/hub" element={<RouteGuard><HubPage /></RouteGuard>} />
+          <Route path="/gap-scenario" element={<RouteGuard><GapScenarioPage /></RouteGuard>} />
+          <Route path="/scenarios" element={<RouteGuard><DemoScenariosPage /></RouteGuard>} />
+          <Route path="/compare" element={<RouteGuard><ComparePage /></RouteGuard>} />
           {/* M2 — /inventory là route chính cho tồn kho NM+CN (2 tabs) */}
-          <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/inventory" element={<RouteGuard><InventoryPage /></RouteGuard>} />
           <Route path="/supply" element={<Navigate to="/inventory" replace />} />
-          <Route path="/demand-weekly" element={<DemandWeeklyPage />} />
-          <Route path="/drp" element={<DrpPage />} />
+          <Route path="/demand-weekly" element={<RouteGuard><DemandWeeklyPage /></RouteGuard>} />
+          <Route path="/drp" element={<RouteGuard><DrpPage /></RouteGuard>} />
           <Route path="/allocation" element={<Navigate to="/drp" replace />} />
-          <Route path="/orders" element={<OrdersPage />} />
-          <Route path="/sync" element={<SyncPage />} />
+          <Route path="/orders" element={<RouteGuard><OrdersPage /></RouteGuard>} />
+          <Route path="/sync" element={<RouteGuard><SyncPage /></RouteGuard>} />
           <Route path="/transport" element={<Navigate to="/orders?tab=packing" replace />} />
           <Route path="/supplier-portal" element={<Navigate to="/hub" replace />} />
-          <Route path="/master-data" element={<MasterDataPage />} />
-          <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/config" element={<ConfigPage />} />
-          <Route path="/cn-portal" element={<CnPortalPage />} />
-          <Route path="/logic" element={<LogicPage />} />
-          <Route path="/guide" element={<GuidePage />} />
-          <Route path="/design-test" element={<DesignTest />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/executive" element={<ExecutivePage />} />
-          <Route path="/audit" element={<AuditPage />} />
-          <Route path="/appearance" element={<AppearancePage />} />
-          <Route path="/qa/kpi" element={<QaKpiPage />} />
+          <Route path="/master-data" element={<RouteGuard><MasterDataPage /></RouteGuard>} />
+          <Route path="/reports" element={<RouteGuard><ReportsPage /></RouteGuard>} />
+          <Route path="/config" element={<RouteGuard><ConfigPage /></RouteGuard>} />
+          <Route path="/cn-portal" element={<RouteGuard><CnPortalPage /></RouteGuard>} />
+          <Route path="/logic" element={<RouteGuard><LogicPage /></RouteGuard>} />
+          <Route path="/guide" element={<RouteGuard><GuidePage /></RouteGuard>} />
+          <Route path="/design-test" element={<RouteGuard><DesignTest /></RouteGuard>} />
+          <Route path="/profile" element={<RouteGuard><ProfilePage /></RouteGuard>} />
+          <Route path="/executive" element={<RouteGuard><ExecutivePage /></RouteGuard>} />
+          <Route path="/audit" element={<RouteGuard><AuditPage /></RouteGuard>} />
+          <Route path="/appearance" element={<RouteGuard><AppearancePage /></RouteGuard>} />
+          <Route path="/qa/kpi" element={<RouteGuard><QaKpiPage /></RouteGuard>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </OnboardingProvider>
