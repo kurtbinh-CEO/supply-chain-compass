@@ -204,10 +204,35 @@ export default function SopPage() {
   const totalAop = consensusData.reduce((a, r) => a + r.aop, 0);
   const totalV3 = consensusData.reduce((a, r) => a + r.v3, 0);
 
-  // Trigger chain khi khóa
+  // Variance chưa giải trình: |Σ(SKU v3) − v0_topdown| / v0_topdown > 10% & explanation < 6 chars
+  const unresolvedVariance = useMemo(() => {
+    return consensusData.filter((r) => {
+      if (r.v0 <= 0) return false;
+      const bottomUp = r.skus.reduce((a, s) => a + s.v3, 0);
+      const variancePct = Math.abs(bottomUp - r.v0) / r.v0;
+      if (variancePct <= 0.1) return false;
+      return (varianceExplanations[r.cn] ?? "").trim().length < 6;
+    }).length;
+  }, [consensusData, varianceExplanations]);
+
+  // Trigger chain khi khóa (đã pass tất cả check)
   const lockAndMark = useCallback(() => {
     setLocked(true);
     markDone("sop.locked");
+    // 1. Cập nhật state machine kỳ kế hoạch
+    markStepCompleted("sop");
+    // 2. Cập nhật badge sidebar / Workspace
+    setSopLock({ locked: true, lockedAt: Date.now() });
+    // 3. Notification cho Workspace inbox
+    addNotification({
+      id: `NTF-SOP-LOCK-${Date.now()}`,
+      type: "SOP_LOCKED",
+      typeColor: "info",
+      message: `S&OP ${planCycle.label} đã khoá. 5 NM cần cam kết Net Booking — mở Hub để bắt đầu.`,
+      timeAgo: "vừa xong",
+      read: false,
+      url: "/hub?tab=booking",
+    });
 
     import("sonner").then(m => {
       m.toast.success("✅ S&OP T5/2026 đã được khóa", {
@@ -233,18 +258,20 @@ export default function SopPage() {
         });
       }, 1600);
     });
-  }, [markDone, consensusData.length, totalV3]);
+  }, [markDone, markStepCompleted, setSopLock, addNotification, planCycle.label, consensusData.length, totalV3]);
 
-  // Variance chưa giải trình: |Σ(SKU v3) − v0_topdown| / v0_topdown > 10% & explanation < 6 chars
-  const unresolvedVariance = useMemo(() => {
-    return consensusData.filter((r) => {
-      if (r.v0 <= 0) return false;
-      const bottomUp = r.skus.reduce((a, s) => a + s.v3, 0);
-      const variancePct = Math.abs(bottomUp - r.v0) / r.v0;
-      if (variancePct <= 0.1) return false;
-      return (varianceExplanations[r.cn] ?? "").trim().length < 6;
-    }).length;
-  }, [consensusData, varianceExplanations]);
+  /** Gate trước khi gọi lockAndMark — chặn nếu còn variance chưa giải trình. */
+  const attemptLock = useCallback(() => {
+    if (unresolvedVariance > 0) {
+      setLockBlockedDialog({ count: unresolvedVariance });
+      return;
+    }
+    if (cellPresence.onlineUsers.length > 1) {
+      setShowPreLock(true);
+    } else {
+      lockAndMark();
+    }
+  }, [unresolvedVariance, cellPresence.onlineUsers.length, lockAndMark]);
 
   // CN cần xem = số CN có |Δ vs AOP| > 10%
   const cnNeedReview = useMemo(() => {
