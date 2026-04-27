@@ -77,6 +77,9 @@ export default function OrdersPage() {
   // Drill-down popup từ summary cards
   const [drillFocus, setDrillFocus] = useState<DrillFocus>(null);
 
+  // Time-range filter (weekly mode) — persist per screen
+  const [timeRange, setTimeRange] = useTimeRange("orders", "weekly");
+  const isHistory = !timeRange.isCurrent;
   // Dialog state — only one dialog open at a time
   const [actionRow, setActionRow] = useState<PoLifecycleRow | null>(null);
   const [cancelRow, setCancelRow] = useState<PoLifecycleRow | null>(null);
