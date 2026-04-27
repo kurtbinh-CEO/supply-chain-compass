@@ -35,12 +35,6 @@ import { SummaryCards } from "@/components/SummaryCards";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 import { sopCompare } from "@/lib/compare-metrics";
 import { AutoSaveIndicator } from "@/components/CellPresence";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 export interface ConsensusRow {
