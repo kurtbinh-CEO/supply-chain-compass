@@ -17,11 +17,20 @@
 import { ShieldAlert, Repeat, ShieldCheck, Truck, LineChart, AlertTriangle, Zap } from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
 import { HeroCard } from "@/components/monitoring/MonitoringHeroCards";
+import { StatusChip } from "@/components/StatusChip";
+import { TenantDropdown, FreshnessIndicator } from "@/components/TopBar";
 import { kpiTrend } from "@/lib/kpi-format";
 import { KPI_THRESHOLDS } from "@/lib/kpi-thresholds";
 import { useFarmerMode } from "@/components/FarmerModeContext";
+import { useState } from "react";
 
 const noop = () => {};
+
+/** Local mock TenantDropdown harness — independent state per scenario. */
+function TenantHarness({ initial, all }: { initial: string; all: readonly string[] }) {
+  const [t, setT] = useState(initial);
+  return <TenantDropdown tenant={t} setTenant={setT as never} tenants={all} />;
+}
 
 const SHORT_TITLE = "Doanh thu";
 const MED_TITLE   = "Doanh thu rủi ro tuần này";                            // ~26
