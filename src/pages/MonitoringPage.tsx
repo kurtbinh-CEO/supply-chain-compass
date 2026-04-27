@@ -24,6 +24,7 @@ import { SYSTEM_ACCURACY } from "@/data/unis-enterprise-dataset";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { MonitoringHeroCards } from "@/components/monitoring/MonitoringHeroCards";
 import { SummaryCards } from "@/components/SummaryCards";
+import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
