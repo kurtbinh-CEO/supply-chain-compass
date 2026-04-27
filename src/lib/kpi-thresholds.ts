@@ -31,8 +31,6 @@ export interface KpiThresholds {
   unit:   KpiLengthTiers;
   /** Hint / sub-label under value. Always single-line, truncates. */
   hint:   KpiLengthTiers;
-  /** StatusChip / pill labels (header chips, status badges, tenant pills). */
-  chip:   KpiLengthTiers;
 
   /** Max width (CSS) the unit can occupy in the value row. */
   unitMaxWidth: string;
@@ -40,10 +38,6 @@ export interface KpiThresholds {
   hintRowMinHeight: string;
   /** Reserved min-height for the trend/sub row in HeroCard (denser). */
   heroSubRowMinHeight: string;
-  /** Max width (CSS) for chip/pill labels on mobile (<sm). */
-  chipMaxWidthMobile: string;
-  /** Max width (CSS) for chip/pill labels on desktop. */
-  chipMaxWidthDesktop: string;
 }
 
 export const KPI_THRESHOLDS: KpiThresholds = {
@@ -52,12 +46,9 @@ export const KPI_THRESHOLDS: KpiThresholds = {
   value:     { lg: 5,  xl: 7  },
   unit:      { lg: 8,  xl: 14 },
   hint:      { lg: 28, xl: 44 },
-  chip:      { lg: 12, xl: 20 },
   unitMaxWidth: "45%",
   hintRowMinHeight: "1.25rem",
   heroSubRowMinHeight: "1.125rem",
-  chipMaxWidthMobile: "8rem",
-  chipMaxWidthDesktop: "14rem",
 };
 
 /** Tier resolver: returns "base" | "lg" | "xl" based on string length. */
