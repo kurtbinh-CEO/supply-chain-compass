@@ -945,7 +945,7 @@ function CnCnLtMatrix() {
     TRANSIT_LT.find((t) => t.mode === "CN_TO_CN" && t.fromCode === from && t.toCode === to)?.days ?? null;
   return (
     <div className="rounded-card border border-surface-3 bg-surface-2 overflow-x-auto">
-      <table className="w-full text-table">
+      <table id="lt-matrix-cn-cn" className="w-full text-table">
         <thead>
           <tr className="bg-surface-1">
             <th className="text-left px-3 py-2.5 text-table-header uppercase text-text-3 font-medium sticky left-0 bg-surface-1">From \ To</th>
