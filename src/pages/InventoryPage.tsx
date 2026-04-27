@@ -1027,6 +1027,8 @@ export default function InventoryPage() {
 
   const [tab, setTab] = useState<"nm" | "cn">("nm");
   const [importerOpen, setImporterOpen] = useState(false);
+  const [timeRange, setTimeRange] = useTimeRange("inventory", "daily");
+  const isHistory = !timeRange.isCurrent;
 
   const blockedNm = factoryRows.filter((r) => r.tone === "block").length;
   const dangerCn  = branchRows.filter((r) => r.tone === "block").length;
