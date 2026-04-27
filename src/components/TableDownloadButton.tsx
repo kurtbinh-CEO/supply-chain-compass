@@ -298,6 +298,7 @@ export function TableDownloadButton({
 
   const openPreview = (fmt: Format, scope: Scope) => {
     setMenuOpen(false);
+    setConfirmedLarge(false);
     setPreview({ fmt, scope });
   };
 
