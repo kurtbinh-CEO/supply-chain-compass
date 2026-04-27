@@ -283,7 +283,11 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
             {(["sc_manager", "director", "ceo"] as Tier[]).map((tier, idx) => {
               const tierIdx = idx; // 0,1,2
               const reqIdx = requiredTier === "sc_manager" ? 0 : requiredTier === "director" ? 1 : 2;
-              const allowed = tierIdx >= reqIdx;
+              // Đủ tier theo mức stale + đủ quyền RBAC tương ứng
+              const rbacOk =
+                tier === "sc_manager" ? rbacCanForce :
+                tier === "director" ? canForceReleaseDirector : canForceReleaseCeo;
+              const allowed = tierIdx >= reqIdx && rbacOk;
               const isSelected = selectedTier === tier;
               return (
                 <button
