@@ -673,8 +673,12 @@ export function CarriersTab() {
         </div>
       )}
 
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-table-sm font-medium text-text-2">Danh sách nhà xe</h3>
+        <TableDownloadButton targetId="transport-carriers" filename="nha-xe" size="xs" />
+      </div>
       <div className="rounded-card border border-surface-3 bg-surface-1 overflow-hidden">
-        <table className="w-full">
+        <table id="transport-carriers" className="w-full">
           <thead className="bg-surface-2/50 border-b border-surface-3">
             <tr className="text-table-sm text-text-3 text-left">
               <th className="px-4 py-2.5 font-medium">Tên nhà xe</th>
