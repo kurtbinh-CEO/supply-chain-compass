@@ -27,6 +27,14 @@ import { toast } from "sonner";
 type Format = "csv" | "xlsx" | "pdf";
 type Scope = "filtered" | "all";
 
+/** Một filter đang áp dụng — hiển thị thành chip trong preview modal. */
+export interface ExportActiveFilter {
+  /** Nhãn nhóm filter (ví dụ "Tuần", "CN", "Trạng thái"). */
+  label: string;
+  /** Giá trị hiện tại (ví dụ "T20/2026", "CN-BD, CN-HCM", "Đang chở"). */
+  value: string;
+}
+
 interface Props {
   tableRef?: React.RefObject<HTMLTableElement>;
   targetId?: string;
@@ -36,6 +44,8 @@ interface Props {
   size?: "xs" | "sm";
   formats?: Format[];
   scopeLabel?: string;
+  /** Các filter/trạng thái đang áp dụng — hiển thị thành chip trong modal preview. */
+  activeFilters?: ExportActiveFilter[];
   getAllRowsCsv?: () => string;
   pdfTitle?: string;
 }
@@ -228,6 +238,7 @@ export function TableDownloadButton({
   size = "sm",
   formats = ["csv", "xlsx", "pdf"],
   scopeLabel,
+  activeFilters,
   getAllRowsCsv,
   pdfTitle,
 }: Props) {
@@ -576,6 +587,34 @@ export function TableDownloadButton({
                 <X className="h-4 w-4" />
               </button>
             </div>
+
+            {/* Filter chips — danh sách filter/trạng thái đang áp dụng */}
+            {activeFilters && activeFilters.length > 0 && (
+              <div className="px-4 pt-3 pb-1 border-b border-surface-3 bg-surface-1/40">
+                <div className="text-caption text-text-3 mb-1.5 inline-flex items-center gap-1">
+                  <Filter className="h-3 w-3" />
+                  Filter đang áp dụng ({activeFilters.length})
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {activeFilters.map((f, i) => (
+                    <span
+                      key={`${f.label}-${i}`}
+                      className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-0 px-2 py-0.5 text-caption max-w-full"
+                      title={`${f.label}: ${f.value}`}
+                    >
+                      <span className="text-text-3 font-medium">{f.label}:</span>
+                      <span className="text-text-1 truncate max-w-[220px]">{f.value}</span>
+                    </span>
+                  ))}
+                </div>
+                {preview.scope === "all" && (
+                  <div className="mt-2 text-caption text-warning inline-flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    Phạm vi "Tất cả" sẽ bỏ qua các filter trên khi xuất.
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Body */}
             <div className="flex-1 overflow-auto p-4">
