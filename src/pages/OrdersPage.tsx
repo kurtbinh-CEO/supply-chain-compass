@@ -314,21 +314,13 @@ export default function OrdersPage() {
         />
       </div>
 
-      {/* ═══ LIFECYCLE FLOW — 1 dòng text nhỏ trong header bảng ═══ */}
-      <LifecycleFlowMini
-        counts={counts.stage}
-        active={statusFilter}
-        onToggle={toggleStatus}
-      />
-
-      {/* ═══ MAIN TABLE ═══ */}
-      <SmartTable<PoLifecycleRow>
-        data={visibleRows}
-        getRowId={(r) => r.id}
+      {/* ═══ MAIN TABLE — PO GROUPS (NM × CN × Tuần) ═══ */}
+      <SmartTable<PoGroup>
+        data={visibleGroups}
+        getRowId={(g) => g.groupId}
         screenId="orders-lifecycle"
         defaultDensity="compact"
-        rowSeverity={(r) => isOverdue(r) ? "shortage" : isNearSla(r) ? "watch" : undefined}
-        autoExpandWhen={(r) => expanded.has(r.id)}
+        rowSeverity={(g) => groupOverdue(g) ? "shortage" : groupNearSla(g) ? "watch" : undefined}
         emptyState={{
           icon: overdueOnly ? <CheckCircle2 /> : <ClipboardCheck />,
           title: overdueOnly ? "Không có đơn trễ hạn" : "Không có đơn nào",
@@ -336,70 +328,70 @@ export default function OrdersPage() {
             ? "Chưa có đơn trong tuần. Tải đơn mới từ DRP batch."
             : "Thử bỏ bớt bộ lọc hoặc bấm \"Tất cả\" để xem toàn bộ.",
         }}
-        drillDown={(r) => <ExpandedRow row={r} />}
+        drillDown={(g) => (
+          <GroupDrillDown
+            group={g}
+            onAction={(line) => setActionRow(line)}
+            onCancel={(line) => setCancelRow(line)}
+          />
+        )}
         columns={[
-          {
-            key: "expand", label: "", width: 32, hideable: false,
-            render: (r) => (
-              <button
-                aria-label={expanded.has(r.id) ? "Thu gọn" : "Mở rộng"}
-                className="text-text-3 hover:text-text-1 transition-transform"
-                onClick={(e) => { e.stopPropagation(); setExpanded(prev => { const n = new Set(prev); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; }); }}
-              >
-                {expanded.has(r.id) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-              </button>
-            ),
-          },
           {
             key: "poNumber", label: "Mã đơn", width: 180, sortable: true, hideable: false, priority: "high",
             filter: "text",
-            accessor: (r) => r.poNumber,
-            render: (r) => (
+            accessor: (g) => g.poNumber,
+            render: (g) => (
               <div className="flex flex-col">
-                <span className="font-mono text-table-sm font-semibold text-text-1">{r.poNumber}</span>
-                {r.cancelReason && <span className="text-[10px] text-danger">Hủy: {r.cancelReason}</span>}
+                <span className="font-mono text-table-sm font-semibold text-text-1">{g.poNumber}</span>
+                {g.lineCount > 1 && (
+                  <span className="text-[10px] text-text-3">{g.lineCount} mã hàng</span>
+                )}
               </div>
             ),
           },
           {
             key: "kind", label: "Loại", width: 70, align: "center",
             filter: "enum", filterOptions: [{ label: "RPO", value: "RPO" }, { label: "TO", value: "TO" }],
-            accessor: (r) => r.kind,
-            render: (r) => (
+            accessor: (g) => g.kind,
+            render: (g) => (
               <Badge variant="outline" className={cn("text-[10px] font-mono",
-                r.kind === "TO" ? "border-warning/40 text-warning bg-warning-bg/40" : "border-success/40 text-success bg-success-bg/40"
-              )}>{r.kind}</Badge>
+                g.kind === "TO" ? "border-warning/40 text-warning bg-warning-bg/40" : "border-success/40 text-success bg-success-bg/40"
+              )}>{g.kind}</Badge>
             ),
           },
           {
             key: "route", label: "Tuyến", width: 240,
             filter: "text",
-            accessor: (r) => `${r.fromName} → ${r.toName}`,
-            render: (r) => (
+            accessor: (g) => `${g.fromName} → ${g.toName}`,
+            render: (g) => (
               <div className="flex flex-col text-table-sm">
-                <span className="text-text-1 font-medium truncate">{r.fromName}</span>
-                <span className="text-text-3 text-[11px]">→ {r.toName}</span>
+                <span className="text-text-1 font-medium truncate">{g.fromName}</span>
+                <span className="text-text-3 text-[11px]">→ {g.toName}</span>
               </div>
             ),
           },
           {
-            key: "sku", label: "Mã hàng", width: 130,
-            filter: "text",
-            accessor: (r) => r.skuLabel,
-            render: (r) => <span className="font-mono text-table-sm text-text-2">{r.skuLabel}</span>,
+            key: "qty", label: "Số lượng", width: 150, numeric: true, align: "right", sortable: true,
+            accessor: (g) => g.totalQty,
+            render: (g) => (
+              <div className="text-right tabular-nums text-table-sm">
+                <div className="text-text-1 font-medium">{g.totalQty.toLocaleString()} m²</div>
+                <div className="text-[10px] text-text-3">
+                  {g.lineCount} SKU
+                </div>
+              </div>
+            ),
           },
           {
-            key: "qty", label: "Số lượng", width: 120, numeric: true, align: "right", sortable: true,
-            accessor: (r) => r.qty,
-            render: (r) => (
-              <div className="text-right tabular-nums text-table-sm">
-                <div className="text-text-1 font-medium">{r.qty.toLocaleString()} m²</div>
-                {r.qtyConfirmed !== undefined && r.qtyConfirmed < r.qty && (
-                  <div className="text-[10px] text-warning">NM: {r.qtyConfirmed.toLocaleString()}</div>
-                )}
-                {r.qtyDelivered !== undefined && r.qtyDelivered < (r.qtyConfirmed ?? r.qty) && (
-                  <div className="text-[10px] text-danger">Nhận: {r.qtyDelivered.toLocaleString()}</div>
-                )}
+            key: "container", label: "Container", width: 110, align: "center",
+            accessor: (g) => g.containerFill.type,
+            render: (g) => (
+              <div className="flex flex-col items-center text-table-sm">
+                <span className="font-mono text-text-1">{g.containerFill.type}</span>
+                <span className={cn(
+                  "text-[10px]",
+                  g.containerFill.pct >= 85 ? "text-success" : g.containerFill.pct >= 60 ? "text-warning" : "text-text-3",
+                )}>{g.containerFill.pct}%</span>
               </div>
             ),
           },
@@ -407,18 +399,19 @@ export default function OrdersPage() {
             key: "stage", label: "Trạng thái", width: 140, align: "center",
             filter: "enum",
             filterOptions: STAGE_ORDER.concat(["cancelled"]).map(s => ({ label: STAGE_META[s].short, value: s })),
-            accessor: (r) => r.stage,
-            render: (r) => (
-              <Badge variant="outline" className={cn("text-[10px] font-bold tracking-wide", STAGE_META[r.stage].tone)}>
-                {STAGE_META[r.stage].label}
+            accessor: (g) => g.stage,
+            render: (g) => (
+              <Badge variant="outline" className={cn("text-[10px] font-bold tracking-wide", STAGE_META[g.stage].tone)}>
+                {STAGE_META[g.stage].label}
               </Badge>
             ),
           },
           {
             key: "time", label: "Thời gian", width: 130, align: "center",
             sortable: true,
-            accessor: (r) => r.hoursInStage,
-            render: (r) => {
+            accessor: (g) => g.leader.hoursInStage,
+            render: (g) => {
+              const r = g.leader;
               if (r.stage === "completed" || r.stage === "cancelled") {
                 return <span className="text-text-3 text-table-sm">{fmtTimeInStage(r.hoursInStage)}</span>;
               }
@@ -454,11 +447,10 @@ export default function OrdersPage() {
           },
           {
             key: "action", label: "Hành động", width: 200, align: "center", hideable: false,
-            render: (r) => <RowActionButton row={r} onClick={() => setActionRow(r)} onCancel={() => setCancelRow(r)} />,
+            render: (g) => <RowActionButton row={g.leader} onClick={() => setActionRow(g.leader)} onCancel={() => setCancelRow(g.leader)} />,
           },
-        ] satisfies SmartTableColumn<PoLifecycleRow>[]}
+        ] satisfies SmartTableColumn<PoGroup>[]}
       />
-
       {/* ═══ DIALOG ROUTER ═══ */}
       {actionRow && (
         <ActionDialog
