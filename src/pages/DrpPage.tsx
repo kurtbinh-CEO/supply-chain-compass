@@ -774,6 +774,7 @@ export default function DrpPage() {
 
   /* ── Time-range filter (weekly) ── */
   const [timeRange, setTimeRange] = useTimeRange("drp", "weekly");
+  const isHistory = !timeRange.isCurrent;
 
   /* ── Step navigation ── */
   const [activeStep, setActiveStep] = useState<number>(5);
