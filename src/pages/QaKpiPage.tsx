@@ -176,6 +176,70 @@ export default function QaKpiPage() {
           />
         </div>
       </section>
+
+      {/* ─── StatusChip matrix ──────────────────────────────────────── */}
+      <section className="space-y-3">
+        <h2 className="font-display text-lg font-semibold text-text-1">StatusChip — edge cases</h2>
+        <div className="flex flex-wrap gap-2 max-w-md border border-dashed border-surface-3 p-3 rounded-card">
+          <StatusChip status="success" label="OK" />
+          <StatusChip status="info" label="Đang xử lý" />
+          <StatusChip status="warning" label="Trễ giao hàng nhẹ" />
+          <StatusChip status="danger" label="Đã quá hạn 3 ngày làm việc" />
+          <StatusChip status="warning" label="Mondelez Vietnam Ltd. — chi nhánh HCM kho 3" />
+          <StatusChip status="info" label="Chờ duyệt từ Giám đốc Chuỗi cung ứng tháng 4 quý 2 năm 2026" />
+        </div>
+        <p className="text-caption text-text-3">
+          Container 28rem — chips truncate, never overflow. Hover for full label.
+        </p>
+      </section>
+
+      {/* ─── Header stress (under 480px) ────────────────────────────── */}
+      <section className="space-y-3">
+        <h2 className="font-display text-lg font-semibold text-text-1">Header — TenantDropdown + FreshnessIndicator @ 480px</h2>
+        <p className="text-caption text-text-3 max-w-prose">
+          Each frame caps at <code className="font-mono">375px</code> / <code className="font-mono">414px</code> /
+          <code className="font-mono">480px</code> to mimic real mobile widths. Tenant pill must truncate
+          long names and show full text on hover; FreshnessIndicator stays visible (its label hides &lt; md).
+          Tap chips and confirm dropdowns open within the frame.
+        </p>
+
+        {[375, 414, 480].map((w) => (
+          <div key={w} className="space-y-1.5">
+            <div className="text-caption font-mono text-text-3">viewport ≈ {w}px</div>
+            <div
+              style={{ width: w }}
+              className="border border-dashed border-surface-3 rounded-card overflow-hidden bg-surface-2/40"
+            >
+              {/* Mini TopBar slice — same layout primitives as real header */}
+              <div className="flex h-14 items-center px-4 gap-2.5 min-w-0">
+                <TenantHarness
+                  initial="Mondelez Vietnam Ltd. — HCM"
+                  all={["UNIS", "TTC AgriS Group", "Mondelez Vietnam Ltd. — HCM"]}
+                />
+                <FreshnessIndicator />
+                <div className="h-6 w-px bg-surface-3 shrink-0 mx-0.5" />
+                <nav className="flex items-center gap-1.5 text-table-sm min-w-0 overflow-hidden">
+                  <span className="text-text-3 font-medium shrink-0">SCP</span>
+                  <span className="text-text-1 font-semibold truncate">Bảng điều khiển vận hành</span>
+                </nav>
+                <div className="flex-1" />
+                <button className="shrink-0 h-8 w-8 rounded-lg border border-surface-3 bg-surface-0" aria-label="search" />
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <details className="text-caption text-text-3">
+          <summary className="cursor-pointer text-text-2 font-medium">Verification checklist</summary>
+          <ul className="list-disc pl-5 mt-1.5 space-y-0.5">
+            <li>Tenant pill truncates with ellipsis (no horizontal scroll on the frame).</li>
+            <li>Hovering the tenant pill reveals full name via native tooltip.</li>
+            <li>FreshnessIndicator dot + (md+) label stay aligned, never wrap.</li>
+            <li>Breadcrumb truncates after the pills, search button stays right-aligned.</li>
+            <li>Clicking the tenant pill opens the dropdown without overflowing the frame.</li>
+          </ul>
+        </details>
+      </section>
     </div>
   );
 }
