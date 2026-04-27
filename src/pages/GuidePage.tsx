@@ -76,8 +76,8 @@ const scFlows: RoleFlows = {
       why: "DRP cần data NM fresh. Stale >24h → DRP sai.", what: "Upload Excel hoặc nhập tay. UNIS dùng = tồn × share%.",
       how: "1. Drag-drop file NM\n2. Preview → [Xác nhận]\n3. NM chưa gửi → [Nhắc NM]", formula: "UNIS_dùng = on_hand × share%\nMikado: 2.500 × 60% = 1.500 − 120 = 1.380",
       highlights: [
-        { selector: "supply-upload", label: "Upload Excel / Template", description: "Drag-drop file NM vào zone, hoặc click [Upload Excel]. Hệ thống validate trước khi import." },
-        { selector: "supply-nm-table", label: "Bảng tồn kho NM", description: "Per NM: tổng tồn, UNIS dùng (= tồn × share%), đang về. NM stale → hàng đỏ, click [Nhắc NM]." },
+        { selector: "inventory-upload", label: "Upload Excel / Template", description: "Kéo-thả file NM vào vùng upload, hoặc bấm [Upload Excel]. Hệ thống kiểm tra trước khi nhập." },
+        { selector: "inventory-nm-table", label: "Bảng tồn kho NM", description: "Theo NM: tổng tồn, UNIS dùng (= tồn × share%), đang về. NM cũ → hàng đỏ, bấm [Nhắc NM]." },
       ],
     },
     {
