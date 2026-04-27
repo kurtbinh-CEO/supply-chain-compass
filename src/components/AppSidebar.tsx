@@ -391,8 +391,17 @@ export function AppSidebar() {
                               {badge.text}
                             </span>
                           )}
-                        </>
-                      )}
+                          {/* Placeholder khi badge bị ẩn vì role: giữ chỗ + tooltip giải thích.
+                              Tránh để user thắc mắc "tại sao menu này không có số như đồng nghiệp". */}
+                          {hiddenByRole && (
+                            <span
+                              className="shrink-0 inline-flex items-center justify-center h-[18px] min-w-[20px] rounded-full bg-surface-3/60 text-text-3 text-[10px] font-semibold leading-tight px-1.5 cursor-help select-none"
+                              title={`Số liệu chỉ hiển thị cho vai trò: ${allowedRolesLabel}. Vai trò hiện tại của bạn (${user.role}) không được xem.`}
+                              aria-label="Badge ẩn theo phân quyền"
+                            >
+                              —
+                            </span>
+                          )}
                     </NavLink>
                   );
                 })}
