@@ -352,7 +352,7 @@ export function AppSidebar() {
                       end
                       onClick={handleNavClick}
                       className={cn(
-                        "group relative flex items-center gap-3 rounded-button px-3 py-2 text-body text-text-2 hover:bg-surface-3 hover:text-text-1 transition-colors",
+                        "group relative flex items-center gap-2.5 rounded-button px-2.5 py-2 text-body text-text-2 hover:bg-surface-3 hover:text-text-1 transition-colors",
                         collapsed && "justify-center px-0",
                         isActive && "bg-surface-3 text-text-1 font-medium"
                       )}
