@@ -484,13 +484,7 @@ export default function SopPage() {
                 totalAop={totalAop}
                 locked={locked}
                 unresolvedVariance={unresolvedVariance}
-                onLock={() => {
-                  if (cellPresence.onlineUsers.length > 1) {
-                    setShowPreLock(true);
-                  } else {
-                    lockAndMark();
-                  }
-                }}
+                onLock={attemptLock}
                 tenant={tenant}
               />
             }
