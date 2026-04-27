@@ -24,7 +24,15 @@ import smartlogIcon from "@/assets/smartlog-icon.png";
  *  - Mỗi item daily ops có badge dynamic
  */
 
-type DailyBadgeKey = "nm_cn_fresh" | "cn_adjust" | "exceptions" | "po_pending";
+type DailyBadgeKey =
+  // Daily ops
+  | "nm_cn_fresh" | "cn_adjust" | "exceptions" | "po_pending"
+  // Monthly plan
+  | "demand_progress" | "sop_status" | "hub_commitment" | "gap_pending"
+  // Monitoring & Executive
+  | "monitoring_alerts" | "executive_risk"
+  // Partners
+  | "cn_portal_pending";
 
 interface NavItem {
   kind: "item";
@@ -57,8 +65,7 @@ const navGroups: NavGroup[] = [
   {
     labelKey: "nav.executive",
     items: [
-      // M16 — Tổng quan lãnh đạo (chỉ SC_MANAGER thấy; Director/CEO khi roles được mở rộng)
-      { kind: "item", titleKey: "nav.executiveItem", icon: Crown, url: "/executive", roles: ["SC_MANAGER"] },
+      { kind: "item", titleKey: "nav.executiveItem", icon: Crown, url: "/executive", roles: ["SC_MANAGER"], badgeKey: "executive_risk" },
     ],
   },
   {
@@ -70,16 +77,16 @@ const navGroups: NavGroup[] = [
   {
     labelKey: "nav.monitoring",
     items: [
-      { kind: "item", titleKey: "nav.monitoringItem", icon: Activity, url: "/monitoring" },
+      { kind: "item", titleKey: "nav.monitoringItem", icon: Activity, url: "/monitoring", badgeKey: "monitoring_alerts" },
     ],
   },
   {
     labelKey: "nav.monthlyPlan",
     items: [
-      { kind: "item", titleKey: "nav.demandReview", icon: BarChart3, url: "/demand" },
-      { kind: "item", titleKey: "nav.sopConsensus", icon: Handshake, url: "/sop" },
-      { kind: "item", titleKey: "nav.hubCommitment", icon: Boxes, url: "/hub" },
-      { kind: "item", titleKey: "nav.gapScenario", icon: AlertTriangle, url: "/gap-scenario" },
+      { kind: "item", titleKey: "nav.demandReview",   icon: BarChart3,      url: "/demand",       badgeKey: "demand_progress" },
+      { kind: "item", titleKey: "nav.sopConsensus",   icon: Handshake,      url: "/sop",          badgeKey: "sop_status" },
+      { kind: "item", titleKey: "nav.hubCommitment",  icon: Boxes,          url: "/hub",          badgeKey: "hub_commitment" },
+      { kind: "item", titleKey: "nav.gapScenario",    icon: AlertTriangle,  url: "/gap-scenario", badgeKey: "gap_pending" },
     ],
   },
   {
@@ -97,7 +104,7 @@ const navGroups: NavGroup[] = [
   {
     labelKey: "nav.partners",
     items: [
-      { kind: "item", titleKey: "nav.cnPortal", icon: Building, url: "/cn-portal", roles: ["CN_MANAGER", "SC_MANAGER", "SALES"] },
+      { kind: "item", titleKey: "nav.cnPortal", icon: Building, url: "/cn-portal", roles: ["CN_MANAGER", "SC_MANAGER", "SALES"], badgeKey: "cn_portal_pending" },
     ],
   },
   {
@@ -133,12 +140,17 @@ interface BadgeData { text: string; tone: "success" | "warning" | "danger" }
 function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
   const { exceptions, approvals } = useWorkspace();
 
-  // Số PO/CN-adjust pending (mock: derive từ approvals)
+  // Pending counters (mock-derived).
   const poPending = approvals.filter(a => a.type === "PO Release" || a.type === "Force-release").length;
   const cnAdjustPending = approvals.filter(a => a.type === "CN Adjust").length;
   const drpExceptions = exceptions.filter(e => e.type === "SHORTAGE").length;
+  const sopPending = approvals.filter(a => a.type === "S&OP Lock").length;
+
+  // Tổng exceptions hệ thống (monitoring + executive).
+  const totalAlerts = exceptions.length;
 
   return {
+    // ── Daily ops (giữ nguyên hành vi cũ) ──
     nm_cn_fresh:  { text: "5/5 · 12 CN", tone: "success" },
     cn_adjust:    cnAdjustPending > 0
       ? { text: `${4 + cnAdjustPending}/12`, tone: cnAdjustPending > 3 ? "danger" : "warning" }
@@ -149,6 +161,23 @@ function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
     po_pending:   poPending > 0
       ? { text: String(poPending), tone: poPending > 3 ? "danger" : "warning" }
       : { text: "✓", tone: "success" },
+
+    // ── Monthly plan ──
+    demand_progress: { text: "8/12 CN", tone: "warning" },
+    sop_status:      sopPending > 0
+      ? { text: "Cần chốt", tone: "warning" }
+      : { text: "Đã chốt", tone: "success" },
+    hub_commitment:  { text: "6/8 NM", tone: "warning" },
+    gap_pending:     { text: "2 KB", tone: "warning" },
+
+    // ── Monitoring & Executive ──
+    monitoring_alerts: totalAlerts > 0
+      ? { text: String(totalAlerts), tone: totalAlerts > 5 ? "danger" : "warning" }
+      : { text: "✓", tone: "success" },
+    executive_risk:    { text: "3 rủi ro", tone: "warning" },
+
+    // ── Partners ──
+    cn_portal_pending: { text: "4 CN", tone: "warning" },
   };
 }
 
