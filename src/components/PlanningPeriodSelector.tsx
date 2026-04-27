@@ -38,13 +38,13 @@ export function PlanningPeriodSelector({ className, variant = "default" }: Props
       <DropdownMenuTrigger asChild>
         <button
           className={cn(
-            "inline-flex items-center gap-2 rounded-button border border-surface-3 bg-surface-2 px-3 py-1.5 text-table-sm font-medium text-text-1 hover:bg-surface-1 transition-colors",
+            "inline-flex h-8 items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 text-table-sm font-medium text-text-1 hover:bg-surface-1 transition-colors whitespace-nowrap",
             className,
           )}
         >
           <Calendar className="h-3.5 w-3.5 text-text-3" />
-          <span>Kế hoạch:</span>
-          <span className="font-semibold">{current.label}</span>
+          <span className="text-text-2">Kế hoạch:</span>
+          <span>{current.label}</span>
           {variant === "default" && (
             <span className={cn("inline-flex items-center gap-1 text-caption", meta.tone)}>
               <meta.icon className="h-3 w-3" />

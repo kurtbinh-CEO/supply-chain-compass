@@ -76,7 +76,7 @@ export default function HubPage() {
         title="Hub & Cam kết NM"
         subtitle={`S&OP locked v${planCycle.version} · Planner gõ cam kết trực tiếp`}
         actions={
-          <div className="flex items-center gap-2 flex-wrap">
+          <>
             <TimeRangeFilter
               mode="monthly"
               value={timeRange}
@@ -85,7 +85,7 @@ export default function HubPage() {
             />
             <PlanningPeriodSelector />
             <VersionHistoryButton entityType="BOOKING" entityId="COMMIT-T5" />
-          </div>
+          </>
         }
       />
 

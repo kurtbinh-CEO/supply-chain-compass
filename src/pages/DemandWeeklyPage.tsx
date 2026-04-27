@@ -1325,7 +1325,7 @@ export default function DemandWeeklyPage() {
         title={`Nhu cầu tuần — ${timeRange.isCurrent ? "Tuần 20" : timeRange.label}`}
         subtitle="CN điều chỉnh dự báo tuần · SC Manager duyệt theo biên trust"
         actions={
-          <div className="flex items-center gap-2">
+          <>
             <TimeRangeFilter
               mode="weekly"
               value={timeRange}
@@ -1333,11 +1333,11 @@ export default function DemandWeeklyPage() {
               screenId="demand-weekly"
             />
             {/* Persona toggle */}
-            <div className="inline-flex rounded-button border border-surface-3 bg-surface-1 p-0.5">
+            <div className="inline-flex h-8 rounded-button border border-surface-3 bg-surface-1 p-0.5">
               <button
                 onClick={() => setPersona("cn")}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-button px-3 py-1.5 text-table-sm font-medium transition-all",
+                  "inline-flex items-center gap-1.5 rounded-button px-2.5 text-table-sm font-medium transition-all whitespace-nowrap",
                   persona === "cn"
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-text-2 hover:text-text-1",
@@ -1348,7 +1348,7 @@ export default function DemandWeeklyPage() {
               <button
                 onClick={() => setPersona("sc")}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-button px-3 py-1.5 text-table-sm font-medium transition-all",
+                  "inline-flex items-center gap-1.5 rounded-button px-2.5 text-table-sm font-medium transition-all whitespace-nowrap",
                   persona === "sc"
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-text-2 hover:text-text-1",
@@ -1363,7 +1363,7 @@ export default function DemandWeeklyPage() {
                 onClick={() => setImporterOpen(true)}
                 disabled={isHistory}
                 title={isHistory ? "Dữ liệu quá khứ — chỉ xem" : undefined}
-                className="h-8 gap-1.5"
+                className="h-8 gap-1.5 whitespace-nowrap"
               >
                 <Inbox className="h-3.5 w-3.5" />
                 Nhập điều chỉnh
@@ -1373,20 +1373,22 @@ export default function DemandWeeklyPage() {
               type="button"
               onClick={() => setPhasingOpen(true)}
               disabled={isHistory}
-              className="hidden sm:inline-flex items-center gap-1.5 rounded-button border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-table-sm font-medium text-primary hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="hidden lg:inline-flex h-8 items-center gap-1.5 rounded-button border border-primary/30 bg-primary/5 px-3 text-table-sm font-medium text-primary hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
               title={isHistory ? "Dữ liệu quá khứ — chỉ xem" : "Phân bổ FC tháng → tuần"}
             >
               <Calendar className="h-3.5 w-3.5" />
-              Phân bổ FC tuần · {planCycle.label.replace("Tháng ", "T")}
+              Phân bổ FC · {planCycle.label.replace("Tháng ", "T")}
             </button>
-            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-1 px-2.5 py-1.5 text-table-sm text-text-2">
-              <RefreshCw className="h-3.5 w-3.5 text-info" />
-              Demand W20 v2 — 18:00 hôm nay
-              <span className="inline-flex items-center gap-1 rounded-full bg-info-bg text-info px-1.5 py-0.5 text-[10px] font-medium">
-                Locked
-              </span>
+            <span
+              className="hidden xl:inline-flex h-8 items-center gap-1.5 rounded-button border border-surface-3 bg-surface-1 px-3 text-table-sm text-text-2 leading-none whitespace-nowrap"
+              title="Demand W20 v2 — locked lúc 18:00"
+            >
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-info" aria-hidden />
+              <RefreshCw className="h-3.5 w-3.5 text-text-3" />
+              <span className="font-medium text-text-1">W20 v2</span>
+              <span className="text-text-3">· Locked</span>
             </span>
-          </div>
+          </>
         }
       />
 

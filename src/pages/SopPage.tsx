@@ -268,7 +268,7 @@ export default function SopPage() {
         title="Đồng thuận S&OP"
         subtitle={planLocked ? `Chế độ chỉ xem — ${planCycle.label} đã khóa` : undefined}
         actions={
-          <div className="flex items-center gap-2 flex-wrap">
+          <>
             <TimeRangeFilter
               mode="monthly"
               value={timeRange}
@@ -281,7 +281,7 @@ export default function SopPage() {
               <DropdownMenuTrigger asChild>
                 <button
                   disabled={planLocked}
-                  className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 px-3 py-2 text-table-sm font-medium text-text-1 hover:border-primary hover:text-primary disabled:opacity-50 transition-colors"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 px-3 text-table-sm font-medium text-text-1 hover:border-primary hover:text-primary disabled:opacity-50 transition-colors whitespace-nowrap"
                 >
                   <FileDown className="h-3.5 w-3.5" /> Xuất <ChevronDown className="h-3 w-3" />
                 </button>
@@ -299,7 +299,7 @@ export default function SopPage() {
               </DropdownMenuContent>
             </DropdownMenu>
             <LogicLink tab="monthly" node={1} tooltip="Logic S&OP Đồng thuận → Khóa" />
-          </div>
+          </>
         }
       />
 

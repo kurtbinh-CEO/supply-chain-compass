@@ -145,7 +145,7 @@ export default function AuditPage() {
         actions={
           <button
             onClick={handleExport}
-            className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 py-1.5 text-table-sm text-text-2 hover:bg-surface-3 transition-colors"
+            className="inline-flex h-8 items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 text-table-sm font-medium text-text-1 hover:bg-surface-3 transition-colors whitespace-nowrap"
           >
             <Download className="h-3.5 w-3.5" />
             Xuất CSV

@@ -46,7 +46,7 @@ export function VersionHistoryButton({
 
   return (
     <>
-      <div className="inline-flex items-center gap-1.5">
+      <div className="inline-flex h-8 items-center gap-1.5">
         <button
           type="button"
           onClick={() => {
@@ -63,8 +63,8 @@ export function VersionHistoryButton({
             });
           }}
           className={cn(
-            "inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2",
-            "px-2.5 py-1 text-table-sm text-text-2 hover:text-text-1 hover:border-primary/30 transition-colors"
+            "inline-flex h-8 items-center gap-1 rounded-button border border-surface-3 bg-surface-2",
+            "px-2.5 text-table-sm font-medium text-text-2 hover:text-text-1 hover:border-primary/30 transition-colors whitespace-nowrap"
           )}
         >
           <GitCompare className="h-3 w-3" /> So sánh <ChevronDown className="h-3 w-3" />
@@ -73,8 +73,8 @@ export function VersionHistoryButton({
           type="button"
           onClick={() => setHistoryOpen(true)}
           className={cn(
-            "inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-2",
-            "px-2.5 py-1 text-table-sm text-text-2 hover:text-text-1 hover:border-primary/30 transition-colors"
+            "inline-flex h-8 items-center gap-1 rounded-button border border-surface-3 bg-surface-2",
+            "px-2.5 text-table-sm font-medium text-text-2 hover:text-text-1 hover:border-primary/30 transition-colors whitespace-nowrap"
           )}
         >
           <FileClock className="h-3 w-3" /> Lịch sử <ChevronDown className="h-3 w-3" />

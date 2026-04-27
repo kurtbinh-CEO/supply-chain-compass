@@ -678,13 +678,13 @@ export default function ConfigPage() {
           <Button
             variant="outline"
             size="sm"
-            className="h-9"
+            className="h-8 gap-1.5 whitespace-nowrap"
             onClick={() => setAuditOpen(true)}
           >
-            <History className="h-3.5 w-3.5 mr-1.5" />
+            <History className="h-3.5 w-3.5" />
             Nhật ký
             {audit.length > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center h-4 min-w-4 rounded-full bg-surface-2 text-text-2 text-[10px] font-semibold px-1">
+              <span className="ml-0.5 inline-flex items-center justify-center h-4 min-w-4 rounded-full bg-surface-2 text-text-2 text-[10px] font-semibold px-1">
                 {audit.length}
               </span>
             )}
