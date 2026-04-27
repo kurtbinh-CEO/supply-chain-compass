@@ -714,9 +714,10 @@ function SkuFirstPivotTable({
                                       <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); onLcnbClick(inTo); }}
-                                        className="inline-flex items-center gap-0.5 rounded-full border border-success/30 bg-success-bg px-1.5 py-0.5 text-[11px] font-semibold text-success hover:opacity-80"
+                                        title={`TO ${inTo.code} · từ CN ${c.lcnbInFrom} · ${c.lcnbIn}m²`}
+                                        className="inline-flex items-center gap-0.5 rounded-full border border-warning/40 bg-warning-bg px-1.5 py-0.5 text-[11px] font-semibold text-warning hover:opacity-80"
                                       >
-                                        +{c.lcnbIn} ({c.lcnbInFrom})
+                                        TO-{c.lcnbInFrom} {c.lcnbIn}
                                       </button>
                                     ) : <span className="text-text-3">0</span>}
                                   </td>
@@ -725,9 +726,10 @@ function SkuFirstPivotTable({
                                       <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); onLcnbClick(outTo); }}
-                                        className="inline-flex items-center gap-0.5 rounded-full border border-warning/30 bg-warning-bg px-1.5 py-0.5 text-[11px] font-semibold text-warning hover:opacity-80"
+                                        title={`TO ${outTo.code} · sang CN ${c.lcnbOutTo} · ${c.lcnbOut}m²`}
+                                        className="inline-flex items-center gap-0.5 rounded-full border border-warning/40 bg-warning-bg px-1.5 py-0.5 text-[11px] font-semibold text-warning hover:opacity-80"
                                       >
-                                        −{c.lcnbOut} (→{c.lcnbOutTo})
+                                        TO-{c.lcnbOutTo} −{c.lcnbOut}
                                       </button>
                                     ) : <span className="text-text-3">0</span>}
                                   </td>
