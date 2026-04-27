@@ -476,13 +476,7 @@ export default function SopPage() {
             totalCn={consensusData.length}
             currentDay={currentDay}
             locked={locked}
-            onLock={() => {
-              if (cellPresence.onlineUsers.length > 1) {
-                setShowPreLock(true);
-              } else {
-                lockAndMark();
-              }
-            }}
+            onLock={attemptLock}
             detailSlot={
               <BalanceLockTab
                 data={consensusData}
