@@ -194,7 +194,7 @@ function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
 
   return {
     // ── Daily ops ──
-    nm_cn_fresh:  { text: "5/5 · 12 CN", tone: "success" },
+    nm_cn_fresh:  { text: "5/5", tone: "success" },
     cn_adjust:    cnAdjustPending > 0
       ? { text: `${4 + cnAdjustPending}/12`, tone: cnAdjustPending > 3 ? "danger" : "warning" }
       : { text: "12/12", tone: "success" },
