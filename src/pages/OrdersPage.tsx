@@ -537,6 +537,16 @@ function GroupDrillDown({
   onAction: (line: PoLifecycleRow) => void;
   onCancel: (line: PoLifecycleRow) => void;
 }) {
+  const navigate = useNavigate();
+  // Mock cam kết gốc (commitment): suy ra từ NM/SKU base + tháng plan
+  const commitment = useMemo(() => {
+    const skuBase = (group.lines[0]?.skuLabel ?? "GA-600").split(" ")[0];
+    const nmName = group.kind === "RPO" ? group.fromName : "—";
+    const committed = Math.max(group.totalQty * 5, 4200); // mock cam kết tháng
+    const releaseNumber = 1;
+    const releasedPct = Math.min(100, Math.round((group.totalQty / committed) * 100));
+    return { skuBase, nmName, committed, releaseNumber, releasedPct };
+  }, [group]);
   // Đơn giá ước tính theo SKU (mock — KHÔNG ảnh hưởng business logic)
   const unitPrice = (skuLabel: string) => {
     if (skuLabel.startsWith("GA-600")) return 185_000;
@@ -617,6 +627,38 @@ function GroupDrillDown({
           },
         ] satisfies SmartTableColumn<PoLifecycleRow>[]}
       />
+
+      {/* ── Cam kết gốc back-link (chỉ hiện cho RPO — TO không có cam kết NM) ── */}
+      {group.kind === "RPO" && commitment.nmName !== "—" && (
+        <div className="rounded-card border border-info/30 bg-info-bg/30 px-3 py-2 text-table-sm flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-text-3">Cam kết gốc:</span>
+          <button
+            type="button"
+            onClick={() =>
+              navigate(
+                `/hub?step=commitment&nm=${encodeURIComponent(commitment.nmName)}&sku=${encodeURIComponent(commitment.skuBase)}`,
+              )
+            }
+            className="text-primary font-medium underline-offset-2 hover:underline"
+          >
+            {commitment.nmName} · {commitment.skuBase}
+            {" — "}
+            <span className="tabular-nums">{commitment.committed.toLocaleString()} m²</span>
+          </button>
+          <span className="text-text-3">·</span>
+          <span className="text-text-2">Release #{commitment.releaseNumber}</span>
+          <span className="text-text-3">·</span>
+          <span className="tabular-nums font-semibold text-text-1">{commitment.releasedPct}% đã release</span>
+          <span className="ml-1 inline-flex items-center gap-1.5">
+            <span className="inline-block h-1.5 w-24 rounded-full bg-surface-3 overflow-hidden">
+              <span
+                className="block h-full rounded-full bg-primary"
+                style={{ width: `${commitment.releasedPct}%` }}
+              />
+            </span>
+          </span>
+        </div>
+      )}
 
       {/* ── Tổng + lifecycle inline (KHÔNG heading) ── */}
       <div className="flex items-center justify-between gap-3 px-1 text-table-sm">

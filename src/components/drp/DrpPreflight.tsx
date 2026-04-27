@@ -4,10 +4,19 @@
  * Rules (PRD D1):
  *   ✅ Sẵn sàng | ⚠️ Cảnh báo (vẫn chạy được) | 🔴 Chặn (disable nút Chạy)
  *
+ * Force-Release (3 tầng phê duyệt):
+ *   - NM stale 48-72h  → Tier 1 (SC Manager) duyệt → DRP chạy với cảnh báo.
+ *   - NM stale 72-96h  → bắt buộc Tier 2 (Director).
+ *   - NM stale > 96h   → bắt buộc Tier 3 (CEO).
+ *
  * Mọi text tiếng Việt.
  */
-import { CheckCircle2, AlertTriangle, AlertOctagon, ArrowRight, Play } from "lucide-react";
+import { useMemo, useState } from "react";
+import { CheckCircle2, AlertTriangle, AlertOctagon, ArrowRight, Play, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export type PreflightLevel = "ok" | "warn" | "block";
 
@@ -21,6 +30,10 @@ export interface PreflightItem {
   fixLabel?: string;
   /** Tooltip / chi tiết thêm */
   detail?: string;
+  /** Số giờ stale (chỉ áp cho NM-stock blocker) — quyết định tier force-release */
+  staleHours?: number;
+  /** Tên NM gây block (ví dụ "Phú Mỹ") */
+  staleNmName?: string;
 }
 
 interface Props {
@@ -43,6 +56,13 @@ function levelLabel(l: PreflightLevel) {
   return "Chặn — cần xử lý";
 }
 
+type Tier = "sc_manager" | "director" | "ceo";
+const TIER_LABEL: Record<Tier, string> = {
+  sc_manager: "SC Manager",
+  director: "Director",
+  ceo: "CEO",
+};
+
 export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
   const blocking = items.filter((i) => i.level === "block");
   const warnings = items.filter((i) => i.level === "warn");
@@ -50,11 +70,47 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
 
   const canRun = blocking.length === 0;
 
+  // ── Force-release qualification: chỉ cho phép khi block DUY NHẤT là NM stale ──
+  const staleBlock = useMemo(
+    () => blocking.find((b) => b.key === "nm-stock" && (b.staleHours ?? 0) > 48),
+    [blocking],
+  );
+  const onlyStaleBlocks = blocking.length > 0 && blocking.every((b) => b.key === "nm-stock");
+  const canForceRelease = !!staleBlock && onlyStaleBlocks;
+
+  const requiredTier: Tier = useMemo(() => {
+    const h = staleBlock?.staleHours ?? 0;
+    if (h > 96) return "ceo";
+    if (h > 72) return "director";
+    return "sc_manager";
+  }, [staleBlock]);
+
+  const [forceOpen, setForceOpen] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<Tier | null>(null);
+
   const summaryText = blocking.length > 0
     ? `Không thể chạy: ${blocking.length} mục bị chặn`
     : warnings.length > 0
     ? `Chạy với ${warnings.length} cảnh báo. Kết quả có thể thiếu chính xác.`
     : "Tất cả sẵn sàng ✅. Có thể chạy DRP.";
+
+  const handleApproveForceRelease = () => {
+    if (!selectedTier) return;
+    toast.success(`Force-release đã duyệt bởi ${TIER_LABEL[selectedTier]}`, {
+      description: `DRP sẽ chạy với dữ liệu NM cũ (${staleBlock?.staleHours}h). Sai số ước tính ±15%.`,
+    });
+    setForceOpen(false);
+    setSelectedTier(null);
+    onRun();
+  };
+
+  const handleRouteUp = () => {
+    if (!staleBlock) return;
+    toast.info(`Đã gửi yêu cầu Force-release lên ${TIER_LABEL[requiredTier]}`, {
+      description: `NM ${staleBlock.staleNmName ?? ""} cũ ${staleBlock.staleHours}h · Cần ${TIER_LABEL[requiredTier]} duyệt.`,
+    });
+    setForceOpen(false);
+  };
 
   return (
     <div className="rounded-card border border-surface-3 bg-surface-1 p-5 space-y-4">
@@ -176,6 +232,15 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
             ← Quay lại hoàn tất dữ liệu
           </button>
         )}
+        {canForceRelease && (
+          <button
+            onClick={() => { setSelectedTier(null); setForceOpen(true); }}
+            className="inline-flex items-center gap-2 rounded-button border border-danger/40 bg-danger-bg/40 px-3.5 py-2 text-table-sm font-semibold text-danger hover:bg-danger-bg/60"
+            title="Chạy DRP cưỡng chế dù NM dữ liệu cũ — yêu cầu phê duyệt nhiều cấp"
+          >
+            <ShieldAlert className="h-4 w-4" /> Giải phóng cưỡng chế…
+          </button>
+        )}
         <button
           onClick={onRun}
           disabled={!canRun}
@@ -190,6 +255,91 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
           <Play className="h-4 w-4" /> Chạy DRP ngay
         </button>
       </div>
+
+      {/* ── Force-Release Dialog (3-tier approval) ── */}
+      <Dialog open={forceOpen} onOpenChange={setForceOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-danger">
+              <ShieldAlert className="h-5 w-5" /> Giải phóng cưỡng chế DRP
+            </DialogTitle>
+            <DialogDescription className="text-text-2">
+              {staleBlock && (
+                <>
+                  NM <span className="font-semibold text-text-1">{staleBlock.staleNmName ?? "—"}</span>{" "}
+                  dữ liệu cũ <span className="font-semibold text-danger">{staleBlock.staleHours}h</span>.
+                  DRP sẽ chạy với data cũ. Rủi ro: sai số ước tính ±15%.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 py-2">
+            <div className="text-table-sm font-semibold text-text-1">Chọn cấp phê duyệt:</div>
+
+            {(["sc_manager", "director", "ceo"] as Tier[]).map((tier, idx) => {
+              const tierIdx = idx; // 0,1,2
+              const reqIdx = requiredTier === "sc_manager" ? 0 : requiredTier === "director" ? 1 : 2;
+              const allowed = tierIdx >= reqIdx;
+              const isSelected = selectedTier === tier;
+              return (
+                <button
+                  key={tier}
+                  type="button"
+                  disabled={!allowed}
+                  onClick={() => setSelectedTier(tier)}
+                  className={cn(
+                    "w-full text-left rounded-card border p-3 transition-all",
+                    isSelected && "border-primary bg-primary/5",
+                    !isSelected && allowed && "border-surface-3 hover:border-primary/40 hover:bg-surface-2",
+                    !allowed && "border-surface-3/60 bg-surface-2/40 opacity-50 cursor-not-allowed",
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold text-text-1">
+                      Tier {tierIdx + 1} — {TIER_LABEL[tier]}
+                    </div>
+                    {!allowed && (
+                      <span className="text-caption text-text-3">Không đủ thẩm quyền cho mức stale này</span>
+                    )}
+                    {isSelected && (
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                    )}
+                  </div>
+                  <div className="text-caption text-text-3 mt-0.5">
+                    {tier === "sc_manager" && "DRP chạy với cảnh báo · áp dụng khi stale ≤ 72h."}
+                    {tier === "director" && "Bắt buộc khi stale > 72h · audit log đính kèm."}
+                    {tier === "ceo" && "Bắt buộc khi stale > 96h · cảnh báo cao nhất."}
+                  </div>
+                </button>
+              );
+            })}
+
+            {requiredTier !== "sc_manager" && (
+              <div className="rounded-card border border-warning/40 bg-warning-bg/30 px-3 py-2 text-caption text-warning">
+                Mức stale hiện tại yêu cầu tối thiểu <strong>{TIER_LABEL[requiredTier]}</strong>. Bạn có thể gửi
+                yêu cầu lên cấp đó nếu chưa có quyền.
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setForceOpen(false)}>Hủy</Button>
+            {requiredTier !== "sc_manager" && (
+              <Button variant="secondary" onClick={handleRouteUp}>
+                Gửi lên {TIER_LABEL[requiredTier]}
+              </Button>
+            )}
+            <Button
+              variant="destructive"
+              disabled={!selectedTier}
+              onClick={handleApproveForceRelease}
+            >
+              Phê duyệt & Chạy DRP
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
