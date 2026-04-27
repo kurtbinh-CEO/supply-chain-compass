@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo } from "react";
 import { useFcAccuracy, useNmPerformance } from "@/hooks/useMonitoringData";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
@@ -26,6 +26,7 @@ import { MonitoringHeroCards } from "@/components/monitoring/MonitoringHeroCards
 import { SummaryCards } from "@/components/SummaryCards";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 import { monitoringCompare } from "@/lib/compare-metrics";
+import { SectionTableHeader } from "@/components/SectionTableHeader";
 import { TableDownloadButton } from "@/components/TableDownloadButton";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
@@ -215,7 +216,6 @@ const conflictWeeklyTrend = [
 /* ═══ Conflict Log Section ═══ */
 function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
-  const tableRef = useRef<HTMLTableElement>(null);
   const thisWeek = conflictLogData.slice(0, 12);
   const autoResolved = thisWeek.filter(c => c.result.includes("refresh")).length;
   const manual = thisWeek.length - autoResolved;
@@ -243,7 +243,7 @@ function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggl
               <span className="text-warning font-medium ml-2">Hot spot: S&OP input ({sopCount}/{thisWeek.length}).</span>
             )}
           </span>
-          <TableDownloadButton tableRef={tableRef} filename="conflict-log-7d" size="xs" />
+          <TableDownloadButton targetId="conflict-log-table" filename="conflict-log-7d" size="xs" />
         </div>
 
         {/* Recommend */}
@@ -255,7 +255,7 @@ function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggl
 
         {/* Table */}
         <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-          <table ref={tableRef} className="w-full text-table-sm">
+          <table id="conflict-log-table" className="w-full text-table-sm">
             <thead>
               <tr className="bg-surface-1">
                 {["Thời gian", "Loại", "Screen", "User A", "User B", "Entity", "Kết quả", ""].map((h, i) => (
@@ -594,15 +594,18 @@ export default function MonitoringPage() {
 
           {/* Section B: Heatmap HSTK */}
           <div className="rounded-card border border-surface-3 bg-surface-2 p-5">
-            <h3 className="font-display text-body font-semibold text-text-1 mb-3">
-              Heatmap{" "}
-              <TermTooltip term="HSTK">
-                <span className="text-text-1">HSTK</span>
-              </TermTooltip>{" "}
-              (ngày)
-            </h3>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="font-display text-body font-semibold text-text-1">
+                Heatmap{" "}
+                <TermTooltip term="HSTK">
+                  <span className="text-text-1">HSTK</span>
+                </TermTooltip>{" "}
+                (ngày)
+              </h3>
+              <TableDownloadButton targetId="monitoring-heatmap-hstk" filename="heatmap-hstk" size="xs" />
+            </div>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table id="monitoring-heatmap-hstk" className="w-full">
                 <thead>
                   <tr>
                     <th className="px-2 py-2 text-left text-table-header uppercase text-text-3 w-20">CN</th>
@@ -711,7 +714,11 @@ export default function MonitoringPage() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              <table className="w-full">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h4 className="text-table-sm font-medium text-text-2">Chi tiết MAPE theo CN</h4>
+                <TableDownloadButton targetId="monitoring-fc-mape" filename="fc-mape-by-cn" size="xs" />
+              </div>
+              <table id="monitoring-fc-mape" className="w-full">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
                     {[
@@ -785,7 +792,11 @@ export default function MonitoringPage() {
                   </LineChart>
                 </ResponsiveContainer>
               </div>
-              <table className="w-full">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h4 className="text-table-sm font-medium text-text-2">Bảng NM Performance chi tiết</h4>
+                <TableDownloadButton targetId="monitoring-nm-performance" filename="nm-performance" size="xs" />
+              </div>
+              <table id="monitoring-nm-performance" className="w-full">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
                     {[
@@ -872,8 +883,11 @@ export default function MonitoringPage() {
                 ))}
               </div>
               <div>
-                <h4 className="text-table-sm font-medium text-text-2 mb-2">Top 5 recurring exceptions</h4>
-                <table className="w-full">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <h4 className="text-table-sm font-medium text-text-2">Top 5 recurring exceptions</h4>
+                  <TableDownloadButton targetId="monitoring-recurring-exceptions" filename="recurring-exceptions" size="xs" />
+                </div>
+                <table id="monitoring-recurring-exceptions" className="w-full">
                   <thead>
                     <tr className="border-b border-surface-3 bg-surface-1/50">
                       {["Exception", "SKU", "CN", "Frequency", "Avg resolve", "Trend"].map((h, i) => (
@@ -969,8 +983,11 @@ export default function MonitoringPage() {
           {/* Section E: Closed-loop Summary */}
           <CollapsibleSection title="Closed-loop Summary" summary="Hệ thống tự học — 4 điều chỉnh tháng này" expanded={expandedSections.has("loop")} onToggle={() => toggleSection("loop")}>
             <div className="p-5 space-y-3">
-              <p className="text-table-sm text-text-2 mb-2">Tháng này hệ thống tự điều chỉnh gì?</p>
-              <table className="w-full">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-table-sm text-text-2">Tháng này hệ thống tự điều chỉnh gì?</p>
+                <TableDownloadButton targetId="monitoring-closed-loop" filename="closed-loop-summary" size="xs" />
+              </div>
+              <table id="monitoring-closed-loop" className="w-full">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
                     {["Điều chỉnh", "Trigger", "Impact", "Status"].map((h, i) => (

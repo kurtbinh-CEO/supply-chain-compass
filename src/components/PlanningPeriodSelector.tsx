@@ -41,17 +41,15 @@ export function PlanningPeriodSelector({ className, variant = "default" }: Props
             "inline-flex h-8 items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 text-table-sm font-medium text-text-1 hover:bg-surface-1 transition-colors whitespace-nowrap",
             className,
           )}
-          title={`Kế hoạch ${current.label} — ${meta.label} · v${current.version}`}
         >
           <Calendar className="h-3.5 w-3.5 text-text-3" />
+          <span className="text-text-2">Kế hoạch:</span>
           <span>{current.label}</span>
           {variant === "default" && (
-            <>
-              <span className={cn("inline-flex items-center", meta.tone)} aria-label={meta.label}>
-                <meta.icon className="h-3 w-3" />
-              </span>
-              <span className="text-caption text-text-3">v{current.version}</span>
-            </>
+            <span className={cn("inline-flex items-center gap-1 text-caption", meta.tone)}>
+              <meta.icon className="h-3 w-3" />
+              {meta.label} · v{current.version}
+            </span>
           )}
           <ChevronDown className="h-3.5 w-3.5 text-text-3" />
         </button>

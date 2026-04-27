@@ -39,7 +39,6 @@ function tableToCsv(table: HTMLTableElement): string {
     const cells: string[] = [];
     for (const td of Array.from(tr.cells)) {
       if (td.dataset.exportSkip != null || td.classList.contains("no-export")) continue;
-      // Lấy text content + collapse whitespace; ưu tiên data-export-value nếu có
       const raw = td.dataset.exportValue ?? td.innerText ?? td.textContent ?? "";
       const clean = raw.replace(/\s+/g, " ").trim();
       cells.push(escapeCsv(clean));

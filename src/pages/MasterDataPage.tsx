@@ -20,6 +20,7 @@ import {
   type FormField,
 } from "@/components/master/CrudPrimitives";
 import type { ImportField } from "@/components/master/ExcelImportWizard";
+import { TableDownloadButton } from "@/components/TableDownloadButton";
 import {
   useMasterItems, useCreateMasterItem, useUpdateMasterItem, useDeleteMasterItem, useBulkInsertMasterItems,
   useMasterFactories, useCreateMasterFactory, useUpdateMasterFactory, useDeleteMasterFactory, useBulkInsertMasterFactories,
@@ -889,8 +890,13 @@ function RoutesTab() {
         >
           CN → CN (LCNB) ({TRANSIT_LT.filter(t => t.mode === "CN_TO_CN").length} tuyến)
         </button>
-        <div className="ml-auto text-table-sm text-text-3">
-          Click ô số để chỉnh sửa
+        <div className="ml-auto flex items-center gap-2 text-table-sm text-text-3">
+          <span>Click ô số để chỉnh sửa</span>
+          <TableDownloadButton
+            targetId={mode === "NM_TO_CN" ? "lt-matrix-nm-cn" : "lt-matrix-cn-cn"}
+            filename={mode === "NM_TO_CN" ? "lt-nm-to-cn" : "lt-cn-to-cn"}
+            size="xs"
+          />
         </div>
       </div>
 
@@ -904,7 +910,7 @@ function NmCnMatrix() {
     TRANSIT_LT.find((t) => t.mode === "NM_TO_CN" && t.fromCode === nmCode && t.toCode === cnCode)?.days ?? "-";
   return (
     <div className="rounded-card border border-surface-3 bg-surface-2 overflow-x-auto">
-      <table className="w-full text-table">
+      <table id="lt-matrix-nm-cn" className="w-full text-table">
         <thead>
           <tr className="bg-surface-1">
             <th className="text-left px-3 py-2.5 text-table-header uppercase text-text-3 font-medium sticky left-0 bg-surface-1">NM \ CN</th>
@@ -939,7 +945,7 @@ function CnCnLtMatrix() {
     TRANSIT_LT.find((t) => t.mode === "CN_TO_CN" && t.fromCode === from && t.toCode === to)?.days ?? null;
   return (
     <div className="rounded-card border border-surface-3 bg-surface-2 overflow-x-auto">
-      <table className="w-full text-table">
+      <table id="lt-matrix-cn-cn" className="w-full text-table">
         <thead>
           <tr className="bg-surface-1">
             <th className="text-left px-3 py-2.5 text-table-header uppercase text-text-3 font-medium sticky left-0 bg-surface-1">From \ To</th>

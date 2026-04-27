@@ -41,6 +41,7 @@ import {
   type TransportPlan,
   type Carrier,
 } from "@/data/unis-enterprise-dataset";
+import { TableDownloadButton } from "@/components/TableDownloadButton";
 
 const fmt = (n: number) => `${n.toLocaleString("vi-VN")} m²`;
 const fmtVnd = (n: number) => `${(n / 1_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} triệu ₫`;
@@ -421,8 +422,12 @@ export function PackingTab() {
         </span>
       </div>
 
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="text-table-sm font-medium text-text-2">Containers — kế hoạch vận chuyển</h3>
+        <TableDownloadButton targetId="transport-containers" filename="transport-containers" size="xs" />
+      </div>
       <div className="rounded-card border border-surface-3 bg-surface-1 overflow-visible">
-        <table className="w-full">
+        <table id="transport-containers" className="w-full">
           <thead className="bg-surface-2/50 border-b border-surface-3">
             <tr className="text-table-sm text-text-3 text-left">
               <th className="px-3 py-2.5 font-medium">Container</th>
@@ -605,8 +610,11 @@ function RoutesTab() {
             <RouteIcon className="h-4 w-4 text-primary" />
             <span className="font-display text-section-header text-text-1">{nodeName(from)}</span>
             <span className="text-caption text-text-3">· {plans.length} điểm giao</span>
+            <div className="ml-auto">
+              <TableDownloadButton targetId={`transport-route-${from}`} filename={`tuyen-${from}`} size="xs" />
+            </div>
           </div>
-          <table className="w-full">
+          <table id={`transport-route-${from}`} className="w-full">
             <thead className="bg-surface-2/30">
               <tr className="text-caption text-text-3 text-left">
                 <th className="px-4 py-2 font-medium">#</th>
@@ -665,8 +673,12 @@ export function CarriersTab() {
         </div>
       )}
 
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-table-sm font-medium text-text-2">Danh sách nhà xe</h3>
+        <TableDownloadButton targetId="transport-carriers" filename="nha-xe" size="xs" />
+      </div>
       <div className="rounded-card border border-surface-3 bg-surface-1 overflow-hidden">
-        <table className="w-full">
+        <table id="transport-carriers" className="w-full">
           <thead className="bg-surface-2/50 border-b border-surface-3">
             <tr className="text-table-sm text-text-3 text-left">
               <th className="px-4 py-2.5 font-medium">Tên nhà xe</th>

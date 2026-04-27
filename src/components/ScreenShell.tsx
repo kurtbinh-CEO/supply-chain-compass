@@ -51,7 +51,7 @@ export function ScreenHeader({ title, subtitle, actions, badges }: ScreenHeaderP
           )}
         </div>
         {badges && (
-          <div className="flex items-center gap-2 shrink-0 flex-nowrap [&>*]:h-8 [&>*]:whitespace-nowrap [&>*]:inline-flex [&>*]:items-center">
+          <div className="flex items-center gap-2 shrink-0 flex-nowrap">
             {badges}
           </div>
         )}
@@ -59,7 +59,7 @@ export function ScreenHeader({ title, subtitle, actions, badges }: ScreenHeaderP
 
       {/* Actions — không bao giờ wrap, mọi control cao 32px */}
       {actions && (
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap [&>*]:h-8 [&>*]:whitespace-nowrap">
+        <div className="flex items-center gap-2 shrink-0 flex-nowrap [&>*]:h-8">
           {actions}
         </div>
       )}

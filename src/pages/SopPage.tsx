@@ -17,7 +17,7 @@ import { useTenant } from "@/components/TenantContext";
 import { ConsensusTab } from "@/components/sop/ConsensusTab";
 import { BalanceLockTab } from "@/components/sop/BalanceLockTab";
 import { SopActionBar } from "@/components/sop/SopActionBar";
-import { Loader2, PackageOpen } from "lucide-react";
+import { Loader2, PackageOpen, FileDown, ChevronDown } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
 import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
 import { PlanningPeriodSelector } from "@/components/PlanningPeriodSelector";
@@ -35,6 +35,12 @@ import { SummaryCards } from "@/components/SummaryCards";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 import { sopCompare } from "@/lib/compare-metrics";
 import { AutoSaveIndicator } from "@/components/CellPresence";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 export interface ConsensusRow {
@@ -271,6 +277,27 @@ export default function SopPage() {
             />
             <PlanningPeriodSelector />
             <VersionHistoryButton entityType="SOP" entityId="SOP-T5" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  disabled={planLocked}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-button border border-surface-3 bg-surface-0 px-3 text-table-sm font-medium text-text-1 hover:border-primary hover:text-primary disabled:opacity-50 transition-colors whitespace-nowrap"
+                >
+                  <FileDown className="h-3.5 w-3.5" /> Xuất <ChevronDown className="h-3 w-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => toast.success("Đã tạo Báo cáo trước họp (PDF)")}>
+                  📄 Báo cáo trước họp
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toast.success("Đã xuất Excel S&OP v3")}>
+                  📊 Xuất Excel S&OP v3
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => toast.success("Đã copy snapshot consensus")}>
+                  📋 Copy snapshot
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <LogicLink tab="monthly" node={1} tooltip="Logic S&OP Đồng thuận → Khóa" />
           </>
         }
