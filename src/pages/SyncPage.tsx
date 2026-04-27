@@ -20,6 +20,7 @@ import { Progress } from "@/components/ui/progress";
 import { useWorkspace } from "@/components/WorkspaceContext";
 import { NmUploadPreviewDialog } from "@/components/supply/NmUploadPreviewDialog";
 import { FACTORIES, type NmId } from "@/data/unis-enterprise-dataset";
+import { TableDownloadButton } from "@/components/TableDownloadButton";
 
 type SyncStatus = "fresh" | "stale" | "blocked" | "ok";
 
