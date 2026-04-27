@@ -268,6 +268,12 @@ export default function SopPage() {
         subtitle={planLocked ? `Chế độ chỉ xem — ${planCycle.label} đã khóa` : undefined}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
+            <TimeRangeFilter
+              mode="monthly"
+              value={timeRange}
+              onChange={setTimeRange}
+              screenId="sop"
+            />
             <PlanningPeriodSelector />
             <VersionHistoryButton entityType="SOP" entityId="SOP-T5" />
             <DropdownMenu>
