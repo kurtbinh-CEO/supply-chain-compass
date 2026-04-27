@@ -17,7 +17,7 @@ import { useTenant } from "@/components/TenantContext";
 import { ConsensusTab } from "@/components/sop/ConsensusTab";
 import { BalanceLockTab } from "@/components/sop/BalanceLockTab";
 import { SopActionBar } from "@/components/sop/SopActionBar";
-import { Loader2, PackageOpen, FileDown, ChevronDown } from "lucide-react";
+import { Loader2, PackageOpen } from "lucide-react";
 import { LogicLink } from "@/components/LogicLink";
 import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
 import { PlanningPeriodSelector } from "@/components/PlanningPeriodSelector";
