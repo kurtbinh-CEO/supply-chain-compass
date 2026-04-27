@@ -15,6 +15,9 @@ import { DrpReleaseBar, type DrpBatch, type DrpBatchStatus } from "@/components/
 import { useRbac } from "@/components/RbacContext";
 import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useTenant as _useTenantForNm } from "@/components/TenantContext";
+import { getNMSummaries } from "@/components/supply/supplyData";
+import { useWorkspace } from "@/components/WorkspaceContext";
 import { BRANCHES, DRP_RESULTS } from "@/data/unis-enterprise-dataset";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 import { BRANCHES as _BR2, DRP_RESULTS as _DRP2, PLAN_VERSIONS } from "@/data/unis-enterprise-dataset";
