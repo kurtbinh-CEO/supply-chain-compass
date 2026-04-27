@@ -983,8 +983,11 @@ export default function MonitoringPage() {
           {/* Section E: Closed-loop Summary */}
           <CollapsibleSection title="Closed-loop Summary" summary="Hệ thống tự học — 4 điều chỉnh tháng này" expanded={expandedSections.has("loop")} onToggle={() => toggleSection("loop")}>
             <div className="p-5 space-y-3">
-              <p className="text-table-sm text-text-2 mb-2">Tháng này hệ thống tự điều chỉnh gì?</p>
-              <table className="w-full">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-table-sm text-text-2">Tháng này hệ thống tự điều chỉnh gì?</p>
+                <TableDownloadButton targetId="monitoring-closed-loop" filename="closed-loop-summary" size="xs" />
+              </div>
+              <table id="monitoring-closed-loop" className="w-full">
                 <thead>
                   <tr className="border-b border-surface-3 bg-surface-1/50">
                     {["Điều chỉnh", "Trigger", "Impact", "Status"].map((h, i) => (
