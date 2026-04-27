@@ -143,6 +143,7 @@ export default function SopPage() {
     markStepCompleted,
   } = usePlanningPeriod();
   const [timeRange, setTimeRange] = useTimeRange("sop", "monthly");
+  const { setSopLock, addNotification } = useWorkspace();
 
   const [locked, setLocked] = useState(false);
   const [showPreLock, setShowPreLock] = useState(false);
