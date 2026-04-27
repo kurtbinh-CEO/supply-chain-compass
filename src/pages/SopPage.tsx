@@ -515,6 +515,39 @@ export default function SopPage() {
         />
       )}
 
+      {/* Lock blocked: variance chưa giải trình */}
+      {lockBlockedDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setLockBlockedDialog(null); }}>
+          <div role="dialog" aria-modal="true"
+            className="w-full max-w-md rounded-card border border-danger/40 bg-surface-0 shadow-xl p-5">
+            <div className="flex items-start gap-3">
+              <div className="h-9 w-9 rounded-full bg-danger-bg flex items-center justify-center text-danger text-h3">⛔</div>
+              <div className="flex-1">
+                <h3 className="text-h3 font-display font-semibold text-text-1">Không thể khóa S&OP</h3>
+                <p className="text-table-sm text-text-2 mt-1">
+                  Còn <strong className="text-danger">{lockBlockedDialog.count} CN</strong> chênh lệch &gt;10% chưa giải trình.
+                  Vui lòng nhập lý do tại cột "Giải trình" trước khi khóa.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setLockBlockedDialog(null)}
+                className="h-8 px-3 rounded-button border border-surface-3 bg-surface-0 text-text-2 hover:bg-surface-2 text-table-sm font-medium"
+              >Đóng</button>
+              <button
+                onClick={() => {
+                  setLockBlockedDialog(null);
+                  document.querySelector('[data-variance-row]')?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+                className="h-8 px-3 rounded-button bg-danger text-primary-foreground hover:opacity-90 text-table-sm font-medium"
+              >Xem chi tiết →</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <AutoSaveIndicator lastSaved={cellPresence.lastSaved} offline={cellPresence.offline} />
       <div className="mt-6">
         <ChangeLogPanel entityType="sop_consensus" maxItems={6} />
