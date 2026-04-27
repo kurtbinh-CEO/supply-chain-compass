@@ -67,6 +67,8 @@ export default function HubPage() {
     ];
   }, [activeStep, scale]);
 
+  const [timeRange, setTimeRange] = useTimeRange("hub", "monthly");
+
   return (
     <AppLayout>
       <ScreenHeader
@@ -74,10 +76,23 @@ export default function HubPage() {
         subtitle={`S&OP locked v${planCycle.version} · Planner gõ cam kết trực tiếp`}
         actions={
           <div className="flex items-center gap-2 flex-wrap">
+            <TimeRangeFilter
+              mode="monthly"
+              value={timeRange}
+              onChange={setTimeRange}
+              screenId="hub"
+            />
             <PlanningPeriodSelector />
             <VersionHistoryButton entityType="BOOKING" entityId="COMMIT-T5" />
           </div>
         }
+      />
+
+      <HistoryBanner
+        range={timeRange}
+        onReset={() => setTimeRange(defaultTimeRange("monthly"))}
+        entity="cam kết"
+        resetLabel="Quay về tháng này"
       />
 
       <div className="space-y-4">
