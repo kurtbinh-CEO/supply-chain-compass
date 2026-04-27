@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 
 export interface Approval {
   id: string;
@@ -32,6 +32,21 @@ export interface Notification {
   url: string;
 }
 
+/** Trạng thái lock S&OP & cam kết Hub.
+ *  Dùng cho badge sidebar (sop_status, hub_commitment). */
+export interface SopLockState {
+  /** Phiên S&OP hiện tại (vd "2026-05") đã được khóa hay chưa. */
+  locked: boolean;
+  /** Thời điểm khóa gần nhất — render cho audit/hover hint. */
+  lockedAt?: number;
+}
+export interface HubCommitState {
+  /** Số NM đã confirm cam kết tuần hiện tại. */
+  confirmed: number;
+  /** Tổng NM trong scope tuần. */
+  total: number;
+}
+
 const initialApprovals: Approval[] = [
   { id: "APR-001", type: "S&OP", typeColor: "info", description: "Đồng thuận T5: 7.650m² — Ngày khóa 7", submitter: "Chị Thúy", timeAgo: "2 giờ trước" },
   { id: "APR-002", type: "CN điều chỉnh", typeColor: "warning", description: "CN-BD +12,5% GA-300 A4", submitter: "Anh Minh", timeAgo: "45 phút" },
@@ -61,11 +76,23 @@ interface WorkspaceContextType {
   removeApproval: (id: string) => void;
   addApproval: (a: Approval) => void;
   exceptions: ExceptionCard[];
+  /** Mutators cho exceptions để DRP/Monitoring có thể thêm/giải quyết shortage real-time. */
+  addException: (e: ExceptionCard) => void;
+  removeException: (id: string) => void;
   notifications: Notification[];
   markNotificationRead: (id: string) => void;
   addNotification: (n: Notification) => void;
   unreadCount: number;
   criticalCount: number;
+  /** Trạng thái phiên S&OP & Hub commit — dùng cho badge sidebar. */
+  sopLock: SopLockState;
+  setSopLock: (next: SopLockState) => void;
+  hubCommit: HubCommitState;
+  setHubCommit: (next: HubCommitState) => void;
+  /** Tick tăng mỗi khi state thay đổi đáng kể — hooks badge dựa vào để re-evaluate. */
+  badgeRevision: number;
+  /** Force refresh các consumer badge (dispatch global event cũng được). */
+  bumpBadges: () => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType | null>(null);
@@ -76,32 +103,92 @@ export const useWorkspace = () => {
   return ctx;
 };
 
+/** Tên event global để các module ngoài context có thể trigger refresh
+ *  (vd: import động, edge function callback, debug tool). */
+export const WORKSPACE_BADGES_EVENT = "workspace:badges-refresh";
+
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [approvals, setApprovals] = useState<Approval[]>(initialApprovals);
+  const [exceptions, setExceptions] = useState<ExceptionCard[]>(initialExceptions);
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+  const [sopLock, setSopLock] = useState<SopLockState>({ locked: false });
+  const [hubCommit, setHubCommit] = useState<HubCommitState>({ confirmed: 0, total: 0 });
+  const [badgeRevision, setBadgeRevision] = useState(0);
+
+  const bumpBadges = useCallback(() => setBadgeRevision((r) => r + 1), []);
 
   const removeApproval = useCallback((id: string) => {
     setApprovals((prev) => prev.filter((a) => a.id !== id));
-  }, []);
+    bumpBadges();
+  }, [bumpBadges]);
 
   const addApproval = useCallback((a: Approval) => {
     setApprovals((prev) => [a, ...prev]);
-  }, []);
+    bumpBadges();
+  }, [bumpBadges]);
+
+  const addException = useCallback((e: ExceptionCard) => {
+    setExceptions((prev) => prev.some((x) => x.id === e.id) ? prev : [e, ...prev]);
+    bumpBadges();
+  }, [bumpBadges]);
+
+  const removeException = useCallback((id: string) => {
+    setExceptions((prev) => prev.filter((e) => e.id !== id));
+    bumpBadges();
+  }, [bumpBadges]);
 
   const markNotificationRead = useCallback((id: string) => {
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
-  }, []);
+    bumpBadges();
+  }, [bumpBadges]);
 
   const addNotification = useCallback((n: Notification) => {
     setNotifications((prev) => prev.some((x) => x.id === n.id) ? prev : [n, ...prev]);
-  }, []);
+    bumpBadges();
+  }, [bumpBadges]);
 
-  const pendingCount = approvals.length + initialExceptions.length + notifications.filter(n => !n.read).length;
+  const setSopLockWithBump = useCallback((next: SopLockState) => {
+    setSopLock(next);
+    bumpBadges();
+  }, [bumpBadges]);
+
+  const setHubCommitWithBump = useCallback((next: HubCommitState) => {
+    setHubCommit(next);
+    bumpBadges();
+  }, [bumpBadges]);
+
+  // ── Lắng nghe event global: bất kỳ module nào (kể cả ngoài React tree)
+  //    cũng có thể dispatch để buộc badge re-evaluate (vd: edge function callback,
+  //    voice command, hoặc debug tool gọi window.dispatchEvent).
+  useEffect(() => {
+    const handler = () => bumpBadges();
+    window.addEventListener(WORKSPACE_BADGES_EVENT, handler);
+    // Cũng refresh khi tab quay lại focus → bắt kịp thay đổi từ tab khác / backend.
+    window.addEventListener("focus", handler);
+    document.addEventListener("visibilitychange", handler);
+    return () => {
+      window.removeEventListener(WORKSPACE_BADGES_EVENT, handler);
+      window.removeEventListener("focus", handler);
+      document.removeEventListener("visibilitychange", handler);
+    };
+  }, [bumpBadges]);
+
+  const pendingCount = approvals.length + exceptions.length + notifications.filter(n => !n.read).length;
   const unreadCount = notifications.filter((n) => !n.read).length;
   const criticalCount = notifications.filter((n) => n.typeColor === "danger" && !n.read).length;
 
   return (
-    <WorkspaceContext.Provider value={{ approvals, pendingCount, removeApproval, addApproval, exceptions: initialExceptions, notifications, markNotificationRead, addNotification, unreadCount, criticalCount }}>
+    <WorkspaceContext.Provider
+      value={{
+        approvals, pendingCount, removeApproval, addApproval,
+        exceptions, addException, removeException,
+        notifications, markNotificationRead, addNotification,
+        unreadCount, criticalCount,
+        sopLock, setSopLock: setSopLockWithBump,
+        hubCommit, setHubCommit: setHubCommitWithBump,
+        badgeRevision, bumpBadges,
+      }}
+    >
       {children}
     </WorkspaceContext.Provider>
   );
