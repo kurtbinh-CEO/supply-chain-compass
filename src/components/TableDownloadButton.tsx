@@ -27,6 +27,14 @@ import { toast } from "sonner";
 type Format = "csv" | "xlsx" | "pdf";
 type Scope = "filtered" | "all";
 
+/** Một filter đang áp dụng — hiển thị thành chip trong preview modal. */
+export interface ExportActiveFilter {
+  /** Nhãn nhóm filter (ví dụ "Tuần", "CN", "Trạng thái"). */
+  label: string;
+  /** Giá trị hiện tại (ví dụ "T20/2026", "CN-BD, CN-HCM", "Đang chở"). */
+  value: string;
+}
+
 interface Props {
   tableRef?: React.RefObject<HTMLTableElement>;
   targetId?: string;
@@ -36,6 +44,8 @@ interface Props {
   size?: "xs" | "sm";
   formats?: Format[];
   scopeLabel?: string;
+  /** Các filter/trạng thái đang áp dụng — hiển thị thành chip trong modal preview. */
+  activeFilters?: ExportActiveFilter[];
   getAllRowsCsv?: () => string;
   pdfTitle?: string;
 }
