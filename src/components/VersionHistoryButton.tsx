@@ -6,7 +6,7 @@
  * Compare đơn giản: hiển thị toast + có thể wire onCompare ra ngoài.
  */
 import { useMemo, useState } from "react";
-import { ChevronDown, GitCompare, FileClock } from "lucide-react";
+import { GitCompare, FileClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { PLAN_VERSIONS, type PlanRunVersion } from "@/data/unis-enterprise-dataset";
