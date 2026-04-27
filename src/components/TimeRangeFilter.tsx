@@ -188,7 +188,7 @@ export const MAX_RANGE_DAYS = 366;
 
 /** Validate custom range. Trả về error message (vi) hoặc null nếu hợp lệ.
  *  Mọi thông báo đều kèm ngày giới hạn cụ thể để user biết cần sửa thành gì. */
-function validateCustomRange(from: string, to: string): string | null {
+export function validateCustomRange(from: string, to: string): string | null {
   const today = todayIso();
   const floor = retentionFloorIso();
   const todayVi = fmtDateVi(today);
