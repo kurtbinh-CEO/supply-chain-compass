@@ -33,6 +33,7 @@ import { VersionComparePanel } from "@/components/sop/VersionComparePanel";
 import { VersionHistoryButton } from "@/components/VersionHistoryButton";
 import { SummaryCards } from "@/components/SummaryCards";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
+import { sopCompare } from "@/lib/compare-metrics";
 import { AutoSaveIndicator } from "@/components/CellPresence";
 import {
   DropdownMenu,
