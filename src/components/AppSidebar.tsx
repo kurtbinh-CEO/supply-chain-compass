@@ -427,16 +427,32 @@ export function AppSidebar() {
                               {pendingCount}
                             </span>
                           )}
-                          {/* Daily-ops dynamic badge */}
-                          {badge && (
-                            <span
-                              className={cn(
-                                "rounded-full text-[10px] font-semibold px-1.5 py-0.5 leading-tight tabular-nums",
-                                badgeClasses(badge.tone),
-                              )}
-                            >
-                              {badge.text}
-                            </span>
+                          {/* Daily-ops dynamic badge — kèm tooltip giải thích metric & ngưỡng tone */}
+                          {badge && item.badgeKey && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span
+                                  className={cn(
+                                    "rounded-full text-[10px] font-semibold px-1.5 py-0.5 leading-tight tabular-nums cursor-help",
+                                    badgeClasses(badge.tone),
+                                  )}
+                                >
+                                  {badge.text}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" align="center" className="max-w-[260px] text-[11px] leading-relaxed">
+                                <div className="font-semibold text-text-1 mb-1">
+                                  {BADGE_META[item.badgeKey].metric}
+                                </div>
+                                <div className="text-text-2 mb-1.5">
+                                  {BADGE_META[item.badgeKey].thresholds}
+                                </div>
+                                <div className="flex items-center gap-1.5 pt-1 border-t border-surface-3">
+                                  <span className={cn("inline-block h-2 w-2 rounded-full", badgeClasses(badge.tone))} aria-hidden />
+                                  <span className="text-text-3">Hiện tại: <span className="font-medium text-text-2">{TONE_LABEL[badge.tone]}</span> · {badge.text}</span>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
                           )}
                         </>
                       )}
