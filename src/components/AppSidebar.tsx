@@ -339,12 +339,16 @@ export function AppSidebar() {
                       requestLeave(item.url);
                     }
                   };
-                  // Badge chỉ hiện nếu (a) item có badgeKey, (b) data ≠ null,
-                  // và (c) role hiện tại nằm trong badgeRoles (nếu có khai báo).
-                  // Tránh để SALES nhìn thấy số nội bộ như rủi ro/tổng PO pending.
+                  // Badge có 3 trạng thái:
+                  //  (1) badge != null  → render con số/text bình thường (có data + đủ quyền).
+                  //  (2) hiddenByRole   → có data nhưng role hiện tại không được xem
+                  //                       → render placeholder "—" muted + tooltip giải thích.
+                  //  (3) cả hai null    → không render gì (item không có badgeKey hoặc data = null).
                   const rawBadge = item.badgeKey ? dailyBadges[item.badgeKey] : null;
                   const canSeeBadge = !item.badgeRoles || item.badgeRoles.includes(user.role);
                   const badge = canSeeBadge ? rawBadge : null;
+                  const hiddenByRole = !canSeeBadge && rawBadge !== null;
+                  const allowedRolesLabel = item.badgeRoles?.join(" / ") ?? "";
 
                   return (
                     <NavLink
