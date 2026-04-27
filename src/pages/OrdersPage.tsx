@@ -203,7 +203,7 @@ export default function OrdersPage() {
             {planCycle.label}
           </button>
           <span>·</span>
-          <span>Tổng <span className="text-text-1 font-semibold tabular-nums">{counts.total}</span> đơn</span>
+          <span>Tổng <span className="text-text-1 font-semibold tabular-nums">{counts.total}</span> đơn <span className="text-text-3">({counts.totalLines} dòng chi tiết)</span></span>
           {counts.overdue > 0 && (
             <> · <span className="text-danger font-semibold">{counts.overdue} trễ hạn</span></>
           )}
