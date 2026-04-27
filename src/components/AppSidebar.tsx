@@ -402,6 +402,8 @@ export function AppSidebar() {
                               —
                             </span>
                           )}
+                        </>
+                      )}
                     </NavLink>
                   );
                 })}
