@@ -16,6 +16,8 @@ import { useI18n } from "@/components/i18n/I18nContext";
 import { useOnboarding } from "@/components/onboarding/OnboardingContext";
 import { getTourForRoute } from "@/components/onboarding/tours";
 import smartlogIcon from "@/assets/smartlog-icon.png";
+import { BRANCHES, FACTORIES } from "@/data/unis-enterprise-dataset";
+import { DEMO_SCENARIOS, getCriticalScenarios } from "@/data/demo-scenarios";
 
 /* M1 — Sidebar restructure
  *  - Daily ops: 4 items split bởi 3 phase labels (Chuẩn bị / Kết quả / Thực thi)
