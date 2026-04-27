@@ -240,7 +240,7 @@ function badgeClasses(tone: BadgeData["tone"]) {
 }
 
 export function AppSidebar() {
-  const { collapsed, toggle } = useSidebarState();
+  const { collapsed, toggle, compact, toggleCompact, width } = useSidebarState();
   const { startWorkflow, isBarVisible, isRouteInWorkflow, requestLeave } = useWorkflow();
   const { pendingCount } = useWorkspace();
   const { user } = useRbac();
