@@ -12,55 +12,9 @@ interface ScreenHeaderProps {
   badges?: React.ReactNode;
 }
 
-function ExportDropdown() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+// Note: Per-table SmartTable provides its own export. The screen-level
+// "Xuất" dropdown was removed to avoid duplication and tighten the header.
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-surface-3 bg-surface-0 px-3 py-1.5 text-table-sm font-medium text-text-2 hover:border-primary/30 hover:text-text-1 transition-all hover:shadow-sm"
-      >
-        <Download className="h-3.5 w-3.5" />
-        <span>Xuất</span>
-        <ChevronDown className={cn("h-3 w-3 text-text-3 transition-transform", open && "rotate-180")} />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1.5 w-44 rounded-card border border-surface-3 bg-surface-2 shadow-lg py-1 z-50 animate-fade-in">
-          <button
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-table-sm text-text-2 hover:bg-surface-3 hover:text-text-1 transition-colors"
-          >
-            <FileSpreadsheet className="h-4 w-4 text-success" />
-            <div className="text-left">
-              <div className="font-medium">Excel (.xlsx)</div>
-              <div className="text-caption text-text-3">Dữ liệu chi tiết</div>
-            </div>
-          </button>
-          <button
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 w-full px-3.5 py-2.5 text-table-sm text-text-2 hover:bg-surface-3 hover:text-text-1 transition-colors"
-          >
-            <FileText className="h-4 w-4 text-danger" />
-            <div className="text-left">
-              <div className="font-medium">PDF (.pdf)</div>
-              <div className="text-caption text-text-3">Báo cáo tổng hợp</div>
-            </div>
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function ScreenHeader({ title, subtitle, actions, badges }: ScreenHeaderProps) {
   return (
