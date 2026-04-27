@@ -157,19 +157,22 @@ export function KpiCard({
         )}
       </div>
 
-      {/* Value + unit */}
-      <div className="flex items-baseline gap-1.5 min-w-0">
-        <span className={cn(
-          "font-display leading-none font-bold text-text-1 tabular-nums shrink-0",
-          valueMobileClass,
-        )}>
+      {/* Value + unit — value không bao giờ xuống dòng (whitespace-nowrap),
+          unit truncate trong tối đa 45% chiều rộng để không đẩy value */}
+      <div className="flex items-baseline gap-1.5 min-w-0 w-full whitespace-nowrap">
+        <span
+          className={cn(
+            "font-display leading-none font-bold text-text-1 tabular-nums shrink-0 whitespace-nowrap",
+            valueMobileClass,
+          )}
+        >
           {renderValue}
         </span>
         {renderUnit && (
           <span
             title={unitLen > 8 ? renderUnit : undefined}
             className={cn(
-              "text-text-3 truncate min-w-0",
+              "text-text-3 truncate min-w-0 max-w-[45%]",
               unitMobileClass,
             )}
           >{renderUnit}</span>
