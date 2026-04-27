@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Minus, type LucideIcon } from "lucide-react";
 import type { KpiTrend, KpiUnit } from "@/lib/kpi-format";
 import { formatKpiValue } from "@/lib/kpi-format";
+import { useFarmerMode } from "@/components/FarmerModeContext";
 
 /**
  * KpiCard — gọn, dễ đọc cho farmer / ops user.
