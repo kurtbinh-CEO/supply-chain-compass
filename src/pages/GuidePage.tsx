@@ -676,7 +676,7 @@ const demoSteps: DemoStep[] = [
       "Thanh chênh lệch giữa các phiên bản → FVA chọn tốt nhất",
       "Thanh công thức 6 ô: D − S − P = Net + SS = FC Min → [🔒 Khoá]",
     ],
-    keyAction: "Lock S&OP → mở /supply",
+    keyAction: "Lock S&OP → mở /inventory",
     metric: [
       { label: "Phiên bản", value: "v0 → v4" },
       { label: "FVA tốt nhất", value: "+5,9%" },
