@@ -20,8 +20,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import type { PoLifecycleRow, PoGroup } from "@/lib/po-lifecycle-data";
+import type { PoLifecycleRow } from "@/lib/po-lifecycle-data";
+import type { PoGroup } from "@/lib/po-group-builder";
 
 /* ════════════════════════════════════════════════════════════
    Constants — capacity & hold thresholds (đồng bộ ConfigPage)
