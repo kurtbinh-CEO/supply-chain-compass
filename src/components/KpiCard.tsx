@@ -95,54 +95,72 @@ export function KpiCard({
   }
 
   const t = normalizeTrend(trend);
+  const { enabled: farmer } = useFarmerMode();
 
   return (
     <div
       className={cn(
         "relative overflow-hidden rounded-card border border-surface-3 bg-surface-1",
-        "p-3.5 sm:p-4 transition-shadow hover:shadow-sm",
+        // Farmer ON (mobile): padding lớn hơn để chạm tay dễ.
+        farmer ? "p-5 sm:p-4" : "p-3.5 sm:p-4",
+        "transition-shadow hover:shadow-sm",
         className,
       )}
     >
       <span aria-hidden className={cn("absolute left-0 top-0 bottom-0 w-1 sm:w-[3px]", TONE_STRIP[tone])} />
 
       {/* Header: title + icon */}
-      <div className="flex items-start justify-between gap-2 mb-2 sm:mb-1.5">
-        <p className="text-table sm:text-table-sm font-semibold sm:font-medium text-text-2 leading-snug">{title}</p>
+      <div className={cn("flex items-start justify-between gap-2", farmer ? "mb-3 sm:mb-1.5" : "mb-2 sm:mb-1.5")}>
+        <p className={cn(
+          "font-semibold sm:font-medium text-text-2 leading-snug",
+          farmer ? "text-body sm:text-table-sm" : "text-table sm:text-table-sm",
+        )}>{title}</p>
         {Icon && (
-          <div className={cn("shrink-0 rounded-md p-1.5 sm:p-1", TONE_CHIP[tone])}>
-            <Icon className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+          <div className={cn("shrink-0 rounded-md", farmer ? "p-2 sm:p-1" : "p-1.5 sm:p-1", TONE_CHIP[tone])}>
+            <Icon className={cn(farmer ? "h-5 w-5 sm:h-3.5 sm:w-3.5" : "h-4 w-4 sm:h-3.5 sm:w-3.5")} />
           </div>
         )}
       </div>
 
       {/* Value + unit */}
       <div className="flex items-baseline gap-1.5">
-        <span className="font-display text-[30px] sm:text-[26px] leading-none font-bold text-text-1 tabular-nums">
+        <span className={cn(
+          "font-display leading-none font-bold text-text-1 tabular-nums",
+          farmer ? "text-[38px] sm:text-[26px]" : "text-[30px] sm:text-[26px]",
+        )}>
           {renderValue}
         </span>
-        {renderUnit && <span className="text-table sm:text-table-sm text-text-3">{renderUnit}</span>}
+        {renderUnit && (
+          <span className={cn(
+            "text-text-3",
+            farmer ? "text-body sm:text-table-sm font-medium" : "text-table sm:text-table-sm",
+          )}>{renderUnit}</span>
+        )}
       </div>
 
       {/* Trend + hint */}
       {(t || hint) && (
-        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+        <div className={cn("flex items-center gap-1.5 flex-wrap", farmer ? "mt-2.5" : "mt-2")}>
           {t && (
             <span
               className={cn(
-                "inline-flex items-center gap-0.5 text-table-sm sm:text-caption font-semibold tabular-nums",
+                "inline-flex items-center gap-0.5 font-semibold tabular-nums",
+                farmer ? "text-table sm:text-caption" : "text-table-sm sm:text-caption",
                 t.isGood ? "text-success" : "text-danger",
               )}
             >
-              {t.direction === "up"   && <TrendingUp   className="h-3.5 w-3.5 sm:h-3 sm:w-3" />}
-              {t.direction === "down" && <TrendingDown className="h-3.5 w-3.5 sm:h-3 sm:w-3" />}
-              {t.direction === "flat" && <Minus        className="h-3.5 w-3.5 sm:h-3 sm:w-3" />}
+              {t.direction === "up"   && <TrendingUp   className={cn(farmer ? "h-4 w-4 sm:h-3 sm:w-3" : "h-3.5 w-3.5 sm:h-3 sm:w-3")} />}
+              {t.direction === "down" && <TrendingDown className={cn(farmer ? "h-4 w-4 sm:h-3 sm:w-3" : "h-3.5 w-3.5 sm:h-3 sm:w-3")} />}
+              {t.direction === "flat" && <Minus        className={cn(farmer ? "h-4 w-4 sm:h-3 sm:w-3" : "h-3.5 w-3.5 sm:h-3 sm:w-3")} />}
               {t.value}
               {t.vs && <span className="ml-1 font-normal text-text-3">vs {t.vs}</span>}
             </span>
           )}
           {hint && (
-            <span className="text-table-sm sm:text-caption text-text-3 inline-flex items-center gap-1">
+            <span className={cn(
+              "text-text-3 inline-flex items-center gap-1",
+              farmer ? "text-table sm:text-caption" : "text-table-sm sm:text-caption",
+            )}>
               {t && <Minus className="h-2.5 w-2.5 text-text-3/60" />}
               {hint}
             </span>
