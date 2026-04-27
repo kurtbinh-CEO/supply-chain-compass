@@ -478,6 +478,7 @@ export default function ExecutivePage() {
   const [openDec, setOpenDec] = useState<string | null>(null);
   const [drillTab, setDrillTab] = useState<"cn" | "sku" | "nm" | "trend">("cn");
   const [trendCell, setTrendCell] = useState<{ kpi: string; period: string; value: number } | null>(null);
+  const [timeRange, setTimeRange] = useTimeRange("executive", "monthly");
 
   // RBAC: only SC_MANAGER (treated as Director/CEO equivalent)
   if (user.role !== "SC_MANAGER") {
