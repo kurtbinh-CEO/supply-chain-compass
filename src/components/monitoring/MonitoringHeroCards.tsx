@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { formatKpiValue, type KpiTrend, type KpiUnit } from "@/lib/kpi-format";
+import { KPI_THRESHOLDS, resolveTier } from "@/lib/kpi-thresholds";
 import { useFarmerMode } from "@/components/FarmerModeContext";
 
 type CardKey = "nm-risk" | "roi" | "ss-alert" | "bpo-pace" | "fc-accuracy";
@@ -191,28 +192,31 @@ function HeroCard({
 
   const { enabled: farmer } = useFarmerMode();
 
-  // ─── Auto-shrink heuristic (mobile <sm) ─────────────────────────────
-  const labelLen = label.length;
-  const unitLen2 = (renderUnit ?? "").length;
-  const subLen   = sub.length;
-  const valueLen2 = renderValue.length;
+  // ─── Auto-shrink heuristic — cutoffs in `src/lib/kpi-thresholds.ts` ───
+  const labelTier = resolveTier(label.length,              KPI_THRESHOLDS.heroLabel);
+  const valueTier = resolveTier(renderValue.length,        KPI_THRESHOLDS.value);
+  const unitTier  = resolveTier((renderUnit ?? "").length, KPI_THRESHOLDS.unit);
+  const subTier   = resolveTier(sub.length,                KPI_THRESHOLDS.hint);
 
   const labelMobileClass =
-    labelLen > 18 ? (farmer ? "text-table sm:text-table-sm" : "text-table-sm sm:text-table-sm")
-    : (farmer ? "text-body sm:text-table-sm" : "text-table sm:text-table-sm");
+    labelTier !== "base"
+      ? (farmer ? "text-table sm:text-table-sm" : "text-table-sm sm:text-table-sm")
+      : (farmer ? "text-body sm:text-table-sm"  : "text-table sm:text-table-sm");
 
   const valueMobileClass2 =
-    valueLen2 > 7 ? (farmer ? "text-[28px] sm:text-[24px]" : "text-[22px] sm:text-[24px]")
-    : valueLen2 > 5 ? (farmer ? "text-[30px] sm:text-[24px]" : "text-[24px] sm:text-[24px]")
+    valueTier === "xl" ? (farmer ? "text-[28px] sm:text-[24px]" : "text-[22px] sm:text-[24px]")
+    : valueTier === "lg" ? (farmer ? "text-[30px] sm:text-[24px]" : "text-[24px] sm:text-[24px]")
     : (farmer ? "text-[34px] sm:text-[24px]" : "text-[28px] sm:text-[24px]");
 
   const unitMobileClass2 =
-    unitLen2 > 8 ? (farmer ? "text-table-sm sm:text-caption font-medium" : "text-caption sm:text-caption")
-    : (farmer ? "text-table sm:text-caption font-medium" : "text-table-sm sm:text-caption");
+    unitTier !== "base"
+      ? (farmer ? "text-table-sm sm:text-caption font-medium" : "text-caption sm:text-caption")
+      : (farmer ? "text-table sm:text-caption font-medium"    : "text-table-sm sm:text-caption");
 
   const subMobileClass =
-    subLen > 28 ? (farmer ? "text-table-sm sm:text-caption" : "text-caption sm:text-caption")
-    : (farmer ? "text-table sm:text-caption" : "text-table-sm sm:text-caption");
+    subTier !== "base"
+      ? (farmer ? "text-table-sm sm:text-caption" : "text-caption sm:text-caption")
+      : (farmer ? "text-table sm:text-caption"    : "text-table-sm sm:text-caption");
 
   return (
     <button
@@ -232,7 +236,7 @@ function HeroCard({
           {icon}
         </div>
         <span
-          title={labelLen > 18 ? label : undefined}
+          title={labelTier !== "base" ? label : undefined}
           className={cn(
             "font-semibold sm:font-medium text-text-2 truncate min-w-0 flex-1",
             labelMobileClass,
@@ -255,9 +259,10 @@ function HeroCard({
         </span>
         {renderUnit && (
           <span
-            title={unitLen2 > 8 ? renderUnit : undefined}
+            title={unitTier !== "base" ? renderUnit : undefined}
+            style={{ maxWidth: KPI_THRESHOLDS.unitMaxWidth }}
             className={cn(
-              "text-text-3 truncate min-w-0 max-w-[45%]",
+              "text-text-3 truncate min-w-0",
               unitMobileClass2,
             )}
           >{renderUnit}</span>
@@ -265,8 +270,9 @@ function HeroCard({
       </div>
       {/* Trend (optional) + Sub — single line, sub truncates remaining space */}
       <div
+        style={{ minHeight: KPI_THRESHOLDS.heroSubRowMinHeight }}
         className={cn(
-          "flex items-center gap-1.5 flex-nowrap min-w-0 w-full min-h-[1.125rem]",
+          "flex items-center gap-1.5 flex-nowrap min-w-0 w-full",
           farmer ? "mt-1.5" : "mt-1",
         )}
       >
@@ -284,7 +290,7 @@ function HeroCard({
           </span>
         )}
         <span
-          title={subLen > 28 ? sub : undefined}
+          title={subTier !== "base" ? sub : undefined}
           className={cn(
             "text-text-3 truncate min-w-0 flex-1",
             subMobileClass,

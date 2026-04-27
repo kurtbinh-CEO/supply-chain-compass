@@ -21,8 +21,10 @@ export interface KpiLengthTiers {
 }
 
 export interface KpiThresholds {
-  /** Title (label above value). Long titles clamp to 2 lines at `xl`. */
+  /** KpiCard title (label above value). Long titles clamp to 2 lines at `xl`. */
   title:  KpiLengthTiers;
+  /** HeroCard label (header next to icon — typically shorter than `title`). */
+  heroLabel: KpiLengthTiers;
   /** Numeric/text value (the hero number). */
   value:  KpiLengthTiers;
   /** Unit suffix (e.g. "tỷ ₫", "vấn đề"). */
@@ -32,17 +34,21 @@ export interface KpiThresholds {
 
   /** Max width (CSS) the unit can occupy in the value row. */
   unitMaxWidth: string;
-  /** Reserved min-height for the trend/hint row, keeps cards aligned. */
+  /** Reserved min-height for the trend/hint row in KpiCard. */
   hintRowMinHeight: string;
+  /** Reserved min-height for the trend/sub row in HeroCard (denser). */
+  heroSubRowMinHeight: string;
 }
 
 export const KPI_THRESHOLDS: KpiThresholds = {
-  title:  { lg: 22, xl: 32 },
-  value:  { lg: 5,  xl: 7  },
-  unit:   { lg: 8,  xl: 14 },
-  hint:   { lg: 28, xl: 44 },
+  title:     { lg: 22, xl: 32 },
+  heroLabel: { lg: 18, xl: 28 },
+  value:     { lg: 5,  xl: 7  },
+  unit:      { lg: 8,  xl: 14 },
+  hint:      { lg: 28, xl: 44 },
   unitMaxWidth: "45%",
   hintRowMinHeight: "1.25rem",
+  heroSubRowMinHeight: "1.125rem",
 };
 
 /** Tier resolver: returns "base" | "lg" | "xl" based on string length. */
