@@ -541,6 +541,8 @@ export function TableDownloadButton({
                 >
                   {preview.fmt === "pdf" ? (
                     <FileText className="h-4 w-4 text-danger shrink-0" />
+                  ) : preview.fmt === "xlsx" ? (
+                    <FileSpreadsheet className="h-4 w-4 text-info shrink-0" />
                   ) : (
                     <FileSpreadsheet className="h-4 w-4 text-success shrink-0" />
                   )}
