@@ -148,20 +148,41 @@ function diffDays(fromIso: string, toIso: string): number {
   return Math.round((b - a) / 86400000);
 }
 
-/** Validate custom range. Trả về error message (vi) hoặc null nếu hợp lệ. */
+/** Cộng N ngày vào ISO date theo giờ LOCAL. */
+function addDaysIso(iso: string, days: number): string {
+  const d = parseLocalIso(iso);
+  d.setDate(d.getDate() + days);
+  return toLocalIso(d);
+}
+
+const MAX_RANGE_DAYS = 366;
+
+/** Validate custom range. Trả về error message (vi) hoặc null nếu hợp lệ.
+ *  Mọi thông báo đều kèm ngày giới hạn cụ thể để user biết cần sửa thành gì. */
 function validateCustomRange(from: string, to: string): string | null {
-  if (!from && !to) return "Vui lòng chọn ngày bắt đầu và kết thúc.";
-  if (!from) return "Vui lòng chọn ngày bắt đầu (Từ).";
-  if (!to) return "Vui lòng chọn ngày kết thúc (Đến).";
   const today = todayIso();
   const floor = retentionFloorIso();
-  if (from > to) return `Ngày "Từ" (${fmtDateVi(from)}) phải ≤ ngày "Đến" (${fmtDateVi(to)}).`;
-  if (to > today) return `Ngày "Đến" không được vượt quá hôm nay (${fmtDateVi(today)}).`;
-  if (from < floor) {
-    return `Hệ thống chỉ lưu dữ liệu ${RETENTION_MONTHS} tháng gần nhất. Ngày "Từ" phải ≥ ${fmtDateVi(floor)}.`;
+  const todayVi = fmtDateVi(today);
+  const floorVi = fmtDateVi(floor);
+
+  if (!from && !to) {
+    return `Vui lòng chọn ngày bắt đầu và kết thúc (cho phép từ ${floorVi} đến ${todayVi}).`;
   }
-  if (diffDays(from, to) > 366) {
-    return `Khoảng thời gian quá dài (>366 ngày). Vui lòng chọn phạm vi nhỏ hơn.`;
+  if (!from) return `Vui lòng chọn ngày bắt đầu (Từ) — sớm nhất ${floorVi}.`;
+  if (!to)   return `Vui lòng chọn ngày kết thúc (Đến) — muộn nhất ${todayVi}.`;
+
+  if (from > to) {
+    return `Ngày "Từ" (${fmtDateVi(from)}) phải ≤ ngày "Đến" (${fmtDateVi(to)}). Hãy đổi "Từ" về ${fmtDateVi(to)} hoặc sớm hơn.`;
+  }
+  if (to > today) {
+    return `Ngày "Đến" (${fmtDateVi(to)}) vượt quá hôm nay. Tối đa cho phép là ${todayVi}.`;
+  }
+  if (from < floor) {
+    return `Hệ thống chỉ lưu dữ liệu ${RETENTION_MONTHS} tháng gần nhất (từ ${floorVi}). Ngày "Từ" (${fmtDateVi(from)}) quá xa — hãy chọn ≥ ${floorVi}.`;
+  }
+  if (diffDays(from, to) > MAX_RANGE_DAYS) {
+    const maxTo = addDaysIso(from, MAX_RANGE_DAYS);
+    return `Khoảng quá dài (${diffDays(from, to) + 1} ngày, tối đa ${MAX_RANGE_DAYS + 1} ngày). Với "Từ" = ${fmtDateVi(from)}, "Đến" muộn nhất là ${fmtDateVi(maxTo)}.`;
   }
   return null;
 }
