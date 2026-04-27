@@ -104,11 +104,56 @@ interface Props {
   className?: string;
 }
 
+/** Số tháng tối đa được phép xem ngược về quá khứ (retention policy). */
+const RETENTION_MONTHS = 24;
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function retentionFloorIso(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() - RETENTION_MONTHS);
+  return d.toISOString().slice(0, 10);
+}
+
+function diffDays(fromIso: string, toIso: string): number {
+  const a = new Date(fromIso).getTime();
+  const b = new Date(toIso).getTime();
+  return Math.round((b - a) / 86400000);
+}
+
+/** Validate custom range. Trả về error message (vi) hoặc null nếu hợp lệ. */
+function validateCustomRange(from: string, to: string): string | null {
+  if (!from && !to) return "Vui lòng chọn ngày bắt đầu và kết thúc.";
+  if (!from) return "Vui lòng chọn ngày bắt đầu (Từ).";
+  if (!to) return "Vui lòng chọn ngày kết thúc (Đến).";
+  const today = todayIso();
+  const floor = retentionFloorIso();
+  if (from > to) return `Ngày "Từ" (${fmtDateVi(from)}) phải ≤ ngày "Đến" (${fmtDateVi(to)}).`;
+  if (to > today) return `Ngày "Đến" không được vượt quá hôm nay (${fmtDateVi(today)}).`;
+  if (from < floor) {
+    return `Hệ thống chỉ lưu dữ liệu ${RETENTION_MONTHS} tháng gần nhất. Ngày "Từ" phải ≥ ${fmtDateVi(floor)}.`;
+  }
+  if (diffDays(from, to) > 366) {
+    return `Khoảng thời gian quá dài (>366 ngày). Vui lòng chọn phạm vi nhỏ hơn.`;
+  }
+  return null;
+}
+
 export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
   const [open, setOpen] = useState(false);
   const [customFrom, setCustomFrom] = useState(value.customFrom ?? "");
   const [customTo, setCustomTo] = useState(value.customTo ?? "");
+  const [customError, setCustomError] = useState<string | null>(null);
+  const [touched, setTouched] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  // Live re-validate khi user sửa input (chỉ sau khi đã touch).
+  useEffect(() => {
+    if (!touched) return;
+    setCustomError(validateCustomRange(customFrom, customTo));
+  }, [customFrom, customTo, touched]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -135,7 +180,13 @@ export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
   };
 
   const applyCustom = () => {
-    if (!customFrom || !customTo) return;
+    setTouched(true);
+    const err = validateCustomRange(customFrom, customTo);
+    if (err) {
+      setCustomError(err);
+      return;
+    }
+    setCustomError(null);
     onChange({
       type: "custom",
       customFrom,
@@ -145,6 +196,9 @@ export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
     });
     setOpen(false);
   };
+
+  const todayMax = todayIso();
+  const floorMin = retentionFloorIso();
 
   return (
     <div ref={ref} className={cn("relative", className)}>
@@ -167,7 +221,7 @@ export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 w-[300px] rounded-card border border-surface-3 bg-surface-2 shadow-lg z-50 animate-fade-in overflow-hidden">
+        <div className="absolute right-0 top-full mt-1.5 w-[320px] rounded-card border border-surface-3 bg-surface-2 shadow-lg z-50 animate-fade-in overflow-hidden">
           <div className="px-3 py-2 border-b border-surface-3">
             <div className="text-caption font-semibold uppercase text-text-3 tracking-wide">Nhanh</div>
           </div>
@@ -193,8 +247,11 @@ export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
             })}
           </div>
 
-          <div className="px-3 py-2 border-t border-surface-3">
+          <div className="px-3 py-2 border-t border-surface-3 flex items-center justify-between">
             <div className="text-caption font-semibold uppercase text-text-3 tracking-wide">Tùy chỉnh</div>
+            <div className="text-caption text-text-3">
+              Lưu trữ: {RETENTION_MONTHS} tháng
+            </div>
           </div>
           <div className="px-3 pb-3 space-y-2">
             <div className="flex items-center gap-2">
@@ -202,8 +259,14 @@ export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
               <input
                 type="date"
                 value={customFrom}
-                onChange={(e) => setCustomFrom(e.target.value)}
-                className="flex-1 rounded-button border border-surface-3 bg-surface-0 px-2 py-1 text-table-sm text-text-1"
+                min={floorMin}
+                max={todayMax}
+                onChange={(e) => { setCustomFrom(e.target.value); setTouched(true); }}
+                className={cn(
+                  "flex-1 rounded-button border bg-surface-0 px-2 py-1 text-table-sm text-text-1",
+                  customError ? "border-danger/60" : "border-surface-3"
+                )}
+                aria-invalid={!!customError}
               />
             </div>
             <div className="flex items-center gap-2">
@@ -211,14 +274,35 @@ export function TimeRangeFilter({ mode, value, onChange, className }: Props) {
               <input
                 type="date"
                 value={customTo}
-                onChange={(e) => setCustomTo(e.target.value)}
-                className="flex-1 rounded-button border border-surface-3 bg-surface-0 px-2 py-1 text-table-sm text-text-1"
+                min={floorMin}
+                max={todayMax}
+                onChange={(e) => { setCustomTo(e.target.value); setTouched(true); }}
+                className={cn(
+                  "flex-1 rounded-button border bg-surface-0 px-2 py-1 text-table-sm text-text-1",
+                  customError ? "border-danger/60" : "border-surface-3"
+                )}
+                aria-invalid={!!customError}
               />
             </div>
+
+            {customError && (
+              <div
+                role="alert"
+                className="flex items-start gap-1.5 rounded-button border border-danger/40 bg-danger-bg px-2 py-1.5 text-caption text-danger"
+              >
+                <span aria-hidden className="leading-none">⚠️</span>
+                <span>{customError}</span>
+              </div>
+            )}
+            {!customError && touched && customFrom && customTo && (
+              <div className="text-caption text-text-3 px-1">
+                Phạm vi: <strong className="text-text-2">{diffDays(customFrom, customTo) + 1} ngày</strong>
+              </div>
+            )}
+
             <button
               onClick={applyCustom}
-              disabled={!customFrom || !customTo}
-              className="w-full rounded-button bg-primary text-primary-foreground px-3 py-1.5 text-table-sm font-medium hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full rounded-button bg-primary text-primary-foreground px-3 py-1.5 text-table-sm font-medium hover:bg-primary/90 transition-colors"
             >
               <Check className="inline h-3.5 w-3.5 mr-1" />
               Áp dụng
