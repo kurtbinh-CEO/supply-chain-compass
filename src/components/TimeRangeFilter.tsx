@@ -10,7 +10,7 @@
  * Khi value !== "current" → screen vào read-only mode (banner vàng + disable inputs).
  */
 import { useEffect, useRef, useState } from "react";
-import { Calendar, ChevronDown, Check, ArrowRight } from "lucide-react";
+import { Calendar, ChevronDown, Check, ArrowRight, GitCompare, X, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type TimeRangeMode = "daily" | "weekly" | "monthly";
