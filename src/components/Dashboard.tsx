@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle, TrendingDown, Clock, ArrowRight, Phone,
   ArrowLeftRight, PackagePlus, Sparkles, ChevronRight,
+  DollarSign, AlertOctagon, PackageCheck, Boxes,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -175,18 +176,22 @@ export function Dashboard() {
       <div className="grid grid-cols-4 gap-4">
         <ClickableKpi onClick={() => setOpenKpi("revenue_at_risk")}>
           <KpiCard title="Doanh thu rủi ro" value="3,17" unit="tỷ VND"
+            tone="danger" icon={DollarSign}
             trend={{ value: "12% vs tuần trước", positive: false }} />
         </ClickableKpi>
         <ClickableKpi onClick={() => setOpenKpi("open_exceptions")}>
           <KpiCard title="Ngoại lệ mở" value="14" unit="vấn đề"
+            tone="warning" icon={AlertOctagon}
             trend={{ value: "3 mới hôm nay", positive: false }} />
         </ClickableKpi>
         <ClickableKpi onClick={() => setOpenKpi("fill_rate")}>
           <KpiCard title="Tỷ lệ lấp đầy" value="94,2" unit="%"
+            tone="success" icon={PackageCheck}
             trend={{ value: "1.3% vs tháng trước", positive: true }} />
         </ClickableKpi>
         <ClickableKpi onClick={() => setOpenKpi("doh")}>
           <KpiCard title="Ngày tồn kho TB" value="38" unit="ngày"
+            tone="info" icon={Boxes}
             trend={{ value: "Trong ngưỡng", positive: true }} />
         </ClickableKpi>
       </div>

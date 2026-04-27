@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Wallet, PiggyBank, RefreshCw, Gauge } from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
 import { TermTooltip } from "@/components/TermTooltip";
 import { cn } from "@/lib/utils";
@@ -62,19 +62,32 @@ export function RoiFlywheelTab() {
           title="Vốn lưu động"
           value="1,2"
           unit="tỷ ₫"
+          tone="warning"
+          icon={Wallet}
           trend={{ value: "20% vượt mục tiêu", positive: false }}
         />
         <KpiCard
           title="Tiết kiệm tháng này"
           value="507"
           unit="triệu ₫"
+          tone="success"
+          icon={PiggyBank}
           trend={{ value: "+58 triệu vs T3", positive: true }}
         />
-        <KpiCard title="Vòng quay tồn kho" value="4,8" unit="x/năm" trend={{ value: "+0,6", positive: true }} />
+        <KpiCard
+          title="Vòng quay tồn kho"
+          value="4,8"
+          unit="x/năm"
+          tone="info"
+          icon={RefreshCw}
+          trend={{ value: "+0,6", positive: true }}
+        />
         <KpiCard
           title="Mức phục vụ"
           value="95,5"
           unit="%"
+          tone="primary"
+          icon={Gauge}
           trend={{ value: "→ ổn định", positive: true }}
         />
       </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { KpiCard } from "@/components/KpiCard";
 import { useWorkflow } from "@/components/WorkflowContext";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Zap, CalendarDays, Check, Clock, Play } from "lucide-react";
+import { ArrowRight, Zap, CalendarDays, Check, Clock, Play, TrendingUp, AlertOctagon, Boxes, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DashboardKpis {
@@ -151,10 +151,10 @@ export function KpiAndWorkflowSection() {
       {/* KPI Summary */}
       <h2 className="font-display text-section-header text-text-1">Tóm tắt hiệu năng</h2>
       <div className="grid grid-cols-4 gap-4">
-        <KpiCard title="Demand" value={kpis.demand} />
-        <KpiCard title="Exceptions" value={kpis.exceptions} className="[&_.font-display]:text-danger" />
-        <KpiCard title="HSTK (DIO)" value={kpis.hstk} />
-        <KpiCard title="Forecast Accuracy" value={kpis.forecastAccuracy} className="[&_.font-display]:text-warning" />
+        <KpiCard title="Demand" value={kpis.demand} tone="primary" icon={TrendingUp} />
+        <KpiCard title="Exceptions" value={kpis.exceptions} tone="danger" icon={AlertOctagon} />
+        <KpiCard title="HSTK (DIO)" value={kpis.hstk} tone="info" icon={Boxes} />
+        <KpiCard title="Forecast Accuracy" value={kpis.forecastAccuracy} tone="warning" icon={Target} />
       </div>
 
       {/* Workflow CTA */}
