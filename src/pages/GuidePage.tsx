@@ -259,9 +259,8 @@ const salesFlows: RoleFlows = {
   ],
   formulas: [
     {
-      title: "FVA & Probability",
-      visual: <ProbabilityViz />,
-      detail: "FVA = MAPE(model) − MAPE(bạn). Dương = bạn giỏi hơn AI.",
+      title: "FVA & Xác suất B2B",
+      detail: "Weighted = qty × prob%\nVD: 12.000 × 85% = 10.200 m²\n\nXác suất theo giai đoạn:\n• 10% Tiềm năng — KHÔNG vào FC\n• 30% Đủ điều kiện ✅\n• 70% Đề xuất ✅\n• 85% Cam kết ✅\n• 100% Đã ký PO ✅\n\nFVA = MAPE(model) − MAPE(bạn). Dương = bạn giỏi hơn AI.",
     },
   ],
 };
