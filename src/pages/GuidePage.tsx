@@ -221,6 +221,14 @@ const cnFlows: RoleFlows = {
       why: "Evidence = SC Manager duyệt nhanh.", what: "Thread per SKU. Text + file + voice. @mention.",
       how: "1. Comment + 📎 PO scan\n2. @Thúy → push SC", formula: "",
     },
+    {
+      route: "/orders", label: "Nhận hàng", time: "5'", icon: <Truck className="h-5 w-5" />,
+      keyAction: "Kiểm đếm + Upload POD", kpi: "POD < 2h",
+      why: "PO đến CN → kiểm đếm → chụp ảnh → ký nhận. Không POD = PO chưa hoàn tất.",
+      what: "Filter [Giao hàng] → click PO → form kiểm đếm + 📷 ảnh + ✍ chữ ký.",
+      how: "1. Mở /orders → filter [Giao hàng]\n2. Click PO → [Kiểm đếm & POD]\n3. Nhập số thực nhận + 📷 min 2 ảnh + ✍ ký\n4. Hư hỏng? → chọn 'Hư hỏng' + 📷 3 ảnh + mô tả",
+      formula: "SLA POD: < 2h sau giao. Quá → nhắc CN Manager.",
+    },
   ],
   monthly: [],
   tips: [
