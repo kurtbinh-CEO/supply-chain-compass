@@ -65,8 +65,7 @@ const navGroups: NavGroup[] = [
   {
     labelKey: "nav.executive",
     items: [
-      // M16 — Tổng quan lãnh đạo (chỉ SC_MANAGER thấy; Director/CEO khi roles được mở rộng)
-      { kind: "item", titleKey: "nav.executiveItem", icon: Crown, url: "/executive", roles: ["SC_MANAGER"] },
+      { kind: "item", titleKey: "nav.executiveItem", icon: Crown, url: "/executive", roles: ["SC_MANAGER"], badgeKey: "executive_risk" },
     ],
   },
   {
@@ -78,16 +77,16 @@ const navGroups: NavGroup[] = [
   {
     labelKey: "nav.monitoring",
     items: [
-      { kind: "item", titleKey: "nav.monitoringItem", icon: Activity, url: "/monitoring" },
+      { kind: "item", titleKey: "nav.monitoringItem", icon: Activity, url: "/monitoring", badgeKey: "monitoring_alerts" },
     ],
   },
   {
     labelKey: "nav.monthlyPlan",
     items: [
-      { kind: "item", titleKey: "nav.demandReview", icon: BarChart3, url: "/demand" },
-      { kind: "item", titleKey: "nav.sopConsensus", icon: Handshake, url: "/sop" },
-      { kind: "item", titleKey: "nav.hubCommitment", icon: Boxes, url: "/hub" },
-      { kind: "item", titleKey: "nav.gapScenario", icon: AlertTriangle, url: "/gap-scenario" },
+      { kind: "item", titleKey: "nav.demandReview",   icon: BarChart3,      url: "/demand",       badgeKey: "demand_progress" },
+      { kind: "item", titleKey: "nav.sopConsensus",   icon: Handshake,      url: "/sop",          badgeKey: "sop_status" },
+      { kind: "item", titleKey: "nav.hubCommitment",  icon: Boxes,          url: "/hub",          badgeKey: "hub_commitment" },
+      { kind: "item", titleKey: "nav.gapScenario",    icon: AlertTriangle,  url: "/gap-scenario", badgeKey: "gap_pending" },
     ],
   },
   {
@@ -105,7 +104,7 @@ const navGroups: NavGroup[] = [
   {
     labelKey: "nav.partners",
     items: [
-      { kind: "item", titleKey: "nav.cnPortal", icon: Building, url: "/cn-portal", roles: ["CN_MANAGER", "SC_MANAGER", "SALES"] },
+      { kind: "item", titleKey: "nav.cnPortal", icon: Building, url: "/cn-portal", roles: ["CN_MANAGER", "SC_MANAGER", "SALES"], badgeKey: "cn_portal_pending" },
     ],
   },
   {
