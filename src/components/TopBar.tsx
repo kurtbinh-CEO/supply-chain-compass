@@ -256,7 +256,30 @@ export function TopBar() {
         <kbd className="hidden xl:inline ml-2 rounded bg-surface-3/60 px-1.5 py-0.5 text-[10px] font-mono text-text-3 border border-surface-3">⌘K</kbd>
       </button>
 
-      {/* Compact icon group: Lang + Zoom + Theme — unified card */}
+      {/* Farmer mode toggle — chỉ hiện ở mobile (<md). Desktop có ZoomControls
+          riêng nên không cần. Aria-pressed để screen reader phát đúng trạng thái. */}
+      <Tooltip delayDuration={150}>
+        <TooltipTrigger asChild>
+          <button
+            onClick={toggleFarmer}
+            aria-pressed={farmerOn}
+            aria-label={t("farmer.toggle")}
+            className={cn(
+              "md:hidden flex shrink-0 items-center gap-1 rounded-lg border h-8 px-2 transition-all",
+              farmerOn
+                ? "bg-success/10 border-success/40 text-success"
+                : "bg-surface-0 border-surface-3 text-text-3 hover:border-success/40 hover:text-success",
+            )}
+          >
+            <Sprout className="h-3.5 w-3.5" />
+            <span className="text-caption font-semibold">{t("farmer.toggle")}</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-[260px] text-table-sm">
+          {farmerOn ? t("farmer.tooltip.on") : t("farmer.tooltip.off")}
+        </TooltipContent>
+      </Tooltip>
+
       <div className="flex shrink-0 items-center h-8 rounded-lg border border-surface-3 bg-surface-0 px-1 gap-0.5">
         {/* Language */}
         <button
