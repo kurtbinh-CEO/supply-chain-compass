@@ -46,40 +46,40 @@ export function VersionHistoryButton({
 
   return (
     <>
-      <div className="inline-flex h-8 items-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => {
-            // Compare nhanh với phiên ngay trước
-            const prev = sameEntity.find((v) => v.versionNumber === viewing - 1)
-              ?? sameEntity.find((v) => v.versionNumber !== viewing);
-            if (!prev) {
-              toast.info("Chưa có phiên bản trước để so sánh.");
-              return;
-            }
-            toast.info(`So sánh v${viewing} vs v${prev.versionNumber}`, {
-              description: prev.inputSummary,
-              action: { label: "Mở lịch sử", onClick: () => setHistoryOpen(true) },
-            });
-          }}
-          className={cn(
-            "inline-flex h-8 items-center gap-1 rounded-button border border-surface-3 bg-surface-2",
-            "px-2.5 text-table-sm font-medium text-text-2 hover:text-text-1 hover:border-primary/30 transition-colors whitespace-nowrap"
-          )}
-        >
-          <GitCompare className="h-3 w-3" /> So sánh <ChevronDown className="h-3 w-3" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setHistoryOpen(true)}
-          className={cn(
-            "inline-flex h-8 items-center gap-1 rounded-button border border-surface-3 bg-surface-2",
-            "px-2.5 text-table-sm font-medium text-text-2 hover:text-text-1 hover:border-primary/30 transition-colors whitespace-nowrap"
-          )}
-        >
-          <FileClock className="h-3 w-3" /> Lịch sử <ChevronDown className="h-3 w-3" />
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => {
+          // Compare nhanh với phiên ngay trước
+          const prev = sameEntity.find((v) => v.versionNumber === viewing - 1)
+            ?? sameEntity.find((v) => v.versionNumber !== viewing);
+          if (!prev) {
+            toast.info("Chưa có phiên bản trước để so sánh.");
+            return;
+          }
+          toast.info(`So sánh v${viewing} vs v${prev.versionNumber}`, {
+            description: prev.inputSummary,
+            action: { label: "Mở lịch sử", onClick: () => setHistoryOpen(true) },
+          });
+        }}
+        className={cn(
+          "inline-flex h-8 items-center gap-1 rounded-button border border-surface-3 bg-surface-2",
+          "px-2.5 text-table-sm font-medium text-text-2 hover:text-text-1 hover:border-primary/30 transition-colors whitespace-nowrap"
+        )}
+        title="So sánh nhanh với phiên trước"
+      >
+        <GitCompare className="h-3 w-3" /> So sánh
+      </button>
+      <button
+        type="button"
+        onClick={() => setHistoryOpen(true)}
+        className={cn(
+          "inline-flex h-8 items-center gap-1 rounded-button border border-surface-3 bg-surface-2",
+          "px-2.5 text-table-sm font-medium text-text-2 hover:text-text-1 hover:border-primary/30 transition-colors whitespace-nowrap"
+        )}
+        title="Mở lịch sử phiên bản đầy đủ"
+      >
+        <FileClock className="h-3 w-3" /> Lịch sử
+      </button>
 
       <VersionHistoryPanel
         entityType={entityType}
