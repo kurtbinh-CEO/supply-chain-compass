@@ -11,7 +11,13 @@ import { useWalkthrough, TourHighlight } from "@/components/WalkthroughContext";
 type RoleKey = "SC_MANAGER" | "CN_MANAGER" | "SALES" | "BUYER";
 
 const roleMap: Record<UserRole, RoleKey> = {
-  SC_MANAGER: "SC_MANAGER", CN_MANAGER: "CN_MANAGER", SALES: "SALES", VIEWER: "SC_MANAGER",
+  SC_MANAGER: "SC_MANAGER",
+  CN_MANAGER: "CN_MANAGER",
+  SALES: "SALES",
+  VIEWER: "SC_MANAGER",
+  BUYER: "BUYER",
+  DIRECTOR: "SC_MANAGER",
+  CEO: "SC_MANAGER",
 };
 
 interface RoleMeta {
