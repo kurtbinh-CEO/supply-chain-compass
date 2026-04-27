@@ -1056,9 +1056,17 @@ export default function InventoryPage() {
     <AppLayout>
       <ScreenHeader
         title="Tồn kho"
-        subtitle={`5 nhà máy · 12 chi nhánh · Cập nhật 06:00 sáng nay`}
+        subtitle={timeRange.isCurrent
+          ? "5 nhà máy · 12 chi nhánh · Cập nhật 06:00 sáng nay"
+          : `5 nhà máy · 12 chi nhánh · Snapshot ${timeRange.label}`}
         actions={
           <div className="flex items-center gap-2">
+            <TimeRangeFilter
+              mode="daily"
+              value={timeRange}
+              onChange={setTimeRange}
+              screenId="inventory"
+            />
             <div className="hidden sm:flex items-center gap-2 rounded-button border border-surface-3 bg-surface-1 px-3 py-1.5 text-table-sm">
               <RefreshCw className="h-3.5 w-3.5 text-success" />
               <span className="text-text-2">Bravo sync v12 — 06:00</span>
@@ -1069,6 +1077,8 @@ export default function InventoryPage() {
             <Button
               size="sm"
               onClick={() => setImporterOpen(true)}
+              disabled={isHistory}
+              title={isHistory ? "Dữ liệu quá khứ — chỉ xem" : undefined}
               className="h-8 gap-1.5"
             >
               <Inbox className="h-3.5 w-3.5" />
@@ -1076,6 +1086,13 @@ export default function InventoryPage() {
             </Button>
           </div>
         }
+      />
+
+      <HistoryBanner
+        range={timeRange}
+        onReset={() => setTimeRange(defaultTimeRange("daily"))}
+        entity="tồn kho"
+        resetLabel="Quay về hôm nay"
       />
 
       <DataSourceSelector
