@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Wallet, PiggyBank, RefreshCw, Gauge } from "lucide-react";
 import { KpiCard } from "@/components/KpiCard";
+import { kpiTrend } from "@/lib/kpi-format";
 import { TermTooltip } from "@/components/TermTooltip";
 import { cn } from "@/lib/utils";
 
@@ -60,35 +61,31 @@ export function RoiFlywheelTab() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
           title="Vốn lưu động"
-          value="1,2"
-          unit="tỷ ₫"
+          valueNum={1_200_000_000} valueUnit="vnd"
           tone="warning"
           icon={Wallet}
-          trend={{ value: "20% vượt mục tiêu", positive: false }}
+          hint="20% vượt mục tiêu"
         />
         <KpiCard
           title="Tiết kiệm tháng này"
-          value="507"
-          unit="triệu ₫"
+          valueNum={507_000_000} valueUnit="vnd"
           tone="success"
           icon={PiggyBank}
-          trend={{ value: "+58 triệu vs T3", positive: true }}
+          trend={kpiTrend(58_000_000, "vnd", { higherIsBetter: true, vs: "T3" })}
         />
         <KpiCard
           title="Vòng quay tồn kho"
-          value="4,8"
-          unit="x/năm"
+          value="4,8" unit="x/năm"
           tone="info"
           icon={RefreshCw}
-          trend={{ value: "+0,6", positive: true }}
+          trend={kpiTrend(0.6, "raw", { higherIsBetter: true })}
         />
         <KpiCard
           title="Mức phục vụ"
-          value="95,5"
-          unit="%"
+          valueNum={95.5} valueUnit="pct"
           tone="primary"
           icon={Gauge}
-          trend={{ value: "→ ổn định", positive: true }}
+          hint="ổn định"
         />
       </div>
 
