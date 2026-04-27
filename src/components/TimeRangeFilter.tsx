@@ -81,7 +81,7 @@ function presetLabel(mode: TimeRangeMode, key: TimeRangePreset): string {
    ───────────────────────────────────────────────────────────── */
 
 /** Format Date → "YYYY-MM-DD" theo giờ LOCAL. */
-function toLocalIso(d: Date): string {
+export function toLocalIso(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -156,14 +156,14 @@ interface Props {
 }
 
 /** Số tháng tối đa được phép xem ngược về quá khứ (retention policy). */
-const RETENTION_MONTHS = 24;
+export const RETENTION_MONTHS = 24;
 
-function todayIso(): string {
+export function todayIso(): string {
   // Dùng giờ LOCAL — KHÔNG dùng toISOString() vì sẽ lệch sang UTC.
   return toLocalIso(new Date());
 }
 
-function retentionFloorIso(): string {
+export function retentionFloorIso(): string {
   const d = new Date();
   d.setMonth(d.getMonth() - RETENTION_MONTHS);
   return toLocalIso(d);
@@ -178,17 +178,17 @@ function diffDays(fromIso: string, toIso: string): number {
 }
 
 /** Cộng N ngày vào ISO date theo giờ LOCAL. */
-function addDaysIso(iso: string, days: number): string {
+export function addDaysIso(iso: string, days: number): string {
   const d = parseLocalIso(iso);
   d.setDate(d.getDate() + days);
   return toLocalIso(d);
 }
 
-const MAX_RANGE_DAYS = 366;
+export const MAX_RANGE_DAYS = 366;
 
 /** Validate custom range. Trả về error message (vi) hoặc null nếu hợp lệ.
  *  Mọi thông báo đều kèm ngày giới hạn cụ thể để user biết cần sửa thành gì. */
-function validateCustomRange(from: string, to: string): string | null {
+export function validateCustomRange(from: string, to: string): string | null {
   const today = todayIso();
   const floor = retentionFloorIso();
   const todayVi = fmtDateVi(today);
