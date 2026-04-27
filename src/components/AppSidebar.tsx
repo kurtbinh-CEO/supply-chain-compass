@@ -311,7 +311,12 @@ export function AppSidebar() {
                       requestLeave(item.url);
                     }
                   };
-                  const badge = item.badgeKey ? dailyBadges[item.badgeKey] : null;
+                  // Badge chỉ hiện nếu (a) item có badgeKey, (b) data ≠ null,
+                  // và (c) role hiện tại nằm trong badgeRoles (nếu có khai báo).
+                  // Tránh để SALES nhìn thấy số nội bộ như rủi ro/tổng PO pending.
+                  const rawBadge = item.badgeKey ? dailyBadges[item.badgeKey] : null;
+                  const canSeeBadge = !item.badgeRoles || item.badgeRoles.includes(user.role);
+                  const badge = canSeeBadge ? rawBadge : null;
 
                   return (
                     <NavLink
