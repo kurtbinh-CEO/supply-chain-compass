@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type Format = "csv" | "pdf";
 type Scope = "filtered" | "all";
@@ -244,13 +245,23 @@ export function TableDownloadButton({
     if (!preview || !previewData) return;
     const { fmt, scope } = preview;
     const suffix = scope === "all" ? "-all" : "";
+    const fileName = `${baseName}${suffix}.${fmt}`;
+    const rowCount = Math.max(0, previewData.length - 1);
+    const scopeText = scope === "all" ? "Tất cả (bỏ filter)" : scopeLabel ?? "Đang lọc hiện tại";
+
     if (fmt === "csv") {
       downloadBlob(
         new Blob([matrixToCsv(previewData)], { type: "text/csv;charset=utf-8;" }),
-        `${baseName}${suffix}.csv`,
+        fileName,
       );
+      toast.success("Xuất CSV thành công", {
+        description: `${fileName} · ${rowCount.toLocaleString("vi-VN")} dòng · Phạm vi: ${scopeText}`,
+      });
     } else {
       printMatrixAsPdf(previewData, title + (scope === "all" ? " (tất cả)" : ""), scopeLabel);
+      toast.success("Đã mở hộp thoại in PDF", {
+        description: `${fileName} · ${rowCount.toLocaleString("vi-VN")} dòng · Phạm vi: ${scopeText}`,
+      });
     }
     try {
       sessionStorage.setItem(storageKey, JSON.stringify({ fmt, scope }));
