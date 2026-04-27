@@ -307,7 +307,11 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
                       Tier {tierIdx + 1} — {TIER_LABEL[tier]}
                     </div>
                     {!allowed && (
-                      <span className="text-caption text-text-3">Không đủ thẩm quyền cho mức stale này</span>
+                      <span className="text-caption text-text-3">
+                        {tierIdx < (requiredTier === "sc_manager" ? 0 : requiredTier === "director" ? 1 : 2)
+                          ? "Không đủ tier cho mức stale này"
+                          : `Vai trò ${user.role} không có quyền duyệt tier này`}
+                      </span>
                     )}
                     {isSelected && (
                       <CheckCircle2 className="h-4 w-4 text-primary" />
