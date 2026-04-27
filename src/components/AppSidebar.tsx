@@ -226,7 +226,7 @@ function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
     executive_risk:    { text: "3 rủi ro", tone: "warning" },
 
     // ── Partners ──
-    cn_portal_pending: { text: "4 CN", tone: "warning" },
+    cn_portal_pending: { text: "4", tone: "warning" },
   };
 }
 
