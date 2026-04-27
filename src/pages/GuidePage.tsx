@@ -299,7 +299,7 @@ const buyerFlows: RoleFlows = {
       formula: "Score = W₁×LT + W₂×Cost + W₃×Rel\nMOQ = ceil(alloc ÷ MOQ) × MOQ",
       highlights: [
         { selector: "hub-tabs", label: "Sourcing & Đối chiếu", description: "Tab 1: Sourcing Workbench 4 bước. Tab 2: Đối chiếu BPO vs NM delivery." },
-        { selector: "hub-sourcing", label: "4-Step Sourcing", description: "① SKU cần mua (CRITICAL/MEDIUM) → ② NM ranking → ③ Primary/Backup phân bổ → ④ MOQ round-up + BPO." },
+        { selector: "hub-sourcing", label: "3 bước Sourcing", description: "① SKU cần mua (CRITICAL/MEDIUM) → ② NM ranking + Phân bổ Primary/Backup → ③ MOQ round-up + BPO." },
       ],
     },
   ],
