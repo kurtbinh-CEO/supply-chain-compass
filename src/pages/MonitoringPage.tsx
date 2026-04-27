@@ -369,6 +369,7 @@ export default function MonitoringPage() {
   });
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
+  const [timeRange, setTimeRange] = useTimeRange("monitoring", "monthly");
   const [drillCn, setDrillCn] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["fc"]));
   const [invChartFilter, setInvChartFilter] = useState("all");
