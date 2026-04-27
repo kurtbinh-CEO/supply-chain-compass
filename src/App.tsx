@@ -55,6 +55,7 @@ import ProfilePage from "./pages/ProfilePage";
 import ExecutivePage from "./pages/ExecutivePage";
 import AuditPage from "./pages/AuditPage";
 import AppearancePage from "./pages/AppearancePage";
+import QaKpiPage from "./pages/QaKpiPage";
 
 const queryClient = new QueryClient();
 
@@ -140,6 +141,7 @@ function ProtectedRoutes() {
           <Route path="/executive" element={<ExecutivePage />} />
           <Route path="/audit" element={<AuditPage />} />
           <Route path="/appearance" element={<AppearancePage />} />
+          <Route path="/qa/kpi" element={<QaKpiPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </OnboardingProvider>
