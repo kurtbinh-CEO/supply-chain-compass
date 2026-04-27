@@ -1,4 +1,4 @@
-import { Search, Bell, ChevronRight, Sun, Moon, Monitor, Globe, ChevronDown, LogOut, Palette } from "lucide-react";
+import { Search, Bell, ChevronRight, Sun, Moon, Monitor, Globe, ChevronDown, LogOut, Palette, Sprout } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTenant, TenantName } from "@/components/TenantContext";
 import { useThemeMode } from "@/components/ThemeContext";
@@ -7,6 +7,7 @@ import type { Locale } from "@/components/i18n/translations";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useAuth } from "@/components/AuthContext";
 import { ZoomControls } from "@/components/ZoomControls";
+import { useFarmerMode } from "@/components/FarmerModeContext";
 import { useCommandPalette } from "@/components/CommandPalette";
 import { NM_INVENTORY, FACTORIES } from "@/data/unis-enterprise-dataset";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -206,6 +207,7 @@ export function TopBar() {
   const { locale, setLocale, t } = useI18n();
   const { profile, signOut } = useAuth();
   const { open: openPalette } = useCommandPalette();
+  const { enabled: farmerOn, toggle: toggleFarmer } = useFarmerMode();
 
   const routeKey = routeKeys[location.pathname];
   const pageName = routeKey ? t(routeKey) : t("route.overview");
@@ -254,7 +256,30 @@ export function TopBar() {
         <kbd className="hidden xl:inline ml-2 rounded bg-surface-3/60 px-1.5 py-0.5 text-[10px] font-mono text-text-3 border border-surface-3">⌘K</kbd>
       </button>
 
-      {/* Compact icon group: Lang + Zoom + Theme — unified card */}
+      {/* Farmer mode toggle — chỉ hiện ở mobile (<md). Desktop có ZoomControls
+          riêng nên không cần. Aria-pressed để screen reader phát đúng trạng thái. */}
+      <Tooltip delayDuration={150}>
+        <TooltipTrigger asChild>
+          <button
+            onClick={toggleFarmer}
+            aria-pressed={farmerOn}
+            aria-label={t("farmer.toggle")}
+            className={cn(
+              "md:hidden flex shrink-0 items-center gap-1 rounded-lg border h-8 px-2 transition-all",
+              farmerOn
+                ? "bg-success/10 border-success/40 text-success"
+                : "bg-surface-0 border-surface-3 text-text-3 hover:border-success/40 hover:text-success",
+            )}
+          >
+            <Sprout className="h-3.5 w-3.5" />
+            <span className="text-caption font-semibold">{t("farmer.toggle")}</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="max-w-[260px] text-table-sm">
+          {farmerOn ? t("farmer.tooltip.on") : t("farmer.tooltip.off")}
+        </TooltipContent>
+      </Tooltip>
+
       <div className="flex shrink-0 items-center h-8 rounded-lg border border-surface-3 bg-surface-0 px-1 gap-0.5">
         {/* Language */}
         <button
