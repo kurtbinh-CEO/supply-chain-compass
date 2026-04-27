@@ -24,7 +24,15 @@ import smartlogIcon from "@/assets/smartlog-icon.png";
  *  - Mỗi item daily ops có badge dynamic
  */
 
-type DailyBadgeKey = "nm_cn_fresh" | "cn_adjust" | "exceptions" | "po_pending";
+type DailyBadgeKey =
+  // Daily ops
+  | "nm_cn_fresh" | "cn_adjust" | "exceptions" | "po_pending"
+  // Monthly plan
+  | "demand_progress" | "sop_status" | "hub_commitment" | "gap_pending"
+  // Monitoring & Executive
+  | "monitoring_alerts" | "executive_risk"
+  // Partners
+  | "cn_portal_pending";
 
 interface NavItem {
   kind: "item";
