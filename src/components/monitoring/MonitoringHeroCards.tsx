@@ -83,8 +83,7 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
           icon={<ShieldAlert className="h-4 w-4" />}
           tone="danger"
           label="Rủi ro NM"
-          value="5"
-          unit="nhà máy"
+          valueNum={5} valueUnit="qty" qtyLabel="nhà máy"
           sub="1 rủi ro cao"
         />
         <HeroCard
@@ -92,8 +91,7 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
           icon={<Repeat className="h-4 w-4" />}
           tone="primary"
           label="ROI Bánh đà"
-          value="340"
-          unit="triệu ₫"
+          valueNum={340_000_000} valueUnit="vnd"
           sub="Tiết kiệm tháng này"
         />
         <HeroCard
@@ -101,8 +99,7 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
           icon={<ShieldCheck className="h-4 w-4" />}
           tone="warning"
           label="Tồn kho an toàn"
-          value="2"
-          unit="thay đổi"
+          valueNum={2} valueUnit="qty" qtyLabel="thay đổi"
           sub="Vốn +128 triệu ₫"
         />
         <HeroCard
@@ -110,8 +107,7 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
           icon={<Truck className="h-4 w-4" />}
           tone="warning"
           label="Tiến độ đặt hàng"
-          value="72"
-          unit="%"
+          valueNum={72} valueUnit="pct"
           sub="Pace chậm nhẹ"
         />
         <HeroCard
@@ -119,9 +115,9 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
           icon={<LineIcon className="h-4 w-4" />}
           tone="info"
           label="Độ chính xác dự báo"
-          value="18"
-          unit="% MAPE"
-          sub="↗ tăng 3 tuần"
+          valueNum={18} valueUnit="pct"
+          sub="MAPE — tăng 3 tuần"
+          trend={{ value: "+3", direction: "up", isGood: false, vs: "tuần trước" }}
         />
       </div>
 
@@ -140,22 +136,31 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
 
 /* ─── Card primitive ──────────────────────────────────────────────────── */
 /**
- * HeroCard — gọn cho farmer/ops:
- *  - Header 1 dòng: icon chip + label (truncate).
- *  - Số liệu là điểm neo: font 26px bold, tabular-nums, kèm unit chữ nhỏ.
- *  - Sub là 1 câu mô tả ngắn — không lặp lại số.
- *  - Padding p-3 (12px) + gap-1 → ít whitespace, vẫn breathable.
- *  - Border-l 3px tone strip thay cho viền cả thẻ → bớt noise màu.
- *  - Chevron mờ ở góc phải = affordance "click để mở".
+ * HeroCard — KPI clickable cho farmer/ops.
+ *
+ * Truyền value theo 1 trong 2 cách (chuẩn hoá với KpiCard):
+ *  - RAW:     value="340" unit="triệu ₫"
+ *  - NUMERIC: valueNum={340_000_000} valueUnit="vnd"   ← preferred
+ *
+ * Trend optional: KpiTrend object — render arrow + màu theo `isGood`.
  */
-function HeroCard({ onClick, icon, tone, label, value, unit, sub }: {
+function HeroCard({
+  onClick, icon, tone, label,
+  value, unit,
+  valueNum, valueUnit, qtyLabel,
+  sub, trend,
+}: {
   onClick: () => void;
   icon: React.ReactNode;
   tone: "danger" | "warning" | "primary" | "info";
   label: string;
-  value: string;
+  value?: string;
   unit?: string;
+  valueNum?: number;
+  valueUnit?: KpiUnit;
+  qtyLabel?: string;
   sub: string;
+  trend?: KpiTrend;
 }) {
   const stripClasses: Record<typeof tone, string> = {
     danger:  "border-l-danger",
@@ -169,18 +174,27 @@ function HeroCard({ onClick, icon, tone, label, value, unit, sub }: {
     primary: "bg-primary/10 text-primary",
     info:    "bg-info/10    text-info",
   };
+
+  // Resolve value/unit
+  let renderValue = value ?? "";
+  let renderUnit = unit;
+  if (valueNum !== undefined && valueUnit) {
+    const [v, u] = formatKpiValue(valueNum, valueUnit, qtyLabel);
+    renderValue = v;
+    renderUnit = renderUnit ?? u;
+  }
+
   return (
     <button
       onClick={onClick}
       className={cn(
         "group relative overflow-hidden rounded-card border border-surface-3 border-l-[4px] sm:border-l-[3px] bg-surface-1",
-        // Mobile: padding rộng hơn 1 chút, tap target dễ; sm+: gọn lại
         "p-3.5 sm:p-3 text-left transition-all hover:shadow-sm hover:-translate-y-px",
         "focus:outline-none focus:ring-2 focus:ring-primary/40",
         stripClasses[tone],
       )}
     >
-      {/* Header: icon chip + label */}
+      {/* Header */}
       <div className="flex items-center gap-2 mb-2 sm:mb-1.5">
         <div className={cn("shrink-0 rounded-md p-1.5 sm:p-1", chipClasses[tone])}>
           {icon}
@@ -188,15 +202,29 @@ function HeroCard({ onClick, icon, tone, label, value, unit, sub }: {
         <span className="text-table sm:text-table-sm font-semibold sm:font-medium text-text-2 truncate">{label}</span>
         <ChevronRight className="ml-auto h-4 w-4 sm:h-3.5 sm:w-3.5 text-text-3/40 group-hover:text-text-3 transition-colors" />
       </div>
-      {/* Value — điểm neo. Mobile 28px để farmer scan không cần zoom */}
+      {/* Value */}
       <div className="flex items-baseline gap-1.5">
         <span className="font-display text-[28px] sm:text-[24px] leading-none font-bold text-text-1 tabular-nums">
-          {value}
+          {renderValue}
         </span>
-        {unit && <span className="text-table-sm sm:text-caption text-text-3">{unit}</span>}
+        {renderUnit && <span className="text-table-sm sm:text-caption text-text-3">{renderUnit}</span>}
       </div>
-      {/* Sub — 1 câu ngắn */}
-      <div className="text-table-sm sm:text-caption text-text-3 mt-1 truncate">{sub}</div>
+      {/* Trend (optional) + Sub */}
+      <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+        {trend && (
+          <span className={cn(
+            "inline-flex items-center gap-0.5 text-caption font-semibold tabular-nums",
+            trend.isGood ? "text-success" : "text-danger",
+          )}>
+            {trend.direction === "up"   && <TrendingUp   className="h-3 w-3" />}
+            {trend.direction === "down" && <TrendingDown className="h-3 w-3" />}
+            {trend.direction === "flat" && <Minus        className="h-3 w-3" />}
+            {trend.value}
+            {trend.vs && <span className="ml-0.5 font-normal text-text-3">vs {trend.vs}</span>}
+          </span>
+        )}
+        <span className="text-table-sm sm:text-caption text-text-3 truncate">{sub}</span>
+      </div>
     </button>
   );
 }
