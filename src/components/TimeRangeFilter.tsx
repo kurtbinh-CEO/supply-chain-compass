@@ -81,7 +81,7 @@ function presetLabel(mode: TimeRangeMode, key: TimeRangePreset): string {
    ───────────────────────────────────────────────────────────── */
 
 /** Format Date → "YYYY-MM-DD" theo giờ LOCAL. */
-function toLocalIso(d: Date): string {
+export function toLocalIso(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
