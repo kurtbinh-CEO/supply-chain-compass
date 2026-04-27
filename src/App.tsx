@@ -138,6 +138,7 @@ function ProtectedRoutes() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/executive" element={<ExecutivePage />} />
           <Route path="/audit" element={<AuditPage />} />
+          <Route path="/appearance" element={<AppearancePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </OnboardingProvider>
