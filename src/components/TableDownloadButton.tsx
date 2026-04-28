@@ -297,7 +297,8 @@ export function TableDownloadButton({
     tableRef?.current ??
     (targetId ? (document.getElementById(targetId) as HTMLTableElement | null) : null);
 
-  // Compute matrix cho preview
+  // Compute matrix cho preview — phụ thuộc thêm refreshTick để re-đọc nguồn
+  // mỗi khi user bấm "Làm mới" sau khi đổi filter ngoài bảng.
   const previewData = useMemo(() => {
     if (!preview) return null;
     if (preview.scope === "all" && getAllRowsCsv) {
@@ -306,7 +307,7 @@ export function TableDownloadButton({
     const t = getTable();
     return t ? tableToMatrix(t) : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preview]);
+  }, [preview, refreshTick]);
 
   const baseName = filename.replace(/\.(csv|pdf)$/i, "");
   const title = pdfTitle ?? baseName;
@@ -315,6 +316,13 @@ export function TableDownloadButton({
     setMenuOpen(false);
     setConfirmedLarge(false);
     setPreview({ fmt, scope });
+    setRefreshedAt(new Date());
+  };
+
+  const refreshPreview = () => {
+    setRefreshTick((n) => n + 1);
+    setRefreshedAt(new Date());
+    toast.success("Đã làm mới xem trước theo bảng hiện tại");
   };
 
   const confirmDownload = async () => {
