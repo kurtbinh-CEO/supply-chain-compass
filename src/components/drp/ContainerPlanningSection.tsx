@@ -3,14 +3,16 @@ import { useNavigate } from "react-router-dom";
 import {
   Truck, Package, AlertTriangle, ArrowRight, Clock, MapPin, Pencil,
   TrendingUp, Link2, GripVertical, ArrowUp, ArrowDown, RotateCcw, Save,
-  Shuffle, Check, FileClock, X,
+  Shuffle, Check, FileClock, X, ChevronDown, ChevronRight, Info,
+  Plus, Scissors, Weight, Sparkles, ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import {
-  CONTAINER_PLANS, summarizeContainers,
-  type ContainerPlan,
+  CONTAINER_PLANS, summarizeContainers, containerWeightKg, getPoLines,
+  skuWeight, VEHICLE_MAX_WEIGHT_KG, UNSCHEDULED_POS,
+  type ContainerPlan, type UnscheduledPo,
 } from "@/data/container-plans";
 import { RouteMapPreview } from "./RouteMapPreview";
 import { KpiImpactGrid } from "./KpiImpactGrid";
@@ -18,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   getDraft, saveDraft, clearDraft, formatDraftAge,
   type ContainerEditDraft,
