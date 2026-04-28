@@ -680,7 +680,6 @@ function SkuFirstPivotTable({
         getRowId={(r) => r.sku}
         rowSeverity={(r) => r._sev === "short" ? "shortage" : r._sev === "watch" ? "watch" : undefined}
         autoExpandWhen={(r) => r.cnShortage.length >= 2}
-        sortable
         summaryRow={{
           sku: <span className="font-semibold text-text-1">TỔNG</span>,
           totalDemand: <span className="tabular-nums font-semibold">{totals.d.toLocaleString()}</span>,
