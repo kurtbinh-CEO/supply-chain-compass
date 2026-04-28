@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { EXCEPTION_SEEDS, buildSourcesFromSeed, buildSuggestedFromSeed } from '../DrpPage';
+import { getSsStatus } from '@/components/SafetyStockBadge';
 
 describe('EXCEPTION_SEEDS data invariant', () => {
   it('every entry: allocated === onHand + pipeline + nmAllocation', () => {
