@@ -620,143 +620,139 @@ function SkuFirstPivotTable({
     return out;
   })();
 
-  const toggle = (sku: string) => setExpanded((s) => {
-    const n = new Set(s);
-    if (n.has(sku)) n.delete(sku); else n.add(sku);
-    return n;
-  });
+  const toLcnbClick = onLcnbClick;
+
+  type SkuRow = SkuPivotRow & { _sev: "ok" | "watch" | "short" };
+  const rows: SkuRow[] = skuRows.map((r) => ({
+    ...r,
+    _sev: r.fillPct >= 95 ? "ok" : r.fillPct >= 80 ? "watch" : "short",
+  }));
+
+  const totals = rows.reduce(
+    (a, r) => ({ d: a.d + r.totalDemand, al: a.al + r.totalAlloc }),
+    { d: 0, al: 0 },
+  );
+  const totalFill = totals.d > 0 ? Math.round((totals.al / totals.d) * 100) : 100;
+
+  const columns: SmartTableColumn<SkuRow>[] = [
+    { key: "sku", header: "Mã hàng", width: "w-32",
+      cell: (r) => <span className="font-medium text-text-1">{r.sku}</span> },
+    { key: "totalDemand", header: "Nhu cầu tổng", align: "right", width: "w-28",
+      cell: (r) => <span className="tabular-nums text-text-1">{r.totalDemand.toLocaleString()}</span>,
+      sortValue: (r) => r.totalDemand },
+    { key: "totalAlloc", header: "Phân bổ tổng", align: "right", width: "w-28",
+      cell: (r) => <span className="tabular-nums text-text-2">{r.totalAlloc.toLocaleString()}</span>,
+      sortValue: (r) => r.totalAlloc },
+    { key: "fillPct", header: "Lấp đầy", align: "right", width: "w-20",
+      cell: (r) => (
+        <span className={cn("tabular-nums font-semibold",
+          r._sev === "ok" && "text-success",
+          r._sev === "watch" && "text-warning",
+          r._sev === "short" && "text-danger",
+        )}>{r.fillPct}%</span>
+      ),
+      sortValue: (r) => r.fillPct },
+    { key: "cnShortage", header: "CN thiếu", width: "w-28",
+      cell: (r) => r.cnShortage.length > 0 ? (
+        <span
+          title={r.cnShortage.map((c) => `${c.cn} (${c.fill}%)`).join(", ")}
+          className="inline-flex items-center gap-1 rounded-full border border-danger/30 bg-danger-bg px-2 py-0.5 text-[11px] font-semibold text-danger"
+        >{r.cnShortage.length} CN</span>
+      ) : <span className="text-success text-caption">🟢 Đủ</span>,
+      sortValue: (r) => r.cnShortage.length },
+    { key: "nmSources", header: "NM nguồn",
+      cell: (r) => (
+        <span className="text-table-sm text-text-2">
+          {r.nmSources.map((n) => `${n.name} ${n.pct}%`).join(" · ")}
+        </span>
+      ) },
+  ];
 
   return (
-    <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-surface-1/60 border-b border-surface-3">
-              <th className="w-8"></th>
-              <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Mã hàng</th>
-              <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Nhu cầu tổng</th>
-              <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Phân bổ tổng</th>
-              <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Lấp đầy</th>
-              <th className="px-3 py-2.5 text-left  text-table-header uppercase text-text-3">CN thiếu</th>
-              <th className="px-3 py-2.5 text-left  text-table-header uppercase text-text-3">NM nguồn</th>
-            </tr>
-          </thead>
-          <tbody>
-            {skuRows.map((r) => {
-              // Auto-expand if ≥2 CN thiếu
-              const isOpen = expanded.has(r.sku) || r.cnShortage.length >= 2;
-              const sev = r.fillPct >= 95 ? "ok" : r.fillPct >= 80 ? "watch" : "short";
-              return (
-                <Fragment key={r.sku}>
-                  <tr
-                    className={cn(
-                      "border-b border-surface-3 cursor-pointer transition-colors",
-                      sev === "short" && "bg-danger-bg/20 border-l-2 border-l-danger",
-                      sev === "watch" && "bg-warning-bg/15 border-l-2 border-l-warning",
-                      sev === "ok" && "hover:bg-surface-1/40",
-                    )}
-                    onClick={() => toggle(r.sku)}
-                  >
-                    <td className="px-2 py-2.5 text-center">
-                      {isOpen ? <ChevronDown className="h-4 w-4 text-text-3 inline" /> : <ChevronRight className="h-4 w-4 text-text-3 inline" />}
-                    </td>
-                    <td className="px-3 py-2.5 font-medium text-text-1">{r.sku}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-text-1">{r.totalDemand.toLocaleString()}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums text-text-2">{r.totalAlloc.toLocaleString()}</td>
-                    <td className="px-3 py-2.5 text-right">
-                      <span className={cn("tabular-nums font-semibold",
-                        sev === "ok" && "text-success",
-                        sev === "watch" && "text-warning",
-                        sev === "short" && "text-danger",
-                      )}>{r.fillPct}%</span>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {r.cnShortage.length > 0 ? (
-                        <span
-                          title={r.cnShortage.map((c) => `${c.cn} (${c.fill}%)`).join(", ")}
-                          className="inline-flex items-center gap-1 rounded-full border border-danger/30 bg-danger-bg px-2 py-0.5 text-[11px] font-semibold text-danger"
-                        >
-                          {r.cnShortage.length} CN
-                        </span>
-                      ) : <span className="text-success text-caption">🟢 Đủ</span>}
-                    </td>
-                    <td className="px-3 py-2.5 text-table-sm text-text-2">
-                      {r.nmSources.map((n) => `${n.name} ${n.pct}%`).join(" · ")}
-                    </td>
-                  </tr>
-                  {isOpen && (
-                    <tr>
-                      <td colSpan={7} className="bg-surface-1/40 px-4 py-3 border-b border-surface-3">
-                        <div className="text-caption text-text-3 mb-2">
-                          Phân bổ {r.sku} cho {r.perCn.length} CN — cột LCNB nhận/gửi cho thấy luân chuyển ngang
-                        </div>
-                        <table className="w-full text-table-sm">
-                          <thead>
-                            <tr className="text-text-3 text-caption border-b border-surface-3">
-                              <th className="text-left  py-1 font-medium">CN</th>
-                              <th className="text-right py-1 font-medium">Nhu cầu</th>
-                              <th className="text-right py-1 font-medium">Tồn CN</th>
-                              <th className="text-right py-1 font-medium">LCNB nhận</th>
-                              <th className="text-right py-1 font-medium">LCNB gửi</th>
-                              <th className="text-right py-1 font-medium">Hub PO</th>
-                              <th className="text-right py-1 font-medium">Lấp đầy</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {r.perCn.map((c) => {
-                              const cSev = c.fill >= 95 ? "ok" : c.fill >= 80 ? "watch" : "short";
-                              const inTo = TO_ROWS_LCNB.find((t) => t.toCn === c.cn && t.sku.startsWith(r.sku));
-                              const outTo = TO_ROWS_LCNB.find((t) => t.fromCn === c.cn && t.sku.startsWith(r.sku));
-                              return (
-                                <tr key={c.cn} className="border-t border-surface-3/40">
-                                  <td className="py-1.5 font-medium text-text-1">{c.cn}</td>
-                                  <td className="py-1.5 text-right tabular-nums">{c.demand.toLocaleString()}</td>
-                                  <td className="py-1.5 text-right tabular-nums text-text-2">{c.onHand.toLocaleString()}</td>
-                                  <td className="py-1.5 text-right tabular-nums">
-                                    {c.lcnbIn > 0 && inTo ? (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); onLcnbClick(inTo); }}
-                                        title={`TO ${inTo.code} · từ CN ${c.lcnbInFrom} · ${c.lcnbIn}m²`}
-                                        className="inline-flex items-center gap-0.5 rounded-full border border-warning/40 bg-warning-bg px-1.5 py-0.5 text-[11px] font-semibold text-warning hover:opacity-80"
-                                      >
-                                        TO-{c.lcnbInFrom} {c.lcnbIn}
-                                      </button>
-                                    ) : <span className="text-text-3">0</span>}
-                                  </td>
-                                  <td className="py-1.5 text-right tabular-nums">
-                                    {c.lcnbOut > 0 && outTo ? (
-                                      <button
-                                        type="button"
-                                        onClick={(e) => { e.stopPropagation(); onLcnbClick(outTo); }}
-                                        title={`TO ${outTo.code} · sang CN ${c.lcnbOutTo} · ${c.lcnbOut}m²`}
-                                        className="inline-flex items-center gap-0.5 rounded-full border border-warning/40 bg-warning-bg px-1.5 py-0.5 text-[11px] font-semibold text-warning hover:opacity-80"
-                                      >
-                                        TO-{c.lcnbOutTo} −{c.lcnbOut}
-                                      </button>
-                                    ) : <span className="text-text-3">0</span>}
-                                  </td>
-                                  <td className="py-1.5 text-right tabular-nums text-text-2">{c.hubPo > 0 ? c.hubPo.toLocaleString() : "—"}</td>
-                                  <td className={cn("py-1.5 text-right tabular-nums font-semibold",
-                                    cSev === "ok" && "text-success",
-                                    cSev === "watch" && "text-warning",
-                                    cSev === "short" && "text-danger",
-                                  )}>{c.fill}% {cSev === "ok" && "✅"} {cSev === "short" && "🔴"}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+    <div>
+      <SmartTable<SkuRow>
+        screenId="drp-sku-pivot"
+        defaultDensity="compact"
+        columns={columns}
+        data={rows}
+        getRowId={(r) => r.sku}
+        rowSeverity={(r) => r._sev === "short" ? "shortage" : r._sev === "watch" ? "watch" : undefined}
+        autoExpandWhen={(r) => r.cnShortage.length >= 2}
+        sortable
+        summaryRow={{
+          sku: <span className="font-semibold text-text-1">TỔNG</span>,
+          totalDemand: <span className="tabular-nums font-semibold">{totals.d.toLocaleString()}</span>,
+          totalAlloc: <span className="tabular-nums font-semibold">{totals.al.toLocaleString()}</span>,
+          fillPct: <span className={cn("tabular-nums font-semibold",
+            totalFill >= 95 ? "text-success" : totalFill >= 80 ? "text-warning" : "text-danger",
+          )}>{totalFill}%</span>,
+        }}
+        drillDown={(r) => (
+          <div className="px-3 py-2 bg-surface-1/40">
+            <div className="text-caption text-text-3 mb-2">
+              Phân bổ {r.sku} cho {r.perCn.length} CN — cột LCNB nhận/gửi cho thấy luân chuyển ngang
+            </div>
+            <table className="w-full text-table-sm">
+              <thead>
+                <tr className="text-text-3 text-caption border-b border-surface-3">
+                  <th className="text-left  py-1 font-medium">CN</th>
+                  <th className="text-right py-1 font-medium">Nhu cầu</th>
+                  <th className="text-right py-1 font-medium">Tồn CN</th>
+                  <th className="text-right py-1 font-medium">LCNB nhận</th>
+                  <th className="text-right py-1 font-medium">LCNB gửi</th>
+                  <th className="text-right py-1 font-medium">Hub PO</th>
+                  <th className="text-right py-1 font-medium">Lấp đầy</th>
+                </tr>
+              </thead>
+              <tbody>
+                {r.perCn.map((c) => {
+                  const cSev = c.fill >= 95 ? "ok" : c.fill >= 80 ? "watch" : "short";
+                  const inTo = TO_ROWS_LCNB.find((t) => t.toCn === c.cn && t.sku.startsWith(r.sku));
+                  const outTo = TO_ROWS_LCNB.find((t) => t.fromCn === c.cn && t.sku.startsWith(r.sku));
+                  return (
+                    <tr key={c.cn} className="border-t border-surface-3/40">
+                      <td className="py-1.5 font-medium text-text-1">{c.cn}</td>
+                      <td className="py-1.5 text-right tabular-nums">{c.demand.toLocaleString()}</td>
+                      <td className="py-1.5 text-right tabular-nums text-text-2">{c.onHand.toLocaleString()}</td>
+                      <td className="py-1.5 text-right tabular-nums">
+                        {c.lcnbIn > 0 && inTo ? (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); toLcnbClick(inTo); }}
+                            title={`TO ${inTo.code} · từ CN ${c.lcnbInFrom} · ${c.lcnbIn}m²`}
+                            className="inline-flex items-center gap-0.5 rounded-full border border-warning/40 bg-warning-bg px-1.5 py-0.5 text-[11px] font-semibold text-warning hover:opacity-80"
+                          >
+                            TO-{c.lcnbInFrom} {c.lcnbIn}
+                          </button>
+                        ) : <span className="text-text-3">0</span>}
                       </td>
+                      <td className="py-1.5 text-right tabular-nums">
+                        {c.lcnbOut > 0 && outTo ? (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); toLcnbClick(outTo); }}
+                            title={`TO ${outTo.code} · sang CN ${c.lcnbOutTo} · ${c.lcnbOut}m²`}
+                            className="inline-flex items-center gap-0.5 rounded-full border border-warning/40 bg-warning-bg px-1.5 py-0.5 text-[11px] font-semibold text-warning hover:opacity-80"
+                          >
+                            TO-{c.lcnbOutTo} −{c.lcnbOut}
+                          </button>
+                        ) : <span className="text-text-3">0</span>}
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums text-text-2">{c.hubPo > 0 ? c.hubPo.toLocaleString() : "—"}</td>
+                      <td className={cn("py-1.5 text-right tabular-nums font-semibold",
+                        cSev === "ok" && "text-success",
+                        cSev === "watch" && "text-warning",
+                        cSev === "short" && "text-danger",
+                      )}>{c.fill}% {cSev === "ok" && "✅"} {cSev === "short" && "🔴"}</td>
                     </tr>
-                  )}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div className="px-3 py-2 text-caption text-text-3 border-t border-surface-3 flex items-center justify-between">
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      />
+      <div className="px-3 py-2 text-caption text-text-3 flex items-center justify-between">
         <span>Sắp xếp theo gap giảm dần · auto-mở SKU có ≥2 CN thiếu</span>
         <button
           type="button"
