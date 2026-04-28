@@ -316,7 +316,7 @@ export function OrderDetailPanel({ group, onAction, onCancel, onClose }: Props) 
       {/* ── SECTION 5: MINH CHỨNG & NHẬT KÝ ── */}
       <div className="p-4">
         <div className="text-caption uppercase tracking-wide text-text-3 font-semibold mb-2">
-          Minh chứng
+          Minh chứng <span className="text-text-3 font-normal">({allEvidence.length})</span>
         </div>
         {allEvidence.length === 0 ? (
           <div className="text-[11px] text-text-3 italic mb-3">
@@ -324,25 +324,50 @@ export function OrderDetailPanel({ group, onAction, onCancel, onClose }: Props) 
           </div>
         ) : (
           <div className="flex flex-wrap gap-2 mb-3">
-            {allEvidence.map((e, i) => <EvidenceThumb key={i} ev={e} />)}
+            {allEvidence.map((e, i) => <EvidenceThumb key={i} ev={e} onOpen={setLightbox} />)}
           </div>
         )}
 
         <div className="text-caption uppercase tracking-wide text-text-3 font-semibold mb-2">
           Nhật ký thay đổi
         </div>
-        <div className="space-y-1 text-[11px] text-text-2">
+        <div className="space-y-2 text-[11px] text-text-2">
           {leader.timeline.map((e, i) => (
             <div key={i} className="flex gap-2">
               <span className="text-text-3 tabular-nums w-16 shrink-0">{e.ts}</span>
-              <span className="text-text-1 flex-1">
-                <b>{e.actor}</b>
-                {e.note && <> — {e.note}</>}
-              </span>
+              <div className="flex-1 min-w-0">
+                <span className="text-text-1">
+                  <b>{e.actor}</b>
+                  <span className="ml-1 text-text-3">· {STAGE_META[e.stage].short}</span>
+                  {e.note && <> — {e.note}</>}
+                </span>
+                {e.evidence && e.evidence.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {e.evidence.map((ev, idx) => <EvidenceThumb key={idx} ev={ev} onOpen={setLightbox} />)}
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* ── LIGHTBOX (full-screen image preview) ── */}
+      <Dialog open={!!lightbox} onOpenChange={(o) => { if (!o) setLightbox(null); }}>
+        <DialogContent className="max-w-3xl p-2 bg-black/95 border-0">
+          {lightbox?.url && (
+            <div className="flex flex-col items-center gap-2">
+              {/* eslint-disable-next-line jsx-a11y/img-redundant-alt */}
+              <img
+                src={lightbox.url}
+                alt={lightbox.label}
+                className="max-h-[80vh] w-auto object-contain rounded"
+              />
+              <div className="text-table-sm text-white/90 text-center">{lightbox.label}</div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
