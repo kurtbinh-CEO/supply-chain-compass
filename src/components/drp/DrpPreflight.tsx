@@ -190,48 +190,70 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
             </tr>
           </thead>
           <tbody>
-            {items.map((it) => (
+            {items.map((it) => {
+              const justResolved = justResolvedKeys.has(it.key) && it.level !== "block";
+              return (
               <tr
                 key={it.key}
                 className={cn(
-                  "border-t border-surface-3/60",
+                  "border-t border-surface-3/60 transition-colors",
                   it.level === "block" && "bg-danger-bg/20",
-                  it.level === "warn" && "bg-warning-bg/15"
+                  it.level === "warn" && "bg-warning-bg/15",
+                  justResolved && "bg-success-bg/40 ring-2 ring-success/50 animate-pulse-soft"
                 )}
               >
-                <td className="px-3 py-2 font-medium text-text-1">{it.label}</td>
+                <td className="px-3 py-2 font-medium text-text-1">
+                  <div className="flex items-center gap-1.5">
+                    {it.label}
+                    {justResolved && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full border border-success/40 bg-success-bg/60 px-1.5 py-0.5 text-[10px] font-semibold text-success"
+                        title="Điều kiện này vừa được xử lý từ trang khác"
+                      >
+                        <CheckCircle2 className="h-2.5 w-2.5" /> Vừa xử lý
+                      </span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-3 py-2 text-text-2">
                   {it.result}
                   {it.detail && (
                     <div className="text-caption text-text-3 mt-0.5">{it.detail}</div>
                   )}
-                  {it.fixHref && it.level !== "ok" && (
-                    <a
-                      href={it.fixHref}
-                      className={cn(
-                        "inline-flex items-center gap-1 mt-1 text-caption font-medium hover:underline",
-                        it.level === "block" ? "text-danger" : "text-warning"
-                      )}
-                    >
-                      {it.fixLabel ?? "Xử lý"} <ArrowRight className="h-3 w-3" />
-                    </a>
-                  )}
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <span className="inline-flex items-center gap-1.5">
-                    {levelIcon(it.level)}
-                    <span className={cn(
-                      "text-caption font-medium",
-                      it.level === "ok" && "text-success",
-                      it.level === "warn" && "text-warning",
-                      it.level === "block" && "text-danger"
-                    )}>
-                      {levelLabel(it.level)}
+                  <div className="inline-flex items-center gap-2 justify-end">
+                    {it.fixHref && it.level !== "ok" && (
+                      <Link
+                        to={it.fixHref}
+                        title={`Đi tới ${it.fixHref} để xử lý "${it.label}"`}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-button border px-2 py-1 text-[11px] font-semibold shrink-0",
+                          it.level === "block"
+                            ? "border-danger/40 bg-danger text-primary-foreground hover:opacity-90"
+                            : "border-warning/40 bg-warning-bg text-warning hover:bg-warning-bg/80"
+                        )}
+                      >
+                        {it.fixLabel ?? "Mở trang xử lý"}
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    )}
+                    <span className="inline-flex items-center gap-1.5">
+                      {levelIcon(it.level)}
+                      <span className={cn(
+                        "text-caption font-medium",
+                        it.level === "ok" && "text-success",
+                        it.level === "warn" && "text-warning",
+                        it.level === "block" && "text-danger"
+                      )}>
+                        {levelLabel(it.level)}
+                      </span>
                     </span>
-                  </span>
+                  </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
           <tfoot className="border-t border-surface-3 bg-surface-1/60">
             <tr>
