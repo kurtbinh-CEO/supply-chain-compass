@@ -1267,6 +1267,28 @@ function RoundUpSuggestion({ container }: { container: ContainerPlan }) {
     holdDaysSoFar,
   });
 
+  // Audit: log fill-up decision once per (container, strategy)
+  useEffect(() => {
+    const sevMap = {
+      ok: "success", consolidation: "success", consolidation_plus_round_up: "info",
+      round_up: "info", hold: "warn", ship_as_is: "warn",
+    } as const;
+    emitTransportAudit({
+      category: "fillup",
+      severity: sevMap[decision.strategy],
+      title: `decideFillUp() → ${STRATEGY_LABELS[decision.strategy]} (mode=${decision.strategy})`,
+      detail: `${decision.primaryAction} · Lý do: ${decision.reason}`,
+      containerId: container.id,
+      actorRole,
+      meta: {
+        strategy: decision.strategy, fillPct: container.fillPct,
+        gapPct, hasEligibleConsolidation,
+        fillAfterConsolidation, cnHstkDays,
+      },
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [container.id, decision.strategy]);
+
   // OK case
   if (decision.strategy === "ok") {
     return (
