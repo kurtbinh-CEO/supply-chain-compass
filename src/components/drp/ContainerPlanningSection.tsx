@@ -882,8 +882,14 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
               </span>
             </div>
 
-            {/* Drop points — with reorder mode */}
-            <DropPointsEditor container={r} onCnClick={onCnClick} />
+            {/* Drop points — with reorder mode + close-confirm wiring */}
+            <DropPointsEditor
+              container={r}
+              onCnClick={onCnClick}
+              onDirtyChange={handleDirtyChange}
+              closeRequestNonce={closeRequests[r.id] ?? 0}
+              onCloseAllowed={() => handleCloseAllowed(r.id)}
+            />
 
             {/* Cost line */}
             <div className="flex items-center justify-between text-table-sm border-t border-surface-3 pt-2">
