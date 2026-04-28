@@ -34,7 +34,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 import { drpCompare } from "@/lib/compare-metrics";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PillTabs, type PillTab } from "@/components/PillTabs";
 import { ContainerPlanningSection } from "@/components/drp/ContainerPlanningSection";
 import { CONTAINER_PLANS, getContainersForCn, summarizeContainers } from "@/data/container-plans";
 import { Truck as TruckIcon, Link2 as Link2Icon, Package as PackageIcon } from "lucide-react";
@@ -336,21 +336,28 @@ function StepDetail({ stepId, scale }: { stepId: number; scale: number }) {
 
   if (stepId === 5) return (
     <div className="space-y-2 text-table-sm">
-      <div className="rounded bg-success-bg/40 border border-success/20 px-3 py-2">
-        <div className="font-medium text-success">9 CN đủ hàng — bỏ qua</div>
-        <div className="text-caption text-text-3 mt-0.5">Net Req ≤ 0, fill ≥ 95%</div>
+      {/* Pills NGANG (UX-CONSISTENCY FIX 2): bỏ block dọc, dùng 1 dòng exception pills */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success-bg/60 px-2.5 py-1 text-caption font-medium text-success">
+          <span className="h-2 w-2 rounded-full bg-success" /> 9 CN đủ — bỏ qua
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/30 bg-warning-bg/60 px-2.5 py-1 text-caption font-medium text-warning">
+          <span className="h-2 w-2 rounded-full bg-warning" /> 2 CN theo dõi
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-danger/30 bg-danger-bg/60 px-2.5 py-1 text-caption font-medium text-danger">
+          <span className="h-2 w-2 rounded-full bg-danger" /> 1 CN thiếu
+        </span>
       </div>
-      <div className="rounded bg-warning-bg/40 border border-warning/20 px-3 py-2">
-        <div className="font-medium text-warning">3 CN cần phân bổ</div>
-        <ul className="text-text-2 mt-1 space-y-0.5">
-          <li>CN-BD: +{sc(1200).toLocaleString()}m²</li>
-          <li>CN-NA: +{sc(120).toLocaleString()}m²</li>
-          <li>CN-CT: +{sc(80).toLocaleString()}m²</li>
-        </ul>
+      {/* Phân bổ chi tiết — 1 dòng compact thay 3 dòng dọc */}
+      <div className="text-caption text-text-2 pt-1">
+        Cần phân bổ: <span className="text-text-1 font-medium">CN-BD +{sc(1200).toLocaleString()}</span> · CN-NA +{sc(120).toLocaleString()} · CN-CT +{sc(80).toLocaleString()}
       </div>
       <div className="flex justify-between border-t border-surface-3 pt-2 font-semibold">
         <span>→ Tổng cần phân bổ</span>
         <ClickableNumber value={`${sc(1400).toLocaleString()}m²`} color="text-warning" /></div>
+      <div className="text-caption text-text-3 pt-1">
+        💡 Chi tiết per CN xem ở Summary Cards và bảng phân bổ bên dưới — không cần section riêng.
+      </div>
     </div>
   );
 
@@ -783,7 +790,9 @@ export default function DrpPage() {
   const isHistory = !timeRange.isCurrent;
 
   /* ── Step navigation ── */
-  const [activeStep, setActiveStep] = useState<number>(5);
+  // Mặc định KHÔNG mở step nào — farmer click token mới hiện chi tiết.
+  // (Trước đây auto-mở step 5 khiến farmer "Bước 5 ở đâu ra?" — UX-CONSISTENCY FIX 1)
+  const [activeStep, setActiveStep] = useState<number | null>(null);
 
   /* ── Pivot ── */
   const [pivot, setPivot] = useState<"cn" | "sku">("cn");
@@ -1429,21 +1438,30 @@ export default function DrpPage() {
             { stepId: 9, label: "→ Container 8 · 1 giữ" },
             { stepId: 10, label: "→ NM 4/5 PASS", severity: "danger" },
           ]}
-          onClickToken={(id) => setActiveStep(id)}
+          onClickToken={(id) => setActiveStep((cur) => (cur === id ? null : id))}
         />
 
-        {/* Step detail (chỉ hiện khi có activeStep) */}
-        <div className="mt-2 rounded border border-surface-3 bg-surface-1/40 p-3">
-          <div className="text-table-sm font-semibold text-text-1 mb-2 flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
-                {activeStep}
+        {/* Step detail — chỉ hiện khi farmer click token (mặc định ẩn) */}
+        {activeStep !== null && (
+          <div className="mt-2 rounded border border-surface-3 bg-surface-1/40 p-3 animate-fade-in">
+            <div className="text-table-sm font-semibold text-text-1 mb-2 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                  {activeStep}
+                </span>
+                <span>{PHASES.flatMap(p => p.steps).find(s => s.id === activeStep)?.label ?? `Bước ${activeStep}`}</span>
               </span>
-              <span>{PHASES.flatMap(p => p.steps).find(s => s.id === activeStep)?.label ?? `Bước ${activeStep}`}</span>
-            </span>
+              <button
+                type="button"
+                onClick={() => setActiveStep(null)}
+                className="text-caption text-text-3 hover:text-text-1 underline-offset-2 hover:underline"
+              >
+                Đóng
+              </button>
+            </div>
+            <StepDetail stepId={activeStep} scale={s} />
           </div>
-          <StepDetail stepId={activeStep} scale={s} />
-        </div>
+        )}
       </div>
 
 
@@ -1491,45 +1509,41 @@ export default function DrpPage() {
         );
       })()}
 
-      {/* ═══ BƯỚC 3 — 2 SUB-TABS: Phân bổ vs Đóng container ═══ */}
+      {/* ═══ BƯỚC 3 — 2 SUB-TABS: Phân bổ vs Đóng container (Pattern A — PillTabs) ═══ */}
       {(() => {
         const cnCount = data.length;
         const shortCount = data.filter(r => r.fillRate < 80).length;
         const cSum = summarizeContainers(CONTAINER_PLANS);
+        const resultsTabs: PillTab[] = [
+          {
+            key: "allocation",
+            label: "Phân bổ",
+            icon: PackageIcon,
+            badge: `${cnCount} CN`,
+            ...(shortCount > 0
+              ? { subBadge: `${shortCount} thiếu`, subColor: "danger" as const }
+              : {}),
+          },
+          {
+            key: "container",
+            label: "Đóng container",
+            icon: TruckIcon,
+            badge: `${cSum.total} chuyến`,
+            ...(cSum.lowFill > 0
+              ? { subBadge: `${cSum.lowFill} fill thấp`, subColor: "warning" as const }
+              : cSum.consolidated > 0
+              ? { subBadge: `${cSum.consolidated} ghép`, subColor: "warning" as const }
+              : {}),
+          },
+        ];
         return (
-          <Tabs value={resultsTab} onValueChange={(v) => setResultsTab(v as "allocation" | "container")} className="mb-2">
-            <TabsList className="h-auto bg-surface-2 p-1 gap-1 overflow-x-auto max-w-full justify-start">
-              <TabsTrigger value="allocation" className="data-[state=active]:bg-background gap-2 px-3 py-2">
-                <PackageIcon className="h-4 w-4" />
-                <span>Phân bổ</span>
-                <span className="rounded-full bg-surface-3 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums">
-                  {cnCount} CN
-                </span>
-                {shortCount > 0 && (
-                  <span className="rounded-full bg-danger/15 text-danger px-1.5 py-0.5 text-[10px] font-semibold">
-                    {shortCount} thiếu
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="container" className="data-[state=active]:bg-background gap-2 px-3 py-2">
-                <TruckIcon className="h-4 w-4" />
-                <span>Đóng container</span>
-                <span className="rounded-full bg-surface-3 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums">
-                  {cSum.total} chuyến
-                </span>
-                {cSum.lowFill > 0 && (
-                  <span className="rounded-full bg-warning/15 text-warning px-1.5 py-0.5 text-[10px] font-semibold">
-                    {cSum.lowFill} fill thấp
-                  </span>
-                )}
-                {cSum.consolidated > 0 && (
-                  <span className="rounded-full bg-warning-bg text-warning px-1.5 py-0.5 text-[10px] font-semibold flex items-center gap-0.5">
-                    <Link2Icon className="h-2.5 w-2.5" /> {cSum.consolidated} ghép
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="mb-3">
+            <PillTabs
+              tabs={resultsTabs}
+              active={resultsTab}
+              onChange={(k) => setResultsTab(k as "allocation" | "container")}
+            />
+          </div>
         );
       })()}
 

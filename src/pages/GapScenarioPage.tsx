@@ -34,6 +34,7 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 import { useNavigate } from "react-router-dom";
 import { SummaryCards } from "@/components/SummaryCards";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import { PillTabs } from "@/components/PillTabs";
 import {
   RELEASED_BY_NM,
   WEEKLY_BURN_BY_NM,
@@ -1285,25 +1286,32 @@ export default function GapScenarioPage() {
         />
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-0 border-b border-surface-3 mb-6">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              "px-5 py-3 text-table font-medium transition-colors relative whitespace-nowrap",
-              activeTab === tab.key
-                ? "text-primary"
-                : "text-text-2 hover:text-text-1"
-            )}
-          >
-            {tab.label}
-            {activeTab === tab.key && (
-              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t" />
-            )}
-          </button>
-        ))}
+      {/* Tabs (Pattern A — PillTabs) */}
+      <div className="mb-6">
+        <PillTabs
+          tabs={[
+            {
+              key: "tracking",
+              label: "Theo dõi khoảng cách",
+              icon: TrendingUp,
+              badge: `${rows.length} NM`,
+              ...(rows.filter((r) => r.status === "critical").length > 0
+                ? {
+                    subBadge: `${rows.filter((r) => r.status === "critical").length} nguy hiểm`,
+                    subColor: "danger" as const,
+                  }
+                : {}),
+            },
+            {
+              key: "scenario",
+              label: "Mô phỏng kịch bản",
+              icon: Sparkles,
+              badge: "4 kịch bản",
+            },
+          ]}
+          active={activeTab}
+          onChange={(k) => setActiveTab(k as (typeof TABS)[number]["key"])}
+        />
       </div>
 
       {activeTab === "tracking" && (

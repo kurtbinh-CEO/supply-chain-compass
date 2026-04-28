@@ -24,6 +24,7 @@ import { SYSTEM_ACCURACY } from "@/data/unis-enterprise-dataset";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { MonitoringHeroCards } from "@/components/monitoring/MonitoringHeroCards";
 import { SummaryCards } from "@/components/SummaryCards";
+import { PillTabs } from "@/components/PillTabs";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 import { monitoringCompare } from "@/lib/compare-metrics";
 import { SectionTableHeader } from "@/components/SectionTableHeader";
@@ -486,24 +487,16 @@ export default function MonitoringPage() {
         />
       </div>
 
-      {/* Tab bar — section "Chi tiết" */}
+      {/* Tab bar — section "Chi tiết" (Pattern A — PillTabs) */}
       <div className="px-1 mb-2 text-caption uppercase tracking-wide text-text-3 font-semibold">
         Chi tiết
       </div>
-      <div className="flex items-center gap-0 border-b border-surface-3 mb-6 overflow-x-auto">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => { setActiveTab(tab.key); setDrillCn(null); }}
-            className={cn(
-              "px-5 py-3 text-body font-medium transition-colors relative whitespace-nowrap",
-              activeTab === tab.key ? "text-primary" : "text-text-2 hover:text-text-1"
-            )}
-          >
-            {tab.label}
-            {activeTab === tab.key && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t" />}
-          </button>
-        ))}
+      <div className="mb-6">
+        <PillTabs
+          tabs={tabs}
+          active={activeTab}
+          onChange={(k) => { setActiveTab(k); setDrillCn(null); }}
+        />
       </div>
 
       {/* ═══ TAB 1: Tổng quan ═══ */}
