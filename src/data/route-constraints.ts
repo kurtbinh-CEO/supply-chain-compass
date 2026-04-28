@@ -157,6 +157,48 @@ export function isVehicleAllowed(
   origin: Region,
   dest: Region,
 ): boolean {
+  const canon = (vehicle as string).startsWith("container") || (vehicle as string).startsWith("truck")
+    ? vehicle as string
+    : ({ "40ft": "container_40ft", "20ft": "container_20ft", "Xe10T": "truck_10t", "Xe5T": "truck_5t" }[vehicle as string] ?? vehicle as string);
   const allowed = getAllowedVehicles(origin, dest) as string[];
-  return allowed.includes(vehicle);
+  return allowed.includes(canon);
+}
+
+/* ── Region inference từ mã NM/CN (mock — đơn giản hóa cho demo) ── */
+const NM_REGION: Record<string, Region> = {
+  "NM-DT": "nam", "NM-DTM": "nam", "NM-TKO": "nam",
+  "NM-MKD": "bac", "NM-VGR": "bac",
+};
+const CN_REGION: Record<string, Region> = {
+  // Nam
+  "CN-HCM": "nam", "CN-BD": "nam", "CN-DN": "nam", "CN-VT": "nam", "CN-BT": "nam",
+  "CN-CT": "nam", "CN-AG": "nam",
+  // Trung
+  "CN-DNG": "trung", "CN-NA": "trung", "CN-TH": "trung", "CN-PK": "trung",
+  // Bắc
+  "CN-HN": "bac", "CN-HP": "bac", "CN-VP": "bac", "CN-QN": "bac",
+};
+
+export function regionOfNm(nmCode: string): Region {
+  return NM_REGION[nmCode] ?? "nam";
+}
+
+export function regionOfCn(cnCode: string): Region {
+  return CN_REGION[cnCode] ?? "nam";
+}
+
+/**
+ * Suy ra tuyến chính từ container: dùng region NM nguồn → region CN drop xa nhất.
+ * Nếu nhiều CN khác vùng → ưu tiên cross-region (nm_cross hoặc inter-region).
+ */
+export function inferContainerRoute(
+  factoryCode: string,
+  cnCodes: string[],
+): { origin: Region; dest: Region; constraint: RouteConstraint } {
+  const origin = regionOfNm(factoryCode);
+  const destRegions = cnCodes.map(regionOfCn);
+  // Ưu tiên dest khác vùng (constraint nghiêm hơn)
+  const crossDest = destRegions.find((r) => r !== origin);
+  const dest = crossDest ?? origin;
+  return { origin, dest, constraint: findRouteConstraint(origin, dest) };
 }
