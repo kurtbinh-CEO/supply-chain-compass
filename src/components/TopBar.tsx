@@ -268,19 +268,34 @@ export function TopBar() {
             </kbd>
           </button>
         </TooltipTrigger>
-        <TooltipContent side="bottom" align="end" className="max-w-[260px]">
-          <div className="flex flex-col gap-1">
+        <TooltipContent side="bottom" align="end" className="max-w-[320px] p-3">
+          {/* Hiển thị cả 2 bộ phím tắt (Mac vs Windows/Linux) — highlight HĐH hiện tại
+              để người dùng vừa biết phím cần dùng, vừa thấy phím tương đương ở máy khác. */}
+          <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <span className="font-semibold">Command Palette</span>
-              <kbd className="rounded bg-surface-3 px-1.5 py-0.5 text-[10px] font-mono">{paletteShortcut}</kbd>
+              <span className="font-semibold text-table-sm">Command Palette &amp; Search</span>
             </div>
-            <div className="text-caption text-text-3 leading-snug">
-              {mac
-                ? "Bạn đang dùng Mac — nhấn ⌘ + K để mở nhanh."
-                : "Bạn đang dùng Windows/Linux — nhấn Ctrl + K để mở nhanh."}
+
+            <div className="grid grid-cols-[auto_1fr_1fr] gap-x-2 gap-y-1 text-caption items-center">
+              <span className="text-text-3">Hành động</span>
+              <span className={cn("font-medium", mac ? "text-text-1" : "text-text-3")}>
+                Mac {mac && <span className="text-primary">●</span>}
+              </span>
+              <span className={cn("font-medium", !mac ? "text-text-1" : "text-text-3")}>
+                Win/Linux {!mac && <span className="text-primary">●</span>}
+              </span>
+
+              <span className="text-text-2">Mở Command Palette</span>
+              <kbd className={cn("rounded px-1.5 py-0.5 text-[10px] font-mono border", mac ? "bg-primary/15 border-primary/40 text-text-1" : "bg-surface-3/50 border-surface-3 text-text-3")}>⌘K</kbd>
+              <kbd className={cn("rounded px-1.5 py-0.5 text-[10px] font-mono border", !mac ? "bg-primary/15 border-primary/40 text-text-1" : "bg-surface-3/50 border-surface-3 text-text-3")}>Ctrl+K</kbd>
+
+              <span className="text-text-2">Tìm trong code/dữ liệu</span>
+              <kbd className={cn("rounded px-1.5 py-0.5 text-[10px] font-mono border", mac ? "bg-primary/15 border-primary/40 text-text-1" : "bg-surface-3/50 border-surface-3 text-text-3")}>⇧⌘F</kbd>
+              <kbd className={cn("rounded px-1.5 py-0.5 text-[10px] font-mono border", !mac ? "bg-primary/15 border-primary/40 text-text-1" : "bg-surface-3/50 border-surface-3 text-text-3")}>Ctrl+Shift+F</kbd>
             </div>
-            <div className="text-caption text-text-3/80 leading-snug pt-0.5 border-t border-surface-3 mt-0.5">
-              {mac ? "Trên Windows/Linux dùng Ctrl + K." : "Trên Mac dùng ⌘ + K."}
+
+            <div className="text-caption text-text-3 leading-snug pt-1.5 border-t border-surface-3">
+              Bạn đang dùng <strong className="text-text-1">{osLabel}</strong> — phím được tô đậm là phím nên dùng.
             </div>
           </div>
         </TooltipContent>
