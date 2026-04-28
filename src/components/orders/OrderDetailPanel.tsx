@@ -360,19 +360,34 @@ export function OrderDetailPanel({ group, onAction, onCancel, onClose }: Props) 
           </div>
         )}
 
-        <div className="text-caption uppercase tracking-wide text-text-3 font-semibold mb-2">
-          Nhật ký thay đổi
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-caption uppercase tracking-wide text-text-3 font-semibold">
+            Nhật ký thay đổi <span className="text-text-3 font-normal">({fullChangeLog.length})</span>
+          </div>
+          <div className="text-[10px] text-text-3">Mới nhất trước</div>
         </div>
-        <div className="space-y-2 text-[11px] text-text-2">
-          {leader.timeline.map((e, i) => (
-            <div key={i} className="flex gap-2">
-              <span className="text-text-3 tabular-nums w-16 shrink-0">{e.ts}</span>
+        <div className="space-y-2.5">
+          {fullChangeLog.length === 0 ? (
+            <div className="text-[11px] text-text-3 italic">Chưa có chuyển trạng thái nào.</div>
+          ) : fullChangeLog.map((e, i) => (
+            <div key={i} className="flex gap-2 pb-2 border-b border-surface-3/40 last:border-b-0 last:pb-0">
+              <span className="text-[10px] text-text-3 tabular-nums w-14 shrink-0 pt-0.5">{e.ts}</span>
               <div className="flex-1 min-w-0">
-                <span className="text-text-1">
-                  <b>{e.actor}</b>
-                  <span className="ml-1 text-text-3">· {STAGE_META[e.stage].short}</span>
-                  {e.note && <> — {e.note}</>}
-                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Badge
+                    variant="outline"
+                    className={cn("text-[10px] px-1.5 py-0 h-4 font-semibold", STAGE_META[e.stage].tone)}
+                  >
+                    {STAGE_META[e.stage].short}
+                  </Badge>
+                  <span className="text-[11px] text-text-1 font-semibold">{e.actor}</span>
+                  {e.lineLabel && (
+                    <span className="text-[10px] font-mono text-text-3">· {e.lineLabel}</span>
+                  )}
+                </div>
+                {e.note && (
+                  <div className="text-[11px] text-text-2 mt-0.5 italic">"{e.note}"</div>
+                )}
                 {e.evidence && e.evidence.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1.5">
                     {e.evidence.map((ev, idx) => <EvidenceThumb key={idx} ev={ev} onOpen={setLightbox} />)}
