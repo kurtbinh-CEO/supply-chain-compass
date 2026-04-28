@@ -1267,71 +1267,81 @@ function BookCarrierForm({ row, onSubmit }: { row: PoLifecycleRow; onSubmit: (p:
   const carrier = CARRIERS.find(c => c.id === carrierId);
 
   return (
-    <>
-      <DialogHeader>
-        <DialogTitle>Đặt xe — {row.poNumber}</DialogTitle>
-        <DialogDescription>{row.fromName} → {row.toName} · {qty.toLocaleString()}m²</DialogDescription>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div>
-          <Label className="text-caption">Nhà xe (vùng {region})</Label>
-          <Select value={carrierId} onValueChange={setCarrierId}>
-            <SelectTrigger><SelectValue placeholder="Chọn nhà xe" /></SelectTrigger>
-            <SelectContent>
-              {eligible.map(c => (
-                <SelectItem key={c.id} value={c.id} disabled={!c.available}>
-                  {c.name} · {(c.rate40ft / 1e6).toFixed(1)}tr/40ft · SLA {c.slaOnTimePct}%
-                  {!c.available && " · Tạm ngưng"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {carrier && !carrier.available && (
-            <div className="text-[11px] text-danger mt-1 inline-flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" /> {carrier.name} đang tạm ngưng. Chọn nhà xe khác.
-            </div>
-          )}
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-caption">Loại xe</Label>
-            <Select value={containerType} onValueChange={(v) => setContainerType(v as "20ft" | "40ft" | "10T")}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="20ft">Container 20ft (900m²)</SelectItem>
-                <SelectItem value="40ft">Container 40ft (1.800m²)</SelectItem>
-                <SelectItem value="10T">Xe tải 10T (500m²)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label className="text-caption">Số chuyến</Label>
-            <Input type="number" value={trips} readOnly className="bg-surface-1" />
-          </div>
-        </div>
-        <div>
-          <Label className="text-caption">Ngày lấy hàng</Label>
-          <Input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} />
-        </div>
-        {qty > 900 && containerType === "20ft" && (
-          <div className="rounded-card border border-warning/40 bg-warning-bg p-2 text-[11px] text-warning">
-            <strong>Split shipment:</strong> {qty.toLocaleString()}m² &gt; 900m²/20ft → cần {Math.ceil(qty / 900)} chuyến.
+    <TransitionShell
+      row={row}
+      fromStage="nm_confirmed"
+      toStage="pickup"
+      title={`Đặt xe — ${row.poNumber}`}
+      description={`${row.fromName} → ${row.toName} · ${qty.toLocaleString()}m²`}
+      config={{
+        commentRequired: true,
+        filesRequired: false,
+        filesLabel: "Booking sheet / xác nhận NVT (tuỳ chọn)",
+        commentPlaceholder: `Đã book ${carrier?.name} qua điện thoại. Tài xế sẽ gọi 1h trước khi đến NM.`,
+        submitLabel: "Xác nhận đặt xe",
+        submitTone: "warning",
+      }}
+      fieldsValid={!!carrier?.available && !!pickupDate}
+      onSubmit={({ comment, files }) =>
+        onSubmit({
+          stage: "pickup",
+          carrierId, carrierName: carrier?.name,
+          pickupEta: fmtDateShort(pickupDate),
+          evidence: [...row.evidence, ...filesToEvidence(files, "doc")],
+          timeline: [...row.timeline, {
+            stage: "pickup", ts: nowTs(), actor: "Planner Linh",
+            note: `${carrier?.name} · ${containerType} · ${trips} chuyến · lấy ${pickupDate}${comment ? ` — ${comment}` : ""}`,
+            evidence: filesToEvidence(files, "doc"),
+          }],
+        })
+      }
+    >
+      <div>
+        <Label className="text-caption">Nhà xe (vùng {region}) *</Label>
+        <Select value={carrierId} onValueChange={setCarrierId}>
+          <SelectTrigger className="h-11"><SelectValue placeholder="Chọn nhà xe" /></SelectTrigger>
+          <SelectContent>
+            {eligible.map(c => (
+              <SelectItem key={c.id} value={c.id} disabled={!c.available}>
+                {c.name} · {(c.rate40ft / 1e6).toFixed(1)}tr/40ft · SLA {c.slaOnTimePct}%
+                {!c.available && " · Tạm ngưng"}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {carrier && !carrier.available && (
+          <div className="text-[11px] text-danger mt-1 inline-flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" /> {carrier.name} đang tạm ngưng. Chọn nhà xe khác.
           </div>
         )}
-        <SlaInfo text="Sau ngày lấy hàng + 4h, nếu xe chưa đến NM, hệ thống sẽ nhắc gọi NVT." />
       </div>
-      <DialogFooter>
-        <Button
-          disabled={!carrier?.available}
-          onClick={() => onSubmit({
-            stage: "pickup",
-            carrierId, carrierName: carrier?.name,
-            pickupEta: fmtDateShort(pickupDate),
-            timeline: [...row.timeline, { stage: "pickup", ts: nowTs(), actor: "Planner Linh", note: `${carrier?.name} · ${containerType} · ${trips} chuyến · lấy ${pickupDate}` }],
-          })}
-        >Xác nhận đặt xe</Button>
-      </DialogFooter>
-    </>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label className="text-caption">Loại xe *</Label>
+          <Select value={containerType} onValueChange={(v) => setContainerType(v as "20ft" | "40ft" | "10T")}>
+            <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="20ft">Container 20ft (900m²)</SelectItem>
+              <SelectItem value="40ft">Container 40ft (1.800m²)</SelectItem>
+              <SelectItem value="10T">Xe tải 10T (500m²)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-caption">Số chuyến</Label>
+          <Input type="number" value={trips} readOnly className="bg-surface-1 h-11 text-base" />
+        </div>
+      </div>
+      <div>
+        <Label className="text-caption">Ngày lấy hàng *</Label>
+        <Input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className="h-11 text-base" />
+      </div>
+      {qty > 900 && containerType === "20ft" && (
+        <div className="rounded-card border border-warning/40 bg-warning-bg p-2 text-[11px] text-warning">
+          <strong>Split shipment:</strong> {qty.toLocaleString()}m² &gt; 900m²/20ft → cần {Math.ceil(qty / 900)} chuyến.
+        </div>
+      )}
+    </TransitionShell>
   );
 }
 
