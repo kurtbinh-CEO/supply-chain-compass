@@ -394,6 +394,131 @@ export const SEED_PO_LIFECYCLE: PoLifecycleRow[] = [
       { stage: "in_transit", ts: "20/05 13:00", actor: "Tài xế Hải" },
     ],
   },
+  // ═══ MULTI-DROP ORDERS (ghép tuyến) ═══
+  // 16. PO-BD-W20-002 — 1 xe 40ft NM Đồng Tâm → 2 drops (CN-BD + CN-DN)
+  //     Drop 1: CN-BD 1.500m² (2 SKU), Drop 2: CN-DN 900m² (1 SKU)
+  {
+    id: "16a", kind: "RPO", poNumber: "PO-BD-W20-002",
+    sku: "GA-600", skuLabel: "GA-600 B2", qty: 800,
+    fromName: "NM Đồng Tâm", toName: "CN-BD", region: "Nam",
+    stage: "nm_confirmed", hoursInStage: 5,
+    pickupEta: "22/05",
+    evidence: [{ label: "Xác nhận NM Đồng Tâm", kind: "screenshot" }],
+    timeline: [
+      { stage: "approved",     ts: "19/05 08:00", actor: "Hệ thống",       note: "Tạo từ DRP-W20 v3 — ghép tuyến CN-BD + CN-DN" },
+      { stage: "sent_nm",      ts: "19/05 09:30", actor: "Planner Thùy",   note: "Zalo chị Thúy NM Đồng Tâm" },
+      { stage: "nm_confirmed", ts: "20/05 14:00", actor: "NM Đồng Tâm",    note: "OK đủ 2.400m², sẵn 22/05" },
+    ],
+  },
+  {
+    id: "16b", kind: "RPO", poNumber: "PO-BD-W20-002",
+    sku: "GA-300", skuLabel: "GA-300 A4", qty: 700,
+    fromName: "NM Đồng Tâm", toName: "CN-BD", region: "Nam",
+    stage: "nm_confirmed", hoursInStage: 5,
+    pickupEta: "22/05",
+    evidence: [],
+    timeline: [
+      { stage: "approved",     ts: "19/05 08:00", actor: "Hệ thống" },
+      { stage: "sent_nm",      ts: "19/05 09:30", actor: "Planner Thùy" },
+      { stage: "nm_confirmed", ts: "20/05 14:00", actor: "NM Đồng Tâm" },
+    ],
+  },
+  {
+    id: "16c", kind: "RPO", poNumber: "PO-BD-W20-002",
+    sku: "GA-300", skuLabel: "GA-300 A4", qty: 900,
+    fromName: "NM Đồng Tâm", toName: "CN-DN", region: "Nam",
+    stage: "nm_confirmed", hoursInStage: 5,
+    pickupEta: "22/05",
+    evidence: [],
+    timeline: [
+      { stage: "approved",     ts: "19/05 08:00", actor: "Hệ thống" },
+      { stage: "sent_nm",      ts: "19/05 09:30", actor: "Planner Thùy" },
+      { stage: "nm_confirmed", ts: "20/05 14:00", actor: "NM Đồng Tâm" },
+    ],
+  },
+
+  // 17. PO-HCM-W20-002 — Multi-drop in_transit, drop 1 sắp giao
+  {
+    id: "17a", kind: "RPO", poNumber: "PO-HCM-W20-002",
+    sku: "GA-600", skuLabel: "GA-600 A4", qty: 1200, qtyConfirmed: 1200,
+    fromName: "NM Vigracera", toName: "CN-HCM", region: "Nam",
+    stage: "in_transit", hoursInStage: 10,
+    carrierId: "CR-01", carrierName: "Vinatrans",
+    vehiclePlate: "51C-66.412", containerNo: "TCKU3340120",
+    driverName: "Lê Hoài Nam", driverPhone: "0912 778 220",
+    deliveryEta: "21/05 13:00", etaRemainingH: 3,
+    evidence: [
+      { label: "Ảnh bốc hàng NM", kind: "photo", count: 2 },
+      { label: "Phiếu xuất NM", kind: "doc" },
+    ],
+    timeline: [
+      { stage: "approved",     ts: "17/05 08:00", actor: "Hệ thống",     note: "Ghép tuyến HCM + BD (tiết kiệm 6,5M₫)" },
+      { stage: "sent_nm",      ts: "17/05 08:30", actor: "Planner Linh" },
+      { stage: "nm_confirmed", ts: "18/05 11:00", actor: "NM Vigracera" },
+      { stage: "pickup",       ts: "19/05 06:00", actor: "Planner Linh" },
+      { stage: "in_transit",   ts: "20/05 22:00", actor: "Tài xế Nam",   note: "Xuất phát Biên Hòa" },
+    ],
+  },
+  {
+    id: "17b", kind: "RPO", poNumber: "PO-HCM-W20-002",
+    sku: "GA-300", skuLabel: "GA-300 A4", qty: 600, qtyConfirmed: 600,
+    fromName: "NM Vigracera", toName: "CN-BD", region: "Nam",
+    stage: "in_transit", hoursInStage: 10,
+    carrierId: "CR-01", carrierName: "Vinatrans",
+    vehiclePlate: "51C-66.412", containerNo: "TCKU3340120",
+    driverName: "Lê Hoài Nam", driverPhone: "0912 778 220",
+    deliveryEta: "21/05 17:00", etaRemainingH: 7,
+    evidence: [],
+    timeline: [
+      { stage: "approved",     ts: "17/05 08:00", actor: "Hệ thống" },
+      { stage: "sent_nm",      ts: "17/05 08:30", actor: "Planner Linh" },
+      { stage: "nm_confirmed", ts: "18/05 11:00", actor: "NM Vigracera" },
+      { stage: "pickup",       ts: "19/05 06:00", actor: "Planner Linh" },
+      { stage: "in_transit",   ts: "20/05 22:00", actor: "Tài xế Nam" },
+    ],
+  },
+
+  // 18. PO-HN-W20-002 — Multi-drop 3 CN (CN-HN + CN-HP + CN-NA), đặt xe
+  {
+    id: "18a", kind: "RPO", poNumber: "PO-HN-W20-002",
+    sku: "GA-600", skuLabel: "GA-600 B2", qty: 900,
+    fromName: "NM Mikado", toName: "CN-HN", region: "Bắc",
+    stage: "nm_confirmed", hoursInStage: 8,
+    pickupEta: "23/05",
+    evidence: [{ label: "Xác nhận NM Mikado", kind: "screenshot" }],
+    timeline: [
+      { stage: "approved",     ts: "19/05 09:00", actor: "Hệ thống",   note: "Ghép tuyến 3 CN miền Bắc — tiết kiệm 11,2M₫" },
+      { stage: "sent_nm",      ts: "19/05 10:00", actor: "Planner Hà" },
+      { stage: "nm_confirmed", ts: "20/05 11:00", actor: "NM Mikado" },
+    ],
+  },
+  {
+    id: "18b", kind: "RPO", poNumber: "PO-HN-W20-002",
+    sku: "GA-300", skuLabel: "GA-300 A4", qty: 600,
+    fromName: "NM Mikado", toName: "CN-HP", region: "Bắc",
+    stage: "nm_confirmed", hoursInStage: 8,
+    pickupEta: "23/05",
+    evidence: [],
+    timeline: [
+      { stage: "approved",     ts: "19/05 09:00", actor: "Hệ thống" },
+      { stage: "sent_nm",      ts: "19/05 10:00", actor: "Planner Hà" },
+      { stage: "nm_confirmed", ts: "20/05 11:00", actor: "NM Mikado" },
+    ],
+  },
+  {
+    id: "18c", kind: "RPO", poNumber: "PO-HN-W20-002",
+    sku: "GA-600", skuLabel: "GA-600 A4", qty: 500,
+    fromName: "NM Mikado", toName: "CN-NA", region: "Bắc",
+    stage: "nm_confirmed", hoursInStage: 8,
+    pickupEta: "23/05",
+    evidence: [],
+    timeline: [
+      { stage: "approved",     ts: "19/05 09:00", actor: "Hệ thống" },
+      { stage: "sent_nm",      ts: "19/05 10:00", actor: "Planner Hà" },
+      { stage: "nm_confirmed", ts: "20/05 11:00", actor: "NM Mikado" },
+    ],
+  },
+
   // 15. TO completed
   {
     id: "15", kind: "TO", poNumber: "TO-QN-NA-001",

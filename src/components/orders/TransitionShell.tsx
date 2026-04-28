@@ -87,9 +87,8 @@ export function TransitionShell({
     : "";
 
   return (
-    <div className="flex flex-col h-full max-h-[inherit] min-h-0">
-      {/* HEADER — sticky top */}
-      <DialogHeader className="px-6 pt-6 pb-3 max-sm:px-4 max-sm:pt-4 border-b border-surface-3 shrink-0">
+    <>
+      <DialogHeader>
         <DialogTitle className="text-h3">
           {title ?? `Chuyển sang ${STAGE_META[toStage].label}`}
         </DialogTitle>
@@ -104,7 +103,7 @@ export function TransitionShell({
         </DialogDescription>
 
         {/* Info bar — chuyển trạng thái */}
-        <div className="mt-2 flex items-center gap-1.5 text-table-xs flex-wrap">
+        <div className="mt-2 flex items-center gap-1.5 text-table-xs">
           <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 font-medium", STAGE_META[fromStage].tone)}>
             {STAGE_META[fromStage].short}
           </span>
@@ -115,8 +114,7 @@ export function TransitionShell({
         </div>
       </DialogHeader>
 
-      {/* BODY — scrollable */}
-      <div className="flex-1 overflow-y-auto px-6 py-3 max-sm:px-4 space-y-3 min-h-0">
+      <div className="space-y-3 py-1">
         {/* Per-stage fields */}
         {children}
 
@@ -159,19 +157,15 @@ export function TransitionShell({
         )}
       </div>
 
-      {/* FOOTER — sticky bottom với safe-area cho iOS */}
-      <DialogFooter className="px-6 py-3 max-sm:px-4 max-sm:pb-[max(env(safe-area-inset-bottom),12px)] border-t border-surface-3 bg-surface-0 shrink-0 gap-2 sm:gap-2">
+      <DialogFooter className="gap-2 sm:gap-2">
         <Button
           disabled={!canSubmit}
           onClick={() => onSubmit({ comment: comment.trim(), files })}
-          className={cn(
-            "w-full sm:w-auto min-h-11 max-sm:min-h-14 max-sm:text-base font-semibold",
-            submitToneClass,
-          )}
+          className={cn("min-h-11", submitToneClass)}
         >
           {config.submitLabel ?? `Xác nhận ${STAGE_META[toStage].short}`}
         </Button>
       </DialogFooter>
-    </div>
+    </>
   );
 }
