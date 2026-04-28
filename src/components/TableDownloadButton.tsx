@@ -590,14 +590,30 @@ export function TableDownloadButton({
                   </span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setPreview(null)}
-                className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-button text-text-3 hover:bg-surface-2 hover:text-text-1"
-                aria-label="Đóng"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="shrink-0 flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={refreshPreview}
+                  className="inline-flex h-7 items-center gap-1 rounded-button border border-surface-3 bg-surface-1 px-2 text-caption font-medium text-text-2 hover:bg-surface-2 hover:text-text-1"
+                  title={
+                    refreshedAt
+                      ? `Đọc lại bảng nguồn theo filter hiện tại · cập nhật lần cuối ${refreshedAt.toLocaleTimeString("vi-VN")}`
+                      : "Đọc lại bảng nguồn theo filter hiện tại"
+                  }
+                  aria-label="Làm mới xem trước"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Làm mới
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreview(null)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-button text-text-3 hover:bg-surface-2 hover:text-text-1"
+                  aria-label="Đóng"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             {/* Filter chips — danh sách filter/trạng thái đang áp dụng */}
