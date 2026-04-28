@@ -473,6 +473,17 @@ export function SmartTable<T = any>({
     });
   };
 
+  // Parent yêu cầu collapse một row sau khi confirm
+  React.useEffect(() => {
+    if (!collapseRowSignal) return;
+    setExpanded((prev) => {
+      if (!prev.has(collapseRowSignal.id)) return prev;
+      const next = new Set(prev);
+      next.delete(collapseRowSignal.id);
+      return next;
+    });
+  }, [collapseRowSignal?.id, collapseRowSignal?.nonce]);
+
   const setTextFilter = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: { kind: "text", value } }));
   };
