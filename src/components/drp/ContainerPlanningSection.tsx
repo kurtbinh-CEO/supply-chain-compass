@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Truck, Package, AlertTriangle, ArrowRight, Clock, MapPin, Pencil,
   TrendingUp, Link2, GripVertical, ArrowUp, ArrowDown, RotateCcw, Save,
-  Shuffle, Check,
+  Shuffle, Check, FileClock, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -17,6 +17,10 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  getDraft, saveDraft, clearDraft, formatDraftAge,
+  type ContainerEditDraft,
+} from "@/lib/container-edit-drafts";
 import { ContainerEditPreview } from "@/components/drp/ContainerEditPreview";
 
 const fmtVnd = (v: number) => v.toLocaleString("vi-VN") + "₫";
@@ -88,6 +92,11 @@ function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
 
+  // ── Draft state ──────────────────────────────────────────────────────────
+  const [pendingDraft, setPendingDraft] = useState<ContainerEditDraft | null>(null);
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
+  const autoSaveTimer = useRef<number | null>(null);
+
   const calc = useMemo(() => recalcRoute(container, order), [container, order]);
   const dirty = useMemo(
     () => order.some((d, i) => d.cnCode !== container.drops[i]?.cnCode),
@@ -96,7 +105,40 @@ function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
   const canReorder = container.drops.length >= 2 &&
     (container.status === "draft" || container.status === "ready" || container.status === "hold");
 
-  useEffect(() => { setOrder(container.drops); }, [container]);
+  // Mở/đổi container: reset state + check nháp đã lưu trước đó
+  useEffect(() => {
+    setOrder(container.drops);
+    setReorderMode(false);
+    setDraftSavedAt(null);
+    setPendingDraft(null);
+    const existing = getDraft(container.id);
+    if (existing && container.drops.length >= 2) {
+      const baseline = container.drops.map((d) => d.cnCode).join("|");
+      const draftKey = existing.cnOrder.join("|");
+      const validCodes = existing.cnOrder.every((c) =>
+        container.drops.some((d) => d.cnCode === c),
+      );
+      const sameLength = existing.cnOrder.length === container.drops.length;
+      if (validCodes && sameLength && draftKey !== baseline) {
+        setPendingDraft(existing);
+      } else if (!validCodes || !sameLength) {
+        clearDraft(container.id);
+      }
+    }
+  }, [container]);
+
+  // Auto-save mỗi khi `order` thay đổi trong reorderMode (debounce 500ms)
+  useEffect(() => {
+    if (!reorderMode || !dirty) return;
+    if (autoSaveTimer.current) window.clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = window.setTimeout(() => {
+      const d = saveDraft(container.id, order.map((x) => x.cnCode), { auto: true });
+      setDraftSavedAt(d.savedAt);
+    }, 500);
+    return () => {
+      if (autoSaveTimer.current) window.clearTimeout(autoSaveTimer.current);
+    };
+  }, [order, reorderMode, dirty, container.id]);
 
   const move = (from: number, to: number) => {
     if (from === to || to < 0 || to >= order.length) return;
@@ -106,14 +148,50 @@ function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
     setOrder(next);
   };
 
-  const reset = () => setOrder(container.drops);
+  const reset = () => {
+    setOrder(container.drops);
+    clearDraft(container.id);
+    setDraftSavedAt(null);
+    toast.info(`Đã hoàn tác — nháp ${container.id} bị xoá`);
+  };
+
   const save = () => {
     setReorderMode(false);
+    clearDraft(container.id);
+    setDraftSavedAt(null);
     if (!dirty) return;
     toast.success(
       `Đã lưu thứ tự mới cho ${container.id}: ${order.map((d) => d.cnCode).join(" → ")} ` +
       `(+${calc.deltaKm}km · ${calc.deltaFreight >= 0 ? "+" : ""}${(calc.deltaFreight / 1_000_000).toFixed(1)}M₫)`,
     );
+  };
+
+  const saveDraftManual = () => {
+    const d = saveDraft(container.id, order.map((x) => x.cnCode), { auto: false });
+    setDraftSavedAt(d.savedAt);
+    toast.success(`Đã lưu nháp ${container.id} — quay lại tiếp tục bất cứ lúc nào`);
+  };
+
+  const restoreDraft = () => {
+    if (!pendingDraft) return;
+    const map = new Map(container.drops.map((d) => [d.cnCode, d]));
+    const restored = pendingDraft.cnOrder
+      .map((c) => map.get(c))
+      .filter((d): d is DropPoint => !!d);
+    if (restored.length === container.drops.length) {
+      setOrder(restored);
+      setReorderMode(true);
+      setDraftSavedAt(pendingDraft.savedAt);
+      toast.info(`Đã khôi phục nháp ${container.id} (${formatDraftAge(pendingDraft.savedAt)})`);
+    }
+    setPendingDraft(null);
+  };
+
+  const discardDraft = () => {
+    if (!pendingDraft) return;
+    clearDraft(container.id);
+    setPendingDraft(null);
+    toast.info(`Đã bỏ nháp ${container.id}`);
   };
 
   const fmtKm = (v: number) => v.toLocaleString("vi-VN") + " km";
@@ -131,6 +209,39 @@ function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
 
   return (
     <div className="space-y-2">
+      {/* Banner nháp đã lưu trước đó — chờ user quyết định */}
+      {pendingDraft && !reorderMode && (
+        <div className="rounded-card border border-info/40 bg-info-bg px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-table-sm text-info min-w-0">
+            <FileClock className="h-4 w-4 shrink-0" />
+            <span className="min-w-0">
+              <strong>Có nháp chưa lưu</strong> cho {container.id} —{" "}
+              <span className="font-mono">
+                {container.factoryCode.replace(/^NM-/, "")} → {pendingDraft.cnOrder.join(" → ")}
+              </span>
+              <span className="text-text-3 ml-1">({formatDraftAge(pendingDraft.savedAt)})</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={restoreDraft}
+              className="inline-flex items-center gap-1 rounded-button bg-info text-info-foreground px-2.5 py-1 text-[11px] font-semibold hover:bg-info/90"
+            >
+              <RotateCcw className="h-3 w-3" /> Tiếp tục chỉnh
+            </button>
+            <button
+              type="button"
+              onClick={discardDraft}
+              className="inline-flex items-center gap-1 rounded-button border border-info/30 bg-surface-1 px-2 py-1 text-[11px] font-medium text-text-2 hover:text-text-1"
+              title="Bỏ nháp"
+            >
+              <X className="h-3 w-3" /> Bỏ
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Bản đồ lộ trình — luôn hiện, panel "Sau khi sửa" chỉ bật khi reorderMode */}
       <RouteMapPreview
         factoryCode={container.factoryCode}
@@ -139,20 +250,36 @@ function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
         showProjected={reorderMode}
       />
 
-      <div className="flex items-center justify-between">
-        <div className="text-caption text-text-3 font-medium">
-          Điểm giao ({order.length})
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="text-caption text-text-3 font-medium flex items-center gap-2">
+          <span>Điểm giao ({order.length})</span>
+          {reorderMode && draftSavedAt && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-text-3">
+              <FileClock className="h-3 w-3" />
+              Nháp tự lưu · {formatDraftAge(draftSavedAt)}
+            </span>
+          )}
         </div>
         {canReorder && (
           <div className="flex items-center gap-1">
             {reorderMode && dirty && (
-              <button
-                type="button"
-                onClick={reset}
-                className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-1 px-2 py-1 text-[11px] font-medium text-text-2 hover:text-text-1"
-              >
-                <RotateCcw className="h-3 w-3" /> Hoàn tác
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-1 px-2 py-1 text-[11px] font-medium text-text-2 hover:text-text-1"
+                >
+                  <RotateCcw className="h-3 w-3" /> Hoàn tác
+                </button>
+                <button
+                  type="button"
+                  onClick={saveDraftManual}
+                  className="inline-flex items-center gap-1 rounded-button border border-info/40 bg-info-bg text-info px-2 py-1 text-[11px] font-medium hover:bg-info hover:text-info-foreground transition-colors"
+                  title="Lưu nháp để quay lại tiếp tục sau"
+                >
+                  <FileClock className="h-3 w-3" /> Lưu nháp
+                </button>
+              </>
             )}
             {reorderMode ? (
               <button
