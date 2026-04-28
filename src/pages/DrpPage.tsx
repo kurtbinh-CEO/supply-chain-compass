@@ -168,6 +168,33 @@ export const EXCEPTION_SEEDS: ExcSeed[] = [
   },
 ];
 
+/** Map an ExcSeed → AllocSources (committed-only). hubPo aliases nmAllocation. */
+export function buildSourcesFromSeed(e: ExcSeed): AllocSources {
+  return {
+    onHand: e.onHand,
+    pipeline: e.pipeline,
+    hubPo: e.nmAllocation,
+    lcnbIn: 0,
+    internalTransfer: 0,
+    ssReserved: e.ssReserved,
+    reservedHard: 0,
+    quarantine: 0,
+  };
+}
+
+/** Map an ExcSeed.options[] → SuggestedAction[] for AllocSourceBar suggestedActions prop. */
+export function buildSuggestedFromSeed(e: ExcSeed): SuggestedAction[] {
+  return e.options.map((o) => ({
+    label: o.label,
+    source: o.source,
+    qty: o.qty,
+    cost: o.cost,
+    time: o.time,
+    savingVsB: o.savingVsB,
+    recommended: o.recommended ?? false,
+  }));
+}
+
 function buildSkuRow(cnCode: string, baseCode: string): SkuFull | null {
   const drp = DRP_RESULTS.find((r) => r.cnCode === cnCode && r.skuBaseCode === baseCode);
   if (!drp) return null;
