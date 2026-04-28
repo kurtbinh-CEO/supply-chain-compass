@@ -72,11 +72,36 @@ export default function OrdersPage() {
   const scale = tenantScales[tenant] || 1;
   const navigate = useNavigate();
   const { current: planCycle } = usePlanningPeriod();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Local mutable copy of seed (so dialogs can advance stages within session).
   const [rows, setRows] = useState<PoLifecycleRow[]>(() =>
     SEED_PO_LIFECYCLE.map(r => ({ ...r, qty: Math.round(r.qty * scale) }))
   );
+
+  // Deep-link từ Khoảng cách & Kịch bản: hiện toast khi tới với ?focus=PO-...&from=gap
+  useEffect(() => {
+    const focus = searchParams.get("focus");
+    const from = searchParams.get("from");
+    if (focus && from === "gap") {
+      toast.info("Đến từ Khoảng cách & Kịch bản", {
+        description: `Đang tìm PO bổ sung ${focus} (NHÁP). Tạo sau khi chọn kịch bản giải quyết khoảng cách.`,
+        duration: 6000,
+      });
+      const next = new URLSearchParams(searchParams);
+      next.delete("focus"); next.delete("from"); next.delete("nm");
+      setSearchParams(next, { replace: true });
+    } else if (from === "gap-preview") {
+      toast.info("Xem trước từ Khoảng cách & Kịch bản", {
+        description: "Đây là module Đơn hàng — sau khi xác nhận kịch bản, PO bổ sung sẽ xuất hiện ở đây với trạng thái NHÁP.",
+        duration: 5000,
+      });
+      const next = new URLSearchParams(searchParams);
+      next.delete("from");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // LỚP 2 — multi-select status pills (empty Set = "Tất cả")
   const [statusFilter, setStatusFilter] = useState<Set<LifecycleStage>>(new Set());
   const [kindFilter, setKindFilter] = useState<Set<"RPO" | "TO">>(new Set());
