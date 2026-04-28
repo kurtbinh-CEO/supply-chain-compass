@@ -146,7 +146,7 @@ function CnSkuDrill({
         return (
           <div className="px-2 py-3 bg-surface-0 rounded-card border border-surface-3">
             <DemandToOrderBridge
-              item={sk.item} variant={sk.variant} cn={cn}
+              item={sk.item} variant={sk.variant} cn={cnName}
               steps={buildFullBridgeSteps({
                 demand: sk.demand, fcPhased: sk.fcPhased, cnAdj: sk.cnAdj, po: sk.po, overlap: sk.overlap,
                 onHand: sk.onHand, pipeline: sk.pipeline, pipelineSource: sk.pipelineSource,
