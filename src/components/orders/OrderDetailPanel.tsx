@@ -5,12 +5,13 @@
  *
  * (Sẽ được implement đầy đủ ở Phase 2.)
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Send, CheckCircle2, Truck, Package, Flag, ClipboardCheck, Camera, FileText, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   STAGE_META, STAGE_ORDER, STAGE_SLA_HOURS,
   type LifecycleStage, type PoLifecycleRow, type PoEvidence,
@@ -52,10 +53,20 @@ function unitPrice(skuLabel: string) {
   return 160_000;
 }
 
-function EvidenceThumb({ ev }: { ev: PoEvidence }) {
+function EvidenceThumb({ ev, onOpen }: { ev: PoEvidence; onOpen?: (ev: PoEvidence) => void }) {
+  const clickable = !!ev.url && !!onOpen;
   return (
-    <div className="flex flex-col items-center w-14" title={ev.label}>
-      <div className="h-14 w-14 rounded border border-surface-3 bg-surface-1 overflow-hidden flex items-center justify-center">
+    <button
+      type="button"
+      onClick={clickable ? () => onOpen!(ev) : undefined}
+      disabled={!clickable}
+      className={cn(
+        "flex flex-col items-center w-14 group",
+        clickable && "cursor-zoom-in",
+      )}
+      title={clickable ? `${ev.label} — bấm để xem` : ev.label}
+    >
+      <div className="h-14 w-14 rounded border border-surface-3 bg-surface-1 overflow-hidden flex items-center justify-center group-hover:border-primary transition-colors">
         {ev.url ? (
           // eslint-disable-next-line jsx-a11y/img-redundant-alt
           <img src={ev.url} alt={ev.label} className="h-full w-full object-cover" />
@@ -68,7 +79,7 @@ function EvidenceThumb({ ev }: { ev: PoEvidence }) {
         )}
       </div>
       <div className="mt-0.5 w-full truncate text-[10px] text-text-3 text-center">{ev.label}</div>
-    </div>
+    </button>
   );
 }
 
@@ -78,6 +89,7 @@ export function OrderDetailPanel({ group, onAction, onCancel, onClose }: Props) 
   const stage = group.stage;
   const next = NEXT_ACTION[stage];
   const Icon = next?.icon;
+  const [lightbox, setLightbox] = useState<PoEvidence | null>(null);
 
   const totalValue = group.lines.reduce((s, l) => s + l.qty * unitPrice(l.skuLabel), 0);
 
@@ -211,7 +223,7 @@ export function OrderDetailPanel({ group, onAction, onCancel, onClose }: Props) 
                   )}
                   {ev?.evidence && ev.evidence.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {ev.evidence.map((e, idx) => <EvidenceThumb key={idx} ev={e} />)}
+                      {ev.evidence.map((e, idx) => <EvidenceThumb key={idx} ev={e} onOpen={setLightbox} />)}
                     </div>
                   )}
                 </div>
@@ -304,7 +316,7 @@ export function OrderDetailPanel({ group, onAction, onCancel, onClose }: Props) 
       {/* ── SECTION 5: MINH CHỨNG & NHẬT KÝ ── */}
       <div className="p-4">
         <div className="text-caption uppercase tracking-wide text-text-3 font-semibold mb-2">
-          Minh chứng
+          Minh chứng <span className="text-text-3 font-normal">({allEvidence.length})</span>
         </div>
         {allEvidence.length === 0 ? (
           <div className="text-[11px] text-text-3 italic mb-3">
@@ -312,25 +324,50 @@ export function OrderDetailPanel({ group, onAction, onCancel, onClose }: Props) 
           </div>
         ) : (
           <div className="flex flex-wrap gap-2 mb-3">
-            {allEvidence.map((e, i) => <EvidenceThumb key={i} ev={e} />)}
+            {allEvidence.map((e, i) => <EvidenceThumb key={i} ev={e} onOpen={setLightbox} />)}
           </div>
         )}
 
         <div className="text-caption uppercase tracking-wide text-text-3 font-semibold mb-2">
           Nhật ký thay đổi
         </div>
-        <div className="space-y-1 text-[11px] text-text-2">
+        <div className="space-y-2 text-[11px] text-text-2">
           {leader.timeline.map((e, i) => (
             <div key={i} className="flex gap-2">
               <span className="text-text-3 tabular-nums w-16 shrink-0">{e.ts}</span>
-              <span className="text-text-1 flex-1">
-                <b>{e.actor}</b>
-                {e.note && <> — {e.note}</>}
-              </span>
+              <div className="flex-1 min-w-0">
+                <span className="text-text-1">
+                  <b>{e.actor}</b>
+                  <span className="ml-1 text-text-3">· {STAGE_META[e.stage].short}</span>
+                  {e.note && <> — {e.note}</>}
+                </span>
+                {e.evidence && e.evidence.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {e.evidence.map((ev, idx) => <EvidenceThumb key={idx} ev={ev} onOpen={setLightbox} />)}
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* ── LIGHTBOX (full-screen image preview) ── */}
+      <Dialog open={!!lightbox} onOpenChange={(o) => { if (!o) setLightbox(null); }}>
+        <DialogContent className="max-w-3xl p-2 bg-black/95 border-0">
+          {lightbox?.url && (
+            <div className="flex flex-col items-center gap-2">
+              {/* eslint-disable-next-line jsx-a11y/img-redundant-alt */}
+              <img
+                src={lightbox.url}
+                alt={lightbox.label}
+                className="max-h-[80vh] w-auto object-contain rounded"
+              />
+              <div className="text-table-sm text-white/90 text-center">{lightbox.label}</div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
