@@ -21,6 +21,8 @@ import {
 } from "@/components/master/CrudPrimitives";
 import type { ImportField } from "@/components/master/ExcelImportWizard";
 import { TableDownloadButton } from "@/components/TableDownloadButton";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import { cn } from "@/lib/utils";
 import {
   useMasterItems, useCreateMasterItem, useUpdateMasterItem, useDeleteMasterItem, useBulkInsertMasterItems,
   useMasterFactories, useCreateMasterFactory, useUpdateMasterFactory, useDeleteMasterFactory, useBulkInsertMasterFactories,
@@ -251,56 +253,61 @@ function ItemsTab() {
         placeholder="Tìm theo mã, tên, NM..."
       />
 
-      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <table className="w-full text-table">
-          <thead>
-            <tr className="bg-surface-1">
-              {["Mã gốc", "Tên SKU", "Nhà máy", "Loại", "Đơn vị", "Đơn giá (VND/m²)", "Variants"].map((h) => (
-                <th key={h} className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">
-                  {h}
-                </th>
-              ))}
-              <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3 font-medium w-[88px]">
-                Thao tác
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((b, i) => (
-              <tr
-                key={`${b.code}-${b.source}`}
-                className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}
-              >
-                <td className="px-4 py-2.5 font-mono font-medium text-text-1">
-                  <div className="flex items-center gap-1.5">
-                    {b.code}
-                    {b.source === "cloud" && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-2.5 text-text-2">{b.name}</td>
-                <td className="px-4 py-2.5">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-info-bg text-info text-table-sm font-medium">
-                    {NM_BY_ID[b.nmId as NmId] ?? b.nmId}
-                  </span>
-                </td>
-                <td className="px-4 py-2.5 text-text-2">{b.category}</td>
-                <td className="px-4 py-2.5 text-text-2">{b.unit}</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{b.unitPrice.toLocaleString("vi-VN")}</td>
-                <td className="px-4 py-2.5">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-1 border border-surface-3 text-text-2 text-table-sm tabular-nums">
-                    {variantCount(b.code)} variant
-                  </span>
-                </td>
-                <td className="px-4 py-2.5">
-                  <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} onHistory={() => setHistoryCode(b.code)} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {(() => {
+        const cols: SmartTableColumn<MergedItem>[] = [
+          {
+            key: "code", label: "Mã gốc", width: 150, hideable: false, sortable: true,
+            render: (r) => (
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono font-medium text-text-1">{r.code}</span>
+                {r.source === "cloud" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
+                )}
+              </div>
+            ),
+          },
+          { key: "name", label: "Tên SKU", width: 220, sortable: true, render: (r) => <span className="text-text-2">{r.name}</span> },
+          {
+            key: "nmId", label: "Nhà máy", width: 140, sortable: true, accessor: (r) => NM_BY_ID[r.nmId as NmId] ?? r.nmId,
+            filter: "enum",
+            filterOptions: Array.from(new Set(rows.map(r => NM_BY_ID[r.nmId as NmId] ?? r.nmId))).map(v => ({ value: v, label: v })),
+            render: (r) => (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-info-bg text-info text-table-sm font-medium">
+                {NM_BY_ID[r.nmId as NmId] ?? r.nmId}
+              </span>
+            ),
+          },
+          { key: "category", label: "Loại", width: 110, sortable: true, render: (r) => <span className="text-text-2">{r.category}</span> },
+          { key: "unit", label: "Đơn vị", width: 80, render: (r) => <span className="text-text-2">{r.unit}</span> },
+          { key: "unitPrice", label: "Đơn giá (VND/m²)", width: 150, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.unitPrice.toLocaleString("vi-VN")}</span> },
+          {
+            key: "variants", label: "Variants", width: 110, align: "center", numeric: true, sortable: true, accessor: (r) => variantCount(r.code),
+            render: (r) => (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-1 border border-surface-3 text-text-2 text-table-sm tabular-nums">
+                {variantCount(r.code)} variant
+              </span>
+            ),
+          },
+          {
+            key: "actions", label: "Thao tác", width: 100, align: "right", hideable: false,
+            render: (r) => (
+              <div onClick={(e) => e.stopPropagation()}>
+                <RowActions onEdit={() => setEditing(r)} onDelete={() => setDeleting(r)} onHistory={() => setHistoryCode(r.code)} />
+              </div>
+            ),
+          },
+        ];
+        return (
+          <SmartTable<MergedItem>
+            screenId="master-items"
+            exportFilename="ma_hang"
+            columns={cols}
+            data={rows}
+            defaultDensity="compact"
+            getRowId={(r) => `${r.code}-${r.source}`}
+          />
+        );
+      })()}
       <p className="text-table-sm text-text-3">
         {rows.length} mã gốc · <span className="text-success">{cloudItems.length} từ cloud</span> + {SKU_BASES.length} từ dataset mẫu
       </p>
@@ -513,53 +520,66 @@ function SuppliersTab() {
         importDescription="Chọn nguồn nhập nhà máy hàng loạt"
         placeholder="Tìm theo mã, tên NM..."
       />
-      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <table className="w-full text-table">
-          <thead>
-            <tr className="bg-surface-1">
-              {["Mã NM", "Tên", "Vùng", "LT (ngày)", "σ_LT", "MOQ (m²)", "Capacity/tháng", "Reliability", "Honoring", "Giá tier 1", "Giá tier 2"].map((h) => (
-                <th key={h} className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">{h}</th>
-              ))}
-              <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3 font-medium w-[88px]">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((f, i) => (
-              <tr key={`${f.code}-${f.source}`} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
-                <td className="px-4 py-2.5 font-mono font-medium text-text-1">
-                  <div className="flex items-center gap-1.5">
-                    {f.code}
-                    {f.source === "cloud" && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-2.5 text-text-2">{f.name}</td>
-                <td className="px-4 py-2.5 text-text-2">{f.region}</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{f.ltDays}</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{f.sigmaLt.toFixed(1)}</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{f.moqM2.toLocaleString("vi-VN")}</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{f.capacityM2Month.toLocaleString("vi-VN")}</td>
-                <td className="px-4 py-2.5 tabular-nums">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-table-sm font-medium ${
-                    f.reliability >= 0.9 ? "bg-success-bg text-success"
-                      : f.reliability >= 0.7 ? "bg-warning-bg text-warning"
-                      : "bg-danger-bg text-danger"
-                  }`}>
-                    {(f.reliability * 100).toFixed(0)}%
-                  </span>
-                </td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{f.honoringPct}%</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{fmtVnd(f.priceTier1)}</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{fmtVnd(f.priceTier2)}</td>
-                <td className="px-4 py-2.5">
-                  <RowActions onEdit={() => setEditing(f)} onDelete={() => setDeleting(f)} onHistory={() => setHistoryCode(f.code)} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {(() => {
+        const cols: SmartTableColumn<MergedFactory>[] = [
+          {
+            key: "code", label: "Mã NM", width: 130, hideable: false, sortable: true,
+            render: (r) => (
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono font-medium text-text-1">{r.code}</span>
+                {r.source === "cloud" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
+                )}
+              </div>
+            ),
+          },
+          { key: "name", label: "Tên", width: 160, sortable: true, render: (r) => <span className="text-text-2">{r.name}</span> },
+          {
+            key: "region", label: "Vùng", width: 90, sortable: true,
+            filter: "enum",
+            filterOptions: Array.from(new Set(rows.map(r => r.region))).map(v => ({ value: v, label: v })),
+            accessor: (r) => r.region,
+            render: (r) => <span className="text-text-2">{r.region}</span>,
+          },
+          { key: "ltDays", label: "LT (ngày)", width: 100, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.ltDays}</span> },
+          { key: "sigmaLt", label: "σ_LT", width: 80, numeric: true, align: "right", sortable: true, priority: "low", render: (r) => <span className="tabular-nums text-text-2">{r.sigmaLt.toFixed(1)}</span> },
+          { key: "moqM2", label: "MOQ (m²)", width: 110, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.moqM2.toLocaleString("vi-VN")}</span> },
+          { key: "capacityM2Month", label: "Capacity/tháng", width: 130, numeric: true, align: "right", sortable: true, priority: "medium", render: (r) => <span className="tabular-nums text-text-2">{r.capacityM2Month.toLocaleString("vi-VN")}</span> },
+          {
+            key: "reliability", label: "Reliability", width: 110, numeric: true, align: "center", sortable: true,
+            render: (r) => (
+              <span className={cn(
+                "inline-flex items-center px-2 py-0.5 rounded-full text-table-sm font-medium tabular-nums",
+                r.reliability >= 0.9 ? "bg-success-bg text-success" : r.reliability >= 0.7 ? "bg-warning-bg text-warning" : "bg-danger-bg text-danger"
+              )}>
+                {(r.reliability * 100).toFixed(0)}%
+              </span>
+            ),
+          },
+          { key: "honoringPct", label: "Honoring", width: 100, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.honoringPct}%</span> },
+          { key: "priceTier1", label: "Giá tier 1", width: 110, numeric: true, align: "right", sortable: true, priority: "low", render: (r) => <span className="tabular-nums text-text-2">{fmtVnd(r.priceTier1)}</span> },
+          { key: "priceTier2", label: "Giá tier 2", width: 110, numeric: true, align: "right", sortable: true, priority: "low", render: (r) => <span className="tabular-nums text-text-2">{fmtVnd(r.priceTier2)}</span> },
+          {
+            key: "actions", label: "Thao tác", width: 100, align: "right", hideable: false,
+            render: (r) => (
+              <div onClick={(e) => e.stopPropagation()}>
+                <RowActions onEdit={() => setEditing(r)} onDelete={() => setDeleting(r)} onHistory={() => setHistoryCode(r.code)} />
+              </div>
+            ),
+          },
+        ];
+        return (
+          <SmartTable<MergedFactory>
+            screenId="master-factories"
+            exportFilename="nha_may"
+            columns={cols}
+            data={rows}
+            defaultDensity="compact"
+            getRowId={(r) => `${r.code}-${r.source}`}
+            rowSeverity={(r) => (r.reliability < 0.7 ? "shortage" : r.reliability < 0.9 ? "watch" : "ok")}
+          />
+        );
+      })()}
       <p className="text-table-sm text-text-3">
         {rows.length} nhà máy · <span className="text-success">{cloudFactories.length} từ cloud</span> + {FACTORIES.length} từ dataset mẫu
       </p>
@@ -746,45 +766,57 @@ function BranchesTab() {
         importDescription="Chọn nguồn nhập CN hàng loạt"
         placeholder="Tìm theo mã, tên CN..."
       />
-      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <table className="w-full text-table">
-          <thead>
-            <tr className="bg-surface-1">
-              {["Mã CN", "Tên chi nhánh", "Vùng", "Lat", "Lng", "z-factor", "Mức phục vụ", "Quản lý"].map((h) => (
-                <th key={h} className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">{h}</th>
-              ))}
-              <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3 font-medium w-[88px]">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((b, i) => {
-              const sl = b.zFactor >= 1.96 ? "97.5%" : b.zFactor >= 1.65 ? "95%" : b.zFactor >= 1.5 ? "93.3%" : "90%";
-              return (
-                <tr key={`${b.code}-${b.source}`} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
-                  <td className="px-4 py-2.5 font-mono font-medium text-text-1">
-                    <div className="flex items-center gap-1.5">
-                      {b.code}
-                      {b.source === "cloud" && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 text-text-2">{b.name}</td>
-                  <td className="px-4 py-2.5"><span className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-1 border border-surface-3 text-text-2 text-table-sm">{b.region}</span></td>
-                  <td className="px-4 py-2.5 text-text-2 tabular-nums">{b.lat.toFixed(4)}</td>
-                  <td className="px-4 py-2.5 text-text-2 tabular-nums">{b.lng.toFixed(4)}</td>
-                  <td className="px-4 py-2.5 text-text-2 tabular-nums">{b.zFactor.toFixed(2)}</td>
-                  <td className="px-4 py-2.5 text-text-2">{sl}</td>
-                  <td className="px-4 py-2.5 text-text-2">{b.manager}</td>
-                  <td className="px-4 py-2.5">
-                    <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} onHistory={() => setHistoryCode(b.code)} />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {(() => {
+        const serviceLevel = (z: number) => z >= 1.96 ? "97.5%" : z >= 1.65 ? "95%" : z >= 1.5 ? "93.3%" : "90%";
+        const cols: SmartTableColumn<MergedBranch>[] = [
+          {
+            key: "code", label: "Mã CN", width: 130, hideable: false, sortable: true,
+            render: (r) => (
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono font-medium text-text-1">{r.code}</span>
+                {r.source === "cloud" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
+                )}
+              </div>
+            ),
+          },
+          { key: "name", label: "Tên chi nhánh", width: 180, sortable: true, render: (r) => <span className="text-text-2">{r.name}</span> },
+          {
+            key: "region", label: "Vùng", width: 100, sortable: true,
+            filter: "enum",
+            filterOptions: [
+              { value: "Bắc", label: "Bắc" },
+              { value: "Trung", label: "Trung" },
+              { value: "Nam", label: "Nam" },
+            ],
+            accessor: (r) => r.region,
+            render: (r) => <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-1 border border-surface-3 text-text-2 text-table-sm">{r.region}</span>,
+          },
+          { key: "lat", label: "Lat", width: 90, numeric: true, align: "right", priority: "low", render: (r) => <span className="tabular-nums text-text-2">{r.lat.toFixed(4)}</span> },
+          { key: "lng", label: "Lng", width: 90, numeric: true, align: "right", priority: "low", render: (r) => <span className="tabular-nums text-text-2">{r.lng.toFixed(4)}</span> },
+          { key: "zFactor", label: "z-factor", width: 90, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.zFactor.toFixed(2)}</span> },
+          { key: "sl", label: "Mức phục vụ", width: 110, accessor: (r) => r.zFactor, render: (r) => <span className="text-text-2">{serviceLevel(r.zFactor)}</span> },
+          { key: "manager", label: "Quản lý", width: 140, render: (r) => <span className="text-text-2">{r.manager}</span> },
+          {
+            key: "actions", label: "Thao tác", width: 100, align: "right", hideable: false,
+            render: (r) => (
+              <div onClick={(e) => e.stopPropagation()}>
+                <RowActions onEdit={() => setEditing(r)} onDelete={() => setDeleting(r)} onHistory={() => setHistoryCode(r.code)} />
+              </div>
+            ),
+          },
+        ];
+        return (
+          <SmartTable<MergedBranch>
+            screenId="master-branches"
+            exportFilename="chi_nhanh"
+            columns={cols}
+            data={rows}
+            defaultDensity="compact"
+            getRowId={(r) => `${r.code}-${r.source}`}
+          />
+        );
+      })()}
       <p className="text-table-sm text-text-3">
         {rows.length} chi nhánh · <span className="text-success">{cloudBranches.length} từ cloud</span> + {BRANCHES.length} từ dataset mẫu
       </p>
@@ -1144,41 +1176,45 @@ function ContainersTab() {
         importDescription="Chọn nguồn nhập danh mục container"
         placeholder="Tìm theo mã, tên..."
       />
-      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <table className="w-full text-table">
-          <thead>
-            <tr className="bg-surface-1">
-              {["Mã", "Tên", "Sức chứa (m²)", "Pallet limit", "Tải trọng (kg)", "Cước (VND/km)", "Ghi chú"].map((h) => (
-                <th key={h} className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">{h}</th>
-              ))}
-              <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3 font-medium w-[88px]">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((c, i) => (
-              <tr key={`${c.code}-${c.source}`} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
-                <td className="px-4 py-2.5 font-mono font-medium text-text-1">
-                  <div className="flex items-center gap-1.5">
-                    {c.code}
-                    {c.source === "cloud" && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-2.5 text-text-2">{c.name}</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.capacityM2.toLocaleString("vi-VN")}</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.palletLimit}</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.weightLimitKg.toLocaleString("vi-VN")}</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.costPerKm.toLocaleString("vi-VN")}</td>
-                <td className="px-4 py-2.5 text-text-3">{c.note}</td>
-                <td className="px-4 py-2.5">
-                  <RowActions onEdit={() => setEditing(c)} onDelete={() => setDeleting(c)} onHistory={() => setHistoryCode(c.code)} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {(() => {
+        const cols: SmartTableColumn<MergedContainer>[] = [
+          {
+            key: "code", label: "Mã", width: 100, hideable: false, sortable: true,
+            render: (r) => (
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono font-medium text-text-1">{r.code}</span>
+                {r.source === "cloud" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
+                )}
+              </div>
+            ),
+          },
+          { key: "name", label: "Tên", width: 180, sortable: true, render: (r) => <span className="text-text-2">{r.name}</span> },
+          { key: "capacityM2", label: "Sức chứa (m²)", width: 130, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.capacityM2.toLocaleString("vi-VN")}</span> },
+          { key: "palletLimit", label: "Pallet limit", width: 110, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.palletLimit}</span> },
+          { key: "weightLimitKg", label: "Tải trọng (kg)", width: 130, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.weightLimitKg.toLocaleString("vi-VN")}</span> },
+          { key: "costPerKm", label: "Cước (VND/km)", width: 130, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.costPerKm.toLocaleString("vi-VN")}</span> },
+          { key: "note", label: "Ghi chú", width: 200, priority: "low", render: (r) => <span className="text-text-3">{r.note}</span> },
+          {
+            key: "actions", label: "Thao tác", width: 100, align: "right", hideable: false,
+            render: (r) => (
+              <div onClick={(e) => e.stopPropagation()}>
+                <RowActions onEdit={() => setEditing(r)} onDelete={() => setDeleting(r)} onHistory={() => setHistoryCode(r.code)} />
+              </div>
+            ),
+          },
+        ];
+        return (
+          <SmartTable<MergedContainer>
+            screenId="master-containers"
+            exportFilename="container"
+            columns={cols}
+            data={rows}
+            defaultDensity="compact"
+            getRowId={(r) => `${r.code}-${r.source}`}
+          />
+        );
+      })()}
       <p className="text-table-sm text-text-3">
         {rows.length} loại container · <span className="text-success">{cloudContainers.length} từ cloud</span> + {CONTAINER_TYPES.length} từ dataset mẫu
       </p>
