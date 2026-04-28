@@ -638,7 +638,7 @@ export function ContainerPlanningSection() {
     },
     {
       key: "consolidated", label: "Ghép tuyến", value: summary.consolidatedCount, unit: "chuyến",
-      severity: summary.consolidatedCount > 0 ? "ok" : "neutral",
+      severity: summary.consolidatedCount > 0 ? "ok" : undefined,
       tooltip: "Số chuyến chở 2-3 CN — tiết kiệm cước & xe",
       trend: summary.totalSaving > 0
         ? { delta: `Tiết kiệm ${formatVnd(summary.totalSaving)}₫`, direction: "down", color: "green" }
