@@ -36,7 +36,7 @@ import { drpCompare } from "@/lib/compare-metrics";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ContainerPlanningSection } from "@/components/drp/ContainerPlanningSection";
 import { CONTAINER_PLANS, getContainersForCn, summarizeContainers } from "@/data/container-plans";
-import { Truck, Package2, Link2 } from "lucide-react";
+import { Truck as TruckIcon, Link2 as Link2Icon, Package as PackageIcon } from "lucide-react";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
