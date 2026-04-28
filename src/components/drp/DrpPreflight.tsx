@@ -11,7 +11,7 @@
  *
  * Mọi text tiếng Việt.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, AlertTriangle, AlertOctagon, ArrowRight, Play, ShieldAlert, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -73,6 +73,38 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
   const okCount = items.filter((i) => i.level === "ok").length;
 
   const canRun = blocking.length === 0;
+
+  // ── Highlight các điều kiện "vừa được xử lý" khi quay lại Preflight ──
+  // So sánh snapshot (sessionStorage) keys đã từng block với trạng thái hiện tại.
+  const SNAPSHOT_KEY = "drp_preflight_block_snapshot_v1";
+  const [justResolvedKeys, setJustResolvedKeys] = useState<Set<string>>(new Set());
+  const persistedRef = useRef(false);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(SNAPSHOT_KEY);
+      const prevBlocking: string[] = raw ? JSON.parse(raw) : [];
+      const currentBlocking = new Set(items.filter((i) => i.level === "block").map((i) => i.key));
+      const resolved = prevBlocking.filter((k) => !currentBlocking.has(k));
+      if (resolved.length > 0) {
+        setJustResolvedKeys(new Set(resolved));
+        // Tự fade sau 12s để không gây nhiễu phiên làm việc dài
+        const t = window.setTimeout(() => setJustResolvedKeys(new Set()), 12_000);
+        return () => window.clearTimeout(t);
+      }
+    } catch {
+      /* ignore storage errors */
+    }
+  }, [items]);
+  // Lưu snapshot block hiện tại mỗi khi items thay đổi (chỉ lưu sau khi đã so sánh xong lần đầu của render)
+  useEffect(() => {
+    try {
+      const currentBlocking = items.filter((i) => i.level === "block").map((i) => i.key);
+      sessionStorage.setItem(SNAPSHOT_KEY, JSON.stringify(currentBlocking));
+      persistedRef.current = true;
+    } catch {
+      /* ignore */
+    }
+  }, [items]);
 
   // ── Force-release qualification: chỉ cho phép khi block DUY NHẤT là NM stale ──
   const staleBlock = useMemo(
@@ -159,48 +191,70 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
             </tr>
           </thead>
           <tbody>
-            {items.map((it) => (
+            {items.map((it) => {
+              const justResolved = justResolvedKeys.has(it.key) && it.level !== "block";
+              return (
               <tr
                 key={it.key}
                 className={cn(
-                  "border-t border-surface-3/60",
+                  "border-t border-surface-3/60 transition-colors",
                   it.level === "block" && "bg-danger-bg/20",
-                  it.level === "warn" && "bg-warning-bg/15"
+                  it.level === "warn" && "bg-warning-bg/15",
+                  justResolved && "bg-success-bg/40 ring-2 ring-success/50 animate-pulse-soft"
                 )}
               >
-                <td className="px-3 py-2 font-medium text-text-1">{it.label}</td>
+                <td className="px-3 py-2 font-medium text-text-1">
+                  <div className="flex items-center gap-1.5">
+                    {it.label}
+                    {justResolved && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full border border-success/40 bg-success-bg/60 px-1.5 py-0.5 text-[10px] font-semibold text-success"
+                        title="Điều kiện này vừa được xử lý từ trang khác"
+                      >
+                        <CheckCircle2 className="h-2.5 w-2.5" /> Vừa xử lý
+                      </span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-3 py-2 text-text-2">
                   {it.result}
                   {it.detail && (
                     <div className="text-caption text-text-3 mt-0.5">{it.detail}</div>
                   )}
-                  {it.fixHref && it.level !== "ok" && (
-                    <a
-                      href={it.fixHref}
-                      className={cn(
-                        "inline-flex items-center gap-1 mt-1 text-caption font-medium hover:underline",
-                        it.level === "block" ? "text-danger" : "text-warning"
-                      )}
-                    >
-                      {it.fixLabel ?? "Xử lý"} <ArrowRight className="h-3 w-3" />
-                    </a>
-                  )}
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <span className="inline-flex items-center gap-1.5">
-                    {levelIcon(it.level)}
-                    <span className={cn(
-                      "text-caption font-medium",
-                      it.level === "ok" && "text-success",
-                      it.level === "warn" && "text-warning",
-                      it.level === "block" && "text-danger"
-                    )}>
-                      {levelLabel(it.level)}
+                  <div className="inline-flex items-center gap-2 justify-end">
+                    {it.fixHref && it.level !== "ok" && (
+                      <Link
+                        to={it.fixHref}
+                        title={`Đi tới ${it.fixHref} để xử lý "${it.label}"`}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-button border px-2 py-1 text-[11px] font-semibold shrink-0",
+                          it.level === "block"
+                            ? "border-danger/40 bg-danger text-primary-foreground hover:opacity-90"
+                            : "border-warning/40 bg-warning-bg text-warning hover:bg-warning-bg/80"
+                        )}
+                      >
+                        {it.fixLabel ?? "Mở trang xử lý"}
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    )}
+                    <span className="inline-flex items-center gap-1.5">
+                      {levelIcon(it.level)}
+                      <span className={cn(
+                        "text-caption font-medium",
+                        it.level === "ok" && "text-success",
+                        it.level === "warn" && "text-warning",
+                        it.level === "block" && "text-danger"
+                      )}>
+                        {levelLabel(it.level)}
+                      </span>
                     </span>
-                  </span>
+                  </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
           <tfoot className="border-t border-surface-3 bg-surface-1/60">
             <tr>
@@ -227,7 +281,7 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
         {summaryText}
       </div>
 
-      {/* ── BLOCKING BANNER — list từng điều kiện chặn + nút điều hướng trực tiếp ── */}
+      {/* ── BLOCKING BANNER — danh sách điều kiện chặn + nút điều hướng trực tiếp ── */}
       {blocking.length > 0 && (
         <div className="rounded-md border border-danger/40 bg-danger-bg/30 p-3 space-y-2">
           <div className="flex items-center gap-2 text-table-sm font-semibold text-danger">
@@ -247,10 +301,10 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
                 {b.fixHref ? (
                   <Link
                     to={b.fixHref}
+                    title={`Đi tới ${b.fixHref} để xử lý "${b.label}"`}
                     className="inline-flex items-center gap-1 rounded-button border border-danger/40 bg-danger text-primary-foreground px-2.5 py-1 text-table-xs font-semibold hover:opacity-90 shrink-0"
-                    title={`Đi tới ${b.fixHref} để xử lý`}
                   >
-                    {b.fixLabel ?? "Xử lý ngay"}
+                    {b.fixLabel ?? "Mở trang xử lý"}
                     <ExternalLink className="h-3 w-3" />
                   </Link>
                 ) : (
@@ -259,31 +313,6 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
               </li>
             ))}
           </ul>
-          {warnings.length > 0 && (
-            <details className="text-table-xs text-text-2">
-              <summary className="cursor-pointer hover:text-text-1">
-                + {warnings.length} cảnh báo (không chặn) — xem
-              </summary>
-              <ul className="mt-1.5 space-y-1 pl-3">
-                {warnings.map((w) => (
-                  <li key={w.key} className="flex items-center justify-between gap-2">
-                    <span>
-                      <AlertTriangle className="inline h-3 w-3 text-warning mr-1" />
-                      <span className="text-text-1 font-medium">{w.label}:</span> {w.result}
-                    </span>
-                    {w.fixHref && (
-                      <Link
-                        to={w.fixHref}
-                        className="inline-flex items-center gap-0.5 text-info hover:underline shrink-0"
-                      >
-                        {w.fixLabel ?? "Mở"} <ExternalLink className="h-2.5 w-2.5" />
-                      </Link>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
         </div>
       )}
 
