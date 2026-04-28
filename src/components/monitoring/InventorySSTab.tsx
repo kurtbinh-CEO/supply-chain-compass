@@ -472,7 +472,7 @@ export function InventorySSTab({ scale: s }: Props) {
           drillDown={(r) => r.skus.length > 0 ? (
             <CnSkuDrill
               rows={r.skus.map((sk) => ({ ...sk, _rowId: `${r.cn}-${sk.item}-${sk.variant}`, _cn: r.cn }))}
-              cn={r.cn}
+              cnName={r.cn}
               onSku={(k) => setSkuSheet(k)}
               onBridge={setExpandedBridge}
               expandedBridge={expandedBridge}
