@@ -1642,6 +1642,7 @@ export default function DrpPage() {
                   <TermTooltip term="FillRate">Lấp đầy</TermTooltip>
                 </th>
                 <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Nguồn hàng</th>
+                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Container</th>
                 <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Hành động</th>
               </tr>
             </thead>
