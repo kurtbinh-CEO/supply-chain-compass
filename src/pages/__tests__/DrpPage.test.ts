@@ -72,3 +72,30 @@ describe('ExcSeed → AllocSources mapping', () => {
     expect(suggested.some(s => s.recommended)).toBe(true);
   });
 });
+
+describe('SafetyStockBadge coverage status', () => {
+  it('shows correct coverage status for CN-BMT/GA-300 (above_ss)', () => {
+    const sample = EXCEPTION_SEEDS.find(e => e.cn === 'CN-BMT' && e.sku === 'GA-300')!;
+    expect(sample.ssReserved).toBe(240);
+    expect(sample.ssTarget).toBe(240);
+    const pct = (sample.ssReserved / sample.ssTarget) * 100;
+    expect(pct).toBe(100);
+    expect(getSsStatus(sample.ssTarget, sample.ssReserved)).toBe('above_ss');
+  });
+
+  it('getSsStatus boundaries', () => {
+    expect(getSsStatus(0, 0)).toBe('no_ss');
+    expect(getSsStatus(100, 100)).toBe('above_ss');
+    expect(getSsStatus(100, 120)).toBe('above_ss');
+    expect(getSsStatus(100, 80)).toBe('at_ss');
+    expect(getSsStatus(100, 79)).toBe('below_ss');
+  });
+
+  it('all SHORTAGE/WATCH seeds have ssTarget > 0 → renderable badge', () => {
+    EXCEPTION_SEEDS.forEach((e, i) => {
+      expect(e.ssTarget, `Entry ${i}`).toBeGreaterThan(0);
+      const status = getSsStatus(e.ssTarget, e.ssReserved);
+      expect(status, `Entry ${i}`).not.toBe('no_ss');
+    });
+  });
+});
