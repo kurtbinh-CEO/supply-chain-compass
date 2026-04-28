@@ -383,6 +383,17 @@ export default function OrdersPage() {
         />
       </div>
 
+      {/* Hint quy ước split-intent */}
+      <p className="text-[11px] text-text-3 mb-1.5 flex items-center gap-2">
+        <span className="inline-flex items-center gap-1">
+          <span className="font-mono text-text-2">▸</span> Xem mã hàng tại chỗ
+        </span>
+        <span className="text-surface-3">·</span>
+        <span className="inline-flex items-center gap-1">
+          <span className="h-2 w-0.5 bg-primary inline-block" /> Click dòng để mở timeline & thao tác
+        </span>
+      </p>
+
       {/* ═══ MAIN TABLE — PO GROUPS (NM × CN × Tuần) ═══ */}
       <SmartTable<PoGroup>
         data={visibleGroups}
