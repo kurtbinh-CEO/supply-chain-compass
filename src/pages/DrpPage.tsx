@@ -1,12 +1,12 @@
 import { useState, useMemo, useEffect, useRef, Fragment } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   Play, ChevronDown, ChevronRight, ArrowRight, Lock as LockIcon,
-  CheckCircle2, AlertTriangle, Info, X,
+  CheckCircle2, AlertTriangle, Info, X, RefreshCw,
 } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { TermTooltip } from "@/components/TermTooltip";
@@ -827,6 +827,31 @@ export default function DrpPage() {
 
   // Preflight items — TÍNH TỪ DATA THỰC qua evaluator dùng chung với /drp/preflight-audit
   const { sopLock } = useWorkspace();
+
+  // ── Auto-refresh banner khi quay lại từ trang xử lý (không reload toàn trang) ──
+  // Tăng refreshTick mỗi khi: tab visible lại, window focus, pageshow (bfcache), hoặc route đổi về /drp.
+  const [preflightRefreshTick, setPreflightRefreshTick] = useState(0);
+  const lastBlockingCountRef = useRef<number | null>(null);
+  const location = useLocation();
+  useEffect(() => {
+    const bump = () => setPreflightRefreshTick((n) => n + 1);
+    const onVisible = () => { if (document.visibilityState === "visible") bump(); };
+    window.addEventListener("focus", bump);
+    window.addEventListener("pageshow", bump);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", bump);
+      window.removeEventListener("pageshow", bump);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+  // Khi quay về /drp (vd từ /sop, /inventory) — bump tick.
+  useEffect(() => {
+    if (location.pathname.startsWith("/drp")) {
+      setPreflightRefreshTick((n) => n + 1);
+    }
+  }, [location.pathname, location.key]);
+
   const preflightItems: PreflightItem[] = useMemo(() => {
     // Dùng chung computePreflightAudit để 2 màn hình luôn khớp 1:1
     // (xem src/lib/drp-preflight.ts).
@@ -836,7 +861,25 @@ export default function DrpPage() {
       planCycle,
       sopLockedFromWorkspace: sopLock.locked,
     }).map(({ thresholdText: _t, evidence: _e, ruleText: _r, blocksRun: _b, ...item }) => item);
-  }, [tenant, sopLock.locked, planCycle]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenant, sopLock.locked, planCycle, preflightRefreshTick]);
+
+  // Toast khi đã có cải thiện sau lần làm mới (chỉ khi đang ở Bước 1 = Preflight)
+  useEffect(() => {
+    const currentBlocking = preflightItems.filter((i) => i.level === "block").length;
+    const prev = lastBlockingCountRef.current;
+    if (prev !== null && currentBlocking < prev && wizardStep === 1) {
+      const resolved = prev - currentBlocking;
+      toast.success(
+        currentBlocking === 0
+          ? `Đã xử lý xong tất cả điều kiện chặn — sẵn sàng chạy DRP`
+          : `Đã xử lý ${resolved} điều kiện chặn · còn ${currentBlocking} chặn`,
+        { description: "Banner đã tự cập nhật theo dữ liệu mới nhất." },
+      );
+    }
+    lastBlockingCountRef.current = currentBlocking;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preflightItems]);
 
   // 10 progress steps cho Bước 2
   const progressSteps: ProgressStep[] = useMemo(() => [
@@ -1185,7 +1228,17 @@ export default function DrpPage() {
       {/* ══ BƯỚC 1 — PREFLIGHT ══ */}
       {wizardStep === 1 && (
         <div className="space-y-2">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => {
+                setPreflightRefreshTick((n) => n + 1);
+                toast.success("Đã làm mới preflight theo dữ liệu mới nhất");
+              }}
+              className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 py-1.5 text-table-sm text-text-2 hover:text-text-1"
+              title="Tính lại các điều kiện preflight ngay"
+            >
+              <RefreshCw className="h-3.5 w-3.5" /> Làm mới
+            </button>
             <button
               onClick={() => navigate("/drp/preflight-audit")}
               className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 py-1.5 text-table-sm text-text-2 hover:text-text-1"
