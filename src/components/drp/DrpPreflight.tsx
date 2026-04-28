@@ -44,6 +44,10 @@ interface Props {
   onBack?: () => void;
   /** Nếu auto run preflight chạy tự động — hiện banner */
   autoRunFailed?: { reason: string; fixHref?: string };
+  /** Đang tính lại preflight — hiện chip "Đang làm mới…" trên banner */
+  refreshing?: boolean;
+  /** Mốc thời gian lần làm mới gần nhất */
+  lastRefreshAt?: Date | null;
 }
 
 function levelIcon(l: PreflightLevel) {
