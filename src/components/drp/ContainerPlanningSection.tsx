@@ -690,10 +690,14 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
   const originalQtys = useMemo(() => initial.map((l) => l.qtyM2), [initial]);
   const [editValidations, setEditValidations] = useState<Record<number, QtyEditValidation | null>>({});
   const [decreaseReasons, setDecreaseReasons] = useState<Record<number, string>>({});
+  // Last value the user TYPED for each row — preserved even when blocked,
+  // so they can see/correct it instead of snapping back silently.
+  const [attemptedQtys, setAttemptedQtys] = useState<Record<number, number>>({});
   useEffect(() => {
     setLines(getPoLines(container));
     setEditValidations({});
     setDecreaseReasons({});
+    setAttemptedQtys({});
   }, [container]);
 
   const totalM2 = lines.reduce((a, l) => a + l.qtyM2, 0);
@@ -707,6 +711,28 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
   const nmAvailableFor = (idx: number) => Math.round(originalQtys[idx] * 1.5);
   // Mock SKU MOQ
   const moqFor = () => 500;
+
+  /** Map severity → required-action label shown inline under the row. */
+  const requiredActionFor = (
+    v: QtyEditValidation, idx: number, attempted: number, applied: number,
+  ): string => {
+    if (v.severity === "block") {
+      const maxByWeight = Math.floor(VEHICLE_MAX_WEIGHT_KG / skuWeight(lines[idx].sku));
+      if (attempted > applied) {
+        return `Cần làm: giảm xuống ≤ ${applied.toLocaleString()}m² (giới hạn ~${maxByWeight.toLocaleString()}m² theo tải xe) hoặc đổi xe lớn hơn.`;
+      }
+      return "Cần làm: chỉnh lại số lượng hợp lệ (≥ 0, không vượt tải/MOQ).";
+    }
+    if (v.severity === "require_reason") {
+      return "Cần làm: chọn lý do giảm bên dưới trước khi gửi duyệt.";
+    }
+    if (v.severity === "warn") {
+      if (/Tăng/i.test(v.message)) return "Cần làm: gửi SC Manager duyệt mức tăng này.";
+      if (/Gỡ PO/i.test(v.message)) return "Cần làm: xác nhận chuyển PO sang danh sách 'Chưa xếp'.";
+      return "Cần làm: kiểm tra lại commitment với NM trước khi lưu.";
+    }
+    return "";
+  };
 
   const editQty = (idx: number, v: number) => {
     const newQty = Math.max(0, v);
@@ -729,14 +755,16 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
       nmAvailableQty: nmAvailableFor(idx),
       skuMoq: moqFor(),
     });
-    // Nếu BLOCK → không cho update
+    // Always remember what the user typed, even when blocked.
+    setAttemptedQtys((m) => ({ ...m, [idx]: newQty }));
+    setEditValidations((m) => ({ ...m, [idx]: validation }));
+    // Nếu BLOCK → KHÔNG ghi vào lines (giữ "applied" cũ), nhưng input vẫn
+    // hiển thị attempted để user thấy & sửa, không silently snap back.
     if (validation.severity === "block") {
-      setEditValidations((m) => ({ ...m, [idx]: validation }));
       toast.error(`Không thể cập nhật: ${validation.message}`);
       return;
     }
     setLines((arr) => arr.map((l, i) => i === idx ? { ...l, qtyM2: newQty } : l));
-    setEditValidations((m) => ({ ...m, [idx]: validation }));
   };
   const removePo = (idx: number) => {
     const removed = lines[idx];
