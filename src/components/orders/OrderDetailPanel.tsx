@@ -167,10 +167,11 @@ export function OrderDetailPanel({ group, onAction, onCancel, onClose }: Props) 
           </div>
           <button
             onClick={onClose}
-            className="rounded-button p-1.5 hover:bg-surface-2 text-text-2"
+            className="rounded-button h-11 w-11 sm:h-9 sm:w-9 flex items-center justify-center hover:bg-surface-2 text-text-2 shrink-0"
             title="Đóng"
+            aria-label="Đóng"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5 sm:h-4 sm:w-4" />
           </button>
         </div>
 
