@@ -1703,3 +1703,15 @@ function fmtDateShort(iso: string): string {
   const [, m, dd] = iso.split("-");
   return `${dd}/${m}`;
 }
+
+/** Convert uploaded EvidenceFile[] → PoEvidence[] for timeline/evidence storage. */
+function filesToEvidence(files: EvidenceFile[], defaultKind: "photo" | "doc" | "screenshot" | "signature" = "photo"): PoEvidence[] {
+  return files.map((f) => ({
+    label: f.name,
+    kind: f.type.startsWith("image/") ? (defaultKind === "screenshot" ? "screenshot" : "photo")
+      : f.type.includes("pdf") ? "doc"
+      : defaultKind,
+    url: f.dataUrl,
+    count: 1,
+  }));
+}
