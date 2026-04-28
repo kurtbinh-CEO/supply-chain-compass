@@ -34,6 +34,7 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 import { useNavigate } from "react-router-dom";
 import { SummaryCards } from "@/components/SummaryCards";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import { PillTabs } from "@/components/PillTabs";
 import {
   RELEASED_BY_NM,
   WEEKLY_BURN_BY_NM,
