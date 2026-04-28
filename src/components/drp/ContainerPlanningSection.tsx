@@ -251,6 +251,7 @@ function DropPointsEditor({
     setCloseConfirmOpen(false);
   };
 
+  const fmtKm = (v: number) => v.toLocaleString("vi-VN") + " km";
   const fmtDelta = (v: number) => {
     const sign = v >= 0 ? "+" : "−";
     const abs = Math.abs(v);
