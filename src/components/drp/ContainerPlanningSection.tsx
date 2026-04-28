@@ -783,6 +783,48 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
   const eligibleCandidates = candidates.filter((c) => c.eligible);
   const ineligibleCandidates = candidates.filter((c) => !c.eligible);
 
+  /* ── Drop-eligibility confirm modal state ──
+     Khi user pick 1 CN từ "Thêm drop" → KHÔNG commit ngay.
+     Mở dialog tóm tắt: km detour, tiết kiệm dự kiến, doanh thu/chi phí ở rủi ro.
+  */
+  const [pendingDrop, setPendingDrop] = useState<
+    { cn2: string; detourKm: number; eligible: boolean; reason?: string;
+      estSavingVnd?: number; direction?: string } | null
+  >(null);
+
+  /** Heuristic risk model — derive from current container size + detour. */
+  const riskOf = (cand: NonNullable<typeof pendingDrop>) => {
+    // Doanh thu ở rủi ro = ~30% giá trị container hiện tại nếu detour > 30km (SLA trễ).
+    // Chi phí phát sinh = detourKm × cost/km của vehicle (xấp xỉ 65K cho container).
+    const containerRevenueVnd = container.freightVnd * 4; // rough proxy: cước ≈ 25% doanh thu
+    const slaRiskPct = cand.detourKm > 30 ? 30 : cand.detourKm > 15 ? 15 : 5;
+    const revenueAtRiskVnd = Math.round(containerRevenueVnd * (slaRiskPct / 100));
+    const extraCostVnd = cand.detourKm * 65_000;
+    const netVnd = (cand.estSavingVnd ?? 0) - extraCostVnd;
+    return { containerRevenueVnd, slaRiskPct, revenueAtRiskVnd, extraCostVnd, netVnd };
+  };
+
+  const tryAddDrop = (cn: string) => {
+    const pair = candidates.find((c) => c.cn2 === cn);
+    if (!pair) return;
+    // Eligibility check là gate cứng — nhưng vẫn mở modal để giải thích lý do.
+    setPendingDrop(pair);
+  };
+
+  const confirmAddDrop = () => {
+    if (!pendingDrop) return;
+    if (!pendingDrop.eligible) {
+      toast.error(`Không thể ghép ${pendingDrop.cn2}: ${pendingDrop.reason ?? "không đủ điều kiện"}`);
+      setPendingDrop(null);
+      return;
+    }
+    toast.success(
+      `Đã thêm ${pendingDrop.cn2} vào chuyến (detour +${pendingDrop.detourKm}km, ` +
+      `tiết kiệm ~${((pendingDrop.estSavingVnd ?? 0) / 1_000_000).toFixed(1)}M₫)`,
+    );
+    setPendingDrop(null);
+  };
+
   return (
     <div className="rounded-card border border-surface-3 bg-surface-1 p-3 space-y-2">
       <div className="flex items-center justify-between">
