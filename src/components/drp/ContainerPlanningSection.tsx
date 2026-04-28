@@ -13,6 +13,7 @@ import {
   type ContainerPlan,
 } from "@/data/container-plans";
 import { RouteMapPreview } from "./RouteMapPreview";
+import { KpiImpactGrid } from "./KpiImpactGrid";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
