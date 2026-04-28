@@ -852,6 +852,9 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
         defaultDensity="compact"
         title={`Kế hoạch ${summary.total} chuyến container`}
         exportFilename={`drp-container-w20`}
+        getRowId={(r) => r.id}
+        beforeCollapse={beforeCollapse}
+        collapseRowSignal={collapseSignal}
         rowSeverity={(r) =>
           r.fillPct < 70 ? "watch" : undefined
         }
