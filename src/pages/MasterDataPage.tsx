@@ -766,45 +766,57 @@ function BranchesTab() {
         importDescription="Chọn nguồn nhập CN hàng loạt"
         placeholder="Tìm theo mã, tên CN..."
       />
-      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <table className="w-full text-table">
-          <thead>
-            <tr className="bg-surface-1">
-              {["Mã CN", "Tên chi nhánh", "Vùng", "Lat", "Lng", "z-factor", "Mức phục vụ", "Quản lý"].map((h) => (
-                <th key={h} className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">{h}</th>
-              ))}
-              <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3 font-medium w-[88px]">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((b, i) => {
-              const sl = b.zFactor >= 1.96 ? "97.5%" : b.zFactor >= 1.65 ? "95%" : b.zFactor >= 1.5 ? "93.3%" : "90%";
-              return (
-                <tr key={`${b.code}-${b.source}`} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
-                  <td className="px-4 py-2.5 font-mono font-medium text-text-1">
-                    <div className="flex items-center gap-1.5">
-                      {b.code}
-                      {b.source === "cloud" && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 text-text-2">{b.name}</td>
-                  <td className="px-4 py-2.5"><span className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-1 border border-surface-3 text-text-2 text-table-sm">{b.region}</span></td>
-                  <td className="px-4 py-2.5 text-text-2 tabular-nums">{b.lat.toFixed(4)}</td>
-                  <td className="px-4 py-2.5 text-text-2 tabular-nums">{b.lng.toFixed(4)}</td>
-                  <td className="px-4 py-2.5 text-text-2 tabular-nums">{b.zFactor.toFixed(2)}</td>
-                  <td className="px-4 py-2.5 text-text-2">{sl}</td>
-                  <td className="px-4 py-2.5 text-text-2">{b.manager}</td>
-                  <td className="px-4 py-2.5">
-                    <RowActions onEdit={() => setEditing(b)} onDelete={() => setDeleting(b)} onHistory={() => setHistoryCode(b.code)} />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {(() => {
+        const serviceLevel = (z: number) => z >= 1.96 ? "97.5%" : z >= 1.65 ? "95%" : z >= 1.5 ? "93.3%" : "90%";
+        const cols: SmartTableColumn<MergedBranch>[] = [
+          {
+            key: "code", label: "Mã CN", width: 130, hideable: false, sortable: true,
+            render: (r) => (
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono font-medium text-text-1">{r.code}</span>
+                {r.source === "cloud" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
+                )}
+              </div>
+            ),
+          },
+          { key: "name", label: "Tên chi nhánh", width: 180, sortable: true, render: (r) => <span className="text-text-2">{r.name}</span> },
+          {
+            key: "region", label: "Vùng", width: 100, sortable: true,
+            filter: "enum",
+            filterOptions: [
+              { value: "Bắc", label: "Bắc" },
+              { value: "Trung", label: "Trung" },
+              { value: "Nam", label: "Nam" },
+            ],
+            accessor: (r) => r.region,
+            render: (r) => <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-1 border border-surface-3 text-text-2 text-table-sm">{r.region}</span>,
+          },
+          { key: "lat", label: "Lat", width: 90, numeric: true, align: "right", priority: "low", render: (r) => <span className="tabular-nums text-text-2">{r.lat.toFixed(4)}</span> },
+          { key: "lng", label: "Lng", width: 90, numeric: true, align: "right", priority: "low", render: (r) => <span className="tabular-nums text-text-2">{r.lng.toFixed(4)}</span> },
+          { key: "zFactor", label: "z-factor", width: 90, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.zFactor.toFixed(2)}</span> },
+          { key: "sl", label: "Mức phục vụ", width: 110, accessor: (r) => r.zFactor, render: (r) => <span className="text-text-2">{serviceLevel(r.zFactor)}</span> },
+          { key: "manager", label: "Quản lý", width: 140, render: (r) => <span className="text-text-2">{r.manager}</span> },
+          {
+            key: "actions", label: "Thao tác", width: 100, align: "right", hideable: false,
+            render: (r) => (
+              <div onClick={(e) => e.stopPropagation()}>
+                <RowActions onEdit={() => setEditing(r)} onDelete={() => setDeleting(r)} onHistory={() => setHistoryCode(r.code)} />
+              </div>
+            ),
+          },
+        ];
+        return (
+          <SmartTable<MergedBranch>
+            screenId="master-branches"
+            exportFilename="chi_nhanh"
+            columns={cols}
+            data={rows}
+            defaultDensity="compact"
+            getRowId={(r) => `${r.code}-${r.source}`}
+          />
+        );
+      })()}
       <p className="text-table-sm text-text-3">
         {rows.length} chi nhánh · <span className="text-success">{cloudBranches.length} từ cloud</span> + {BRANCHES.length} từ dataset mẫu
       </p>
