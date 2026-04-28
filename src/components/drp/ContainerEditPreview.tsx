@@ -14,6 +14,9 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { ContainerPlan, DropPoint } from "@/data/container-plans";
 import { inferContainerRoute, REGION_LABELS } from "@/data/route-constraints";
 
