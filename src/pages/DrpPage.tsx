@@ -829,6 +829,25 @@ export default function DrpPage() {
   const [progressCanCancel, setProgressCanCancel] = useState(true);
   const [approveExceptionDialog, setApproveExceptionDialog] = useState(false);
 
+  /* ── Bước 3 sub-tabs: Phân bổ vs Đóng container + cross-link highlight ── */
+  const [resultsTab, setResultsTab] = useState<"allocation" | "container">("allocation");
+  const [crossHighlight, setCrossHighlight] = useState<string | null>(null);
+  const crossLink = (target: "allocation" | "container", id: string) => {
+    setResultsTab(target);
+    setCrossHighlight(id);
+    setTimeout(() => {
+      const prefix = target === "allocation" ? "alloc-row-" : "container-row-";
+      const el = document.getElementById(`${prefix}${id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("ring-2", "ring-primary", "ring-offset-2", "bg-primary/5");
+        setTimeout(() => {
+          el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "bg-primary/5");
+        }, 1600);
+      }
+    }, 150);
+  };
+
   // Preflight items — TÍNH TỪ DATA THỰC qua evaluator dùng chung với /drp/preflight-audit
   const { sopLock } = useWorkspace();
 
