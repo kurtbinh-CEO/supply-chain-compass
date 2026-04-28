@@ -1083,10 +1083,9 @@ function ScenarioTab({
             </div>
             <p className="text-table-sm text-text-3 mt-1">
               Yêu cầu {fmtM2(selected.totalRequestedM2)} · Cam kết{" "}
-              {fmtM2(selected.totalCommittedM2)} · Gap{" "}
-              <span className="font-semibold text-text-1">
-                {fmtM2(selected.gapM2)} ({selected.gapPct}%)
-              </span>
+              {fmtM2(selected.totalCommittedM2)} · Đã kéo{" "}
+              <span className="font-semibold text-text-1">{fmtM2(selected.releasedM2)}</span> ({selected.pulledPct}%)
+              · Còn lại <span className="font-semibold text-warning">{fmtM2(selected.remainingM2)}</span>
             </p>
           </div>
           <div className="flex items-center gap-2">
