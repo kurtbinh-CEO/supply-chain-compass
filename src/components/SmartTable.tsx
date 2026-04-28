@@ -107,6 +107,11 @@ export interface SmartTableProps<T = any> {
    * Trả `true`/`undefined` để cho phép đóng như bình thường.
    */
   beforeCollapse?: (row: T) => boolean | undefined;
+  /**
+   * Yêu cầu collapse một row cụ thể từ ngoài (parent confirm xong).
+   * Bump `nonce` mỗi lần để trigger; `id` = row id muốn collapse.
+   */
+  collapseRowSignal?: { id: string; nonce: number } | null;
   emptyMessage?: string;
   /** Trạng thái loading — hiện shimmer rows */
   isLoading?: boolean;
