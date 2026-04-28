@@ -1768,6 +1768,17 @@ export default function DrpPage() {
                   </span>
                 );
               } },
+            { key: "ss", label: "SS", width: 168, sortable: true,
+              accessor: (r) => {
+                const tot = r.allSkus.reduce((a, sk) => ({ t: a.t + (sk.ssTarget ?? 0), rsv: a.rsv + (sk.ssReserved ?? 0) }), { t: 0, rsv: 0 });
+                return tot.t > 0 ? tot.rsv / tot.t : 1;
+              },
+              render: (r) => {
+                const tot = r.allSkus.reduce((a, sk) => ({ t: a.t + (sk.ssTarget ?? 0), rsv: a.rsv + (sk.ssReserved ?? 0), al: a.al + sk.allocated }), { t: 0, rsv: 0, al: 0 });
+                return tot.t > 0 ? (
+                  <SafetyStockBadge ssTarget={tot.t} ssReserved={tot.rsv} allocated={tot.al} size="sm" />
+                ) : <span className="text-text-3 text-caption">—</span>;
+              } },
             { key: "sources", label: "Nguồn hàng",
               render: (r) => {
                 const cnTotals = r.allSkus.reduce((acc, sk) => ({
