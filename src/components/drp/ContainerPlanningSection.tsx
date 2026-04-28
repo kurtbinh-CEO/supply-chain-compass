@@ -1,0 +1,433 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Truck, Package, AlertTriangle, ArrowRight, Clock, MapPin, Pencil,
+  TrendingUp, Link2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import {
+  CONTAINER_PLANS, summarizeContainers,
+  type ContainerPlan,
+} from "@/data/container-plans";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+
+const fmtVnd = (v: number) => v.toLocaleString("vi-VN") + "₫";
+const fmtVndShort = (v: number) => {
+  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M₫";
+  if (v >= 1_000) return Math.round(v / 1000) + "K₫";
+  return v + "₫";
+};
+
+const STATUS_LABEL: Record<ContainerPlan["status"], string> = {
+  draft: "Nháp",
+  ready: "Sẵn sàng",
+  hold: "Giữ chờ",
+  in_transit: "Đang vận chuyển",
+  delivered: "Đã giao",
+};
+
+const STATUS_CLASS: Record<ContainerPlan["status"], string> = {
+  draft: "border-surface-3 bg-surface-2 text-text-2",
+  ready: "border-info/30 bg-info-bg text-info",
+  hold: "border-warning/30 bg-warning-bg text-warning",
+  in_transit: "border-primary/30 bg-primary/10 text-primary",
+  delivered: "border-success/30 bg-success-bg text-success",
+};
+
+const SUGGESTION_CLASS: Record<string, string> = {
+  gom_them: "border-warning/40 bg-warning-bg text-warning",
+  xuat_ngay: "border-success/40 bg-success-bg text-success",
+  tach_xe: "border-info/40 bg-info-bg text-info",
+};
+
+interface Props {
+  /** Cross-link: click CN badge → switch sang tab Phân bổ + highlight CN */
+  onCnClick?: (cnCode: string) => void;
+  /** External highlight target (TP-xxx) khi user vừa cross-link từ tab Phân bổ */
+  highlightId?: string | null;
+}
+
+export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
+  const navigate = useNavigate();
+  const summary = summarizeContainers(CONTAINER_PLANS);
+
+  const [editing, setEditing] = useState<ContainerPlan | null>(null);
+
+  // Khi highlightId đổi (cross-link arrive) → flash row & scroll
+  useEffect(() => {
+    if (!highlightId) return;
+    const el = document.getElementById(`container-row-${highlightId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("ring-2", "ring-primary", "ring-offset-2", "bg-primary/5");
+    const t = setTimeout(() => {
+      el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "bg-primary/5");
+    }, 1600);
+    return () => clearTimeout(t);
+  }, [highlightId]);
+
+  const cols: SmartTableColumn<ContainerPlan>[] = [
+    {
+      key: "id", label: "Chuyến", width: 90,
+      render: (r) => (
+        <span id={`container-row-${r.id}`} className="font-mono text-text-1 font-semibold">
+          {r.id}
+        </span>
+      ),
+      accessor: (r) => r.id,
+    },
+    {
+      key: "vehicle", label: "Loại xe", width: 80,
+      render: (r) => <span className="text-text-2">{r.vehicle}</span>,
+      accessor: (r) => r.vehicle,
+      filter: "enum",
+      filterOptions: [
+        { value: "40ft", label: "40ft" },
+        { value: "20ft", label: "20ft" },
+        { value: "Xe10T", label: "Xe10T" },
+      ],
+    },
+    {
+      key: "factory", label: "Nhà máy", width: 110,
+      render: (r) => <span className="text-text-1">{r.factoryName}</span>,
+      accessor: (r) => r.factoryName,
+    },
+    {
+      key: "route", label: "Tuyến", minWidth: 220,
+      render: (r) => (
+        <div className="flex items-center gap-1.5 text-text-1">
+          <MapPin className="h-3 w-3 text-text-3 shrink-0" />
+          <span className="truncate">{r.routeLabel}</span>
+          {r.consolidated && (
+            <span className="ml-1 inline-flex items-center gap-0.5 rounded-full border border-warning/40 bg-warning-bg px-1.5 py-0.5 text-[10px] font-semibold text-warning">
+              <Link2 className="h-2.5 w-2.5" /> GHÉP
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "fill", label: "Lấp đầy", width: 100, align: "right",
+      render: (r) => {
+        const sev = r.fillPct < 70 ? "danger" : r.fillPct < 85 ? "warning" : "success";
+        return (
+          <div className="flex items-center justify-end gap-1.5 tabular-nums">
+            {r.fillPct < 70 && <AlertTriangle className="h-3 w-3 text-warning" />}
+            <span className={cn("font-semibold",
+              sev === "success" && "text-success",
+              sev === "warning" && "text-warning",
+              sev === "danger" && "text-danger")}>
+              {r.fillPct}%
+            </span>
+          </div>
+        );
+      },
+      accessor: (r) => r.fillPct,
+      numeric: true,
+    },
+    {
+      key: "cnpo", label: "CN / PO", minWidth: 200,
+      render: (r) => (
+        <div className="flex flex-wrap gap-1">
+          {r.drops.map((d) => (
+            <button
+              key={d.cnCode}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onCnClick) {
+                  onCnClick(d.cnCode);
+                  toast.info(`Chuyển sang Phân bổ — ${d.cnCode}`);
+                }
+              }}
+              title={`Click để xem phân bổ ${d.cnName}`}
+              className="inline-flex items-center gap-0.5 rounded-full border border-primary/30 bg-primary/5 px-1.5 py-0.5 text-[11px] font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+            >
+              {d.cnCode}
+            </button>
+          ))}
+          <span className="text-text-3 text-[11px] self-center ml-1">
+            ({r.poIds.length} PO)
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: "freight", label: "Cước", width: 100, align: "right",
+      render: (r) => (
+        <div className="text-right tabular-nums">
+          <div className="text-text-1 font-medium">{fmtVndShort(r.freightVnd)}</div>
+          {r.savingVnd > 0 && (
+            <div className="text-[10px] text-success">−{fmtVndShort(r.savingVnd)}</div>
+          )}
+        </div>
+      ),
+      accessor: (r) => r.freightVnd,
+      numeric: true,
+    },
+    {
+      key: "status", label: "Trạng thái", width: 130,
+      render: (r) => (
+        <div className="flex flex-col gap-0.5">
+          <span className={cn("inline-flex items-center self-start rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
+            STATUS_CLASS[r.status])}>
+            {STATUS_LABEL[r.status]}
+          </span>
+          {r.status === "hold" && r.holdDeadline && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-warning">
+              <Clock className="h-2.5 w-2.5" /> {r.holdDeadline}
+            </span>
+          )}
+        </div>
+      ),
+      accessor: (r) => STATUS_LABEL[r.status],
+      filter: "enum",
+      filterOptions: Object.entries(STATUS_LABEL).map(([value, label]) => ({ value: label, label })),
+    },
+    {
+      key: "actions", label: "Hành động", width: 90, align: "right",
+      render: (r) => {
+        const editable = r.status === "draft" || r.status === "ready" || r.status === "hold";
+        return editable ? (
+          <Button
+            variant="ghost" size="sm"
+            className="h-7 px-2 text-[11px]"
+            onClick={(e) => { e.stopPropagation(); setEditing(r); }}
+          >
+            <Pencil className="h-3 w-3 mr-1" /> Sửa
+          </Button>
+        ) : (
+          <span className="text-text-3 text-[11px]">—</span>
+        );
+      },
+    },
+  ];
+
+  return (
+    <section className="space-y-4">
+      {/* ─── Section header ─── */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-base font-semibold text-text-1 flex items-center gap-2">
+            <Truck className="h-4 w-4 text-primary" />
+            Đóng container — kế hoạch vận chuyển tuần
+          </h3>
+          <p className="text-caption text-text-3 mt-0.5">
+            Hệ thống đã tối ưu {summary.total} chuyến, ghép {summary.consolidated} tuyến — tiết kiệm{" "}
+            <span className="text-success font-medium">{fmtVndShort(summary.totalSaving)}</span>.
+            Bạn có thể chỉnh xe, gỡ điểm giao, hoặc tách chuyến.
+          </p>
+        </div>
+        <Button
+          size="sm" variant="outline"
+          onClick={() => toast.info("Tạo chuyến thủ công — coming soon")}
+        >
+          <Truck className="h-3.5 w-3.5 mr-1" /> Tạo chuyến mới
+        </Button>
+      </div>
+
+      {/* ─── Mini summary chips ─── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
+          <div className="text-caption text-text-3">Tổng chuyến</div>
+          <div className="text-xl font-semibold text-text-1 tabular-nums">{summary.total}</div>
+        </div>
+        <div className="rounded-card border border-warning/30 bg-warning-bg/40 p-3">
+          <div className="text-caption text-warning flex items-center gap-1">
+            <Link2 className="h-3 w-3" /> Ghép tuyến
+          </div>
+          <div className="text-xl font-semibold text-warning tabular-nums">{summary.consolidated}</div>
+        </div>
+        <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
+          <div className="text-caption text-text-3">Fill TB</div>
+          <div className={cn("text-xl font-semibold tabular-nums",
+            summary.avgFill < 75 ? "text-warning" : "text-success")}>
+            {summary.avgFill}%
+          </div>
+        </div>
+        <div className="rounded-card border border-success/30 bg-success-bg/40 p-3">
+          <div className="text-caption text-success flex items-center gap-1">
+            <TrendingUp className="h-3 w-3" /> Tiết kiệm
+          </div>
+          <div className="text-xl font-semibold text-success tabular-nums">
+            {fmtVndShort(summary.totalSaving)}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Container table ─── */}
+      <SmartTable
+        screenId="drp-container-list"
+        columns={cols}
+        data={CONTAINER_PLANS}
+        defaultDensity="compact"
+        title={`Kế hoạch ${summary.total} chuyến container`}
+        exportFilename={`drp-container-w20`}
+        rowSeverity={(r) =>
+          r.fillPct < 70 ? "watch" : undefined
+        }
+        autoExpandWhen={(r) => r.fillPct < 70}
+        drillDown={(r) => (
+          <div className="space-y-3 p-3 bg-surface-1/40 rounded-card">
+            {/* Suggestion banner */}
+            {r.suggestion && r.suggestionLabel && (
+              <div className={cn("rounded-card border px-3 py-2 text-table-sm font-medium flex items-center gap-2",
+                SUGGESTION_CLASS[r.suggestion] ?? "border-info/40 bg-info-bg text-info")}>
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>{r.suggestionLabel}</span>
+              </div>
+            )}
+
+            {/* Route visual */}
+            <div className="flex items-center gap-2 text-table-sm">
+              <span className="font-semibold text-text-1">Tuyến:</span>
+              <span className="text-text-2">{r.routeLabel}</span>
+              <span className="text-text-3">·</span>
+              <span className="text-text-3 tabular-nums">{r.distanceKm} km</span>
+              <span className="text-text-3">·</span>
+              <span className="tabular-nums text-text-2">
+                Fill {r.fillM2.toLocaleString()} / {r.capacityM2.toLocaleString()} m²
+              </span>
+            </div>
+
+            {/* Drop points */}
+            <div>
+              <div className="text-caption text-text-3 mb-1.5 font-medium">
+                Điểm giao ({r.drops.length})
+              </div>
+              <table className="w-full text-table-sm">
+                <thead>
+                  <tr className="text-text-3 text-caption border-b border-surface-3">
+                    <th className="text-left py-1 font-medium">#</th>
+                    <th className="text-left py-1 font-medium">CN</th>
+                    <th className="text-right py-1 font-medium">SL m²</th>
+                    <th className="text-left py-1 font-medium pl-3">SKU</th>
+                    <th className="text-left py-1 font-medium">ETA</th>
+                    <th className="text-right py-1 font-medium">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {r.drops.map((d) => (
+                    <tr key={d.cnCode} className="border-b border-surface-3/40">
+                      <td className="py-1.5 text-text-3 tabular-nums">{d.order}</td>
+                      <td className="py-1.5">
+                        <button
+                          type="button"
+                          onClick={() => onCnClick?.(d.cnCode)}
+                          className="text-primary hover:underline font-medium"
+                          title="Xem phân bổ CN này"
+                        >
+                          {d.cnName}
+                        </button>
+                        <span className="text-text-3 ml-1">({d.cnCode})</span>
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums text-text-1">
+                        {d.qtyM2.toLocaleString()}
+                      </td>
+                      <td className="py-1.5 pl-3 text-text-2">
+                        {d.skuLines.map((s) => `${s.sku} ${s.qty}m²`).join(" · ")}
+                      </td>
+                      <td className="py-1.5 text-text-2 tabular-nums">{d.eta}</td>
+                      <td className="py-1.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => toast.info(`Gỡ ${d.cnCode} khỏi ${r.id}`)}
+                          className="text-[11px] text-danger hover:underline"
+                        >
+                          Gỡ
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Cost line */}
+            <div className="flex items-center justify-between text-table-sm border-t border-surface-3 pt-2">
+              <div className="flex items-center gap-3 text-text-2">
+                <span>Cước: <strong className="text-text-1 tabular-nums">{fmtVnd(r.freightVnd)}</strong></span>
+                {r.savingVnd > 0 && (
+                  <span className="text-success">
+                    Tiết kiệm <strong className="tabular-nums">{fmtVnd(r.savingVnd)}</strong>
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-text-3">
+                <Package className="h-3 w-3" />
+                <span>{r.poIds.length} PO: <span className="font-mono">{r.poIds.join(", ")}</span></span>
+              </div>
+            </div>
+          </div>
+        )}
+        emptyState={{
+          icon: <Truck className="h-10 w-10" />,
+          title: "Chưa có chuyến container nào",
+          description: "DRP chưa tạo kế hoạch vận chuyển. Chạy DRP lại hoặc tạo chuyến thủ công.",
+        }}
+      />
+
+      {/* ─── Edit dialog (lite) ─── */}
+      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-4 w-4" />
+              Chỉnh chuyến {editing?.id}
+            </DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-3">
+              <div className="rounded-card border border-surface-3 bg-surface-2 p-3 space-y-1 text-table-sm">
+                <div className="flex justify-between">
+                  <span className="text-text-3">Loại xe hiện tại</span>
+                  <span className="font-semibold text-text-1">{editing.vehicle} ({editing.capacityM2.toLocaleString()}m²)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-3">Đang chở</span>
+                  <span className="tabular-nums">{editing.fillM2.toLocaleString()}m² ({editing.fillPct}%)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-3">Tuyến</span>
+                  <span>{editing.routeLabel}</span>
+                </div>
+              </div>
+              <div className="text-caption text-text-3">
+                Đổi loại xe hoặc gỡ điểm giao để tối ưu fill rate. Hệ thống sẽ tính lại cước & cảnh báo nếu vượt sức chứa.
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Đóng</Button>
+            <Button onClick={() => {
+              toast.success(`Đã lưu thay đổi cho ${editing?.id}`);
+              setEditing(null);
+            }}>Lưu thay đổi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Footer action ─── */}
+      <div className="flex items-center justify-between border-t border-surface-3 pt-3">
+        <div className="text-caption text-text-3">
+          {summary.total} chuyến · {summary.consolidated} ghép tuyến · Fill TB {summary.avgFill}% ·
+          Cước {fmtVndShort(summary.totalFreight)}
+        </div>
+        <Button
+          size="sm"
+          onClick={() => {
+            navigate("/orders?tab=approval");
+            toast.success("Đã chuyển sang Đơn hàng — các PO/TO từ DRP đã được lọc");
+          }}
+        >
+          Duyệt & Chuyển Đơn hàng <ArrowRight className="h-3.5 w-3.5 ml-1" />
+        </Button>
+      </div>
+    </section>
+  );
+}
