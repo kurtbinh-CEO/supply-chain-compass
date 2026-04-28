@@ -1665,8 +1665,8 @@ export default function DrpPage() {
 
                 return (
                   <Fragment key={rowKey}>
-                    <tr className={cn(
-                      "border-b border-surface-3 transition-colors cursor-pointer",
+                    <tr id={`alloc-row-${r.cn}`} className={cn(
+                      "border-b border-surface-3 transition-all cursor-pointer",
                       sev === "short" && "bg-danger-bg/20 border-l-2 border-l-danger",
                       sev === "watch" && "bg-warning-bg/15 border-l-2 border-l-warning",
                       sev === "ok" && "hover:bg-surface-1/40",
