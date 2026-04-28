@@ -563,8 +563,6 @@ function SkuFirstPivotTable({
   onLcnbClick: (t: ToLcnbRow) => void;
   onNavigateOrders: () => void;
 }) {
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-
   // Aggregate per SKU base across all CNs
   interface SkuPivotRow {
     sku: string;
