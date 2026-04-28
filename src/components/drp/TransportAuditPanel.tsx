@@ -6,11 +6,12 @@ import { useMemo, useState } from "react";
 import {
   ChevronDown, ChevronRight, History, Truck, Pencil, MapPin,
   Sparkles, Trash2, Filter, Check, AlertTriangle, X, Info,
-  Copy, CheckCheck,
+  Copy, CheckCheck, Search, RotateCcw,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -49,17 +50,58 @@ export function TransportAuditPanel({ defaultOpen = false }: { defaultOpen?: boo
   const [open, setOpen] = useState(defaultOpen);
   const [catFilter, setCatFilter] = useState<TransportAuditCategory | "all">("all");
   const [sevFilter, setSevFilter] = useState<TransportAuditEvent["severity"] | "all">("all");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [containerFilter, setContainerFilter] = useState<string>("all");
+  const [query, setQuery] = useState("");
 
-  const filtered = useMemo(() => events.filter((e) =>
-    (catFilter === "all" || e.category === catFilter)
-    && (sevFilter === "all" || e.severity === sevFilter),
-  ), [events, catFilter, sevFilter]);
+  // Distinct roles & containers from current event stream
+  const roleOptions = useMemo(() => {
+    const s = new Set<string>();
+    for (const e of events) if (e.actorRole) s.add(e.actorRole);
+    return Array.from(s).sort();
+  }, [events]);
+  const containerOptions = useMemo(() => {
+    const s = new Set<string>();
+    for (const e of events) if (e.containerId) s.add(e.containerId);
+    return Array.from(s).sort();
+  }, [events]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return events.filter((e) => {
+      if (catFilter !== "all" && e.category !== catFilter) return false;
+      if (sevFilter !== "all" && e.severity !== sevFilter) return false;
+      if (roleFilter !== "all" && e.actorRole !== roleFilter) return false;
+      if (containerFilter !== "all" && e.containerId !== containerFilter) return false;
+      if (q) {
+        const hay = [
+          e.id, e.title, e.detail ?? "", e.actorRole ?? "",
+          e.containerId ?? "", e.category, e.severity,
+        ].join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [events, catFilter, sevFilter, roleFilter, containerFilter, query]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { vehicle: 0, qty_edit: 0, drop: 0, fillup: 0 };
     for (const e of events) c[e.category]++;
     return c;
   }, [events]);
+
+  const hasActiveFilter =
+    catFilter !== "all" || sevFilter !== "all"
+    || roleFilter !== "all" || containerFilter !== "all"
+    || query.trim() !== "";
+
+  function resetFilters() {
+    setCatFilter("all");
+    setSevFilter("all");
+    setRoleFilter("all");
+    setContainerFilter("all");
+    setQuery("");
+  }
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -79,13 +121,34 @@ export function TransportAuditPanel({ defaultOpen = false }: { defaultOpen?: boo
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="mt-2 rounded-card border border-surface-3 bg-surface-1 p-3 space-y-2">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-3 pointer-events-none" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Tìm theo tiêu đề, chi tiết, container, event ID, vai trò…"
+              className="h-8 pl-7 pr-7 text-[12px]"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-sm p-1 text-text-3 hover:text-text-1 hover:bg-surface-2"
+                aria-label="Xoá tìm kiếm"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
           {/* Filters */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[11px] text-text-3 inline-flex items-center gap-1">
               <Filter className="h-3 w-3" /> Lọc:
             </span>
             <Select value={catFilter} onValueChange={(v) => setCatFilter(v as typeof catFilter)}>
-              <SelectTrigger className="h-7 text-[11px] w-[220px]">
+              <SelectTrigger className="h-7 text-[11px] w-[200px]">
                 <SelectValue placeholder="Tất cả ma trận" />
               </SelectTrigger>
               <SelectContent>
@@ -98,7 +161,7 @@ export function TransportAuditPanel({ defaultOpen = false }: { defaultOpen?: boo
               </SelectContent>
             </Select>
             <Select value={sevFilter} onValueChange={(v) => setSevFilter(v as typeof sevFilter)}>
-              <SelectTrigger className="h-7 text-[11px] w-[140px]">
+              <SelectTrigger className="h-7 text-[11px] w-[130px]">
                 <SelectValue placeholder="Mức độ" />
               </SelectTrigger>
               <SelectContent>
@@ -109,6 +172,34 @@ export function TransportAuditPanel({ defaultOpen = false }: { defaultOpen?: boo
                 <SelectItem value="block" className="text-[11px]">✗ Chặn</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="h-7 text-[11px] w-[150px]">
+                <SelectValue placeholder="Vai trò" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-[11px]">Tất cả vai trò</SelectItem>
+                {roleOptions.map((r) => (
+                  <SelectItem key={r} value={r} className="text-[11px] font-mono">{r}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={containerFilter} onValueChange={setContainerFilter}>
+              <SelectTrigger className="h-7 text-[11px] w-[160px]">
+                <SelectValue placeholder="Container" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-[11px]">Tất cả container</SelectItem>
+                {containerOptions.map((c) => (
+                  <SelectItem key={c} value={c} className="text-[11px] font-mono">{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {hasActiveFilter && (
+              <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-text-3"
+                onClick={resetFilters}>
+                <RotateCcw className="h-3 w-3 mr-1" /> Đặt lại
+              </Button>
+            )}
             <div className="ml-auto flex items-center gap-1">
               <span className="text-[11px] text-text-3">{filtered.length}/{events.length}</span>
               <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-text-3"
