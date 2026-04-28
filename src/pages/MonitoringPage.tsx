@@ -982,37 +982,43 @@ export default function MonitoringPage() {
           {/* Section E: Closed-loop Summary */}
           <CollapsibleSection title="Closed-loop Summary" summary="Hệ thống tự học — 4 điều chỉnh tháng này" expanded={expandedSections.has("loop")} onToggle={() => toggleSection("loop")}>
             <div className="p-5 space-y-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-table-sm text-text-2">Tháng này hệ thống tự điều chỉnh gì?</p>
-                <TableDownloadButton targetId="monitoring-closed-loop" filename="closed-loop-summary" size="xs" />
-              </div>
-              <table id="monitoring-closed-loop" className="w-full">
-                <thead>
-                  <tr className="border-b border-surface-3 bg-surface-1/50">
-                    {["Điều chỉnh", "Trigger", "Impact", "Status"].map((h, i) => (
-                      <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {closedLoopData.map((r, i) => (
-                    <tr key={i} className="border-b border-surface-3/50 hover:bg-surface-1/30">
-                      <td className="px-4 py-2.5 text-table font-medium text-text-1">{r.adjust}</td>
-                      <td className="px-4 py-2.5 text-table text-text-2">{r.trigger}</td>
-                      <td className="px-4 py-2.5 text-table text-text-2">{r.impact}</td>
-                      <td className="px-4 py-2.5">
-                        <span className={cn("rounded-full px-2.5 py-0.5 text-caption font-medium",
-                          r.status === "applied" ? "bg-success-bg text-success" :
-                          r.status === "pending" ? "bg-warning-bg text-warning" :
-                          "bg-info-bg text-info"
-                        )}>
-                          {r.status === "applied" ? "✅ Applied" : r.status === "pending" ? "⏳ Pending duyệt" : "⏳ Recommend"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <p className="text-table-sm text-text-2">Tháng này hệ thống tự điều chỉnh gì?</p>
+              {(() => {
+                type LoopRow = typeof closedLoopData[number] & { _id: string };
+                const rows: LoopRow[] = closedLoopData.map((r, i) => ({ ...r, _id: `${r.adjust}-${i}` }));
+                const cols: SmartTableColumn<LoopRow>[] = [
+                  { key: "adjust", label: "Điều chỉnh", width: 200, hideable: false, sortable: true, render: (r) => <span className="font-medium text-text-1">{r.adjust}</span> },
+                  { key: "trigger", label: "Trigger", width: 220, render: (r) => <span className="text-text-2">{r.trigger}</span> },
+                  { key: "impact", label: "Impact", width: 260, render: (r) => <span className="text-text-2">{r.impact}</span> },
+                  {
+                    key: "status", label: "Status", width: 150, align: "center", hideable: false,
+                    filter: "enum",
+                    filterOptions: [
+                      { value: "applied", label: "✅ Applied" },
+                      { value: "pending", label: "⏳ Pending" },
+                      { value: "recommend", label: "⏳ Recommend" },
+                    ],
+                    accessor: (r) => r.status,
+                    render: (r) => (
+                      <StatusChip
+                        status={r.status === "applied" ? "success" : r.status === "pending" ? "warning" : "info"}
+                        label={r.status === "applied" ? "Applied" : r.status === "pending" ? "Pending duyệt" : "Recommend"}
+                      />
+                    ),
+                  },
+                ];
+                return (
+                  <SmartTable<LoopRow>
+                    screenId="monitoring-closed-loop"
+                    exportFilename="closed-loop-summary"
+                    columns={cols}
+                    data={rows}
+                    defaultDensity="compact"
+                    getRowId={(r) => r._id}
+                    rowSeverity={(r) => (r.status === "applied" ? "ok" : r.status === "pending" ? "watch" : "ok")}
+                  />
+                );
+              })()}
               <div className="rounded-md bg-success-bg/50 border border-success/20 px-4 py-3 text-table font-semibold text-success text-center">
                 Hệ thống TỰ HỌC — mỗi tháng tốt hơn tháng trước.
               </div>
