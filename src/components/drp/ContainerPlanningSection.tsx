@@ -590,58 +590,8 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
               </span>
             </div>
 
-            {/* Drop points */}
-            <div>
-              <div className="text-caption text-text-3 mb-1.5 font-medium">
-                Điểm giao ({r.drops.length})
-              </div>
-              <table className="w-full text-table-sm">
-                <thead>
-                  <tr className="text-text-3 text-caption border-b border-surface-3">
-                    <th className="text-left py-1 font-medium">#</th>
-                    <th className="text-left py-1 font-medium">CN</th>
-                    <th className="text-right py-1 font-medium">SL m²</th>
-                    <th className="text-left py-1 font-medium pl-3">SKU</th>
-                    <th className="text-left py-1 font-medium">ETA</th>
-                    <th className="text-right py-1 font-medium">Hành động</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {r.drops.map((d) => (
-                    <tr key={d.cnCode} className="border-b border-surface-3/40">
-                      <td className="py-1.5 text-text-3 tabular-nums">{d.order}</td>
-                      <td className="py-1.5">
-                        <button
-                          type="button"
-                          onClick={() => onCnClick?.(d.cnCode)}
-                          className="text-primary hover:underline font-medium"
-                          title="Xem phân bổ CN này"
-                        >
-                          {d.cnName}
-                        </button>
-                        <span className="text-text-3 ml-1">({d.cnCode})</span>
-                      </td>
-                      <td className="py-1.5 text-right tabular-nums text-text-1">
-                        {d.qtyM2.toLocaleString()}
-                      </td>
-                      <td className="py-1.5 pl-3 text-text-2">
-                        {d.skuLines.map((s) => `${s.sku} ${s.qty}m²`).join(" · ")}
-                      </td>
-                      <td className="py-1.5 text-text-2 tabular-nums">{d.eta}</td>
-                      <td className="py-1.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => toast.info(`Gỡ ${d.cnCode} khỏi ${r.id}`)}
-                          className="text-[11px] text-danger hover:underline"
-                        >
-                          Gỡ
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {/* Drop points — with reorder mode */}
+            <DropPointsEditor container={r} onCnClick={onCnClick} />
 
             {/* Cost line */}
             <div className="flex items-center justify-between text-table-sm border-t border-surface-3 pt-2">
