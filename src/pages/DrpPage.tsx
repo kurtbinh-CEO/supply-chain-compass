@@ -117,18 +117,23 @@ function lcnbOutForCn(cnCode: string): ToLcnbRow[] {
   return TO_ROWS_LCNB.filter((t) => t.fromCn === cnCode);
 }
 
-type ExcSeed = {
+export type ExcSeed = {
   cn: string; sku: string; type: "SHORTAGE" | "WATCH";
   demand: number; allocated: number; gap: number;
-  fcPhased: number; onHand: number; pipeline: number; ssTarget: number;
+  fcPhased: number;
+  onHand: number;          // available inventory (đã trừ SS + reserved)
+  pipeline: number;        // PO/RPO đang về
+  nmAllocation: number;    // NM committed (Mikado, Toko, ...) — cộng vào allocated
+  ssTarget: number;
+  ssReserved: number;      // SS đang giữ (info only, KHÔNG cộng allocated)
   suggestion: string;
   lcnbCover: number; hubCover: number; ssDelta: number;
   options: SkuException["options"];
 };
 
-const EXCEPTION_SEEDS: ExcSeed[] = [
+export const EXCEPTION_SEEDS: ExcSeed[] = [
   { cn: "CN-BMT", sku: "GA-300", type: "SHORTAGE", demand: 480, allocated: 189, gap: 291,
-    fcPhased: 412, onHand: 80, pipeline: 60, ssTarget: 240,
+    fcPhased: 412, onHand: 80, pipeline: 60, nmAllocation: 49, ssTarget: 240, ssReserved: 240,
     suggestion: "LCNB từ CN-BD (excess 3.408m², 350km, 2 ngày)", lcnbCover: 291, hubCover: 0, ssDelta: 0,
     options: [
       { label: "A. Chuyển ngang", source: "CN-BD excess 3.408m²", qty: 291, cost: "5,8M₫", time: "2 ngày", savingVsB: "−48M₫" },
@@ -137,7 +142,7 @@ const EXCEPTION_SEEDS: ExcSeed[] = [
     ],
   },
   { cn: "CN-PK", sku: "GT-600", type: "SHORTAGE", demand: 320, allocated: 140, gap: 180,
-    fcPhased: 280, onHand: 50, pipeline: 40, ssTarget: 130,
+    fcPhased: 280, onHand: 50, pipeline: 40, nmAllocation: 50, ssTarget: 130, ssReserved: 130,
     suggestion: "LCNB từ CN-QN (excess 480m², 215km, 1 ngày)", lcnbCover: 180, hubCover: 0, ssDelta: 0,
     options: [
       { label: "A. Chuyển ngang", source: "CN-QN excess 480m²", qty: 180, cost: "3,6M₫", time: "1 ngày", savingVsB: "−30M₫" },
@@ -146,7 +151,7 @@ const EXCEPTION_SEEDS: ExcSeed[] = [
     ],
   },
   { cn: "CN-NA", sku: "GM-300", type: "SHORTAGE", demand: 220, allocated: 125, gap: 95,
-    fcPhased: 200, onHand: 70, pipeline: 35, ssTarget: 120,
+    fcPhased: 200, onHand: 70, pipeline: 35, nmAllocation: 20, ssTarget: 120, ssReserved: 120,
     suggestion: "LCNB từ CN-HN (excess 1.250m², 290km, 2 ngày)", lcnbCover: 95, hubCover: 0, ssDelta: 0,
     options: [
       { label: "A. Chuyển ngang", source: "CN-HN excess 1.250m²", qty: 95, cost: "1,9M₫", time: "2 ngày", savingVsB: "−14M₫" },
@@ -155,11 +160,11 @@ const EXCEPTION_SEEDS: ExcSeed[] = [
     ],
   },
   { cn: "CN-BD", sku: "GA-400", type: "WATCH", demand: 585, allocated: 535, gap: 50,
-    fcPhased: 520, onHand: 360, pipeline: 175, ssTarget: 220,
+    fcPhased: 520, onHand: 360, pipeline: 175, nmAllocation: 0, ssTarget: 220, ssReserved: 220,
     suggestion: "ETA Mikado 17/05 sẽ cover dư", lcnbCover: 0, hubCover: 0, ssDelta: -50, options: [],
   },
   { cn: "CN-HN", sku: "GT-300", type: "WATCH", demand: 546, allocated: 516, gap: 30,
-    fcPhased: 480, onHand: 320, pipeline: 196, ssTarget: 180,
+    fcPhased: 480, onHand: 320, pipeline: 196, nmAllocation: 0, ssTarget: 180, ssReserved: 180,
     suggestion: "Seasonal spike +12% YoY. ETA 16/05.", lcnbCover: 0, hubCover: 0, ssDelta: -30, options: [],
   },
 ];
