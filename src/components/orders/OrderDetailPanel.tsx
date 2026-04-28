@@ -5,12 +5,13 @@
  *
  * (Sẽ được implement đầy đủ ở Phase 2.)
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Send, CheckCircle2, Truck, Package, Flag, ClipboardCheck, Camera, FileText, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   STAGE_META, STAGE_ORDER, STAGE_SLA_HOURS,
   type LifecycleStage, type PoLifecycleRow, type PoEvidence,
