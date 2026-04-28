@@ -112,12 +112,44 @@ export function OrderDetailPanel({ group, onAction, onCancel, onClose }: Props) 
     return out;
   }, [group]);
 
-  // Map timeline events theo stage để lookup nhanh
+  // Map timeline events theo stage để lookup nhanh (cho Tiến trình section)
   const eventsByStage = useMemo(() => {
     const m = new Map<LifecycleStage, typeof leader.timeline[number]>();
     leader.timeline.forEach((e) => { m.set(e.stage, e); });
     return m;
   }, [leader.timeline]);
+
+  // Gộp timeline từ TẤT CẢ lines (split shipment có nhiều line) + sort theo
+  // thời gian giảm dần (newest first). ts = "DD/MM HH:mm" → parse đơn giản.
+  const fullChangeLog = useMemo(() => {
+    const parseTs = (ts: string): number => {
+      // "DD/MM HH:mm" → epoch (giả định cùng năm hiện tại)
+      const m = ts.match(/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})/);
+      if (!m) return 0;
+      const [, d, mo, h, mi] = m;
+      const y = new Date().getFullYear();
+      return new Date(y, +mo - 1, +d, +h, +mi).getTime();
+    };
+    const multi = group.lines.length > 1;
+    const all: Array<typeof leader.timeline[number] & { lineLabel?: string }> = [];
+    group.lines.forEach((l) => {
+      l.timeline.forEach((e) => {
+        all.push({ ...e, lineLabel: multi ? l.skuLabel : undefined });
+      });
+    });
+    // Dedupe: same ts + actor + stage + note → giữ 1 (evidence merge)
+    const dedup = new Map<string, typeof all[number]>();
+    all.forEach((e) => {
+      const key = `${e.ts}|${e.actor}|${e.stage}|${e.note ?? ""}|${e.lineLabel ?? ""}`;
+      const prev = dedup.get(key);
+      if (!prev) { dedup.set(key, e); return; }
+      const seen = new Set((prev.evidence ?? []).map((x) => x.label));
+      const merged = [...(prev.evidence ?? [])];
+      (e.evidence ?? []).forEach((x) => { if (!seen.has(x.label)) merged.push(x); });
+      dedup.set(key, { ...prev, evidence: merged });
+    });
+    return Array.from(dedup.values()).sort((a, b) => parseTs(b.ts) - parseTs(a.ts));
+  }, [group.lines]);
 
   return (
     <div className="flex flex-col h-full">
