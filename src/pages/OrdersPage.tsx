@@ -1123,43 +1123,47 @@ function ActionDialog({
 /* ── BƯỚC 1: Gửi NM ── */
 function SendNmForm({ row, onSubmit }: { row: PoLifecycleRow; onSubmit: (p: Partial<PoLifecycleRow>) => void }) {
   const [channel, setChannel] = useState("Zalo");
-  const [note, setNote] = useState("");
   return (
-    <>
-      <DialogHeader>
-        <DialogTitle>Gửi {row.poNumber} cho {row.fromName}</DialogTitle>
-        <DialogDescription>UNIS gọi/nhắn {row.fromName} qua kênh dưới đây, sau đó xác nhận đã gửi.</DialogDescription>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div>
-          <Label className="text-caption">Kênh liên hệ</Label>
-          <Select value={channel} onValueChange={setChannel}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Zalo">Zalo</SelectItem>
-              <SelectItem value="Gọi điện">Gọi điện</SelectItem>
-              <SelectItem value="Email">Email</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label className="text-caption">Ghi chú</Label>
-          <Textarea
-            value={note} onChange={(e) => setNote(e.target.value)} maxLength={500}
-            placeholder="VD: Đã gọi anh Hùng, confirm nhận PO" rows={3}
-          />
-        </div>
-        <FilePickerStub label="Ảnh Zalo (tuỳ chọn)" />
-        <SlaInfo text={`NM phải xác nhận trong ${REMINDER_CONFIG.nmResponseSlaDays} ngày`} />
-      </div>
-      <DialogFooter>
-        <Button onClick={() => onSubmit({
+    <TransitionShell
+      row={row}
+      fromStage="approved"
+      toStage="sent_nm"
+      title={`Gửi đơn hàng cho ${row.fromName}`}
+      config={{
+        commentRequired: true,
+        filesRequired: false,
+        filesLabel: "Đính kèm (tuỳ chọn — screenshot Zalo/email)",
+        commentPlaceholder: `Gửi qua Zalo cho chị Thúy (0901.xxx.xxx). Đã confirm qty OK qua điện thoại.`,
+        submitLabel: "Gửi NM",
+        submitTone: "primary",
+      }}
+      onSubmit={({ comment, files }) =>
+        onSubmit({
           stage: "sent_nm",
-          evidence: [...row.evidence, { label: `${channel}: ${note || "không ghi chú"}`, kind: "screenshot" }],
-          timeline: [...row.timeline, { stage: "sent_nm", ts: nowTs(), actor: "Planner Linh", note: `${channel}${note ? ` — ${note}` : ""}` }],
-        })}>Xác nhận đã gửi</Button>
-      </DialogFooter>
-    </>
+          evidence: [
+            ...row.evidence,
+            ...filesToEvidence(files, "screenshot"),
+          ],
+          timeline: [...row.timeline, {
+            stage: "sent_nm", ts: nowTs(), actor: "Planner Linh",
+            note: `${channel}${comment ? ` — ${comment}` : ""}`,
+            evidence: filesToEvidence(files, "screenshot"),
+          }],
+        })
+      }
+    >
+      <div>
+        <Label className="text-caption">Kênh liên hệ</Label>
+        <Select value={channel} onValueChange={setChannel}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Zalo">Zalo</SelectItem>
+            <SelectItem value="Gọi điện">Gọi điện</SelectItem>
+            <SelectItem value="Email">Email</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </TransitionShell>
   );
 }
 
