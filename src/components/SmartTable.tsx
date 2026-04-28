@@ -101,6 +101,12 @@ export interface SmartTableProps<T = any> {
   drillDown?: (row: T) => React.ReactNode | null;
   autoExpandWhen?: (row: T) => boolean;
   onRowClick?: (row: T) => void;
+  /**
+   * Guard chạy trước khi đóng (collapse) một row đang mở.
+   * Trả `false` để chặn đóng (parent sẽ hiển thị confirm UI riêng).
+   * Trả `true`/`undefined` để cho phép đóng như bình thường.
+   */
+  beforeCollapse?: (row: T) => boolean | undefined;
   emptyMessage?: string;
   /** Trạng thái loading — hiện shimmer rows */
   isLoading?: boolean;
