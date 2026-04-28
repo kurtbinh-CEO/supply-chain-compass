@@ -188,28 +188,16 @@ function IdleNudgeMount() {
   return null;
 }
 
-/** Tự động khởi động onboarding tour cho route hiện tại nếu user chưa xem. */
+/** DRP-FIX-L4.5 — Auto-tour DISABLED globally for demo mode.
+ *  User can still manually start tour via sidebar "Hướng dẫn màn này" button. */
 function OnboardingAutoStart() {
   const location = useLocation();
   const { isTourCompleted, startTour, activeTour } = useOnboarding();
 
   useEffect(() => {
-    const tour = getTourForRoute(location.pathname);
-    if (!tour) return;
-    if (activeTour) return;
-    if (isTourCompleted(tour.id)) return;
-    try {
-      // DRP-INTERACTION-FIX-L4 · TASK 7 — Default-disable auto-tour for demo.
-      // User can still launch tour manually via sidebar "Hướng dẫn màn này".
-      if (localStorage.getItem("scp:onboarding:enabled") === null) {
-        localStorage.setItem("scp:onboarding:enabled", "false");
-      }
-      const enabled = localStorage.getItem("scp:onboarding:enabled");
-      if (enabled === "false") return;
-    } catch {}
-    const timer = setTimeout(() => startTour(tour), 800);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // DEMO MODE — auto-tour DISABLED globally
+    // User can still manually start tour via sidebar "Hướng dẫn màn này" button
+    return;
   }, [location.pathname]);
 
   return null;
