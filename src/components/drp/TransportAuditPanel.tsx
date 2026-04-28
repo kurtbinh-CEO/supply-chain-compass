@@ -241,6 +241,11 @@ function AuditRow({ event: e }: { event: TransportAuditEvent }) {
     () => (e.meta ? Object.entries(e.meta) : []),
     [e.meta],
   );
+  const highlights = useMemo(() => extractHighlights(e.meta), [e.meta]);
+  const highlightedKeys = useMemo(
+    () => new Set(highlights.map((h) => h.key)),
+    [highlights],
+  );
 
   async function copyJson(ev: React.MouseEvent) {
     ev.stopPropagation();
