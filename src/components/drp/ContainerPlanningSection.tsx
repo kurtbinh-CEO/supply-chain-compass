@@ -1230,19 +1230,50 @@ function RoundUpSuggestion({ container }: { container: ContainerPlan }) {
           : { border: "border-warning/40", bg: "bg-warning-bg/50", text: "text-warning", icon: AlertTriangle };
   const Icon = tone.icon;
 
+  /* ── Recommended apply scope (derived from strategy) ──────────────────────
+     • consolidation / consolidation_plus_round_up → CN line (per eligible CN)
+     • round_up → SKU line (top-up 1 SKU tới MOQ)
+     • hold / ship_as_is → Container (toàn chuyến)
+  */
+  type ApplyScope = "container" | "line";
+  const recommendedScope: ApplyScope =
+    decision.strategy === "consolidation"
+      || decision.strategy === "consolidation_plus_round_up"
+      || decision.strategy === "round_up"
+      ? "line"
+      : "container";
+  const scopeLabel: Record<ApplyScope, string> = {
+    container: "Toàn chuyến",
+    line: decision.strategy === "round_up" ? "Một dòng SKU" : "Một CN ghép",
+  };
+
   return (
     <div className={cn("rounded-card border p-3 space-y-2", tone.border, tone.bg)}>
-      <div className={cn("flex items-center gap-2 text-table-sm font-semibold", tone.text)}>
-        <Icon className="h-3.5 w-3.5" />
-        AI đề xuất: {STRATEGY_LABELS[decision.strategy]}
+      {/* Header: mode + recommended scope chip */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className={cn("flex items-center gap-2 text-table-sm font-semibold", tone.text)}>
+          <Icon className="h-3.5 w-3.5" />
+          AI đề xuất: {STRATEGY_LABELS[decision.strategy]}
+          <span className="font-mono text-[10px] uppercase opacity-70">
+            mode={decision.strategy}
+          </span>
+        </div>
+        <span className={cn(
+          "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
+          tone.border, tone.bg, tone.text,
+        )}>
+          Phạm vi đề xuất: {scopeLabel[recommendedScope]}
+        </span>
       </div>
 
+      {/* primaryAction (raw từ decideFillUp) */}
       <div className="text-table-sm text-text-1 font-medium">
-        {decision.primaryAction}
+        → {decision.primaryAction}
       </div>
 
-      <div className="text-caption text-text-2 leading-snug italic">
-        💡 {decision.reason}
+      {/* justification */}
+      <div className="rounded-button border border-surface-3 bg-surface-1/60 px-2 py-1.5 text-caption text-text-2 leading-snug">
+        <span className="font-semibold text-text-1">Lý do:</span> {decision.reason}
       </div>
 
       {decision.warning && (
@@ -1262,30 +1293,86 @@ function RoundUpSuggestion({ container }: { container: ContainerPlan }) {
         </div>
       </div>
 
-      {/* Eligible CN preview cho consolidation */}
-      {(decision.strategy === "consolidation" || decision.strategy === "consolidation_plus_round_up") && eligibleCandidates.length > 0 && (
-        <div className="rounded-button border border-success/30 bg-surface-1 px-2 py-1.5 text-[11px]">
-          <div className="text-text-3 mb-0.5 font-medium">CN có thể ghép:</div>
-          <div className="flex flex-wrap gap-1">
-            {eligibleCandidates.slice(0, 4).map((c) => (
-              <span key={c.cn2}
-                className="inline-flex items-center gap-1 rounded-full border border-success/40 bg-success-bg px-1.5 py-0.5 text-success font-semibold">
-                {c.cn2}
-                <span className="text-success/70 font-normal">+{c.detourKm}km</span>
+      {/* Eligible CN list — exact outputs from drop-eligibility */}
+      {(decision.strategy === "consolidation" || decision.strategy === "consolidation_plus_round_up") && (
+        <div className="rounded-button border border-success/30 bg-surface-1 px-2 py-1.5 text-[11px] space-y-1">
+          <div className="text-text-3 font-medium flex items-center justify-between">
+            <span>CN đủ điều kiện ghép ({eligibleCandidates.length})</span>
+            {eligibleCandidates.length > 0 && (
+              <span className="text-success font-semibold">
+                ước tính fill sau ghép ~{fillAfterConsolidation}%
               </span>
-            ))}
+            )}
           </div>
+          {eligibleCandidates.length === 0 ? (
+            <div className="text-text-3 italic">Không có CN nào — chuyển sang round-up.</div>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {eligibleCandidates.slice(0, 4).map((c) => (
+                <div key={c.cn2}
+                  className="flex items-center justify-between gap-2 rounded border border-success/20 bg-success-bg/40 px-1.5 py-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="font-mono font-semibold text-success">{c.cn2}</span>
+                    <span className="text-text-3 text-[10px]">+{c.detourKm}km</span>
+                    {c.direction && (
+                      <span className="text-text-3 text-[10px] italic truncate">· {c.direction}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {c.estSavingVnd && (
+                      <span className="text-success text-[10px] font-semibold tabular-nums">
+                        ~{(c.estSavingVnd / 1_000_000).toFixed(1)}M₫
+                      </span>
+                    )}
+                    <Button
+                      size="sm" variant="outline"
+                      className="h-5 px-1.5 text-[10px] border-success/40 text-success hover:bg-success/10"
+                      onClick={() =>
+                        toast.success(`Áp dụng riêng cho ${c.cn2} (+${c.detourKm}km)`, {
+                          description: `Phạm vi: chỉ dòng này. Strategy: ${decision.strategy}`,
+                        })
+                      }
+                    >
+                      Áp dụng dòng này
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      <div className="flex items-center gap-1.5 flex-wrap">
+      {/* Action bar — primary apply (scope-aware) + "Apply only this line" + alt + dismiss */}
+      <div className="flex items-center gap-1.5 flex-wrap pt-1">
         <Button size="sm" className="h-7 px-2.5 text-[11px]"
-          onClick={() => toast.success(`Áp dụng "${STRATEGY_LABELS[decision.strategy]}" cho ${container.id}`)}>
-          <Check className="h-3 w-3 mr-1" /> Áp dụng
+          onClick={() => toast.success(
+            `Áp dụng "${STRATEGY_LABELS[decision.strategy]}" cho toàn chuyến ${container.id}`,
+            { description: `Phạm vi: toàn chuyến · Strategy: ${decision.strategy}` },
+          )}>
+          <Check className="h-3 w-3 mr-1" /> Áp dụng toàn chuyến
         </Button>
+
+        {/* "Apply only this line" — chỉ làm 1 line, không lan ra các line khác trong cùng chuyến */}
+        {recommendedScope === "line" && (
+          <Button size="sm" variant="secondary" className="h-7 px-2.5 text-[11px]"
+            onClick={() => {
+              const targetLabel = decision.strategy === "round_up"
+                ? "SKU phổ biến nhất trong chuyến"
+                : (eligibleCandidates[0]?.cn2 ?? "CN đầu tiên đủ điều kiện");
+              toast.success(`Chỉ áp dụng cho dòng: ${targetLabel}`, {
+                description: `Phạm vi: 1 dòng · Các dòng khác giữ nguyên · Strategy: ${decision.strategy}`,
+              });
+            }}>
+            Chỉ áp dụng dòng này
+          </Button>
+        )}
+
         {decision.altActions.map((alt) => (
           <Button key={alt.strategy} size="sm" variant="outline" className="h-7 px-2.5 text-[11px]"
-            onClick={() => toast.info(`Chuyển sang: ${alt.label}`)}>
+            onClick={() => toast.info(`Chuyển sang: ${alt.label}`, {
+              description: `Strategy: ${alt.strategy}`,
+            })}>
             {alt.label}
           </Button>
         ))}
