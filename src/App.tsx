@@ -123,6 +123,7 @@ function ProtectedRoutes() {
         <IdleNudgeMount />
         <OnboardingOverlay />
         <OnboardingAutoStart />
+        <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/" element={<RouteGuard><Index /></RouteGuard>} />
           <Route path="/workspace" element={<RouteGuard><WorkspacePage /></RouteGuard>} />
@@ -150,14 +151,20 @@ function ProtectedRoutes() {
           <Route path="/cn-portal" element={<RouteGuard><CnPortalPage /></RouteGuard>} />
           <Route path="/logic" element={<RouteGuard><LogicPage /></RouteGuard>} />
           <Route path="/guide" element={<RouteGuard><GuidePage /></RouteGuard>} />
-          <Route path="/design-test" element={<RouteGuard><DesignTest /></RouteGuard>} />
           <Route path="/profile" element={<RouteGuard><ProfilePage /></RouteGuard>} />
           <Route path="/executive" element={<RouteGuard><ExecutivePage /></RouteGuard>} />
           <Route path="/audit" element={<RouteGuard><AuditPage /></RouteGuard>} />
           <Route path="/appearance" element={<RouteGuard><AppearancePage /></RouteGuard>} />
-          <Route path="/qa/kpi" element={<RouteGuard><QaKpiPage /></RouteGuard>} />
+          {/* Dev-only routes — chỉ truy cập được khi không phải production build */}
+          {import.meta.env.DEV && (
+            <>
+              <Route path="/design-test" element={<RouteGuard><DesignTest /></RouteGuard>} />
+              <Route path="/qa/kpi" element={<RouteGuard><QaKpiPage /></RouteGuard>} />
+            </>
+          )}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
       </OnboardingProvider>
       </CommandPaletteProvider>
       </PlanningPeriodProvider>
