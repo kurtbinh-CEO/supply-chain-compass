@@ -1722,6 +1722,46 @@ export default function DrpPage() {
                           )}
                         </div>
                       </td>
+                      <td className="px-3 py-2.5">
+                        {(() => {
+                          const cs = getContainersForCn(r.cn);
+                          if (cs.length === 0) return <span className="text-text-3 text-[11px]">—</span>;
+                          return (
+                            <div className="flex flex-wrap gap-1">
+                              {cs.slice(0, 2).map((c) => {
+                                const low = c.fillPct < 70;
+                                return (
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); crossLink("container", c.id); }}
+                                    title={`${c.id} ${c.vehicle} ${c.fillPct}% — click để xem chi tiết chuyến`}
+                                    className={cn(
+                                      "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] font-semibold transition-colors",
+                                      low
+                                        ? "border-warning/40 bg-warning-bg text-warning hover:bg-warning hover:text-warning-foreground"
+                                        : "border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground",
+                                    )}
+                                  >
+                                    <span className="font-mono">{c.id}</span>
+                                    <span className="opacity-70">{c.vehicle}</span>
+                                    <span className="tabular-nums">{c.fillPct}%</span>
+                                    {c.consolidated && (
+                                      <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/20 px-1 text-[9px]">
+                                        <Link2Icon className="h-2 w-2" />GHÉP
+                                      </span>
+                                    )}
+                                    {low && <AlertTriangle className="h-2.5 w-2.5" />}
+                                  </button>
+                                );
+                              })}
+                              {cs.length > 2 && (
+                                <span className="text-[11px] text-text-3 self-center">+{cs.length - 2}</span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td className="px-3 py-2.5 text-right">
                         {sev === "short" && (
                           <button onClick={(e) => { e.stopPropagation(); toggleRow(rowKey); }}
