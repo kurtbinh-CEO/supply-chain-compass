@@ -21,6 +21,7 @@ import {
 } from "@/components/master/CrudPrimitives";
 import type { ImportField } from "@/components/master/ExcelImportWizard";
 import { TableDownloadButton } from "@/components/TableDownloadButton";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import {
   useMasterItems, useCreateMasterItem, useUpdateMasterItem, useDeleteMasterItem, useBulkInsertMasterItems,
   useMasterFactories, useCreateMasterFactory, useUpdateMasterFactory, useDeleteMasterFactory, useBulkInsertMasterFactories,
