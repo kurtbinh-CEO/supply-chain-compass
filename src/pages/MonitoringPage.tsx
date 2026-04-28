@@ -24,6 +24,7 @@ import { SYSTEM_ACCURACY } from "@/data/unis-enterprise-dataset";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { MonitoringHeroCards } from "@/components/monitoring/MonitoringHeroCards";
 import { SummaryCards } from "@/components/SummaryCards";
+import { PillTabs } from "@/components/PillTabs";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 import { monitoringCompare } from "@/lib/compare-metrics";
 import { SectionTableHeader } from "@/components/SectionTableHeader";
