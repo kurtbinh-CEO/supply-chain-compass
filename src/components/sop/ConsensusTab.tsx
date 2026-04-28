@@ -243,7 +243,12 @@ export function ConsensusTab({
           onUpdateVariance={onUpdateVariance}
         />
       ) : (
-        <ConsensusSkuTable data={data} totals={totals} />
+        <ConsensusSkuTable
+          data={data}
+          totals={totals}
+          locked={locked}
+          onUpdateV3={onUpdateV3}
+        />
       )}
 
       {/* AOP gap summary strip */}
@@ -652,9 +657,13 @@ function ConsensusCnDrill({
 function ConsensusSkuTable({
   data,
   totals,
+  locked,
+  onUpdateV3,
 }: {
   data: ConsensusRow[];
   totals: { v0: number; v1: number; v2: number; v3: number; aop: number };
+  locked: boolean;
+  onUpdateV3: (cnIdx: number, skuIdx: number | null, value: number) => void;
 }) {
   const rows = useMemo(() => buildSkuPivot(data), [data]);
 
@@ -737,14 +746,24 @@ function ConsensusSkuTable({
         const d = r.aop > 0 ? Math.abs(((r.v3 - r.aop) / r.aop) * 100) : 0;
         return d > 10;
       }}
-      drillDown={(r) => <ConsensusSkuDrill row={r} />}
+      drillDown={(r) => (
+        <ConsensusSkuDrill row={r} locked={locked} onUpdateV3={onUpdateV3} />
+      )}
       summaryRow={summaryRow}
       exportFilename="sop-consensus-sku"
     />
   );
 }
 
-function ConsensusSkuDrill({ row }: { row: SkuPivotRow }) {
+function ConsensusSkuDrill({
+  row,
+  locked,
+  onUpdateV3,
+}: {
+  row: SkuPivotRow;
+  locked: boolean;
+  onUpdateV3: (cnIdx: number, skuIdx: number | null, value: number) => void;
+}) {
   type Cb = SkuPivotRow["cnBreakdown"][number];
 
   const cols: SmartTableColumn<Cb>[] = [
@@ -756,9 +775,18 @@ function ConsensusSkuDrill({ row }: { row: SkuPivotRow }) {
     { key: "v1", label: "v1", width: 90, numeric: true, align: "right", accessor: (r) => r.v1, render: (r) => r.v1.toLocaleString() },
     { key: "v2", label: "v2", width: 90, numeric: true, align: "right", accessor: (r) => r.v2, render: (r) => r.v2.toLocaleString() },
     {
-      key: "v3", label: "v3 ★", width: 100, numeric: true, align: "right",
+      key: "v3", label: "v3 ★", width: 110, numeric: true, align: "right",
       accessor: (r) => r.v3,
-      render: (r) => <span className="text-primary font-bold tabular-nums">{r.v3.toLocaleString()}</span>,
+      render: (r) => (
+        <span className="flex items-center gap-1 justify-end">
+          <span className="text-primary text-[10px]">★</span>
+          <EditableCell
+            value={r.v3}
+            onChange={(v) => onUpdateV3(r.cnIdx, r.skuIdx, v)}
+            disabled={locked}
+          />
+        </span>
+      ),
     },
     {
       key: "aop", label: "AOP", width: 90, numeric: true, align: "right",
@@ -784,6 +812,15 @@ function ConsensusSkuDrill({ row }: { row: SkuPivotRow }) {
     },
   ];
 
+  const summaryRow: Partial<Record<string, React.ReactNode>> = {
+    cn: <span className="font-bold text-text-1">TỔNG</span>,
+    v0: row.v0.toLocaleString(),
+    v1: row.v1.toLocaleString(),
+    v2: row.v2.toLocaleString(),
+    v3: <span className="text-primary font-bold tabular-nums">★ {row.v3.toLocaleString()}</span>,
+    aop: row.aop.toLocaleString(),
+  };
+
   return (
     <div className="px-3 py-2 bg-surface-1/40">
       <SmartTable<Cb>
@@ -792,6 +829,7 @@ function ConsensusSkuDrill({ row }: { row: SkuPivotRow }) {
         data={row.cnBreakdown}
         defaultDensity="compact"
         getRowId={(r) => r.cn}
+        summaryRow={summaryRow}
       />
     </div>
   );

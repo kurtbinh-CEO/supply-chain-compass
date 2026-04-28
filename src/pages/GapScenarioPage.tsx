@@ -34,6 +34,13 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 import { useNavigate } from "react-router-dom";
 import { SummaryCards } from "@/components/SummaryCards";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import {
+  RELEASED_BY_NM,
+  WEEKLY_BURN_BY_NM,
+  SKU_RELEASED_BY_NM,
+  getTierStatus,
+  type TierStatus,
+} from "@/data/price-tiers";
 
 // Map mỗi NM → SKU base chính (dùng để tra giá thực)
 const NM_TOP_SKU: Record<NmId, string> = {
@@ -99,6 +106,10 @@ interface GapRow extends CommitmentGapRow {
   velocity: "Tăng" | "Ổn định" | "Giảm";
   stale: boolean;
   relationshipPct: number;
+  releasedM2: number;       // đã kéo (PO released + delivered + completed)
+  remainingM2: number;      // cam kết − đã kéo
+  pulledPct: number;        // đã kéo / cam kết × 100
+  tier: TierStatus | null;  // tier hiện tại + risk + uplift
 }
 
 function buildRows(): GapRow[] {
@@ -121,6 +132,11 @@ function buildRows(): GapRow[] {
       relationship: 80,
       velocity: "Ổn định" as const,
     };
+    const releasedM2 = RELEASED_BY_NM[g.nmId] ?? 0;
+    const remainingM2 = Math.max(0, g.totalCommittedM2 - releasedM2);
+    const pulledPct = g.totalCommittedM2 > 0
+      ? Math.round((releasedM2 / g.totalCommittedM2) * 100)
+      : 0;
     return {
       ...g,
       nm,
@@ -129,6 +145,10 @@ function buildRows(): GapRow[] {
       velocity: m.velocity,
       stale: m.stale,
       relationshipPct: m.relationship,
+      releasedM2,
+      remainingM2,
+      pulledPct,
+      tier: getTierStatus(g.nmId, releasedM2),
     };
   });
 }
@@ -364,6 +384,48 @@ function TrackingTab({
 /* Gap tracking table — SmartTable wrapper                                     */
 /* ─────────────────────────────────────────────────────────────────────────── */
 
+/**
+ * BurnDownBar — bar 2 lớp:
+ *  · nền = committed
+ *  · fill = released (% kéo)
+ *  · marker dọc = ngưỡng tier 1 (giữ giá ưu đãi)
+ */
+function BurnDownBar({
+  committed,
+  released,
+  tierThreshold,
+}: {
+  committed: number;
+  released: number;
+  tierThreshold?: number;
+}) {
+  if (committed <= 0) return null;
+  const pct = Math.min(100, (released / committed) * 100);
+  const fillColor = pct >= 80 ? "bg-success" : pct >= 50 ? "bg-warning" : "bg-danger";
+  const tierLeft = tierThreshold && tierThreshold > 0
+    ? Math.min(100, (tierThreshold / committed) * 100)
+    : null;
+  const tierReached = tierThreshold ? released >= tierThreshold : true;
+  return (
+    <div className="relative mt-1 h-1.5 w-full rounded-full bg-surface-3 overflow-visible">
+      <div
+        className={cn("h-full rounded-full transition-all", fillColor)}
+        style={{ width: `${pct}%` }}
+      />
+      {tierLeft != null && (
+        <div
+          className={cn(
+            "absolute -top-0.5 h-2.5 w-px",
+            tierReached ? "bg-success" : "bg-text-2"
+          )}
+          style={{ left: `${tierLeft}%` }}
+          title={`Ngưỡng Tier 1: ${tierThreshold!.toLocaleString("vi-VN")} m²`}
+        />
+      )}
+    </div>
+  );
+}
+
 function GapTrackingTable({
   rows,
   onSelect,
@@ -420,8 +482,98 @@ function GapTrackingTable({
       render: (r) => fmtM2(r.totalCommittedM2),
     },
     {
+      key: "released",
+      label: "Đã kéo (PO)",
+      width: 150,
+      numeric: true,
+      sortable: true,
+      align: "right",
+      accessor: (r) => r.releasedM2,
+      render: (r) => (
+        <div>
+          <div className="tabular-nums font-medium text-text-1">{fmtM2(r.releasedM2)}</div>
+          <BurnDownBar
+            committed={r.totalCommittedM2}
+            released={r.releasedM2}
+            tierThreshold={r.tier?.schedule.tier1Threshold}
+          />
+        </div>
+      ),
+    },
+    {
+      key: "remaining",
+      label: "Còn lại",
+      width: 100,
+      numeric: true,
+      sortable: true,
+      align: "right",
+      accessor: (r) => r.remainingM2,
+      render: (r) => (
+        <span className={cn("tabular-nums font-medium", r.remainingM2 > 0 ? "text-warning" : "text-success")}>
+          {fmtM2(r.remainingM2)}
+        </span>
+      ),
+    },
+    {
+      key: "pulledPct",
+      label: "% Kéo",
+      width: 80,
+      numeric: true,
+      sortable: true,
+      align: "right",
+      accessor: (r) => r.pulledPct,
+      render: (r) => {
+        const color = r.pulledPct >= 80 ? "text-success" : r.pulledPct >= 50 ? "text-warning" : "text-danger";
+        return <span className={cn("tabular-nums font-semibold", color)}>{r.pulledPct}%</span>;
+      },
+    },
+    {
+      key: "tier",
+      label: "Tier hiện tại",
+      width: 100,
+      align: "center",
+      accessor: (r) => r.tier?.current ?? "—",
+      render: (r) => {
+        if (!r.tier) return <span className="text-text-3">—</span>;
+        const t = r.tier.current;
+        const cls = t === "tier1"
+          ? "bg-success-bg text-success border-success/30"
+          : t === "tier2"
+          ? "bg-warning-bg text-warning border-warning/30"
+          : "bg-danger-bg text-danger border-danger/30";
+        return (
+          <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 border text-caption font-semibold uppercase", cls)}>
+            {t === "tier1" ? "Tier 1" : t === "tier2" ? "Tier 2" : "Tier 3"}
+          </span>
+        );
+      },
+    },
+    {
+      key: "tierRisk",
+      label: "Rủi ro tier",
+      width: 240,
+      render: (r) => {
+        if (!r.tier) return <span className="text-text-3">—</span>;
+        const t = r.tier.current;
+        if (t === "tier1") {
+          return <span className="text-table-sm text-success">Đã đạt Tier 1 ✅</span>;
+        }
+        const cls = t === "tier3" ? "text-danger" : "text-warning";
+        return (
+          <div>
+            <p className={cn("text-table-sm font-medium", cls)}>{r.tier.message}</p>
+            {r.tier.upliftIfDrop > 0 && (
+              <p className="text-caption text-danger mt-0.5">
+                Uplift nếu giữ {t === "tier2" ? "Tier 2" : "Tier 3"}: {fmtVnd(r.tier.upliftIfDrop)}
+              </p>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       key: "gap",
-      label: "Khoảng cách",
+      label: "Cảnh báo",
       width: 130,
       numeric: true,
       sortable: true,
@@ -517,60 +669,157 @@ function GapTrackingTable({
  * Tận dụng `commitments` field nếu có; fallback ra 1 dòng tổng.
  */
 function GapNmSkuDrill({ row }: { row: GapRow }) {
-  // Build SKU breakdown from commitments if present, else single aggregate row
-  type SkuGap = { sku: string; requested: number; committed: number; gap: number; gapPct: number };
-  const skuRows: SkuGap[] = (() => {
-    const commits = (row as unknown as { commitments?: { skuBaseCode: string; requestedM2: number; committedM2: number }[] }).commitments;
-    if (commits && commits.length > 0) {
-      return commits.map((c) => {
-        const gap = c.requestedM2 - c.committedM2;
-        return {
-          sku: c.skuBaseCode,
-          requested: c.requestedM2,
-          committed: c.committedM2,
-          gap,
-          gapPct: c.requestedM2 > 0 ? Math.round((gap / c.requestedM2) * 1000) / 10 : 0,
-        };
-      });
-    }
-    return [{
-      sku: NM_TOP_SKU[row.nmId] ?? "—",
-      requested: row.totalRequestedM2,
-      committed: row.totalCommittedM2,
-      gap: row.gapM2,
-      gapPct: row.gapPct,
-    }];
-  })();
+  const tier = row.tier;
+  const skuRows = SKU_RELEASED_BY_NM[row.nmId] ?? [];
+  const weekly = WEEKLY_BURN_BY_NM[row.nmId] ?? [];
 
-  const childCols: SmartTableColumn<SkuGap>[] = [
+  type SkuLine = {
+    sku: string;
+    committed: number;
+    released: number;
+    remaining: number;
+    pct: number;
+    lastPo: string;
+  };
+  const skuLines: SkuLine[] = skuRows.map((s) => ({
+    sku: s.sku,
+    committed: s.committed,
+    released: s.released,
+    remaining: Math.max(0, s.committed - s.released),
+    pct: s.committed > 0 ? Math.round((s.released / s.committed) * 100) : 0,
+    lastPo: s.lastPo,
+  }));
+
+  // Pace + ETA tier 1 (mock): trung bình 4 tuần đã hoàn tất
+  const doneWeeks = weekly.filter((w) => w.status === "done");
+  const pace = doneWeeks.length > 0
+    ? Math.round(doneWeeks.reduce((a, w) => a + w.pulled, 0) / doneWeeks.length)
+    : 0;
+  const weeksToTier1 = tier && tier.toNextTier > 0 && pace > 0
+    ? Math.ceil(tier.toNextTier / pace)
+    : 0;
+
+  const childCols: SmartTableColumn<SkuLine>[] = [
     { key: "sku", label: "Mã hàng", width: 110, render: (r) => <span className="font-mono text-text-1">{r.sku}</span> },
-    { key: "requested", label: "Yêu cầu", width: 110, numeric: true, align: "right", render: (r) => fmtM2(r.requested) },
-    { key: "committed", label: "Cam kết", width: 110, numeric: true, align: "right", render: (r) => fmtM2(r.committed) },
-    { key: "gap", label: "Gap", width: 110, numeric: true, align: "right",
+    { key: "committed", label: "Cam kết", width: 100, numeric: true, align: "right", render: (r) => fmtM2(r.committed) },
+    { key: "released", label: "Đã kéo", width: 100, numeric: true, align: "right",
+      render: (r) => <span className="tabular-nums font-medium text-text-1">{fmtM2(r.released)}</span>,
+    },
+    { key: "remaining", label: "Còn lại", width: 100, numeric: true, align: "right",
       render: (r) => (
-        <span className={cn("tabular-nums font-medium", r.gap > 0 ? "text-danger" : "text-success")}>
-          {r.gap > 0 ? "+" : ""}{fmtM2(r.gap)}
+        <span className={cn("tabular-nums font-medium", r.remaining > 0 ? "text-warning" : "text-success")}>
+          {fmtM2(r.remaining)}
         </span>
       ),
     },
-    { key: "gapPct", label: "% Gap", width: 80, numeric: true, align: "right",
-      render: (r) => (
-        <span className={cn("tabular-nums font-medium", r.gapPct > 15 ? "text-danger" : r.gapPct > 5 ? "text-warning" : "text-success")}>
-          {r.gapPct}%
-        </span>
-      ),
+    { key: "pct", label: "% Kéo", width: 80, numeric: true, align: "right",
+      render: (r) => {
+        const c = r.pct >= 80 ? "text-success" : r.pct >= 50 ? "text-warning" : "text-danger";
+        return <span className={cn("tabular-nums font-semibold", c)}>{r.pct}%</span>;
+      },
     },
+    { key: "lastPo", label: "PO gần nhất", width: 180, render: (r) => <span className="text-table-sm text-text-2">{r.lastPo}</span> },
   ];
 
+  const totalCommitted = skuLines.reduce((a, s) => a + s.committed, 0);
+  const totalReleased = skuLines.reduce((a, s) => a + s.released, 0);
+  const totalRemaining = skuLines.reduce((a, s) => a + s.remaining, 0);
+  const totalPct = totalCommitted > 0 ? Math.round((totalReleased / totalCommitted) * 100) : 0;
+
   return (
-    <div className="px-4 py-3 bg-surface-1/40">
-      <SmartTable<SkuGap>
-        screenId={`gap-tracking-${row.nmId}-skus`}
-        columns={childCols}
-        data={skuRows}
-        defaultDensity="compact"
-        getRowId={(r) => r.sku}
-      />
+    <div className="px-4 py-3 bg-surface-1/40 space-y-4">
+      {/* TIER PRICING block */}
+      {tier && (
+        <div className="rounded-card border border-surface-3 bg-surface-0 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="font-display text-table font-semibold text-text-1">
+              {row.nm.name} — Burn-down chi tiết
+            </h4>
+            <span className="text-caption text-text-3">{tier.schedule.period}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-table-sm">
+            <div className={cn("rounded-button border p-2.5",
+              tier.current === "tier1" ? "border-success/40 bg-success-bg" : "border-surface-3 bg-surface-1")}>
+              <p className="text-caption text-text-3 uppercase">Tier 1 ≥ {tier.schedule.tier1Threshold.toLocaleString("vi-VN")} m²</p>
+              <p className="font-display text-h3 font-semibold text-text-1 tabular-nums">{tier.schedule.tier1Price.toLocaleString("vi-VN")}₫/m²</p>
+              <p className="text-caption text-success font-medium">Giá ưu đãi</p>
+            </div>
+            <div className={cn("rounded-button border p-2.5",
+              tier.current === "tier2" ? "border-warning/40 bg-warning-bg" : "border-surface-3 bg-surface-1")}>
+              <p className="text-caption text-text-3 uppercase">Tier 2 ≥ {tier.schedule.tier2Threshold.toLocaleString("vi-VN")} m²</p>
+              <p className="font-display text-h3 font-semibold text-text-1 tabular-nums">{tier.schedule.tier2Price.toLocaleString("vi-VN")}₫/m²</p>
+              <p className="text-caption text-warning font-medium">+{Math.round(((tier.schedule.tier2Price - tier.schedule.tier1Price) / tier.schedule.tier1Price) * 100)}%</p>
+            </div>
+            <div className={cn("rounded-button border p-2.5",
+              tier.current === "tier3" ? "border-danger/40 bg-danger-bg" : "border-surface-3 bg-surface-1")}>
+              <p className="text-caption text-text-3 uppercase">Tier 3 (mặc định)</p>
+              <p className="font-display text-h3 font-semibold text-text-1 tabular-nums">{tier.schedule.tier3Price.toLocaleString("vi-VN")}₫/m²</p>
+              <p className="text-caption text-danger font-medium">+{Math.round(((tier.schedule.tier3Price - tier.schedule.tier1Price) / tier.schedule.tier1Price) * 100)}%</p>
+            </div>
+          </div>
+          <p className="text-table-sm text-text-2 mt-2">
+            Hiện tại: <strong className="text-text-1">{fmtM2(row.releasedM2)}</strong> →{" "}
+            <strong className={cn(
+              tier.current === "tier1" ? "text-success" : tier.current === "tier2" ? "text-warning" : "text-danger"
+            )}>
+              {tier.current === "tier1" ? "Tier 1 ✅" : tier.current === "tier2" ? "Tier 2" : "Tier 3"}
+            </strong>{" "}
+            — {tier.message}
+            {tier.upliftIfDrop > 0 && (
+              <span className="text-danger font-medium"> · Uplift retroactive: {fmtVnd(tier.upliftIfDrop)}</span>
+            )}
+          </p>
+        </div>
+      )}
+
+      {/* PER SKU table */}
+      {skuLines.length > 0 && (
+        <SmartTable<SkuLine>
+          screenId={`gap-tracking-${row.nmId}-skus`}
+          columns={childCols}
+          data={skuLines}
+          defaultDensity="compact"
+          getRowId={(r) => r.sku}
+          summaryRow={{
+            sku: <span className="font-bold text-text-1">TỔNG</span>,
+            committed: fmtM2(totalCommitted),
+            released: <span className="font-bold tabular-nums">{fmtM2(totalReleased)}</span>,
+            remaining: fmtM2(totalRemaining),
+            pct: <span className="font-bold tabular-nums">{totalPct}%</span>,
+          }}
+        />
+      )}
+
+      {/* WEEKLY burn-down */}
+      {weekly.length > 0 && (
+        <div className="rounded-card border border-surface-3 bg-surface-0 p-4">
+          <h4 className="font-display text-table font-semibold text-text-1 mb-2">
+            Burn-down theo tuần
+          </h4>
+          <div className="flex flex-wrap items-end gap-3">
+            {weekly.map((w) => {
+              const icon = w.status === "done" ? "✅" : w.status === "shipping" ? "🚛" : "📝";
+              const color = w.status === "done" ? "text-success" : w.status === "shipping" ? "text-info" : "text-text-3";
+              return (
+                <div key={w.week} className="flex flex-col items-center min-w-[64px]">
+                  <span className={cn("text-table-sm font-semibold tabular-nums", color)}>
+                    {w.pulled.toLocaleString("vi-VN")}
+                  </span>
+                  <span className="text-caption text-text-3">{w.week} {icon}</span>
+                </div>
+              );
+            })}
+          </div>
+          {pace > 0 && (
+            <p className="text-caption text-text-2 mt-2">
+              Pace TB: <strong className="text-text-1">{pace.toLocaleString("vi-VN")} m²/tuần</strong>
+              {weeksToTier1 > 0 && tier && (
+                <> · Đạt Tier 1 sau ~<strong className="text-text-1">{weeksToTier1} tuần</strong> (cần thêm {fmtM2(tier.toNextTier)})</>
+              )}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -833,10 +1082,9 @@ function ScenarioTab({
             </div>
             <p className="text-table-sm text-text-3 mt-1">
               Yêu cầu {fmtM2(selected.totalRequestedM2)} · Cam kết{" "}
-              {fmtM2(selected.totalCommittedM2)} · Gap{" "}
-              <span className="font-semibold text-text-1">
-                {fmtM2(selected.gapM2)} ({selected.gapPct}%)
-              </span>
+              {fmtM2(selected.totalCommittedM2)} · Đã kéo{" "}
+              <span className="font-semibold text-text-1">{fmtM2(selected.releasedM2)}</span> ({selected.pulledPct}%)
+              · Còn lại <span className="font-semibold text-warning">{fmtM2(selected.remainingM2)}</span>
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -862,6 +1110,40 @@ function ScenarioTab({
               <span className="font-semibold">NM chưa cập nhật dữ liệu</span> —
               các kịch bản dưới đây có thể không chính xác. Yêu cầu NM sync
               trước khi chốt phương án.
+            </p>
+          </div>
+        )}
+
+        {selected.tier && selected.tier.current !== "tier1" && (
+          <div className="mt-4 flex items-start gap-2 rounded-button border border-warning/30 bg-warning-bg px-3 py-2.5 text-warning">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <p className="text-table-sm">
+              <span className="font-semibold">
+                Cảnh báo Tier giá:
+              </span>{" "}
+              {selected.nm.name} đã kéo {fmtM2(selected.releasedM2)} —{" "}
+              <strong>
+                {selected.tier.current === "tier2" ? "Tier 2" : "Tier 3"}
+              </strong>
+              . Tier 1 cần ≥{fmtM2(selected.tier.schedule.tier1Threshold)} (giá{" "}
+              {selected.tier.schedule.tier1Price.toLocaleString("vi-VN")}₫/m²).
+              Nếu không kéo thêm <strong>{fmtM2(selected.tier.toNextTier)}</strong>,
+              NM sẽ áp giá <strong>
+                {selected.tier.currentPrice.toLocaleString("vi-VN")}₫/m²
+              </strong>{" "}
+              cho TOÀN BỘ {fmtM2(selected.releasedM2)} đã mua → phụ phí
+              retroactive <strong className="text-danger">{fmtVnd(selected.tier.upliftIfDrop)}</strong>.
+            </p>
+          </div>
+        )}
+        {selected.tier && selected.tier.current === "tier1" && (
+          <div className="mt-4 flex items-start gap-2 rounded-button border border-success/30 bg-success-bg px-3 py-2.5 text-success">
+            <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+            <p className="text-table-sm">
+              {selected.nm.name} đang ở <strong>Tier 1</strong> — giá ưu đãi{" "}
+              {selected.tier.schedule.tier1Price.toLocaleString("vi-VN")}₫/m².
+              Đã kéo {fmtM2(selected.releasedM2)} ≥{" "}
+              {fmtM2(selected.tier.schedule.tier1Threshold)} ✅
             </p>
           </div>
         )}
@@ -905,6 +1187,12 @@ export default function GapScenarioPage() {
     totalRequested === 0
       ? 0
       : Math.round((totalGap / totalRequested) * 1000) / 10;
+  const totalCommitted = rows.reduce((s, r) => s + r.totalCommittedM2, 0);
+  const totalReleased = rows.reduce((s, r) => s + r.releasedM2, 0);
+  const totalRemaining = rows.reduce((s, r) => s + r.remainingM2, 0);
+  const burnedPct = totalCommitted > 0 ? Math.round((totalReleased / totalCommitted) * 100) : 0;
+  const tierAtRiskRows = rows.filter((r) => r.tier && r.tier.current !== "tier1");
+  const totalUplift = tierAtRiskRows.reduce((s, r) => s + (r.tier?.upliftIfDrop ?? 0), 0);
 
   return (
     <AppLayout>
@@ -939,44 +1227,59 @@ export default function GapScenarioPage() {
           editable
           cards={[
             {
-              key: "total_gap",
-              label: "Tổng Gap",
-              value: totalGap > 0 ? totalGap.toLocaleString("vi-VN") : "1.200",
+              key: "burned",
+              label: "Tổng đã kéo",
+              value: `${(totalReleased / 1000).toFixed(1)}/${(totalCommitted / 1000).toFixed(1)}k`,
               unit: "m²",
               trend: {
-                delta: `${rows.filter((r) => r.gapM2 > 0).length} NM`,
-                direction: "down",
-                color: "green",
+                delta: `${burnedPct}% burned`,
+                direction: burnedPct >= 70 ? "up" : "flat",
+                color: burnedPct >= 70 ? "green" : burnedPct >= 50 ? "gray" : "red",
               },
-              severity: "warn",
-              tooltip: "Tổng m² còn thiếu so với cam kết NM",
-            },
-            {
-              key: "scenarios",
-              label: "Kịch bản tạo",
-              value: 4,
-              unit: "kịch bản",
-              trend: { delta: "AI đề xuất: C", direction: "flat", color: "gray" },
-              severity: "ok",
-              onClick: () => setActiveTab("scenario"),
-            },
-            {
-              key: "cost_range",
-              label: "Chi phí ước tính",
-              value: "86–173",
-              unit: "triệu ₫",
-              trend: { delta: "A: 173M · C: 86M", direction: "flat", color: "gray" },
-              severity: "ok",
-              tooltip: "Khoảng chi phí giữa kịch bản đắt nhất (A) và rẻ nhất (C)",
-            },
-            {
-              key: "risk_nm",
-              label: "NM rủi ro",
-              value: rows.filter((r) => r.status === "critical").length || 1,
-              unit: "NM",
-              trend: { delta: "Phú Mỹ 48%", direction: "down", color: "red" },
-              severity: "critical",
+              severity: burnedPct >= 70 ? "ok" : burnedPct >= 50 ? "warn" : "critical",
+              tooltip: "Đã release PO / Tổng cam kết NM",
               onClick: () => setActiveTab("tracking"),
+            },
+            {
+              key: "remaining",
+              label: "Còn lại cần kéo",
+              value: totalRemaining.toLocaleString("vi-VN"),
+              unit: "m²",
+              trend: {
+                delta: `${rows.filter((r) => r.remainingM2 > 0).length} NM còn`,
+                direction: "down",
+                color: "gray",
+              },
+              severity: totalRemaining > 0 ? "warn" : "ok",
+            },
+            {
+              key: "tier_risk",
+              label: "Rủi ro tier",
+              value: tierAtRiskRows.length,
+              unit: "NM",
+              trend: {
+                delta: tierAtRiskRows.length > 0
+                  ? tierAtRiskRows.map((r) => r.nm.name).slice(0, 2).join(" + ")
+                  : "Tất cả Tier 1 ✅",
+                direction: tierAtRiskRows.length > 0 ? "down" : "flat",
+                color: tierAtRiskRows.length > 0 ? "red" : "green",
+              },
+              severity: tierAtRiskRows.length >= 2 ? "critical" : tierAtRiskRows.length === 1 ? "warn" : "ok",
+              tooltip: "Số NM đang ở Tier 2/3 — sẽ chịu phụ phí retroactive nếu không kéo đủ",
+              onClick: () => setActiveTab("tracking"),
+            },
+            {
+              key: "uplift",
+              label: "Uplift dự kiến",
+              value: totalUplift > 0 ? fmtVnd(totalUplift).replace("₫", "").trim() : "0",
+              unit: "₫",
+              trend: {
+                delta: totalUplift > 0 ? "🔴 retroactive" : "—",
+                direction: "down",
+                color: totalUplift > 0 ? "red" : "gray",
+              },
+              severity: totalUplift > 50_000_000 ? "critical" : totalUplift > 0 ? "warn" : "ok",
+              tooltip: "Phụ phí retroactive nếu các NM ở Tier 2/3 không kéo đủ ngưỡng Tier 1",
             },
           ]}
         />
