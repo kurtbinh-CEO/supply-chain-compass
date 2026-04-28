@@ -687,6 +687,8 @@ function LogicExplainer() {
    §  Drill Zone A — PO lines bên trong container (editable qty)
    ════════════════════════════════════════════════════════════════════════════ */
 function PoLinesEditor({ container }: { container: ContainerPlan }) {
+  const { roles } = useAuth();
+  const actorRole = roles[0] ?? "guest";
   const initial = useMemo(() => getPoLines(container), [container]);
   const [lines, setLines] = useState(initial);
   // Track original qty per line index để validate
