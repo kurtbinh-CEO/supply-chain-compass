@@ -280,6 +280,7 @@ function DropPointsEditor({
   };
   const handleConfirmDiscard = () => {
     setOrder(container.drops);
+    setRemovedCnCodes(new Set());
     clearDraft(container.id);
     setDraftSavedAt(null);
     setReorderMode(false);
