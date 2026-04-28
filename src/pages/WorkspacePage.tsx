@@ -389,7 +389,7 @@ export default function WorkspacePage() {
               const isExpanded = expandedId === item.id;
               const hasContext = !!ctx;
               return (
-                <div key={item.id} className={cn("transition-colors", isExpanded && "bg-surface-1/30")}>
+                <div key={item.id} id={`workspace-item-${item.id}`} className={cn("transition-colors", isExpanded && "bg-surface-1/30", highlightId === item.id && "ring-2 ring-primary/60 bg-primary/5 rounded-button")}>
                   <div
                     className={cn(
                       "px-5 py-3 flex items-center gap-3 transition-colors",
