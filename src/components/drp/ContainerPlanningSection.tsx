@@ -92,6 +92,11 @@ function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
 
+  // ── Draft state ──────────────────────────────────────────────────────────
+  const [pendingDraft, setPendingDraft] = useState<ContainerEditDraft | null>(null);
+  const [draftSavedAt, setDraftSavedAt] = useState<number | null>(null);
+  const autoSaveTimer = useRef<number | null>(null);
+
   const calc = useMemo(() => recalcRoute(container, order), [container, order]);
   const dirty = useMemo(
     () => order.some((d, i) => d.cnCode !== container.drops[i]?.cnCode),
@@ -100,7 +105,40 @@ function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
   const canReorder = container.drops.length >= 2 &&
     (container.status === "draft" || container.status === "ready" || container.status === "hold");
 
-  useEffect(() => { setOrder(container.drops); }, [container]);
+  // Mở/đổi container: reset state + check nháp đã lưu trước đó
+  useEffect(() => {
+    setOrder(container.drops);
+    setReorderMode(false);
+    setDraftSavedAt(null);
+    setPendingDraft(null);
+    const existing = getDraft(container.id);
+    if (existing && container.drops.length >= 2) {
+      const baseline = container.drops.map((d) => d.cnCode).join("|");
+      const draftKey = existing.cnOrder.join("|");
+      const validCodes = existing.cnOrder.every((c) =>
+        container.drops.some((d) => d.cnCode === c),
+      );
+      const sameLength = existing.cnOrder.length === container.drops.length;
+      if (validCodes && sameLength && draftKey !== baseline) {
+        setPendingDraft(existing);
+      } else if (!validCodes || !sameLength) {
+        clearDraft(container.id);
+      }
+    }
+  }, [container]);
+
+  // Auto-save mỗi khi `order` thay đổi trong reorderMode (debounce 500ms)
+  useEffect(() => {
+    if (!reorderMode || !dirty) return;
+    if (autoSaveTimer.current) window.clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = window.setTimeout(() => {
+      const d = saveDraft(container.id, order.map((x) => x.cnCode), { auto: true });
+      setDraftSavedAt(d.savedAt);
+    }, 500);
+    return () => {
+      if (autoSaveTimer.current) window.clearTimeout(autoSaveTimer.current);
+    };
+  }, [order, reorderMode, dirty, container.id]);
 
   const move = (from: number, to: number) => {
     if (from === to || to < 0 || to >= order.length) return;
@@ -110,14 +148,50 @@ function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
     setOrder(next);
   };
 
-  const reset = () => setOrder(container.drops);
+  const reset = () => {
+    setOrder(container.drops);
+    clearDraft(container.id);
+    setDraftSavedAt(null);
+    toast.info(`Đã hoàn tác — nháp ${container.id} bị xoá`);
+  };
+
   const save = () => {
     setReorderMode(false);
+    clearDraft(container.id);
+    setDraftSavedAt(null);
     if (!dirty) return;
     toast.success(
       `Đã lưu thứ tự mới cho ${container.id}: ${order.map((d) => d.cnCode).join(" → ")} ` +
       `(+${calc.deltaKm}km · ${calc.deltaFreight >= 0 ? "+" : ""}${(calc.deltaFreight / 1_000_000).toFixed(1)}M₫)`,
     );
+  };
+
+  const saveDraftManual = () => {
+    const d = saveDraft(container.id, order.map((x) => x.cnCode), { auto: false });
+    setDraftSavedAt(d.savedAt);
+    toast.success(`Đã lưu nháp ${container.id} — quay lại tiếp tục bất cứ lúc nào`);
+  };
+
+  const restoreDraft = () => {
+    if (!pendingDraft) return;
+    const map = new Map(container.drops.map((d) => [d.cnCode, d]));
+    const restored = pendingDraft.cnOrder
+      .map((c) => map.get(c))
+      .filter((d): d is DropPoint => !!d);
+    if (restored.length === container.drops.length) {
+      setOrder(restored);
+      setReorderMode(true);
+      setDraftSavedAt(pendingDraft.savedAt);
+      toast.info(`Đã khôi phục nháp ${container.id} (${formatDraftAge(pendingDraft.savedAt)})`);
+    }
+    setPendingDraft(null);
+  };
+
+  const discardDraft = () => {
+    if (!pendingDraft) return;
+    clearDraft(container.id);
+    setPendingDraft(null);
+    toast.info(`Đã bỏ nháp ${container.id}`);
   };
 
   const fmtKm = (v: number) => v.toLocaleString("vi-VN") + " km";
