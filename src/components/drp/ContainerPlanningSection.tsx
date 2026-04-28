@@ -877,13 +877,22 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
             const kg = l.qtyM2 * skuWeight(l.sku);
             const v = editValidations[i];
             const orig = originalQtys[i];
-            const changed = l.qtyM2 !== orig;
+            const applied = l.qtyM2;
+            const attempted = attemptedQtys[i];
+            // When blocked, the input still shows the user's last attempt so they
+            // can edit it directly. Otherwise it tracks the applied value.
+            const isBlocked = v?.severity === "block";
+            const displayQty = isBlocked && attempted !== undefined ? attempted : applied;
+            const changed = applied !== orig;
             const sevColor =
+              isBlocked ? "border-danger/60 bg-danger-bg/50 text-danger" :
               v?.severity === "warn" ? "border-warning/60 bg-warning-bg/50 text-warning" :
               v?.severity === "require_reason" ? "border-warning/60 bg-warning-bg/60 text-warning" :
-              v?.severity === "block" ? "border-danger/60 bg-danger-bg/50 text-danger" :
               changed ? "border-info/60 bg-info-bg/40 text-info" :
               "border-surface-3 bg-surface-1 text-text-1";
+            const action = v && v.severity !== "ok"
+              ? requiredActionFor(v, i, attempted ?? applied, applied)
+              : "";
             return (
               <Fragment key={`${l.poNumber}-${l.sku}-${i}`}>
                 <tr className="border-b border-surface-3/40">
@@ -892,14 +901,20 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
                   <td className="py-1.5 text-text-2 font-mono text-[11px]">{l.sku}</td>
                   <td className="py-1.5 text-right">
                     <div className="inline-flex flex-col items-end gap-0.5">
-                      <input type="number" value={l.qtyM2}
+                      <input type="number" value={displayQty}
+                        aria-invalid={isBlocked || undefined}
                         onChange={(e) => editQty(i, Number(e.target.value))}
                         className={cn(
                           "w-20 h-6 px-1.5 text-right tabular-nums rounded-button border focus:outline-none focus:ring-1 focus:ring-primary/40",
                           sevColor,
                         )}
                       />
-                      {changed && (
+                      {isBlocked && attempted !== undefined && attempted !== applied && (
+                        <span className="text-[10px] text-danger tabular-nums">
+                          chưa lưu · áp dụng: {applied.toLocaleString()}
+                        </span>
+                      )}
+                      {!isBlocked && changed && (
                         <span className="text-[10px] text-text-3 tabular-nums">
                           gốc: {orig.toLocaleString()}
                         </span>
@@ -925,7 +940,25 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
                       )}>
                         <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
                         <div className="flex-1 space-y-1">
-                          <div>{v.message}</div>
+                          {/* Lý do (vì sao) */}
+                          <div>
+                            <span className="font-semibold mr-1">Lý do:</span>
+                            <span>{v.message}</span>
+                          </div>
+                          {/* Giá trị attempt vs applied — minh bạch điều gì đã/chưa lưu */}
+                          {attempted !== undefined && attempted !== applied && (
+                            <div className="text-[10px] opacity-80 tabular-nums">
+                              Bạn nhập: <strong>{attempted.toLocaleString()}m²</strong>
+                              {" · "}
+                              {isBlocked
+                                ? <>Đang áp dụng (chưa lưu giá trị mới): <strong>{applied.toLocaleString()}m²</strong></>
+                                : <>Đã áp dụng: <strong>{applied.toLocaleString()}m²</strong></>}
+                            </div>
+                          )}
+                          {/* Hành động cần làm */}
+                          {action && (
+                            <div className="font-medium">{action}</div>
+                          )}
                           {v.severity === "require_reason" && (
                             <Select
                               value={decreaseReasons[i] ?? ""}
