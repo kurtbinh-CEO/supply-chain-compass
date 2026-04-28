@@ -51,3 +51,4 @@ i18n: VI default, EN supported. All UI text via `t()` hook from I18nContext.
 - [Demo readiness](mem://architecture/demo-readiness) — Lazy load, dev-only routes, NotFound redesign, SEO, Workspace demo CTA
 - [Gap scenario resolution](mem://features/gap-scenario-resolution) — Chọn kịch bản A/B/C/D → ConfirmDialog → tạo PO/Task/tier impact, banner + cột tracking
 - [Transport logic](mem://features/transport-logic) — 4 ma trận route/drop/fill-up/edit + ConfigPage Vận tải tab + wired vào ContainerEditPreview, PoLinesEditor, RoundUpSuggestion
+- [Transport audit](mem://features/transport-audit) — Audit log panel ghi nhận mọi quyết định tự động của 4 ma trận transport (timestamp + actorRole), persist localStorage
