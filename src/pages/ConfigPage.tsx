@@ -36,6 +36,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import { TransportLogicPanel } from "@/components/config/TransportLogicPanel";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -613,6 +614,9 @@ export default function ConfigPage() {
                   <p className="text-table-sm text-text-3 mt-0.5">{t.caption}</p>
                 </div>
               </div>
+
+              {/* 4 ma trận logic vận tải — chỉ hiển thị tại tab Vận tải */}
+              {t.v === "transport" && <TransportLogicPanel />}
 
               <SmartTable<RuntimeRow>
                 screenId={`config-${t.v}`}
