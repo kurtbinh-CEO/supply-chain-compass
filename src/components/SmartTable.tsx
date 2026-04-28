@@ -101,6 +101,17 @@ export interface SmartTableProps<T = any> {
   drillDown?: (row: T) => React.ReactNode | null;
   autoExpandWhen?: (row: T) => boolean;
   onRowClick?: (row: T) => void;
+  /**
+   * Guard chạy trước khi đóng (collapse) một row đang mở.
+   * Trả `false` để chặn đóng (parent sẽ hiển thị confirm UI riêng).
+   * Trả `true`/`undefined` để cho phép đóng như bình thường.
+   */
+  beforeCollapse?: (row: T) => boolean | undefined;
+  /**
+   * Yêu cầu collapse một row cụ thể từ ngoài (parent confirm xong).
+   * Bump `nonce` mỗi lần để trigger; `id` = row id muốn collapse.
+   */
+  collapseRowSignal?: { id: string; nonce: number } | null;
   emptyMessage?: string;
   /** Trạng thái loading — hiện shimmer rows */
   isLoading?: boolean;
@@ -273,6 +284,8 @@ export function SmartTable<T = any>({
   drillDown,
   autoExpandWhen,
   onRowClick,
+  beforeCollapse,
+  collapseRowSignal,
   emptyMessage = "Không có dữ liệu",
   isLoading = false,
   emptyState,
@@ -459,6 +472,17 @@ export function SmartTable<T = any>({
       return next;
     });
   };
+
+  // Parent yêu cầu collapse một row sau khi confirm
+  React.useEffect(() => {
+    if (!collapseRowSignal) return;
+    setExpanded((prev) => {
+      if (!prev.has(collapseRowSignal.id)) return prev;
+      const next = new Set(prev);
+      next.delete(collapseRowSignal.id);
+      return next;
+    });
+  }, [collapseRowSignal?.id, collapseRowSignal?.nonce]);
 
   const setTextFilter = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: { kind: "text", value } }));
@@ -873,7 +897,13 @@ export function SmartTable<T = any>({
                   <tr
                     data-severity={sev}
                     onClick={() => {
-                      if (canExpand) toggleExpand(id);
+                      if (canExpand) {
+                        // Nếu đang mở và parent guard trả về false → chặn đóng
+                        if (isOpen && beforeCollapse && beforeCollapse(row) === false) {
+                          return;
+                        }
+                        toggleExpand(id);
+                      }
                       onRowClick?.(row);
                     }}
                     className={cn(

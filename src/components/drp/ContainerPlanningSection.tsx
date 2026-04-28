@@ -84,13 +84,23 @@ function recalcRoute(container: _CP, newOrder: DropPoint[]) {
 interface DropPointsEditorProps {
   container: _CP;
   onCnClick?: (cnCode: string) => void;
+  /** Báo dirty state lên parent (để parent gắn beforeCollapse guard). */
+  onDirtyChange?: (containerId: string, dirty: boolean) => void;
+  /** Tăng số này từ parent khi user click row đang mở → editor sẽ xử lý confirm. */
+  closeRequestNonce?: number;
+  /** Editor gọi khi user xác nhận đóng (đã save / đã discard / không dirty). */
+  onCloseAllowed?: () => void;
 }
 
-function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
+function DropPointsEditor({
+  container, onCnClick,
+  onDirtyChange, closeRequestNonce, onCloseAllowed,
+}: DropPointsEditorProps) {
   const [reorderMode, setReorderMode] = useState(false);
   const [order, setOrder] = useState<DropPoint[]>(container.drops);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
 
   // ── Draft state ──────────────────────────────────────────────────────────
   const [pendingDraft, setPendingDraft] = useState<ContainerEditDraft | null>(null);
@@ -104,6 +114,35 @@ function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
   );
   const canReorder = container.drops.length >= 2 &&
     (container.status === "draft" || container.status === "ready" || container.status === "hold");
+
+  // Báo dirty state lên parent (cho beforeCollapse guard ở SmartTable)
+  useEffect(() => {
+    onDirtyChange?.(container.id, dirty);
+    return () => onDirtyChange?.(container.id, false);
+  }, [dirty, container.id, onDirtyChange]);
+
+  // Cảnh báo trước khi rời trang/đóng tab khi có dirty changes
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = ""; // chrome cần returnValue truthy
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
+  // Parent yêu cầu đóng (user click row) — nếu dirty, hiện confirm.
+  // Bỏ qua nonce=0 (lần mount đầu, chưa có yêu cầu thực sự).
+  useEffect(() => {
+    if (!closeRequestNonce) return;
+    if (dirty) {
+      setCloseConfirmOpen(true);
+    } else {
+      onCloseAllowed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closeRequestNonce]);
 
   // Mở/đổi container: reset state + check nháp đã lưu trước đó
   useEffect(() => {
@@ -192,6 +231,25 @@ function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
     clearDraft(container.id);
     setPendingDraft(null);
     toast.info(`Đã bỏ nháp ${container.id}`);
+  };
+
+  // ── Close-confirm handlers (gọi từ Dialog "Đóng preview khi có thay đổi") ──
+  const handleConfirmSave = () => {
+    save();
+    setCloseConfirmOpen(false);
+    onCloseAllowed?.();
+  };
+  const handleConfirmDiscard = () => {
+    setOrder(container.drops);
+    clearDraft(container.id);
+    setDraftSavedAt(null);
+    setReorderMode(false);
+    setCloseConfirmOpen(false);
+    toast.info(`Đã bỏ thay đổi cho ${container.id}`);
+    onCloseAllowed?.();
+  };
+  const handleConfirmCancel = () => {
+    setCloseConfirmOpen(false);
   };
 
   const fmtKm = (v: number) => v.toLocaleString("vi-VN") + " km";
@@ -473,6 +531,76 @@ function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
           })}
         </tbody>
       </table>
+
+      {/* Confirm khi đóng preview với thay đổi chưa lưu */}
+      <Dialog
+        open={closeConfirmOpen}
+        onOpenChange={(open) => { if (!open) handleConfirmCancel(); }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              Có thay đổi chưa lưu cho {container.id}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-table-sm">
+            <p className="text-text-2">
+              Bạn vừa sắp xếp lại thứ tự giao nhưng chưa bấm <strong>Lưu thứ tự</strong>.
+              Đóng bây giờ sẽ mất thay đổi này.
+            </p>
+            <div className="rounded-card border border-surface-3 bg-surface-2 px-3 py-2 space-y-1">
+              <div className="flex items-center justify-between text-text-3 text-caption">
+                <span>Thứ tự mới</span>
+                <span className="font-mono text-text-1">{dynamicRoute}</span>
+              </div>
+              <div className="flex items-center justify-between text-text-3 text-caption">
+                <span>Tác động</span>
+                <span className="tabular-nums">
+                  <span className={cn(
+                    "font-semibold",
+                    calc.deltaKm > 0 ? "text-warning" : "text-success",
+                  )}>
+                    {calc.deltaKm > 0 ? "+" : ""}{calc.deltaKm}km
+                  </span>
+                  <span className="text-text-3 mx-1">·</span>
+                  <span className={cn(
+                    "font-semibold",
+                    calc.deltaFreight > 0 ? "text-warning" : "text-success",
+                  )}>
+                    {fmtDelta(calc.deltaFreight)}
+                  </span>
+                </span>
+              </div>
+            </div>
+            <p className="text-caption text-text-3">
+              💡 Nháp đã được tự động lưu — có thể quay lại tiếp tục sau.
+            </p>
+          </div>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button
+              variant="ghost"
+              onClick={handleConfirmCancel}
+              className="text-text-2"
+            >
+              Tiếp tục chỉnh
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleConfirmDiscard}
+              className="border-danger/40 text-danger hover:bg-danger hover:text-danger-foreground"
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1" /> Hủy thay đổi
+            </Button>
+            <Button
+              onClick={handleConfirmSave}
+              className="bg-primary text-primary-foreground"
+            >
+              <Save className="h-3.5 w-3.5 mr-1" /> Lưu & Đóng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -489,6 +617,31 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
   const summary = summarizeContainers(CONTAINER_PLANS);
 
   const [editing, setEditing] = useState<ContainerPlan | null>(null);
+
+  // ── Dirty tracking per container (cho close-confirm guard) ──
+  const dirtyMap = useRef<Map<string, boolean>>(new Map());
+  const [closeRequests, setCloseRequests] = useState<Record<string, number>>({});
+  const [collapseSignal, setCollapseSignal] =
+    useState<{ id: string; nonce: number } | null>(null);
+
+  const handleDirtyChange = (containerId: string, dirty: boolean) => {
+    if (dirty) dirtyMap.current.set(containerId, true);
+    else dirtyMap.current.delete(containerId);
+  };
+
+  // Trả false → chặn collapse, editor sẽ hiển thị confirm Dialog
+  const beforeCollapse = (row: ContainerPlan): boolean => {
+    if (!dirtyMap.current.get(row.id)) return true;
+    setCloseRequests((m) => ({ ...m, [row.id]: (m[row.id] ?? 0) + 1 }));
+    return false;
+  };
+
+  // Editor xác nhận xong (Lưu hoặc Hủy) → ra lệnh SmartTable collapse row
+  const handleCloseAllowed = (containerId: string) => {
+    dirtyMap.current.delete(containerId);
+    setCollapseSignal({ id: containerId, nonce: Date.now() });
+  };
+
 
   // Khi highlightId đổi (cross-link arrive) → flash row & scroll
   useEffect(() => {
@@ -700,6 +853,9 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
         defaultDensity="compact"
         title={`Kế hoạch ${summary.total} chuyến container`}
         exportFilename={`drp-container-w20`}
+        getRowId={(r) => r.id}
+        beforeCollapse={beforeCollapse}
+        collapseRowSignal={collapseSignal}
         rowSeverity={(r) =>
           r.fillPct < 70 ? "watch" : undefined
         }
@@ -727,8 +883,14 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
               </span>
             </div>
 
-            {/* Drop points — with reorder mode */}
-            <DropPointsEditor container={r} onCnClick={onCnClick} />
+            {/* Drop points — with reorder mode + close-confirm wiring */}
+            <DropPointsEditor
+              container={r}
+              onCnClick={onCnClick}
+              onDirtyChange={handleDirtyChange}
+              closeRequestNonce={closeRequests[r.id] ?? 0}
+              onCloseAllowed={() => handleCloseAllowed(r.id)}
+            />
 
             {/* Cost line */}
             <div className="flex items-center justify-between text-table-sm border-t border-surface-3 pt-2">
