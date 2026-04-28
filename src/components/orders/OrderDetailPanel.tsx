@@ -53,10 +53,20 @@ function unitPrice(skuLabel: string) {
   return 160_000;
 }
 
-function EvidenceThumb({ ev }: { ev: PoEvidence }) {
+function EvidenceThumb({ ev, onOpen }: { ev: PoEvidence; onOpen?: (ev: PoEvidence) => void }) {
+  const clickable = !!ev.url && !!onOpen;
   return (
-    <div className="flex flex-col items-center w-14" title={ev.label}>
-      <div className="h-14 w-14 rounded border border-surface-3 bg-surface-1 overflow-hidden flex items-center justify-center">
+    <button
+      type="button"
+      onClick={clickable ? () => onOpen!(ev) : undefined}
+      disabled={!clickable}
+      className={cn(
+        "flex flex-col items-center w-14 group",
+        clickable && "cursor-zoom-in",
+      )}
+      title={clickable ? `${ev.label} — bấm để xem` : ev.label}
+    >
+      <div className="h-14 w-14 rounded border border-surface-3 bg-surface-1 overflow-hidden flex items-center justify-center group-hover:border-primary transition-colors">
         {ev.url ? (
           // eslint-disable-next-line jsx-a11y/img-redundant-alt
           <img src={ev.url} alt={ev.label} className="h-full w-full object-cover" />
@@ -69,7 +79,7 @@ function EvidenceThumb({ ev }: { ev: PoEvidence }) {
         )}
       </div>
       <div className="mt-0.5 w-full truncate text-[10px] text-text-3 text-center">{ev.label}</div>
-    </div>
+    </button>
   );
 }
 
