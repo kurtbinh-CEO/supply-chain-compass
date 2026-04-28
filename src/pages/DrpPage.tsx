@@ -616,6 +616,8 @@ function SkuFirstPivotTable({
     totalDemand: number;
     totalAlloc: number;
     fillPct: number;
+    ssTarget: number;
+    ssReserved: number;
     cnShortage: { cn: string; demand: number; alloc: number; fill: number }[];
     nmSources: { name: string; pct: number }[];
     perCn: { cn: string; demand: number; alloc: number; fill: number; onHand: number; lcnbIn: number; lcnbOut: number; hubPo: number; lcnbInFrom?: string; lcnbOutTo?: string }[];
@@ -627,11 +629,13 @@ function SkuFirstPivotTable({
       cn.allSkus.forEach((sk) => {
         const key = sk.item;
         if (!map.has(key)) {
-          map.set(key, { sku: key, totalDemand: 0, totalAlloc: 0, fillPct: 0, cnShortage: [], nmSources: [], perCn: [] });
+          map.set(key, { sku: key, totalDemand: 0, totalAlloc: 0, fillPct: 0, ssTarget: 0, ssReserved: 0, cnShortage: [], nmSources: [], perCn: [] });
         }
         const p = map.get(key)!;
         p.totalDemand += sk.demand;
         p.totalAlloc += sk.allocated;
+        p.ssTarget += sk.ssTarget ?? 0;
+        p.ssReserved += sk.ssReserved ?? 0;
         const fill = sk.demand > 0 ? Math.round((sk.allocated / sk.demand) * 100) : 100;
         if (fill < 95) p.cnShortage.push({ cn: cn.cn, demand: sk.demand, alloc: sk.allocated, fill });
         // Match TOs whose SKU starts with this base
@@ -700,6 +704,11 @@ function SkuFirstPivotTable({
         )}>{r.fillPct}%</span>
       ),
       accessor: (r) => r.fillPct },
+    { key: "ss", label: "SS", width: 168, sortable: true,
+      render: (r) => r.ssTarget > 0 ? (
+        <SafetyStockBadge ssTarget={r.ssTarget} ssReserved={r.ssReserved} allocated={r.totalAlloc} size="sm" />
+      ) : <span className="text-text-3 text-caption">—</span>,
+      accessor: (r) => r.ssTarget > 0 ? r.ssReserved / r.ssTarget : 1 },
     { key: "cnShortage", label: "CN thiếu", width: 120, sortable: true,
       render: (r) => r.cnShortage.length > 0 ? (
         <span
@@ -1758,6 +1767,17 @@ export default function DrpPage() {
                     {r.fillRate}%
                   </span>
                 );
+              } },
+            { key: "ss", label: "SS", width: 168, sortable: true,
+              accessor: (r) => {
+                const tot = r.allSkus.reduce((a, sk) => ({ t: a.t + (sk.ssTarget ?? 0), rsv: a.rsv + (sk.ssReserved ?? 0) }), { t: 0, rsv: 0 });
+                return tot.t > 0 ? tot.rsv / tot.t : 1;
+              },
+              render: (r) => {
+                const tot = r.allSkus.reduce((a, sk) => ({ t: a.t + (sk.ssTarget ?? 0), rsv: a.rsv + (sk.ssReserved ?? 0), al: a.al + sk.allocated }), { t: 0, rsv: 0, al: 0 });
+                return tot.t > 0 ? (
+                  <SafetyStockBadge ssTarget={tot.t} ssReserved={tot.rsv} allocated={tot.al} size="sm" />
+                ) : <span className="text-text-3 text-caption">—</span>;
               } },
             { key: "sources", label: "Nguồn hàng",
               render: (r) => {
