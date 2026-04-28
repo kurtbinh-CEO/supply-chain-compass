@@ -223,7 +223,7 @@ export function OrderDetailPanel({ group, onAction, onCancel, onClose }: Props) 
                   )}
                   {ev?.evidence && ev.evidence.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {ev.evidence.map((e, idx) => <EvidenceThumb key={idx} ev={e} />)}
+                      {ev.evidence.map((e, idx) => <EvidenceThumb key={idx} ev={e} onOpen={setLightbox} />)}
                     </div>
                   )}
                 </div>
