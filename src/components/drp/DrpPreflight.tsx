@@ -73,6 +73,38 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
 
   const canRun = blocking.length === 0;
 
+  // ── Highlight các điều kiện "vừa được xử lý" khi quay lại Preflight ──
+  // So sánh snapshot (sessionStorage) keys đã từng block với trạng thái hiện tại.
+  const SNAPSHOT_KEY = "drp_preflight_block_snapshot_v1";
+  const [justResolvedKeys, setJustResolvedKeys] = useState<Set<string>>(new Set());
+  const persistedRef = useRef(false);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(SNAPSHOT_KEY);
+      const prevBlocking: string[] = raw ? JSON.parse(raw) : [];
+      const currentBlocking = new Set(items.filter((i) => i.level === "block").map((i) => i.key));
+      const resolved = prevBlocking.filter((k) => !currentBlocking.has(k));
+      if (resolved.length > 0) {
+        setJustResolvedKeys(new Set(resolved));
+        // Tự fade sau 12s để không gây nhiễu phiên làm việc dài
+        const t = window.setTimeout(() => setJustResolvedKeys(new Set()), 12_000);
+        return () => window.clearTimeout(t);
+      }
+    } catch {
+      /* ignore storage errors */
+    }
+  }, [items]);
+  // Lưu snapshot block hiện tại mỗi khi items thay đổi (chỉ lưu sau khi đã so sánh xong lần đầu của render)
+  useEffect(() => {
+    try {
+      const currentBlocking = items.filter((i) => i.level === "block").map((i) => i.key);
+      sessionStorage.setItem(SNAPSHOT_KEY, JSON.stringify(currentBlocking));
+      persistedRef.current = true;
+    } catch {
+      /* ignore */
+    }
+  }, [items]);
+
   // ── Force-release qualification: chỉ cho phép khi block DUY NHẤT là NM stale ──
   const staleBlock = useMemo(
     () => blocking.find((b) => b.key === "nm-stock" && (b.staleHours ?? 0) > 48),
