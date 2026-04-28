@@ -1183,7 +1183,7 @@ function UnscheduledPosSection({ pos }: { pos: UnscheduledPo[] }) {
         beforeCollapse={beforeCollapse}
         collapseRowSignal={collapseSignal}
         rowSeverity={(r) => {
-          if (containerWeightKg(r) > VEHICLE_MAX_WEIGHT_KG) return "exception";
+          if (containerWeightKg(r) > VEHICLE_MAX_WEIGHT_KG) return "shortage";
           if (r.fillPct < 70) return "watch";
           return undefined;
         }}
