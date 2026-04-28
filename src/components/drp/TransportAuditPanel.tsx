@@ -241,6 +241,11 @@ function AuditRow({ event: e }: { event: TransportAuditEvent }) {
     () => (e.meta ? Object.entries(e.meta) : []),
     [e.meta],
   );
+  const highlights = useMemo(() => extractHighlights(e.meta), [e.meta]);
+  const highlightedKeys = useMemo(
+    () => new Set(highlights.map((h) => h.key)),
+    [highlights],
+  );
 
   async function copyJson(ev: React.MouseEvent) {
     ev.stopPropagation();
@@ -308,6 +313,20 @@ function AuditRow({ event: e }: { event: TransportAuditEvent }) {
             <Fact label="Event ID" value={e.id} mono />
           </div>
 
+          {/* Highlights — exception-first scan */}
+          {highlights.length > 0 && (
+            <div className="rounded-card border border-primary/30 bg-primary/5 overflow-hidden">
+              <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-primary border-b border-primary/20 flex items-center gap-1">
+                <Sparkles className="h-3 w-3" /> Điểm cần chú ý
+              </div>
+              <div className="divide-y divide-primary/10">
+                {highlights.map((h) => (
+                  <HighlightRow key={h.key} item={h} />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Structured metadata */}
           {metaEntries.length > 0 && (
             <div className="rounded-card border border-surface-3 bg-surface-1">
@@ -315,12 +334,20 @@ function AuditRow({ event: e }: { event: TransportAuditEvent }) {
                 Metadata chi tiết
               </div>
               <div className="divide-y divide-surface-3/40">
-                {metaEntries.map(([k, v]) => (
-                  <div key={k} className="grid grid-cols-[120px_1fr] gap-2 px-2 py-1 text-[11px]">
-                    <span className="font-mono text-text-3">{k}</span>
-                    <MetaValue value={v} />
-                  </div>
-                ))}
+                {metaEntries.map(([k, v]) => {
+                  const dim = highlightedKeys.has(k);
+                  return (
+                    <div key={k} className={cn(
+                      "grid grid-cols-[120px_1fr] gap-2 px-2 py-1 text-[11px]",
+                      dim && "opacity-60",
+                    )}>
+                      <span className="font-mono text-text-3">
+                        {k}{dim && <span className="ml-1 text-[9px] text-primary/70">↑</span>}
+                      </span>
+                      <MetaValue value={v} />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -386,4 +413,145 @@ function MetaValue({ value }: { value: unknown }) {
     return <span className="text-text-3 italic">—</span>;
   }
   return <span className="text-text-1 break-all">{String(value)}</span>;
+}
+
+/* ─────────────────────────── Highlights extraction ─────────────────────────
+   Pulls high-signal fields out of the free-form `meta` payload so users can
+   scan exceptions without reading the full metadata table.
+   ──────────────────────────────────────────────────────────────────────── */
+
+type HighlightKind = "strategy" | "rule" | "blocked" | "metric";
+
+interface Highlight {
+  key: string;          // original meta key (used to dim duplicates below)
+  kind: HighlightKind;
+  label: string;        // VN label
+  value: unknown;
+}
+
+const KEY_GROUPS: Record<HighlightKind, { keys: RegExp; label: (k: string) => string }> = {
+  strategy: {
+    keys: /^(strategy|mode|decision|action|primaryAction|recommendation|scope|applyScope|outcome|status|verdict)$/i,
+    label: (k) => ({
+      strategy: "Chiến lược", mode: "Chế độ", decision: "Quyết định",
+      action: "Hành động", primaryaction: "Hành động chính",
+      recommendation: "Đề xuất", scope: "Phạm vi", applyscope: "Áp dụng",
+      outcome: "Kết quả", status: "Trạng thái", verdict: "Phán quyết",
+    }[k.toLowerCase()] ?? k),
+  },
+  rule: {
+    keys: /^(rule|rules|reason|reasons|justification|cause|trigger|threshold|policy|why)$/i,
+    label: (k) => ({
+      rule: "Luật", rules: "Luật áp dụng", reason: "Lý do",
+      reasons: "Các lý do", justification: "Giải thích", cause: "Nguyên nhân",
+      trigger: "Trigger", threshold: "Ngưỡng", policy: "Chính sách", why: "Vì sao",
+    }[k.toLowerCase()] ?? k),
+  },
+  blocked: {
+    keys: /^(blocked|blockedBy|blockedVehicles|blockedCns|blockedDrops|disabled|excluded|rejected|forbidden|conflicts|violations)$/i,
+    label: (k) => ({
+      blocked: "Bị chặn", blockedby: "Chặn bởi",
+      blockedvehicles: "Xe bị chặn", blockedcns: "CN bị chặn",
+      blockeddrops: "Drop bị chặn", disabled: "Bị vô hiệu",
+      excluded: "Loại trừ", rejected: "Từ chối", forbidden: "Cấm",
+      conflicts: "Xung đột", violations: "Vi phạm",
+    }[k.toLowerCase()] ?? k),
+  },
+  metric: {
+    keys: /^(detourKm|detour|gap|gapPct|savings|risk|fillRate|moq|missing|capacity|loadPct)$/i,
+    label: (k) => ({
+      detourkm: "Detour (km)", detour: "Detour", gap: "Thiếu",
+      gappct: "Thiếu (%)", savings: "Tiết kiệm", risk: "Rủi ro",
+      fillrate: "Fill rate", moq: "MOQ", missing: "Thiếu hụt",
+      capacity: "Capacity", loadpct: "Tải (%)",
+    }[k.toLowerCase()] ?? k),
+  },
+};
+
+function isMeaningful(v: unknown): boolean {
+  if (v === null || v === undefined || v === "") return false;
+  if (Array.isArray(v) && v.length === 0) return false;
+  if (typeof v === "object" && Object.keys(v as object).length === 0) return false;
+  return true;
+}
+
+function extractHighlights(meta?: Record<string, unknown>): Highlight[] {
+  if (!meta) return [];
+  const out: Highlight[] = [];
+  for (const [k, v] of Object.entries(meta)) {
+    if (!isMeaningful(v)) continue;
+    for (const kind of Object.keys(KEY_GROUPS) as HighlightKind[]) {
+      if (KEY_GROUPS[kind].keys.test(k)) {
+        out.push({ key: k, kind, label: KEY_GROUPS[kind].label(k), value: v });
+        break;
+      }
+    }
+  }
+  // Order: strategy → rule → blocked → metric
+  const order: HighlightKind[] = ["strategy", "rule", "blocked", "metric"];
+  return out.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
+}
+
+const KIND_TONE: Record<HighlightKind, { chip: string; icon: typeof Sparkles; tag: string }> = {
+  strategy: { chip: "border-info/40 bg-info-bg/40 text-info",       icon: Sparkles,       tag: "Strategy" },
+  rule:     { chip: "border-warning/40 bg-warning-bg/40 text-warning", icon: AlertTriangle, tag: "Rule" },
+  blocked:  { chip: "border-danger/40 bg-danger-bg/40 text-danger",  icon: X,              tag: "Blocked" },
+  metric:   { chip: "border-surface-3 bg-surface-2 text-text-2",     icon: Info,           tag: "Metric" },
+};
+
+function HighlightRow({ item }: { item: Highlight }) {
+  const tone = KIND_TONE[item.kind];
+  const Icon = tone.icon;
+  return (
+    <div className="grid grid-cols-[110px_1fr] gap-2 px-2 py-1.5 text-[11px] items-start">
+      <div className="flex items-center gap-1.5 min-w-0">
+        <span className={cn(
+          "shrink-0 inline-flex items-center justify-center rounded-full border p-0.5",
+          tone.chip,
+        )}>
+          <Icon className="h-2.5 w-2.5" />
+        </span>
+        <span className="font-medium text-text-1 truncate">{item.label}</span>
+      </div>
+      <div className="min-w-0">
+        <HighlightValue kind={item.kind} value={item.value} />
+      </div>
+    </div>
+  );
+}
+
+function HighlightValue({ kind, value }: { kind: HighlightKind; value: unknown }) {
+  const tone = KIND_TONE[kind];
+  if (Array.isArray(value)) {
+    return (
+      <div className="flex flex-wrap gap-1">
+        {value.map((v, i) => (
+          <span key={i} className={cn(
+            "rounded-full border px-1.5 py-0.5 font-mono text-[10px]",
+            tone.chip,
+          )}>
+            {typeof v === "object" ? JSON.stringify(v) : String(v)}
+          </span>
+        ))}
+      </div>
+    );
+  }
+  if (value && typeof value === "object") {
+    return (
+      <pre className="font-mono text-[10.5px] text-text-2 whitespace-pre-wrap break-all">
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    );
+  }
+  if (typeof value === "boolean") {
+    return <span className={cn("font-mono font-semibold", value ? "text-success" : "text-danger")}>{String(value)}</span>;
+  }
+  return (
+    <span className={cn(
+      "inline-flex rounded-md border px-1.5 py-0.5 font-mono text-[10.5px] font-medium",
+      tone.chip,
+    )}>
+      {String(value)}
+    </span>
+  );
 }
