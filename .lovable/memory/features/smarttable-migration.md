@@ -11,12 +11,12 @@ Mục tiêu: mọi bảng data dùng `<SmartTable>` + `drillDown` compact (defau
 - ✅ SOP BalanceLockTab — `BalanceCnTable` + `BalanceSkuTable` với drillDown compact.
 - ✅ SOP ConsensusTab — `ConsensusCnTable` + `ConsensusSkuTable` với drillDown. Bỏ HÀNH TRÌNH VERSION. Variance textarea trong drillDown CN-first khi `_isVariance`. autoExpandWhen `|Δ| > 10%`.
 - ✅ DemandTotalTab — pivot 3-level (CN→SKU→Variant) + SKU-first đều dùng SmartTable nested drillDown. Bỏ 4 expand state sets. Variant breakdown (L3) là `DemandVariantTable` shared cho cả 2 pivot. Timeline tables (12m/3m/week) giữ raw vì là pivot matrix sticky-CN không phù hợp SmartTable.
+- ✅ InventorySSTab — 3 raw tables (CN-first, SKU-first, SS Mgmt) → SmartTable. CN-first dùng `CnSkuDrill` (SKU L2 + DemandToOrderBridge L3), SKU-first dùng `SkuCnDrill`. autoExpandWhen `ssGap < 0`. Bỏ `expandedCns/expandedSkuPivot`. Chart Section A giữ nguyên.
 
 ## Pending (đợt sau)
 - ⏳ DrpPage (6 raw tables + 4 custom expand)
 - ⏳ MonitoringPage (6 raw tables — heatmap matrix có thể giữ raw, conflict-log/recurring-exceptions/closed-loop migrate được)
 - ⏳ MasterDataPage (7 tabs — LT matrix giữ raw, list tabs migrate)
-- ⏳ InventorySSTab (3 raw + 3 custom expand)
 
 ## Convention
 - Parent: `defaultDensity="compact"`, `getRowId`, `rowSeverity`, `autoExpandWhen` cho exception, `summaryRow` cho TỔNG.
