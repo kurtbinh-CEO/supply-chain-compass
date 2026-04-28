@@ -18,7 +18,21 @@ interface Props {
   unresolvedVariance?: number;
 }
 
-interface BalanceRow {
+interface BalSkuPivot {
+  item: string;
+  variant: string;
+  demand: number;
+  stock: number;
+  pipeline: number;
+  netReq: number;
+  worstCn: string;
+  worstCover: number;
+  cnGapCount: number;
+  lcnb: string | null;
+  cnBreakdown: { cn: string; demand: number; stock: number; pipeline: number; cover: number; ssTarget: number; ssGap: number; netReq: number; status: string }[];
+}
+
+type BalSkuRow = BalanceRow["skus"][number];
   cn: string;
   demand: number;
   stock: number;
