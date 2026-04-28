@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/tooltip";
 import type { ContainerPlan, DropPoint } from "@/data/container-plans";
 import { inferContainerRoute, REGION_LABELS } from "@/data/route-constraints";
+import { emitTransportAudit } from "@/lib/transport-audit";
+import { useAuth } from "@/components/AuthContext";
 
 /* ── Vehicle catalog (capacity m² + cost/km) ── */
 const VEHICLES: Record<string, { label: string; capacity: number; costPerKm: number }> = {
@@ -101,19 +103,40 @@ interface Props {
 }
 
 export function ContainerEditPreview({ container, onClose }: Props) {
+  const { roles } = useAuth();
+  const actorRole = roles[0] ?? "guest";
   const [vehicleKey, setVehicleKey] = useState<string>(container?.vehicle ?? "40ft");
   const [activeDrops, setActiveDrops] = useState<DropPoint[]>(container?.drops ?? []);
   const [removed, setRemoved] = useState<DropPoint[]>([]);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
 
-  // Reset when container changes
+  // Reset when container changes + log auto-disabled vehicles (one-shot per open)
   useEffect(() => {
     if (!container) return;
     setVehicleKey(container.vehicle in VEHICLES ? container.vehicle : "40ft");
     setActiveDrops(container.drops);
     setRemoved([]);
-  }, [container]);
+    // One-shot audit: which vehicles are auto-disabled by route-vehicle matrix?
+    const route = inferContainerRoute(container.factoryCode, container.drops.map((d) => d.cnCode));
+    const allowed = new Set<string>(route.constraint.allowedVehicles);
+    const VC: Record<string, string> = {
+      "Xe5T": "truck_5t", "Xe10T": "truck_10t",
+      "20ft": "container_20ft", "40ft": "container_40ft",
+    };
+    const blocked = Object.keys(VEHICLES).filter((k) => !allowed.has(VC[k] ?? k));
+    if (blocked.length > 0) {
+      emitTransportAudit({
+        category: "vehicle",
+        severity: "block",
+        title: `Tự động chặn ${blocked.length} loại xe trên tuyến ${REGION_LABELS[route.origin]} → ${REGION_LABELS[route.dest]}`,
+        detail: `Bị chặn: ${blocked.map((k) => VEHICLES[k].label).join(", ")} · Quy tắc: ${route.constraint.notes}`,
+        containerId: container.id,
+        actorRole,
+        meta: { blocked, route: route.constraint.id, containerRequired: route.constraint.containerRequired },
+      });
+    }
+  }, [container, actorRole]);
 
   const before = useMemo<RecalcOutput | null>(
     () => container ? recalc({ base: container, drops: container.drops, vehicleKey: container.vehicle }) : null,
@@ -308,7 +331,19 @@ export function ContainerEditPreview({ container, onClose }: Props) {
                             <button
                               type="button"
                               disabled={blocked}
-                              onClick={() => !blocked && setVehicleKey(key)}
+                              onClick={() => {
+                                if (blocked) return;
+                                setVehicleKey(key);
+                                emitTransportAudit({
+                                  category: "vehicle",
+                                  severity: meta.status === "overflow" ? "warn" : meta.status === "preferred" ? "success" : "info",
+                                  title: `Chọn xe ${v.label} (${meta.chipLabel})`,
+                                  detail: `Tuyến ${routeLabel} · ${meta.tooltipRule}`,
+                                  containerId: container.id,
+                                  actorRole,
+                                  meta: { canon, status: meta.status, fillM2: after.fillM2, capacity: v.capacity },
+                                });
+                              }}
                               aria-label={`${v.label} — ${meta.chipLabel}`}
                               className={cn(
                                 "rounded-card border px-3 py-2 text-left transition-all relative",

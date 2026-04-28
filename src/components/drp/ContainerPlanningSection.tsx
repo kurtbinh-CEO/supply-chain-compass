@@ -27,6 +27,9 @@ import {
 } from "@/lib/container-edit-drafts";
 import { ContainerEditPreview } from "@/components/drp/ContainerEditPreview";
 import { validateQtyEdit, DECREASE_REASONS, type QtyEditValidation } from "@/data/edit-thresholds";
+import { emitTransportAudit } from "@/lib/transport-audit";
+import { useAuth } from "@/components/AuthContext";
+import { TransportAuditPanel } from "@/components/drp/TransportAuditPanel";
 import { decideFillUp, STRATEGY_LABELS } from "@/data/fill-up-decision";
 import { getCandidateDropCns } from "@/data/drop-eligibility";
 import {
@@ -684,6 +687,8 @@ function LogicExplainer() {
    §  Drill Zone A — PO lines bên trong container (editable qty)
    ════════════════════════════════════════════════════════════════════════════ */
 function PoLinesEditor({ container }: { container: ContainerPlan }) {
+  const { roles } = useAuth();
+  const actorRole = roles[0] ?? "guest";
   const initial = useMemo(() => getPoLines(container), [container]);
   const [lines, setLines] = useState(initial);
   // Track original qty per line index để validate
@@ -758,6 +763,19 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
     // Always remember what the user typed, even when blocked.
     setAttemptedQtys((m) => ({ ...m, [idx]: newQty }));
     setEditValidations((m) => ({ ...m, [idx]: validation }));
+    // Audit: every validation outcome (skip "ok" no-op when no change)
+    if (validation.severity !== "ok" || newQty !== orig) {
+      const sevMap = { ok: "success", warn: "warn", block: "block", require_reason: "warn" } as const;
+      emitTransportAudit({
+        category: "qty_edit",
+        severity: sevMap[validation.severity],
+        title: `Chỉnh PO ${lines[idx].poNumber} (${sku}): ${orig.toLocaleString()} → ${newQty.toLocaleString()}m² · ${validation.severity}`,
+        detail: validation.message,
+        containerId: container.id,
+        actorRole,
+        meta: { idx, sku, originalQty: orig, newQty, severity: validation.severity },
+      });
+    }
     // Nếu BLOCK → KHÔNG ghi vào lines (giữ "applied" cũ), nhưng input vẫn
     // hiển thị attempted để user thấy & sửa, không silently snap back.
     if (validation.severity === "block") {
@@ -771,6 +789,15 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
     setLines((arr) => arr.filter((_, i) => i !== idx));
     setEditValidations((m) => { const c = { ...m }; delete c[idx]; return c; });
     toast.info(`Đã gỡ ${removed.poNumber} (${removed.sku}) — chuyển sang "PO chưa xếp"`);
+    emitTransportAudit({
+      category: "drop",
+      severity: "info",
+      title: `Gỡ PO ${removed.poNumber} (${removed.sku}) khỏi chuyến`,
+      detail: `Chuyển ${removed.qtyM2.toLocaleString()}m² sang danh sách "PO chưa xếp"`,
+      containerId: container.id,
+      actorRole,
+      meta: { poNumber: removed.poNumber, sku: removed.sku, qtyM2: removed.qtyM2 },
+    });
   };
 
   // Drop eligibility cho "Thêm drop"
@@ -809,12 +836,31 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
     if (!pair) return;
     // Eligibility check là gate cứng — nhưng vẫn mở modal để giải thích lý do.
     setPendingDrop(pair);
+    emitTransportAudit({
+      category: "drop",
+      severity: pair.eligible ? "info" : "warn",
+      title: `Kiểm tra ghép drop ${pair.cn2} (${pair.eligible ? "đủ ĐK" : "không đủ ĐK"})`,
+      detail: pair.eligible
+        ? `Detour +${pair.detourKm}km · ${pair.direction ?? ""} · tiết kiệm ~${((pair.estSavingVnd ?? 0) / 1_000_000).toFixed(1)}M₫`
+        : `Lý do: ${pair.reason ?? "vi phạm ràng buộc"}`,
+      containerId: container.id,
+      actorRole,
+      meta: { cn2: pair.cn2, detourKm: pair.detourKm, eligible: pair.eligible },
+    });
   };
 
   const confirmAddDrop = () => {
     if (!pendingDrop) return;
     if (!pendingDrop.eligible) {
       toast.error(`Không thể ghép ${pendingDrop.cn2}: ${pendingDrop.reason ?? "không đủ điều kiện"}`);
+      emitTransportAudit({
+        category: "drop",
+        severity: "block",
+        title: `Chặn ghép ${pendingDrop.cn2} vào chuyến`,
+        detail: pendingDrop.reason ?? "Không đủ điều kiện ghép tuyến",
+        containerId: container.id,
+        actorRole,
+      });
       setPendingDrop(null);
       return;
     }
@@ -822,6 +868,15 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
       `Đã thêm ${pendingDrop.cn2} vào chuyến (detour +${pendingDrop.detourKm}km, ` +
       `tiết kiệm ~${((pendingDrop.estSavingVnd ?? 0) / 1_000_000).toFixed(1)}M₫)`,
     );
+    emitTransportAudit({
+      category: "drop",
+      severity: "success",
+      title: `Thêm drop ${pendingDrop.cn2} vào chuyến`,
+      detail: `Detour +${pendingDrop.detourKm}km · tiết kiệm ~${((pendingDrop.estSavingVnd ?? 0) / 1_000_000).toFixed(1)}M₫`,
+      containerId: container.id,
+      actorRole,
+      meta: { cn2: pendingDrop.cn2, detourKm: pendingDrop.detourKm, estSavingVnd: pendingDrop.estSavingVnd },
+    });
     setPendingDrop(null);
   };
 
@@ -1176,6 +1231,8 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
    §  Drill Zone B — Fill-up decision tree (consolidation / round-up / hold / ship)
    ════════════════════════════════════════════════════════════════════════════ */
 function RoundUpSuggestion({ container }: { container: ContainerPlan }) {
+  const { roles } = useAuth();
+  const actorRole = roles[0] ?? "guest";
   const totalM2 = container.fillM2;
   const moq = container.factoryCode === "NM-DT" ? 3000 :
               container.factoryCode === "NM-VGR" ? 2500 : 2000;
@@ -1209,6 +1266,28 @@ function RoundUpSuggestion({ container }: { container: ContainerPlan }) {
     cnHstkDays,
     holdDaysSoFar,
   });
+
+  // Audit: log fill-up decision once per (container, strategy)
+  useEffect(() => {
+    const sevMap = {
+      ok: "success", consolidation: "success", consolidation_plus_round_up: "info",
+      round_up: "info", hold: "warn", ship_as_is: "warn",
+    } as const;
+    emitTransportAudit({
+      category: "fillup",
+      severity: sevMap[decision.strategy],
+      title: `decideFillUp() → ${STRATEGY_LABELS[decision.strategy]} (mode=${decision.strategy})`,
+      detail: `${decision.primaryAction} · Lý do: ${decision.reason}`,
+      containerId: container.id,
+      actorRole,
+      meta: {
+        strategy: decision.strategy, fillPct: container.fillPct,
+        gapPct, hasEligibleConsolidation,
+        fillAfterConsolidation, cnHstkDays,
+      },
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [container.id, decision.strategy]);
 
   // OK case
   if (decision.strategy === "ok") {
@@ -1346,10 +1425,19 @@ function RoundUpSuggestion({ container }: { container: ContainerPlan }) {
       {/* Action bar — primary apply (scope-aware) + "Apply only this line" + alt + dismiss */}
       <div className="flex items-center gap-1.5 flex-wrap pt-1">
         <Button size="sm" className="h-7 px-2.5 text-[11px]"
-          onClick={() => toast.success(
-            `Áp dụng "${STRATEGY_LABELS[decision.strategy]}" cho toàn chuyến ${container.id}`,
-            { description: `Phạm vi: toàn chuyến · Strategy: ${decision.strategy}` },
-          )}>
+          onClick={() => {
+            toast.success(
+              `Áp dụng "${STRATEGY_LABELS[decision.strategy]}" cho toàn chuyến ${container.id}`,
+              { description: `Phạm vi: toàn chuyến · Strategy: ${decision.strategy}` },
+            );
+            emitTransportAudit({
+              category: "fillup", severity: "success",
+              title: `Áp dụng ${STRATEGY_LABELS[decision.strategy]} cho toàn chuyến`,
+              detail: `Phạm vi: toàn chuyến · Strategy: ${decision.strategy}`,
+              containerId: container.id, actorRole,
+              meta: { scope: "container", strategy: decision.strategy },
+            });
+          }}>
           <Check className="h-3 w-3 mr-1" /> Áp dụng toàn chuyến
         </Button>
 
@@ -1363,6 +1451,13 @@ function RoundUpSuggestion({ container }: { container: ContainerPlan }) {
               toast.success(`Chỉ áp dụng cho dòng: ${targetLabel}`, {
                 description: `Phạm vi: 1 dòng · Các dòng khác giữ nguyên · Strategy: ${decision.strategy}`,
               });
+              emitTransportAudit({
+                category: "fillup", severity: "success",
+                title: `Áp dụng ${STRATEGY_LABELS[decision.strategy]} cho 1 dòng`,
+                detail: `Mục tiêu: ${targetLabel} · Strategy: ${decision.strategy}`,
+                containerId: container.id, actorRole,
+                meta: { scope: "line", strategy: decision.strategy, target: targetLabel },
+              });
             }}>
             Chỉ áp dụng dòng này
           </Button>
@@ -1370,9 +1465,16 @@ function RoundUpSuggestion({ container }: { container: ContainerPlan }) {
 
         {decision.altActions.map((alt) => (
           <Button key={alt.strategy} size="sm" variant="outline" className="h-7 px-2.5 text-[11px]"
-            onClick={() => toast.info(`Chuyển sang: ${alt.label}`, {
-              description: `Strategy: ${alt.strategy}`,
-            })}>
+            onClick={() => {
+              toast.info(`Chuyển sang: ${alt.label}`, { description: `Strategy: ${alt.strategy}` });
+              emitTransportAudit({
+                category: "fillup", severity: "info",
+                title: `Chuyển sang chiến lược thay thế: ${alt.label}`,
+                detail: `Từ ${decision.strategy} → ${alt.strategy}`,
+                containerId: container.id, actorRole,
+                meta: { from: decision.strategy, to: alt.strategy },
+              });
+            }}>
             {alt.label}
           </Button>
         ))}
@@ -1670,6 +1772,9 @@ function UnscheduledPosSection({ pos }: { pos: UnscheduledPo[] }) {
 
       {/* ─── ① Logic explainer (collapsed mặc định) ─── */}
       <LogicExplainer />
+
+      {/* ─── Audit log của 4 ma trận transport (collapsed mặc định) ─── */}
+      <TransportAuditPanel />
 
       {/* ─── Mini summary chips ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
