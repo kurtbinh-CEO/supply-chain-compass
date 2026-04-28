@@ -202,14 +202,29 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
               </CommandGroup>
             </CommandList>
 
-            {/* Shortcut footer (10 shortcuts) */}
-            <div className="border-t border-surface-3 px-3 py-2 grid grid-cols-2 md:grid-cols-5 gap-x-3 gap-y-1.5 bg-surface-1">
-              {SHORTCUTS.map((s) => (
-                <div key={s.label} className="flex items-center gap-1.5 text-caption text-text-3">
-                  <kbd className={cn("rounded bg-surface-3 px-1.5 py-0.5 font-mono text-text-2 text-[10px]")}>{s.key}</kbd>
-                  <span className="truncate">{s.label}</span>
-                </div>
-              ))}
+            {/* Shortcut footer (10 shortcuts).
+                OS-aware: ⌘ glyphs auto-converted to Ctrl/Shift on Windows/Linux.
+                Header line tells the user which platform we detected. */}
+            <div className="border-t border-surface-3 bg-surface-1">
+              <div className="px-3 pt-2 pb-1 flex items-center justify-between text-caption text-text-3">
+                <span className="font-medium">Phím tắt</span>
+                <span className="text-text-3/80">
+                  Đang dùng <strong className="text-text-2">{isMac() ? "Mac" : "Windows/Linux"}</strong> · modifier:{" "}
+                  <kbd className="rounded bg-surface-3 px-1 py-0.5 font-mono text-[10px] text-text-2">
+                    {isMac() ? "⌘" : "Ctrl"}
+                  </kbd>
+                </span>
+              </div>
+              <div className="px-3 pb-2 grid grid-cols-2 md:grid-cols-5 gap-x-3 gap-y-1.5">
+                {SHORTCUTS.map((s) => (
+                  <div key={s.label} className="flex items-center gap-1.5 text-caption text-text-3">
+                    <kbd className={cn("rounded bg-surface-3 px-1.5 py-0.5 font-mono text-text-2 text-[10px]")}>
+                      {formatShortcut(s.key)}
+                    </kbd>
+                    <span className="truncate">{s.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </Command>
         </DialogContent>
