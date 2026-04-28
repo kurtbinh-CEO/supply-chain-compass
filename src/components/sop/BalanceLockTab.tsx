@@ -172,187 +172,23 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
       {/* Pivot toggle */}
       <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setExpandedCns(new Set()); setExpandedSkuKeys(new Set()); }} />
 
-      {/* Balance table */}
+      {/* Balance table — SmartTable parent + drillDown compact */}
       {pivotMode === "sku" ? (
-        /* ═══ SKU-FIRST Layer 1 ═══ */
-        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-          <div className="px-5 py-3 border-b border-surface-3">
-            <h3 className="font-display text-section-header text-text-1">Per SKU — Tháng 5</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-table-sm">
-              <thead>
-                <tr className="border-b border-surface-3 bg-surface-1/50">
-                  {["SKU", "Mẫu", "Nhu cầu", "Tồn kho", "Đang về", "Nhu cầu ròng", "CN xấu nhất", "# CN thiếu", "LCNB", ""].map(h => (
-                    <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {skuPivotData.map((row, i) => {
-                  const skuKey = `${row.item}|${row.variant}`;
-                  const isExp = expandedSkuKeys.has(skuKey);
-                  return (<React.Fragment key={`sku-${i}`}>
-                    <tr className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors cursor-pointer", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
-                      onClick={() => setExpandedSkuKeys(prev => { const n = new Set(prev); n.has(skuKey) ? n.delete(skuKey) : n.add(skuKey); return n; })}>
-                      <td className="px-3 py-2.5 font-medium text-text-1">
-                        <span className="flex items-center gap-1">{isExp ? <ChevronDown className="h-3.5 w-3.5 text-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-text-3" />}{row.item}</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-text-2">{row.variant}</td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-1 font-medium">{row.demand.toLocaleString()}</td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-1">{row.stock.toLocaleString()}</td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-2">{row.pipeline.toLocaleString()}</td>
-                      <td className={cn("px-3 py-2.5 tabular-nums font-medium", row.netReq > 0 ? "text-danger" : "text-success")}>{row.netReq.toLocaleString()}</td>
-                      <td className="px-3 py-2.5"><WorstCnCell cnName={row.worstCn} hstk={row.worstCover} /></td>
-                      <td className="px-3 py-2.5"><CnGapBadge count={row.cnGapCount} /></td>
-                      <td className="px-3 py-2.5">{row.lcnb ? <LcnbBadge text={row.lcnb} /> : <span className="text-text-3">—</span>}</td>
-                      <td className="px-3 py-2.5">{isExp ? <ChevronDown className="h-3.5 w-3.5 text-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-text-3" />}</td>
-                    </tr>
-                    {isExp && row.cnBreakdown.map((cb, ci) => (
-                      <tr key={`cn-${ci}`} className="bg-surface-1/60 border-b border-surface-3/30 animate-fade-in">
-                        <td className="px-3 py-2 pl-8 text-text-3 text-caption">└</td>
-                        <td className="px-3 py-2 text-text-2 font-medium">{cb.cn}</td>
-                        <td className="px-3 py-2 tabular-nums text-text-2">{cb.demand.toLocaleString()}</td>
-                        <td className="px-3 py-2 tabular-nums text-text-2">{cb.stock.toLocaleString()}</td>
-                        <td className="px-3 py-2 tabular-nums text-text-3">{cb.pipeline.toLocaleString()}</td>
-                        <td className={cn("px-3 py-2 tabular-nums font-medium", cb.netReq > 0 ? "text-danger" : "text-success")}>{cb.netReq.toLocaleString()}</td>
-                        <td className="px-3 py-2 tabular-nums text-text-3">{cb.cover}d</td>
-                        <td className="px-3 py-2">
-                          <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
-                            cb.status === "CRITICAL" ? "bg-danger-bg text-danger" : cb.status === "EXCESS" ? "bg-info-bg text-info" : "bg-success-bg text-success"
-                          )}>{cb.status === "CRITICAL" ? "NGHIÊM TRỌNG" : cb.status === "EXCESS" ? "DƯ THỪA" : cb.status === "OK" ? "ĐẠT" : cb.status}</span>
-                        </td>
-                        <td colSpan={2} />
-                      </tr>
-                    ))}
-                  </React.Fragment>);
-                })}
-                <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
-                  <td className="px-3 py-2.5 text-text-1">TỔNG</td>
-                  <td />
-                  <td className="px-3 py-2.5 tabular-nums text-text-1">{totalDemand.toLocaleString()}</td>
-                  <td className="px-3 py-2.5 tabular-nums text-text-1">{totalStock.toLocaleString()}</td>
-                  <td className="px-3 py-2.5 tabular-nums text-text-1">{totalPipeline.toLocaleString()}</td>
-                  <td className="px-3 py-2.5 tabular-nums text-text-1">{netReq.toLocaleString()}</td>
-                  <td colSpan={4} />
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <BalanceSkuTable
+          rows={skuPivotData}
+          totals={{ demand: totalDemand, stock: totalStock, pipeline: totalPipeline, netReq }}
+        />
       ) : (
-      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <div className="px-5 py-3 border-b border-surface-3 flex items-center justify-between">
-          <h3 className="font-display text-section-header text-text-1">Theo CN — Tháng 5</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-table-sm">
-            <thead>
-              <tr className="border-b border-surface-3 bg-surface-1/50">
-                {["CN", "Nhu cầu", "Tồn kho", "Đang về", "Sẵn dùng", "Số ngày phủ", "SS mục tiêu", "SS lệch", "Nhu cầu ròng", "Trạng thái", ""].map(h => (
-                  <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {balRows.map((row, i) => {
-                const avail = row.stock + row.pipeline;
-                const cover = row.demand > 0 ? +(row.stock / (row.demand / 30)).toFixed(1) : 0;
-                const ssGap = row.stock - row.ssTarget;
-                const rowNet = Math.max(0, row.demand - avail);
-                const isCrit = cover < 7;
-                const isExcess = cover > 12 && ssGap > 0;
-                const status = isCrit ? "CRITICAL" : isExcess ? "EXCESS" : "OK";
-                const coverPct = Math.min(100, (cover / 15) * 100);
-                const isExp = expandedCns.has(i);
-
-                return (
-                  <React.Fragment key={i}>
-                    <tr className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors cursor-pointer", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
-                      onClick={() => setExpandedCns(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; })}>
-                      <td className="px-3 py-2.5 font-medium text-text-1">
-                        <span className="flex items-center gap-1">{isExp ? <ChevronDown className="h-3.5 w-3.5 text-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-text-3" />}{row.cn}</span>
-                      </td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-1 font-medium">{row.demand.toLocaleString()}</td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-1">{row.stock.toLocaleString()}</td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-2">{row.pipeline.toLocaleString()}</td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-1">{avail.toLocaleString()}</td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-14 h-2 rounded-full bg-surface-3 overflow-hidden">
-                            <div className={cn("h-full rounded-full", cover < 5 ? "bg-danger" : cover < 10 ? "bg-warning" : "bg-success")}
-                              style={{ width: `${coverPct}%` }} />
-                          </div>
-                          <span className={cn("tabular-nums font-medium text-table-sm", isCrit ? "text-danger" : "text-success")}>
-                            {cover}d {isCrit ? "🔴" : "🟢"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-1">{row.ssTarget.toLocaleString()}</td>
-                      <td className={cn("px-3 py-2.5 tabular-nums font-medium", ssGap < 0 ? "text-danger" : "text-success")}>
-                        {ssGap > 0 ? "+" : ""}{ssGap.toLocaleString()}
-                      </td>
-                      <td className="px-3 py-2.5 tabular-nums font-medium text-text-1">{rowNet.toLocaleString()}</td>
-                      <td className="px-3 py-2.5">
-                        <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
-                          status === "CRITICAL" ? "bg-danger-bg text-danger" : status === "EXCESS" ? "bg-info-bg text-info" : "bg-success-bg text-success"
-                        )}>{status === "CRITICAL" ? "NGHIÊM TRỌNG" : status === "EXCESS" ? "DƯ THỪA" : "ĐẠT"}</span>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        {isExp ? <ChevronDown className="h-3.5 w-3.5 text-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-text-3" />}
-                      </td>
-                    </tr>
-                    {isExp && row.skus.map((sk, si) => {
-                      const skAvail = sk.stock + sk.pipeline;
-                      const skCover = sk.demand > 0 ? +(sk.stock / (sk.demand / 30)).toFixed(1) : 0;
-                      const skNet = Math.max(0, sk.demand - skAvail);
-                      return (
-                        <tr key={`sku-${si}`} className="bg-surface-1/60 border-b border-surface-3/30 animate-fade-in">
-                          <td className="px-3 py-2 pl-8 text-text-2 font-medium">└ {sk.item} {sk.variant}</td>
-                          <td className="px-3 py-2 tabular-nums text-text-2">{sk.demand.toLocaleString()}</td>
-                          <td className="px-3 py-2 tabular-nums text-text-2">{sk.stock.toLocaleString()}</td>
-                          <td className="px-3 py-2 tabular-nums text-text-3">{sk.pipeline.toLocaleString()} <span className="text-caption text-text-3">{sk.pipelineSource}</span></td>
-                          <td className="px-3 py-2 tabular-nums text-text-2">{skAvail.toLocaleString()}</td>
-                          <td className="px-3 py-2 tabular-nums text-text-3">{skCover}d</td>
-                          <td className="px-3 py-2 tabular-nums text-text-3">{sk.ss.toLocaleString()}</td>
-                          <td className={cn("px-3 py-2 tabular-nums font-medium", (sk.stock - sk.ss) < 0 ? "text-danger" : "text-success")}>
-                            {(sk.stock - sk.ss) > 0 ? "+" : ""}{(sk.stock - sk.ss).toLocaleString()}
-                          </td>
-                          <td className={cn("px-3 py-2 tabular-nums font-medium", skNet > 0 ? "text-danger" : "text-success")}>{skNet.toLocaleString()}</td>
-                          <td className="px-3 py-2">
-                            <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
-                              sk.match.includes("SHORT") ? "bg-danger-bg text-danger" : "bg-success-bg text-success"
-                            )}>{sk.match}</span>
-                          </td>
-                          <td />
-                        </tr>
-                      );
-                    })}
-                  </React.Fragment>
-                );
-              })}
-              {/* Total */}
-              <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
-                <td className="px-3 py-2.5 text-text-1">TOTAL</td>
-                <td className="px-3 py-2.5 tabular-nums text-text-1">{totalDemand.toLocaleString()}</td>
-                <td className="px-3 py-2.5 tabular-nums text-text-1">{totalStock.toLocaleString()}</td>
-                <td className="px-3 py-2.5 tabular-nums text-text-1">{totalPipeline.toLocaleString()}</td>
-                <td className="px-3 py-2.5 tabular-nums text-text-1">{(totalStock + totalPipeline).toLocaleString()}</td>
-                <td className="px-3 py-2.5 tabular-nums text-text-2">
-                  {totalDemand > 0 ? (totalStock / (totalDemand / 30)).toFixed(1) : 0}d
-                </td>
-                <td className="px-3 py-2.5 tabular-nums text-text-1">{balRows.reduce((a, r) => a + r.ssTarget, 0).toLocaleString()}</td>
-                <td className={cn("px-3 py-2.5 tabular-nums font-medium", (totalStock - balRows.reduce((a, r) => a + r.ssTarget, 0)) >= 0 ? "text-success" : "text-danger")}>
-                  {(totalStock - balRows.reduce((a, r) => a + r.ssTarget, 0)) > 0 ? "+" : ""}
-                  {(totalStock - balRows.reduce((a, r) => a + r.ssTarget, 0)).toLocaleString()}
-                </td>
-                <td className="px-3 py-2.5 tabular-nums text-text-1">{netReq.toLocaleString()}</td>
-                <td colSpan={2} />
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+        <BalanceCnTable
+          rows={balRows}
+          totals={{
+            demand: totalDemand,
+            stock: totalStock,
+            pipeline: totalPipeline,
+            ssTarget: balRows.reduce((a, r) => a + r.ssTarget, 0),
+            netReq,
+          }}
+        />
       )}
 
       {/* Alert cards */}
