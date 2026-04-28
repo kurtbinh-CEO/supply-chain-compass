@@ -28,6 +28,8 @@ import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "
 import { monitoringCompare } from "@/lib/compare-metrics";
 import { SectionTableHeader } from "@/components/SectionTableHeader";
 import { TableDownloadButton } from "@/components/TableDownloadButton";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import { StatusChip } from "@/components/StatusChip";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -215,7 +217,7 @@ const conflictWeeklyTrend = [
 
 /* ═══ Conflict Log Section ═══ */
 function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggle: () => void }) {
-  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  type ConflictRow = typeof conflictLogData[number] & { _id: string };
   const thisWeek = conflictLogData.slice(0, 12);
   const autoResolved = thisWeek.filter(c => c.result.includes("refresh")).length;
   const manual = thisWeek.length - autoResolved;
@@ -253,47 +255,47 @@ function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggl
           </div>
         )}
 
-        {/* Table */}
-        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-          <table id="conflict-log-table" className="w-full text-table-sm">
-            <thead>
-              <tr className="bg-surface-1">
-                {["Thời gian", "Loại", "Screen", "User A", "User B", "Entity", "Kết quả", ""].map((h, i) => (
-                  <th key={i} className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {thisWeek.map((c, i) => (
-                <React.Fragment key={i}>
-                  <tr className={cn("border-b border-surface-3/50 hover:bg-surface-1/30 transition-colors", (c as any).highlight && "bg-warning-bg/20")}>
-                    <td className="px-3 py-2 tabular-nums text-text-2">{c.time}</td>
-                    <td className="px-3 py-2">
-                      <span className={cn("rounded-sm px-1.5 py-0.5 text-[10px] font-medium", typeBadge(c.type))}>{c.type}</span>
-                    </td>
-                    <td className="px-3 py-2 text-text-2">{c.screen}</td>
-                    <td className="px-3 py-2 text-text-1">{c.userA}</td>
-                    <td className="px-3 py-2 text-text-1">{c.userB}</td>
-                    <td className="px-3 py-2 font-mono text-text-2">{c.entity}</td>
-                    <td className="px-3 py-2 text-text-2">{c.result}</td>
-                    <td className="px-3 py-2">
-                      <button onClick={() => setExpandedRow(expandedRow === i ? null : i)} className="text-primary text-caption font-medium hover:underline">
-                        {expandedRow === i ? "Ẩn" : "Chi tiết"}
-                      </button>
-                    </td>
-                  </tr>
-                  {expandedRow === i && (
-                    <tr>
-                      <td colSpan={8} className="px-6 py-3 bg-surface-1/50">
-                        <pre className="text-table-sm text-text-2 whitespace-pre-wrap font-body leading-relaxed">{c.detail}</pre>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {/* Table — SmartTable with drillDown for detail */}
+        {(() => {
+          const rows: ConflictRow[] = thisWeek.map((c, i) => ({ ...c, _id: `${c.time}-${i}` }));
+          const cols: SmartTableColumn<ConflictRow>[] = [
+            { key: "time", label: "Thời gian", width: 90, sortable: true, hideable: false, render: (r) => <span className="tabular-nums text-text-2">{r.time}</span> },
+            {
+              key: "type", label: "Loại", width: 150, hideable: false,
+              filter: "enum",
+              filterOptions: [
+                { value: "CELL_OVERRIDE", label: "Cell Override" },
+                { value: "VERSION_MISMATCH", label: "Version Mismatch" },
+                { value: "BATCH_QUEUE", label: "Batch Queue" },
+                { value: "FORCE_LOCK", label: "Force Lock" },
+              ],
+              accessor: (r) => r.type,
+              render: (r) => <span className={cn("rounded-sm px-1.5 py-0.5 text-[10px] font-medium", typeBadge(r.type))}>{r.type}</span>,
+            },
+            { key: "screen", label: "Screen", width: 130, sortable: true, render: (r) => <span className="text-text-2">{r.screen}</span> },
+            { key: "userA", label: "User A", width: 110, render: (r) => <span className="text-text-1">{r.userA}</span> },
+            { key: "userB", label: "User B", width: 110, render: (r) => <span className="text-text-1">{r.userB}</span> },
+            { key: "entity", label: "Entity", width: 140, render: (r) => <span className="font-mono text-text-2 text-table-sm">{r.entity}</span> },
+            { key: "result", label: "Kết quả", width: 160, render: (r) => <span className="text-text-2">{r.result}</span> },
+          ];
+          return (
+            <SmartTable<ConflictRow>
+              screenId="monitoring-conflict-log"
+              exportFilename="conflict-log-7d"
+              columns={cols}
+              data={rows}
+              defaultDensity="compact"
+              getRowId={(r) => r._id}
+              rowSeverity={(r) => ((r as any).highlight ? "watch" : "ok")}
+              autoExpandWhen={(r) => !!(r as any).highlight}
+              drillDown={(r) => (
+                <div className="px-4 py-3 bg-surface-1/40">
+                  <pre className="text-table-sm text-text-2 whitespace-pre-wrap font-body leading-relaxed">{r.detail}</pre>
+                </div>
+              )}
+            />
+          );
+        })()}
 
         {/* Weekly trend chart */}
         <div>
@@ -882,33 +884,30 @@ export default function MonitoringPage() {
                   </div>
                 ))}
               </div>
-              <div>
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <h4 className="text-table-sm font-medium text-text-2">Top 5 recurring exceptions</h4>
-                  <TableDownloadButton targetId="monitoring-recurring-exceptions" filename="recurring-exceptions" size="xs" />
-                </div>
-                <table id="monitoring-recurring-exceptions" className="w-full">
-                  <thead>
-                    <tr className="border-b border-surface-3 bg-surface-1/50">
-                      {["Exception", "SKU", "CN", "Frequency", "Avg resolve", "Trend"].map((h, i) => (
-                        <th key={i} className="px-4 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recurringExceptions.map((r, i) => (
-                      <tr key={i} className="border-b border-surface-3/50 hover:bg-surface-1/30">
-                        <td className="px-4 py-2 text-table font-medium text-text-1">{r.exception}</td>
-                        <td className="px-4 py-2 text-table text-text-2">{r.sku}</td>
-                        <td className="px-4 py-2 text-table text-text-2">{r.cn}</td>
-                        <td className="px-4 py-2 text-table tabular-nums text-text-1">{r.freq}</td>
-                        <td className="px-4 py-2 text-table tabular-nums text-text-2">{r.avgResolve}</td>
-                        <td className="px-4 py-2 text-table text-text-2 flex items-center gap-1"><TrendIcon trend={r.trend} /> {r.trend}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {(() => {
+                type RecRow = typeof recurringExceptions[number] & { _id: string };
+                const rows: RecRow[] = recurringExceptions.map((r, i) => ({ ...r, _id: `${r.sku}-${r.cn}-${i}` }));
+                const cols: SmartTableColumn<RecRow>[] = [
+                  { key: "exception", label: "Exception", width: 170, hideable: false, sortable: true, render: (r) => <span className="font-medium text-text-1">{r.exception}</span> },
+                  { key: "sku", label: "SKU", width: 140, sortable: true, render: (r) => <span className="text-text-2">{r.sku}</span> },
+                  { key: "cn", label: "CN", width: 100, sortable: true, render: (r) => <span className="text-text-2">{r.cn}</span> },
+                  { key: "freq", label: "Frequency", width: 110, numeric: true, align: "right", sortable: true, accessor: (r) => parseInt(r.freq), render: (r) => <span className="tabular-nums text-text-1">{r.freq}</span> },
+                  { key: "avgResolve", label: "Avg resolve", width: 110, numeric: true, align: "right", sortable: true, accessor: (r) => parseFloat(r.avgResolve), render: (r) => <span className="tabular-nums text-text-2">{r.avgResolve}</span> },
+                  { key: "trend", label: "Trend", width: 140, render: (r) => <span className="text-text-2 flex items-center gap-1"><TrendIcon trend={r.trend} /> {r.trend}</span> },
+                ];
+                return (
+                  <SmartTable<RecRow>
+                    screenId="monitoring-recurring-exceptions"
+                    title="Top 5 recurring exceptions"
+                    exportFilename="recurring-exceptions"
+                    columns={cols}
+                    data={rows}
+                    defaultDensity="compact"
+                    getRowId={(r) => r._id}
+                    rowSeverity={(r) => (r.trend.includes("tệ") ? "shortage" : r.trend.includes("giảm") ? "ok" : "watch")}
+                  />
+                );
+              })()}
             </div>
           </CollapsibleSection>
 
@@ -983,37 +982,43 @@ export default function MonitoringPage() {
           {/* Section E: Closed-loop Summary */}
           <CollapsibleSection title="Closed-loop Summary" summary="Hệ thống tự học — 4 điều chỉnh tháng này" expanded={expandedSections.has("loop")} onToggle={() => toggleSection("loop")}>
             <div className="p-5 space-y-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-table-sm text-text-2">Tháng này hệ thống tự điều chỉnh gì?</p>
-                <TableDownloadButton targetId="monitoring-closed-loop" filename="closed-loop-summary" size="xs" />
-              </div>
-              <table id="monitoring-closed-loop" className="w-full">
-                <thead>
-                  <tr className="border-b border-surface-3 bg-surface-1/50">
-                    {["Điều chỉnh", "Trigger", "Impact", "Status"].map((h, i) => (
-                      <th key={i} className="px-4 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {closedLoopData.map((r, i) => (
-                    <tr key={i} className="border-b border-surface-3/50 hover:bg-surface-1/30">
-                      <td className="px-4 py-2.5 text-table font-medium text-text-1">{r.adjust}</td>
-                      <td className="px-4 py-2.5 text-table text-text-2">{r.trigger}</td>
-                      <td className="px-4 py-2.5 text-table text-text-2">{r.impact}</td>
-                      <td className="px-4 py-2.5">
-                        <span className={cn("rounded-full px-2.5 py-0.5 text-caption font-medium",
-                          r.status === "applied" ? "bg-success-bg text-success" :
-                          r.status === "pending" ? "bg-warning-bg text-warning" :
-                          "bg-info-bg text-info"
-                        )}>
-                          {r.status === "applied" ? "✅ Applied" : r.status === "pending" ? "⏳ Pending duyệt" : "⏳ Recommend"}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <p className="text-table-sm text-text-2">Tháng này hệ thống tự điều chỉnh gì?</p>
+              {(() => {
+                type LoopRow = typeof closedLoopData[number] & { _id: string };
+                const rows: LoopRow[] = closedLoopData.map((r, i) => ({ ...r, _id: `${r.adjust}-${i}` }));
+                const cols: SmartTableColumn<LoopRow>[] = [
+                  { key: "adjust", label: "Điều chỉnh", width: 200, hideable: false, sortable: true, render: (r) => <span className="font-medium text-text-1">{r.adjust}</span> },
+                  { key: "trigger", label: "Trigger", width: 220, render: (r) => <span className="text-text-2">{r.trigger}</span> },
+                  { key: "impact", label: "Impact", width: 260, render: (r) => <span className="text-text-2">{r.impact}</span> },
+                  {
+                    key: "status", label: "Status", width: 150, align: "center", hideable: false,
+                    filter: "enum",
+                    filterOptions: [
+                      { value: "applied", label: "✅ Applied" },
+                      { value: "pending", label: "⏳ Pending" },
+                      { value: "recommend", label: "⏳ Recommend" },
+                    ],
+                    accessor: (r) => r.status,
+                    render: (r) => (
+                      <StatusChip
+                        status={r.status === "applied" ? "success" : r.status === "pending" ? "warning" : "info"}
+                        label={r.status === "applied" ? "Applied" : r.status === "pending" ? "Pending duyệt" : "Recommend"}
+                      />
+                    ),
+                  },
+                ];
+                return (
+                  <SmartTable<LoopRow>
+                    screenId="monitoring-closed-loop"
+                    exportFilename="closed-loop-summary"
+                    columns={cols}
+                    data={rows}
+                    defaultDensity="compact"
+                    getRowId={(r) => r._id}
+                    rowSeverity={(r) => (r.status === "applied" ? "ok" : r.status === "pending" ? "watch" : "ok")}
+                  />
+                );
+              })()}
               <div className="rounded-md bg-success-bg/50 border border-success/20 px-4 py-3 text-table font-semibold text-success text-center">
                 Hệ thống TỰ HỌC — mỗi tháng tốt hơn tháng trước.
               </div>
