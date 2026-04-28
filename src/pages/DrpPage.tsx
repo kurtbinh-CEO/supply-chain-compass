@@ -636,33 +636,34 @@ function SkuFirstPivotTable({
   const totalFill = totals.d > 0 ? Math.round((totals.al / totals.d) * 100) : 100;
 
   const columns: SmartTableColumn<SkuRow>[] = [
-    { key: "sku", header: "Mã hàng", width: "w-32",
-      cell: (r) => <span className="font-medium text-text-1">{r.sku}</span> },
-    { key: "totalDemand", header: "Nhu cầu tổng", align: "right", width: "w-28",
-      cell: (r) => <span className="tabular-nums text-text-1">{r.totalDemand.toLocaleString()}</span>,
-      sortValue: (r) => r.totalDemand },
-    { key: "totalAlloc", header: "Phân bổ tổng", align: "right", width: "w-28",
-      cell: (r) => <span className="tabular-nums text-text-2">{r.totalAlloc.toLocaleString()}</span>,
-      sortValue: (r) => r.totalAlloc },
-    { key: "fillPct", header: "Lấp đầy", align: "right", width: "w-20",
-      cell: (r) => (
+    { key: "sku", label: "Mã hàng", width: 128, sortable: true,
+      render: (r) => <span className="font-medium text-text-1">{r.sku}</span>,
+      accessor: (r) => r.sku },
+    { key: "totalDemand", label: "Nhu cầu tổng", align: "right", width: 120, numeric: true, sortable: true,
+      render: (r) => <span className="tabular-nums text-text-1">{r.totalDemand.toLocaleString()}</span>,
+      accessor: (r) => r.totalDemand },
+    { key: "totalAlloc", label: "Phân bổ tổng", align: "right", width: 120, numeric: true, sortable: true,
+      render: (r) => <span className="tabular-nums text-text-2">{r.totalAlloc.toLocaleString()}</span>,
+      accessor: (r) => r.totalAlloc },
+    { key: "fillPct", label: "Lấp đầy", align: "right", width: 96, sortable: true,
+      render: (r) => (
         <span className={cn("tabular-nums font-semibold",
           r._sev === "ok" && "text-success",
           r._sev === "watch" && "text-warning",
           r._sev === "short" && "text-danger",
         )}>{r.fillPct}%</span>
       ),
-      sortValue: (r) => r.fillPct },
-    { key: "cnShortage", header: "CN thiếu", width: "w-28",
-      cell: (r) => r.cnShortage.length > 0 ? (
+      accessor: (r) => r.fillPct },
+    { key: "cnShortage", label: "CN thiếu", width: 120, sortable: true,
+      render: (r) => r.cnShortage.length > 0 ? (
         <span
           title={r.cnShortage.map((c) => `${c.cn} (${c.fill}%)`).join(", ")}
           className="inline-flex items-center gap-1 rounded-full border border-danger/30 bg-danger-bg px-2 py-0.5 text-[11px] font-semibold text-danger"
         >{r.cnShortage.length} CN</span>
       ) : <span className="text-success text-caption">🟢 Đủ</span>,
-      sortValue: (r) => r.cnShortage.length },
-    { key: "nmSources", header: "NM nguồn",
-      cell: (r) => (
+      accessor: (r) => r.cnShortage.length },
+    { key: "nmSources", label: "NM nguồn",
+      render: (r) => (
         <span className="text-table-sm text-text-2">
           {r.nmSources.map((n) => `${n.name} ${n.pct}%`).join(" · ")}
         </span>
