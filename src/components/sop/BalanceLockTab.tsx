@@ -60,8 +60,6 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   const navigate = useNavigate();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
   const [pivotMode, setPivotMode] = usePivotMode("sop-balance");
-  const [expandedCns, setExpandedCns] = useState<Set<number>>(new Set());
-  const [expandedSkuKeys, setExpandedSkuKeys] = useState<Set<string>>(new Set());
   const [showLockModal, setShowLockModal] = useState(false);
 
   // Use consensus data for demand, scale balance data
@@ -114,8 +112,8 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
     setTimeout(() => navigate("/hub"), 1500);
   };
 
-  const [expandedSku, setExpandedSku] = useState<number | null>(null);
-  const [bridgeSku, setBridgeSku] = useState<number | null>(null);
+
+  /* SmartTable handles per-row expand internally; legacy state removed */
 
   /* ═══ SKU-first pivot ═══ */
   interface BalSkuPivot {
@@ -125,7 +123,6 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   }
 
   const skuPivotData: BalSkuPivot[] = (() => {
-    if (pivotMode !== "sku") return [];
     const map = new Map<string, BalSkuPivot>();
     balRows.forEach(row => {
       row.skus.forEach(sk => {
@@ -170,7 +167,7 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
       />
 
       {/* Pivot toggle */}
-      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setExpandedCns(new Set()); setExpandedSkuKeys(new Set()); }} />
+      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); }} />
 
       {/* Balance table — SmartTable parent + drillDown compact */}
       {pivotMode === "sku" ? (
