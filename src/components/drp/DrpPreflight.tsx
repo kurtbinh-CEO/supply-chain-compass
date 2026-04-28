@@ -12,7 +12,7 @@
  * Mọi text tiếng Việt.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, AlertTriangle, AlertOctagon, ArrowRight, Play, ShieldAlert, ExternalLink } from "lucide-react";
+import { CheckCircle2, AlertTriangle, AlertOctagon, ArrowRight, Play, ShieldAlert, ExternalLink, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -44,6 +44,10 @@ interface Props {
   onBack?: () => void;
   /** Nếu auto run preflight chạy tự động — hiện banner */
   autoRunFailed?: { reason: string; fixHref?: string };
+  /** Đang tính lại preflight — hiện chip "Đang làm mới…" trên banner */
+  refreshing?: boolean;
+  /** Mốc thời gian lần làm mới gần nhất */
+  lastRefreshAt?: Date | null;
 }
 
 function levelIcon(l: PreflightLevel) {
@@ -65,7 +69,7 @@ const TIER_LABEL: Record<Tier, string> = {
   ceo: "CEO",
 };
 
-export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
+export function DrpPreflight({ items, onRun, onBack, autoRunFailed, refreshing, lastRefreshAt }: Props) {
   const { canForceRelease: rbacCanForce, canForceReleaseDirector, canForceReleaseCeo, user } = useRbac();
 
   const blocking = items.filter((i) => i.level === "block");
@@ -273,20 +277,40 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
 
       {/* Summary + actions */}
       <div className={cn(
-        "rounded border p-3 text-table-sm",
+        "rounded border p-3 text-table-sm flex items-center justify-between gap-2 transition-opacity",
+        refreshing && "opacity-70",
         blocking.length > 0 && "border-danger/40 bg-danger-bg/30 text-danger",
         blocking.length === 0 && warnings.length > 0 && "border-warning/40 bg-warning-bg/30 text-warning",
         blocking.length === 0 && warnings.length === 0 && "border-success/40 bg-success-bg/30 text-success"
       )}>
-        {summaryText}
+        <span>{summaryText}</span>
+        {refreshing ? (
+          <span className="inline-flex items-center gap-1.5 text-table-xs text-text-2 font-medium">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang làm mới…
+          </span>
+        ) : lastRefreshAt ? (
+          <span className="text-table-xs text-text-3">
+            Cập nhật {lastRefreshAt.toLocaleTimeString("vi-VN")}
+          </span>
+        ) : null}
       </div>
 
       {/* ── BLOCKING BANNER — danh sách điều kiện chặn + nút điều hướng trực tiếp ── */}
       {blocking.length > 0 && (
-        <div className="rounded-md border border-danger/40 bg-danger-bg/30 p-3 space-y-2">
-          <div className="flex items-center gap-2 text-table-sm font-semibold text-danger">
-            <AlertOctagon className="h-4 w-4" />
-            Không thể chạy DRP — {blocking.length} điều kiện đang chặn
+        <div className={cn(
+          "rounded-md border border-danger/40 bg-danger-bg/30 p-3 space-y-2 transition-opacity",
+          refreshing && "opacity-70"
+        )}>
+          <div className="flex items-center justify-between gap-2 text-table-sm font-semibold text-danger">
+            <span className="inline-flex items-center gap-2">
+              <AlertOctagon className="h-4 w-4" />
+              Không thể chạy DRP — {blocking.length} điều kiện đang chặn
+            </span>
+            {refreshing && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-info/40 bg-info-bg/60 px-2 py-0.5 text-table-xs font-medium text-info">
+                <Loader2 className="h-3 w-3 animate-spin" /> Đang làm mới…
+              </span>
+            )}
           </div>
           <ul className="space-y-1.5">
             {blocking.map((b) => (
