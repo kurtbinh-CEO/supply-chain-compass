@@ -527,7 +527,7 @@ export default function OrdersPage() {
       <Sheet open={!!panelGroup} onOpenChange={(o) => { if (!o) setPanelGroup(null); }}>
         <SheetContent
           side="right"
-          className="w-full sm:max-w-[480px] sm:w-[480px] p-0 overflow-y-auto"
+          className="w-full sm:max-w-[480px] sm:w-[480px] p-0 overflow-y-auto [&>button]:hidden"
         >
           {panelGroup && (() => {
             // Re-derive group from latest `groups` (so stage updates after mutations).
@@ -1133,7 +1133,7 @@ function ActionDialog({
 }) {
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto max-sm:w-screen max-sm:h-[100dvh] max-sm:max-w-none max-sm:max-h-none max-sm:rounded-none max-sm:p-4">
+      <DialogContent className="max-w-lg p-0 gap-0 max-h-[90vh] max-sm:w-screen max-sm:h-[100dvh] max-sm:max-w-none max-sm:max-h-none max-sm:rounded-none flex flex-col overflow-hidden">
         {row.stage === "approved"     && <SendNmForm row={row} onSubmit={onAdvance} />}
         {row.stage === "sent_nm"      && <NmConfirmForm row={row} onSubmit={onAdvance} />}
         {row.stage === "nm_confirmed" && <BookCarrierForm row={row} onSubmit={onAdvance} />}
