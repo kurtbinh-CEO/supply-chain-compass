@@ -6,8 +6,10 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   Play, ChevronDown, ChevronRight, ArrowRight, Lock as LockIcon,
-  CheckCircle2, AlertTriangle, Info, X, RefreshCw,
+  CheckCircle2, AlertTriangle, Info, X, RefreshCw, Shield, Download,
 } from "lucide-react";
+import { exportToXlsx, type ExportColumn } from "@/lib/export-utils";
+import { getSsStatus } from "@/components/SafetyStockBadge";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { TermTooltip } from "@/components/TermTooltip";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
@@ -1655,6 +1657,50 @@ export default function DrpPage() {
             <option value="lcnb">↔ Chuyển ngang</option>
             <option value="shortage">⚠️ Thiếu</option>
           </select>
+          <button
+            type="button"
+            onClick={() => {
+              const STATUS_LABEL: Record<string, string> = {
+                above_ss: "🟢 Trên SS",
+                at_ss: "🟠 Đủ SS",
+                below_ss: "🔴 Dưới SS",
+                no_ss: "— Không có SS",
+              };
+              const cols: ExportColumn<typeof EXCEPTION_SEEDS[number]>[] = [
+                { header: "CN", accessor: (r) => r.cn },
+                { header: "SKU", accessor: (r) => r.sku },
+                { header: "Loại", accessor: (r) => r.type },
+                { header: "Demand (m²)", accessor: (r) => r.demand },
+                { header: "Allocated (m²)", accessor: (r) => r.allocated },
+                { header: "Gap (m²)", accessor: (r) => r.gap },
+                { header: "SS target (m²)", accessor: (r) => r.ssTarget },
+                { header: "SS reserved (m²)", accessor: (r) => r.ssReserved },
+                {
+                  header: "Coverage %",
+                  accessor: (r) => (r.ssTarget > 0 ? Math.round((r.ssReserved / r.ssTarget) * 1000) / 10 : 0),
+                },
+                {
+                  header: "SS status",
+                  accessor: (r) => STATUS_LABEL[getSsStatus(r.ssTarget, r.ssReserved)] ?? "—",
+                },
+                {
+                  header: "SS shortfall (m²)",
+                  accessor: (r) => Math.max(0, r.ssTarget - r.ssReserved),
+                },
+              ];
+              const stamp = new Date().toISOString().slice(0, 10);
+              exportToXlsx(EXCEPTION_SEEDS, cols, `drp-ss-coverage-audit-${stamp}`, "SS Coverage Audit");
+              toast.success("Đã xuất SS coverage audit", {
+                description: `${EXCEPTION_SEEDS.length} dòng · file .xlsx`,
+              });
+            }}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-button border border-surface-3 bg-surface-0 text-text-2 hover:bg-surface-3 hover:text-text-1 transition-colors text-table-sm font-medium"
+            title="Xuất bảng audit SS coverage (ssTarget, ssReserved, %, status) cho mọi exception row"
+          >
+            <Shield className="h-3.5 w-3.5 text-info" />
+            <Download className="h-3 w-3" />
+            Xuất SS audit
+          </button>
         </div>
       </div>
 
