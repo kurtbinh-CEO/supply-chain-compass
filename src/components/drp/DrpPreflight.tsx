@@ -69,7 +69,7 @@ const TIER_LABEL: Record<Tier, string> = {
   ceo: "CEO",
 };
 
-export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
+export function DrpPreflight({ items, onRun, onBack, autoRunFailed, refreshing, lastRefreshAt }: Props) {
   const { canForceRelease: rbacCanForce, canForceReleaseDirector, canForceReleaseCeo, user } = useRbac();
 
   const blocking = items.filter((i) => i.level === "block");
