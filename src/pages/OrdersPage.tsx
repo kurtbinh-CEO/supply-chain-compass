@@ -91,6 +91,8 @@ export default function OrdersPage() {
   // Dialog state — only one dialog open at a time
   const [actionRow, setActionRow] = useState<PoLifecycleRow | null>(null);
   const [cancelRow, setCancelRow] = useState<PoLifecycleRow | null>(null);
+  // Side Panel — mở khi click vào 1 PO group row
+  const [panelGroup, setPanelGroup] = useState<PoGroup | null>(null);
 
   /* ── Build PO groups (NM × CN × Tuần) — parent rows ── */
   const groups = useMemo(() => buildPoGroups(rows), [rows]);
