@@ -15,6 +15,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import type { ContainerPlan, DropPoint } from "@/data/container-plans";
+import { inferContainerRoute, REGION_LABELS } from "@/data/route-constraints";
 
 /* ── Vehicle catalog (capacity m² + cost/km) ── */
 const VEHICLES: Record<string, { label: string; capacity: number; costPerKm: number }> = {
