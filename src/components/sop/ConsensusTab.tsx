@@ -812,6 +812,15 @@ function ConsensusSkuDrill({
     },
   ];
 
+  const summaryRow: Partial<Record<string, React.ReactNode>> = {
+    cn: <span className="font-bold text-text-1">TỔNG</span>,
+    v0: row.v0.toLocaleString(),
+    v1: row.v1.toLocaleString(),
+    v2: row.v2.toLocaleString(),
+    v3: <span className="text-primary font-bold tabular-nums">★ {row.v3.toLocaleString()}</span>,
+    aop: row.aop.toLocaleString(),
+  };
+
   return (
     <div className="px-3 py-2 bg-surface-1/40">
       <SmartTable<Cb>
@@ -820,6 +829,7 @@ function ConsensusSkuDrill({
         data={row.cnBreakdown}
         defaultDensity="compact"
         getRowId={(r) => r.cn}
+        summaryRow={summaryRow}
       />
     </div>
   );
