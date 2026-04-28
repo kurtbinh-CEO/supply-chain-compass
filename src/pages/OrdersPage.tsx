@@ -1198,35 +1198,54 @@ function NmConfirmForm({ row, onSubmit }: { row: PoLifecycleRow; onSubmit: (p: P
   const [readyDate, setReadyDate] = useState(todayPlus(2));
   const counter = qtyConfirmed < row.qty;
   return (
-    <>
-      <DialogHeader>
-        <DialogTitle>{row.fromName} xác nhận {row.poNumber}</DialogTitle>
-        <DialogDescription>Cập nhật số lượng + ngày sẵn sàng giao theo phản hồi của NM.</DialogDescription>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-caption">SL xác nhận (m²)</Label>
-            <Input type="number" value={qtyConfirmed} onChange={(e) => setQtyConfirmed(Number(e.target.value))} />
-            {counter && <div className="text-[11px] text-warning mt-1">⚠️ NM chỉ xác nhận {qtyConfirmed}/{row.qty}m²</div>}
-          </div>
-          <div>
-            <Label className="text-caption">Ngày NM sẵn sàng</Label>
-            <Input type="date" value={readyDate} onChange={(e) => setReadyDate(e.target.value)} />
-          </div>
-        </div>
-        <FilePickerStub label="Ảnh xác nhận từ NM (Zalo)" />
-        <SlaInfo text="Sau khi xác nhận, planner cần đặt nhà xe trong 1 ngày." />
-      </div>
-      <DialogFooter>
-        <Button onClick={() => onSubmit({
-          stage: "nm_confirmed", qtyConfirmed,
+    <TransitionShell
+      row={row}
+      fromStage="sent_nm"
+      toStage="nm_confirmed"
+      title={`${row.fromName} xác nhận ${row.poNumber}`}
+      description="Cập nhật số lượng + ngày sẵn sàng giao theo phản hồi của NM."
+      config={{
+        commentRequired: true,
+        filesRequired: false,
+        filesLabel: "Ảnh xác nhận từ NM (Zalo) — tuỳ chọn",
+        commentPlaceholder: counter
+          ? `NM counter ${qtyConfirmed}/${row.qty}m². Lý do: thiếu nguyên liệu, sẽ bổ sung tuần sau...`
+          : "NM xác nhận đủ qty. Sẵn sàng giao đúng hẹn.",
+        submitLabel: "NM đã xác nhận",
+        submitTone: "success",
+      }}
+      fieldsValid={qtyConfirmed > 0 && !!readyDate}
+      onSubmit={({ comment, files }) =>
+        onSubmit({
+          stage: "nm_confirmed",
+          qtyConfirmed,
           pickupEta: fmtDateShort(readyDate),
-          evidence: [...row.evidence, { label: "Xác nhận NM (Zalo)", kind: "screenshot" }],
-          timeline: [...row.timeline, { stage: "nm_confirmed", ts: nowTs(), actor: row.fromName, note: counter ? `Counter ${qtyConfirmed}/${row.qty}m². Sẵn sàng ${readyDate}` : `Đủ ${qtyConfirmed}m². Sẵn sàng ${readyDate}` }],
-        })}>NM đã xác nhận</Button>
-      </DialogFooter>
-    </>
+          evidence: [
+            ...row.evidence,
+            ...filesToEvidence(files, "screenshot"),
+          ],
+          timeline: [...row.timeline, {
+            stage: "nm_confirmed",
+            ts: nowTs(),
+            actor: row.fromName,
+            note: `${counter ? `Counter ${qtyConfirmed}/${row.qty}m²` : `Đủ ${qtyConfirmed}m²`}. Sẵn sàng ${readyDate}${comment ? ` — ${comment}` : ""}`,
+            evidence: filesToEvidence(files, "screenshot"),
+          }],
+        })
+      }
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label className="text-caption">SL xác nhận (m²) *</Label>
+          <Input type="number" value={qtyConfirmed} onChange={(e) => setQtyConfirmed(Number(e.target.value))} className="text-base h-11" />
+          {counter && <div className="text-[11px] text-warning mt-1">⚠️ NM chỉ xác nhận {qtyConfirmed}/{row.qty}m²</div>}
+        </div>
+        <div>
+          <Label className="text-caption">Ngày NM sẵn sàng *</Label>
+          <Input type="date" value={readyDate} onChange={(e) => setReadyDate(e.target.value)} className="text-base h-11" />
+        </div>
+      </div>
+    </TransitionShell>
   );
 }
 
