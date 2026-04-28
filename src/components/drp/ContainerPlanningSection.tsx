@@ -361,58 +361,35 @@ function DropPointsEditor({
         )}
       </div>
 
-      {/* Live impact bar */}
+      {/* KPI Impact Grid — luôn hiện trong drill-down, flash khi value đổi */}
+      <KpiImpactGrid
+        baseFillPct={container.fillPct}
+        baseKm={container.distanceKm}
+        baseFreightVnd={container.freightVnd}
+        newFillPct={container.fillPct /* fill không đổi vì cùng SKU/qty */}
+        newKm={calc.newKm}
+        newFreightVnd={calc.newFreight}
+        editing={reorderMode}
+        dirty={dirty}
+      />
+
+      {/* Dòng route gọn — chỉ trong reorderMode để biết chuỗi đang preview */}
       {reorderMode && (
         <div className={cn(
-          "rounded-card border px-3 py-2 text-table-sm flex flex-wrap items-center justify-between gap-3 transition-colors",
+          "rounded-card border px-3 py-1.5 text-table-sm flex items-center gap-2 transition-colors",
           dirty
             ? calc.deltaKm > 0
-              ? "border-warning/40 bg-warning-bg/60"
+              ? "border-warning/40 bg-warning-bg/40"
               : "border-info/40 bg-info-bg"
             : "border-surface-3 bg-surface-2",
         )}>
-          <div className="flex items-center gap-2 text-text-2 min-w-0">
-            <MapPin className="h-3.5 w-3.5 shrink-0" />
-            <span className="font-mono text-text-1 truncate">{dynamicRoute}</span>
-          </div>
-          <div className="flex items-center gap-3 tabular-nums">
-            <div className="flex flex-col items-end">
-              <span className="text-[10px] text-text-3 uppercase">Tổng km</span>
-              <div className="flex items-center gap-1">
-                <span className="font-semibold text-text-1">{fmtKm(calc.newKm)}</span>
-                {dirty && (
-                  <span className={cn(
-                    "text-[10px] font-semibold",
-                    calc.deltaKm > 0 ? "text-warning" : "text-success",
-                  )}>
-                    ({calc.deltaKm > 0 ? "+" : ""}{calc.deltaKm}km)
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="h-8 w-px bg-surface-3" />
-            <div className="flex flex-col items-end">
-              <span className="text-[10px] text-text-3 uppercase">Cước</span>
-              <div className="flex items-center gap-1">
-                <span className="font-semibold text-text-1">
-                  {(calc.newFreight / 1_000_000).toFixed(1).replace(/\.0$/, "")}M₫
-                </span>
-                {dirty && (
-                  <span className={cn(
-                    "text-[10px] font-semibold",
-                    calc.deltaFreight > 0 ? "text-warning" : "text-success",
-                  )}>
-                    ({fmtDelta(calc.deltaFreight)})
-                  </span>
-                )}
-              </div>
-            </div>
-            {!dirty && (
-              <span className="inline-flex items-center gap-1 text-[10px] text-text-3 ml-1">
-                <Check className="h-3 w-3 text-success" /> Thứ tự gốc (tối ưu)
-              </span>
-            )}
-          </div>
+          <MapPin className="h-3.5 w-3.5 text-text-3 shrink-0" />
+          <span className="font-mono text-text-1 truncate flex-1">{dynamicRoute}</span>
+          {!dirty && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-text-3 shrink-0">
+              <Check className="h-3 w-3 text-success" /> Thứ tự gốc (tối ưu)
+            </span>
+          )}
         </div>
       )}
 
