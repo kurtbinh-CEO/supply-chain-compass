@@ -32,7 +32,7 @@ interface BalSkuPivot {
   cnBreakdown: { cn: string; demand: number; stock: number; pipeline: number; cover: number; ssTarget: number; ssGap: number; netReq: number; status: string }[];
 }
 
-type BalSkuRow = BalanceRow["skus"][number];
+interface BalanceRow {
   cn: string;
   demand: number;
   stock: number;
@@ -40,6 +40,8 @@ type BalSkuRow = BalanceRow["skus"][number];
   ssTarget: number;
   skus: { item: string; variant: string; demand: number; stock: number; pipeline: number; pipelineSource: string; ss: number; netReq: number; nmSource: string; nmAtp: number; match: string }[];
 }
+
+type BalSkuRow = BalanceRow["skus"][number];
 
 const baseBalance: BalanceRow[] = [
   { cn: "CN-BD", demand: 2550, stock: 450, pipeline: 557, ssTarget: 900,
