@@ -1114,6 +1114,40 @@ function ScenarioTab({
             </p>
           </div>
         )}
+
+        {selected.tier && selected.tier.current !== "tier1" && (
+          <div className="mt-4 flex items-start gap-2 rounded-button border border-warning/30 bg-warning-bg px-3 py-2.5 text-warning">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <p className="text-table-sm">
+              <span className="font-semibold">
+                Cảnh báo Tier giá:
+              </span>{" "}
+              {selected.nm.name} đã kéo {fmtM2(selected.releasedM2)} —{" "}
+              <strong>
+                {selected.tier.current === "tier2" ? "Tier 2" : "Tier 3"}
+              </strong>
+              . Tier 1 cần ≥{fmtM2(selected.tier.schedule.tier1Threshold)} (giá{" "}
+              {selected.tier.schedule.tier1Price.toLocaleString("vi-VN")}₫/m²).
+              Nếu không kéo thêm <strong>{fmtM2(selected.tier.toNextTier)}</strong>,
+              NM sẽ áp giá <strong>
+                {selected.tier.currentPrice.toLocaleString("vi-VN")}₫/m²
+              </strong>{" "}
+              cho TOÀN BỘ {fmtM2(selected.releasedM2)} đã mua → phụ phí
+              retroactive <strong className="text-danger">{fmtVnd(selected.tier.upliftIfDrop)}</strong>.
+            </p>
+          </div>
+        )}
+        {selected.tier && selected.tier.current === "tier1" && (
+          <div className="mt-4 flex items-start gap-2 rounded-button border border-success/30 bg-success-bg px-3 py-2.5 text-success">
+            <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+            <p className="text-table-sm">
+              {selected.nm.name} đang ở <strong>Tier 1</strong> — giá ưu đãi{" "}
+              {selected.tier.schedule.tier1Price.toLocaleString("vi-VN")}₫/m².
+              Đã kéo {fmtM2(selected.releasedM2)} ≥{" "}
+              {fmtM2(selected.tier.schedule.tier1Threshold)} ✅
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 4 scenarios */}
