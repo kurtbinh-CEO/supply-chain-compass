@@ -12,6 +12,7 @@ import {
   CONTAINER_PLANS, summarizeContainers,
   type ContainerPlan,
 } from "@/data/container-plans";
+import { RouteMapPreview } from "./RouteMapPreview";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
