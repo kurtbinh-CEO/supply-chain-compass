@@ -515,9 +515,34 @@ export default function OrdersPage() {
             else if (typeof s === "object") setStatusFilter(new Set([s.stage]));
             setDrillFocus(null);
           }}
-          onOpenRow={(_r) => { setDrillFocus(null); }}
+          onOpenRow={(r) => {
+            setDrillFocus(null);
+            const g = groups.find(gr => gr.lines.some(l => l.id === r.id));
+            if (g) setPanelGroup(g);
+          }}
         />
       )}
+
+      {/* ═══ ORDER DETAIL — RIGHT SIDE PANEL (480px) ═══ */}
+      <Sheet open={!!panelGroup} onOpenChange={(o) => { if (!o) setPanelGroup(null); }}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-[480px] sm:w-[480px] p-0 overflow-y-auto"
+        >
+          {panelGroup && (() => {
+            // Re-derive group from latest `groups` (so stage updates after mutations).
+            const fresh = groups.find(g => g.groupId === panelGroup.groupId) ?? panelGroup;
+            return (
+              <OrderDetailPanel
+                group={fresh}
+                onAction={(line) => setActionRow(line)}
+                onCancel={(line) => setCancelRow(line)}
+                onClose={() => setPanelGroup(null)}
+              />
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
     </AppLayout>
   );
 }
