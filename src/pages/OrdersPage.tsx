@@ -1133,7 +1133,7 @@ function ActionDialog({
 }) {
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto max-sm:w-screen max-sm:h-[100dvh] max-sm:max-w-none max-sm:max-h-none max-sm:rounded-none max-sm:p-4">
         {row.stage === "approved"     && <SendNmForm row={row} onSubmit={onAdvance} />}
         {row.stage === "sent_nm"      && <NmConfirmForm row={row} onSubmit={onAdvance} />}
         {row.stage === "nm_confirmed" && <BookCarrierForm row={row} onSubmit={onAdvance} />}
