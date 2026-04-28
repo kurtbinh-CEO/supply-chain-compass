@@ -792,16 +792,7 @@ export default function DrpPage() {
   /* ── Filter pills ── */
   const [filter, setFilter] = useState<"watch+short" | "ok" | "watch" | "short" | "all">("watch+short");
 
-  /* ── Expanded rows ── */
-  const [expanded, setExpanded] = useState<Set<string>>(() => {
-    return new Set(baseData.filter(r => r.fillRate < 80).map(r => `cn-${r.cn}`));
-  });
-  const toggleRow = (k: string) =>
-    setExpanded(prev => {
-      const n = new Set(prev);
-      n.has(k) ? n.delete(k) : n.add(k);
-      return n;
-    });
+  /* ── Expanded rows now managed by SmartTable ── */
 
   /* ── Source filter dropdown ── */
   const [sourceFilter, setSourceFilter] = useState<SrcKind | "all">("all");
