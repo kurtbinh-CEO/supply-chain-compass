@@ -293,6 +293,8 @@ export function SmartTable<T = any>({
   drillDown,
   autoExpandWhen,
   onRowClick,
+  splitIntent = true,
+  activeRowId,
   beforeCollapse,
   collapseRowSignal,
   emptyMessage = "Không có dữ liệu",
