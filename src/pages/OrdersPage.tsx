@@ -297,6 +297,15 @@ export default function OrdersPage() {
             tooltip: "Đã POD xong + đăng ERP. Click để xem chi tiết.",
             onClick: () => setDrillFocus("done"),
           },
+          {
+            key: "consolidated", label: "Ghép tuyến", value: counts.multi, unit: "đơn",
+            severity: counts.multi > 0 ? "ok" : "ok",
+            trend: counts.totalSaving > 0
+              ? { delta: `Tiết kiệm ${(counts.totalSaving / 1e6).toFixed(1)}M₫`, direction: "up", color: "green" }
+              : { delta: "chưa có", direction: "flat", color: "gray" },
+            tooltip: "Đơn ghép tuyến 2-3 CN/xe — bấm để lọc xem riêng.",
+            onClick: () => setDropFilter(dropFilter === "multi" ? null : "multi"),
+          },
         ];
         return <SummaryCards cards={cards} screenId="orders-lifecycle" editable />;
       })()}
@@ -352,6 +361,25 @@ export default function OrdersPage() {
           icon="⚠️"
           tone="danger"
           disabled={counts.overdue === 0}
+        />
+
+        <Separator />
+
+        {/* Nhóm 4: Drop count (single vs multi-drop) */}
+        <FilterPill
+          active={dropFilter === "single"}
+          onClick={() => setDropFilter(dropFilter === "single" ? null : "single")}
+          count={counts.single}
+          label="1 CN"
+          disabled={counts.single === 0}
+        />
+        <FilterPill
+          active={dropFilter === "multi"}
+          onClick={() => setDropFilter(dropFilter === "multi" ? null : "multi")}
+          count={counts.multi}
+          label="2+ CN"
+          tone="warning"
+          disabled={counts.multi === 0}
         />
       </div>
 
