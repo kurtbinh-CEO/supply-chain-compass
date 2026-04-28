@@ -1782,7 +1782,7 @@ export default function DrpPage() {
                     {/* Expanded SKU breakdown */}
                     {isOpen && (
                       <tr>
-                        <td colSpan={7} className="bg-surface-1/40 px-4 py-3 border-b border-surface-3">
+                        <td colSpan={8} className="bg-surface-1/40 px-4 py-3 border-b border-surface-3">
                           <div className="text-caption text-text-3 mb-2">
                             Chi tiết {r.cn} — {r.allSkus.length} mã hàng
                           </div>
