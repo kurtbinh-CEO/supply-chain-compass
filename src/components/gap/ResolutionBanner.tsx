@@ -46,8 +46,9 @@ export function ResolutionBanner({ resolution, onChange, onDetail }: Props) {
           <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
             {r.poTopupId && (
               <Link
-                to="/orders"
+                to={`/orders?focus=${encodeURIComponent(r.poTopupId)}&from=gap&nm=${encodeURIComponent(r.nmId)}`}
                 className="rounded-button border border-surface-3 bg-surface-0 px-3 py-2 text-table-sm hover:border-primary/50 transition-colors flex items-center gap-2"
+                title={`Mở Đơn hàng và xem ${r.poTopupId}`}
               >
                 <span>📦</span>
                 <div className="flex-1 min-w-0">
@@ -61,8 +62,9 @@ export function ResolutionBanner({ resolution, onChange, onDetail }: Props) {
             )}
             {r.negotiateTaskId && (
               <Link
-                to="/workspace"
+                to={`/workspace?focus=${encodeURIComponent(r.negotiateTaskId)}&from=gap&nm=${encodeURIComponent(r.nmId)}`}
                 className="rounded-button border border-surface-3 bg-surface-0 px-3 py-2 text-table-sm hover:border-primary/50 transition-colors flex items-center gap-2"
+                title={`Mở Việc cần làm và xem ${r.negotiateTaskId}`}
               >
                 <span>📞</span>
                 <div className="flex-1 min-w-0">

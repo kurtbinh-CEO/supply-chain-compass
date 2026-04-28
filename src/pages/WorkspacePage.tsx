@@ -5,7 +5,7 @@ import { useWorkflow } from "@/components/WorkflowContext";
 import { useWorkspace } from "@/components/WorkspaceContext";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Play, ChevronDown, ChevronRight, TrendingUp, TrendingDown, AlertTriangle, BarChart3, Package, Activity } from "lucide-react";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { VoiceInput } from "@/components/VoiceInput";
@@ -63,6 +63,41 @@ export default function WorkspacePage() {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  // Deep-link từ Khoảng cách & Kịch bản: toast + highlight khi tới với ?focus=NEG-...&from=gap
+  useEffect(() => {
+    const focus = searchParams.get("focus");
+    const from = searchParams.get("from");
+    if (focus && from === "gap") {
+      toast.info("Đến từ Khoảng cách & Kịch bản", {
+        description: `Task đàm phán ${focus} (deadline 5 ngày). Tạo sau khi chọn kịch bản giải quyết khoảng cách.`,
+        duration: 6000,
+      });
+      setHighlightId(focus);
+      // Tự cuộn tới task được focus sau khi DOM render
+      setTimeout(() => {
+        document.getElementById(`workspace-item-${focus}`)?.scrollIntoView({
+          behavior: "smooth", block: "center",
+        });
+      }, 200);
+      // Tắt highlight sau 6s
+      setTimeout(() => setHighlightId(null), 6000);
+      const next = new URLSearchParams(searchParams);
+      next.delete("focus"); next.delete("from"); next.delete("nm");
+      setSearchParams(next, { replace: true });
+    } else if (from === "gap-preview") {
+      toast.info("Xem trước từ Khoảng cách & Kịch bản", {
+        description: "Đây là Việc cần làm — sau khi xác nhận kịch bản, task đàm phán sẽ xuất hiện ở đây với hạn 5 ngày.",
+        duration: 5000,
+      });
+      const next = new URLSearchParams(searchParams);
+      next.delete("from");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-check bảng giá NM (chỉ chạy 1 lần / mount)
   const priceCheckRan = useRef(false);
@@ -362,7 +397,7 @@ export default function WorkspacePage() {
               const isExpanded = expandedId === item.id;
               const hasContext = !!ctx;
               return (
-                <div key={item.id} className={cn("transition-colors", isExpanded && "bg-surface-1/30")}>
+                <div key={item.id} id={`workspace-item-${item.id}`} className={cn("transition-colors", isExpanded && "bg-surface-1/30", highlightId === item.id && "ring-2 ring-primary/60 bg-primary/5 rounded-button")}>
                   <div
                     className={cn(
                       "px-5 py-3 flex items-center gap-3 transition-colors",
