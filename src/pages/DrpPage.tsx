@@ -20,6 +20,7 @@ import { getNMSummaries } from "@/components/supply/supplyData";
 import { useWorkspace } from "@/components/WorkspaceContext";
 import { BRANCHES, DRP_RESULTS } from "@/data/unis-enterprise-dataset";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import { BRANCHES as _BR2, DRP_RESULTS as _DRP2, PLAN_VERSIONS } from "@/data/unis-enterprise-dataset";
 import { VersionHistoryPanel } from "@/components/VersionHistoryPanel";
 import { VersionCompareInline } from "@/components/VersionCompareInline";
