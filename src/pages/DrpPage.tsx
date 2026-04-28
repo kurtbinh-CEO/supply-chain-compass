@@ -6,8 +6,10 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   Play, ChevronDown, ChevronRight, ArrowRight, Lock as LockIcon,
-  CheckCircle2, AlertTriangle, Info, X, RefreshCw,
+  CheckCircle2, AlertTriangle, Info, X, RefreshCw, Shield, Download,
 } from "lucide-react";
+import { exportToXlsx, type ExportColumn } from "@/lib/export-utils";
+import { getSsStatus } from "@/components/SafetyStockBadge";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { TermTooltip } from "@/components/TermTooltip";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
