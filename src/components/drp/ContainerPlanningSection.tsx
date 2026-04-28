@@ -1,815 +1,433 @@
-/**
- * ContainerPlanningSection — DRP Bước 3 (giữa Summary và Exception)
- * - 4 SummaryCards inline
- * - SmartTable danh sách container (12 chuyến mock)
- * - Drill-down: route + drops + SKU lines + gợi ý hold/ship
- * - Dialog Sửa container, Tạo container thủ công
- * - Popup ghép tuyến
- */
-import { useMemo, useState } from "react";
-import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
-import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Truck, Package, Route, Plus, Pencil, AlertTriangle, MapPin,
-  Clock, Sparkles, X, Trash2, ArrowRight,
+  Truck, Package, AlertTriangle, ArrowRight, Clock, MapPin, Pencil,
+  TrendingUp, Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import {
-  CONTAINER_PLANS, VEHICLE_LABEL, STATUS_META,
-  fillTone, formatVnd, summarizeContainerPlans,
-  type ContainerPlan, type VehicleType, type DropPoint,
+  CONTAINER_PLANS, summarizeContainers,
+  type ContainerPlan,
 } from "@/data/container-plans";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 
-// ───────────────────────────────────────────────────────────────────
-// Sub-components
-// ───────────────────────────────────────────────────────────────────
+const fmtVnd = (v: number) => v.toLocaleString("vi-VN") + "₫";
+const fmtVndShort = (v: number) => {
+  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M₫";
+  if (v >= 1_000) return Math.round(v / 1000) + "K₫";
+  return v + "₫";
+};
 
-function FillBadge({ pct }: { pct: number }) {
-  const tone = fillTone(pct);
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-table-sm font-semibold tabular-nums",
-        tone === "ok" && "bg-success-bg text-success",
-        tone === "warn" && "bg-warning-bg text-warning",
-        tone === "danger" && "bg-danger-bg text-danger",
-      )}
-      title={`Fill rate ${pct}%`}
-    >
-      {tone === "danger" && "🔴"}
-      {tone === "warn" && "🟡"}
-      {tone === "ok" && "🟢"}
-      {pct}%
-    </span>
-  );
+const STATUS_LABEL: Record<ContainerPlan["status"], string> = {
+  draft: "Nháp",
+  ready: "Sẵn sàng",
+  hold: "Giữ chờ",
+  in_transit: "Đang vận chuyển",
+  delivered: "Đã giao",
+};
+
+const STATUS_CLASS: Record<ContainerPlan["status"], string> = {
+  draft: "border-surface-3 bg-surface-2 text-text-2",
+  ready: "border-info/30 bg-info-bg text-info",
+  hold: "border-warning/30 bg-warning-bg text-warning",
+  in_transit: "border-primary/30 bg-primary/10 text-primary",
+  delivered: "border-success/30 bg-success-bg text-success",
+};
+
+const SUGGESTION_CLASS: Record<string, string> = {
+  gom_them: "border-warning/40 bg-warning-bg text-warning",
+  xuat_ngay: "border-success/40 bg-success-bg text-success",
+  tach_xe: "border-info/40 bg-info-bg text-info",
+};
+
+interface Props {
+  /** Cross-link: click CN badge → switch sang tab Phân bổ + highlight CN */
+  onCnClick?: (cnCode: string) => void;
+  /** External highlight target (TP-xxx) khi user vừa cross-link từ tab Phân bổ */
+  highlightId?: string | null;
 }
 
-function StatusPill({ status }: { status: ContainerPlan["status"] }) {
-  const meta = STATUS_META[status];
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-caption font-medium border",
-        meta.tone === "ok" && "border-success/30 bg-success-bg text-success",
-        meta.tone === "warn" && "border-warning/30 bg-warning-bg text-warning",
-        meta.tone === "danger" && "border-danger/30 bg-danger-bg text-danger",
-        meta.tone === "info" && "border-primary/30 bg-primary/10 text-primary",
-        meta.tone === "neutral" && "border-surface-3 bg-surface-2 text-text-2",
-      )}
-    >
-      {meta.label}
-    </span>
-  );
-}
+export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
+  const navigate = useNavigate();
+  const summary = summarizeContainers(CONTAINER_PLANS);
 
-function RouteCell({ plan }: { plan: ContainerPlan }) {
-  const drops = plan.drops;
-  return (
-    <div className="flex items-center gap-1 text-table-sm">
-      <span className="font-mono font-medium text-text-2">{plan.nmShortCode}</span>
-      {drops.map((d, i) => (
-        <span key={d.cnCode} className="flex items-center gap-1">
-          <ArrowRight className="h-3 w-3 text-text-3" />
-          <span className="font-mono text-text-1">{d.cnCode}</span>
-          {i < drops.length - 1 && null}
+  const [editing, setEditing] = useState<ContainerPlan | null>(null);
+
+  // Khi highlightId đổi (cross-link arrive) → flash row & scroll
+  useEffect(() => {
+    if (!highlightId) return;
+    const el = document.getElementById(`container-row-${highlightId}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("ring-2", "ring-primary", "ring-offset-2", "bg-primary/5");
+    const t = setTimeout(() => {
+      el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "bg-primary/5");
+    }, 1600);
+    return () => clearTimeout(t);
+  }, [highlightId]);
+
+  const cols: SmartTableColumn<ContainerPlan>[] = [
+    {
+      key: "id", label: "Chuyến", width: 90,
+      render: (r) => (
+        <span id={`container-row-${r.id}`} className="font-mono text-text-1 font-semibold">
+          {r.id}
         </span>
-      ))}
-    </div>
-  );
-}
-
-function ConsolidatedBadge({ plan, onClick }: { plan: ContainerPlan; onClick?: () => void }) {
-  if (!plan.isConsolidated) return null;
-  return (
-    <button
-      type="button"
-      onClick={(e) => { e.stopPropagation(); onClick?.(); }}
-      className="inline-flex items-center gap-1 rounded-full border border-orange-400/40 bg-orange-50 dark:bg-orange-500/10 px-2 py-0.5 text-caption font-semibold text-orange-700 dark:text-orange-300 hover:border-orange-500/60"
-    >
-      <Route className="h-3 w-3" /> GHÉP
-    </button>
-  );
-}
-
-// ───────────────────────────────────────────────────────────────────
-// Drill-down content
-// ───────────────────────────────────────────────────────────────────
-
-function ContainerDrillDown({
-  plan,
-  onShowConsolidate,
-  onMergeMore,
-}: {
-  plan: ContainerPlan;
-  onShowConsolidate: () => void;
-  onMergeMore: () => void;
-}) {
-  const totalDistance = plan.drops.reduce((a, d) => a + d.distanceKm, 0);
-  const isLow = plan.fillPct < 70;
-
-  return (
-    <div className="bg-surface-1/40 border-l-4 border-l-primary/30 px-4 py-3 space-y-3">
-      {/* Header line */}
-      <div className="flex flex-wrap items-center gap-2 text-table-sm text-text-2">
-        <span className="font-semibold text-text-1">{plan.id}</span>
-        <span>·</span>
-        <span>{plan.vehicleLabel}</span>
-        <span>·</span>
-        <span>{plan.nmName}</span>
-        <span>·</span>
-        <span>Fill <FillBadge pct={plan.fillPct} /></span>
-        <span className="text-text-3">({plan.totalQtyM2.toLocaleString("vi-VN")}/{plan.capacityM2.toLocaleString("vi-VN")} m²)</span>
-        {isLow && <span className="text-warning font-semibold">⚠️</span>}
-      </div>
-
-      {/* Route box */}
-      <div className="rounded-card border border-surface-3 bg-surface-2 p-3 space-y-2">
-        <div className="flex items-start gap-2 text-table-sm">
-          <Route className="h-4 w-4 text-primary mt-0.5" />
-          <div className="flex-1">
-            <div className="font-medium text-text-1">
-              TUYẾN: {plan.nmShortCode}
-              {plan.drops.map((d) => (
-                <span key={d.cnCode}> → {d.cnCode} (drop {d.order})</span>
-              ))}
-            </div>
-            <div className="text-caption text-text-3 mt-0.5">
-              Khoảng cách: {plan.drops.map(d => `${d.distanceKm}km`).join(" + ")} = {totalDistance}km
-            </div>
-            <div className="text-caption text-text-2 mt-0.5">
-              Cước: <span className="font-semibold tabular-nums">{formatVnd(plan.estimatedCost)}₫</span>
-              {plan.savingAmount > 0 && (
-                <span className="text-success ml-1">
-                  (vs xe riêng: {formatVnd(plan.estimatedCost + plan.savingAmount)}₫ → tiết kiệm {formatVnd(plan.savingAmount)}₫)
-                </span>
-              )}
-            </div>
-          </div>
-          {plan.isConsolidated && (
-            <Button size="sm" variant="outline" className="h-7 text-caption"
-              onClick={onShowConsolidate}>
-              <Route className="h-3 w-3 mr-1" /> Chi tiết ghép tuyến
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Drops table */}
-      <div className="rounded-card border border-surface-3 overflow-hidden">
-        <div className="bg-surface-2 px-3 py-2 text-caption font-semibold uppercase text-text-3 flex items-center gap-1">
-          <MapPin className="h-3 w-3" /> Điểm giao ({plan.drops.length})
-        </div>
-        <table className="w-full text-table-sm">
-          <thead>
-            <tr className="border-b border-surface-3 bg-surface-1/40">
-              <th className="px-3 py-1.5 text-left text-caption font-semibold text-text-3 w-10">#</th>
-              <th className="px-3 py-1.5 text-left text-caption font-semibold text-text-3">CN</th>
-              <th className="px-3 py-1.5 text-right text-caption font-semibold text-text-3 w-24">Số lượng</th>
-              <th className="px-3 py-1.5 text-left text-caption font-semibold text-text-3 w-32">PO</th>
-              <th className="px-3 py-1.5 text-left text-caption font-semibold text-text-3">Mã hàng</th>
-              <th className="px-3 py-1.5 text-left text-caption font-semibold text-text-3 w-28">ETA</th>
-            </tr>
-          </thead>
-          <tbody>
-            {plan.drops.map((d) => (
-              <tr key={d.cnCode} className="border-b border-surface-3 last:border-0">
-                <td className="px-3 py-2 text-text-2">{d.order}</td>
-                <td className="px-3 py-2 font-medium text-text-1">{d.cnCode}<div className="text-caption text-text-3">{d.cnName}</div></td>
-                <td className="px-3 py-2 text-right tabular-nums text-text-1">{d.qtyM2.toLocaleString("vi-VN")} m²</td>
-                <td className="px-3 py-2 font-mono text-caption text-primary">{d.poId}</td>
-                <td className="px-3 py-2 text-text-2 text-caption">
-                  {d.skuLines.map(s => `${s.sku} ${s.qty}`).join(" + ")}
-                </td>
-                <td className="px-3 py-2 text-text-3 text-caption">{d.eta}</td>
-              </tr>
-            ))}
-            <tr className="bg-surface-1/40 font-semibold">
-              <td className="px-3 py-2"></td>
-              <td className="px-3 py-2 text-text-1">TỔNG</td>
-              <td className="px-3 py-2 text-right tabular-nums text-text-1">{plan.totalQtyM2.toLocaleString("vi-VN")} m²</td>
-              <td className="px-3 py-2 text-text-2">{plan.poIds.length} PO</td>
-              <td colSpan={2} className="px-3 py-2 text-text-3 text-caption">
-                {plan.drops.reduce((a, d) => a + d.skuLines.length, 0)} SKU lines
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* NM + carrier info */}
-      <div className="text-caption text-text-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-        <span>NM capacity: <span className="text-text-2">{plan.nmName}</span> · Sẵn hàng ✅</span>
-        <span>Carrier: <span className="text-text-2">{plan.carrier ?? "Chưa chọn (sẽ chọn khi duyệt PO)"}</span></span>
-      </div>
-
-      {/* Suggestions for low-fill */}
-      {isLow && (
-        <div className="rounded-card border border-warning/30 bg-warning-bg/40 p-3 space-y-2">
-          <div className="flex items-center gap-2 text-table-sm font-semibold text-warning">
-            <Sparkles className="h-4 w-4" /> GỢI Ý HỆ THỐNG (Fill {plan.fillPct}% &lt; ngưỡng 70%)
-          </div>
-          <div className="space-y-1.5 text-table-sm">
-            <button
-              onClick={onMergeMore}
-              className="w-full text-left rounded border border-surface-3 bg-surface-2 px-3 py-2 hover:border-primary/40 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <Package className="h-3.5 w-3.5 text-primary" />
-                <span className="font-medium text-text-1">Gom thêm PO tuần tới</span>
-              </div>
-              <div className="text-caption text-text-3 ml-5 mt-0.5">
-                "PO-NA-W21 có 250 m² cùng NM" → fill tăng 85% · giữ chờ {plan.holdDaysLeft ?? 3} ngày
-              </div>
-            </button>
-            <button className="w-full text-left rounded border border-surface-3 bg-surface-2 px-3 py-2 hover:border-primary/40 transition-colors">
-              <div className="flex items-center gap-2">
-                <Truck className="h-3.5 w-3.5 text-primary" />
-                <span className="font-medium text-text-1">Xuất ngay dù fill thấp</span>
-              </div>
-              <div className="text-caption text-text-3 ml-5 mt-0.5">
-                Cước {formatVnd(plan.estimatedCost)}₫ cho {plan.totalQtyM2}m² ={" "}
-                {Math.round(plan.estimatedCost / plan.totalQtyM2).toLocaleString("vi-VN")}₫/m²
-              </div>
-            </button>
-            <button className="w-full text-left rounded border border-surface-3 bg-surface-2 px-3 py-2 hover:border-primary/40 transition-colors">
-              <div className="flex items-center gap-2">
-                <X className="h-3.5 w-3.5 text-text-3" />
-                <span className="font-medium text-text-1">Tách 2 xe nhỏ</span>
-              </div>
-              <div className="text-caption text-text-3 ml-5 mt-0.5">
-                2 × xe 5T: {plan.drops.map(d => `${d.cnCode} ${d.qtyM2}m²`).join(" + ")}
-              </div>
-            </button>
-          </div>
-          {plan.holdDaysLeft !== undefined && (
-            <div className="flex items-center gap-2 text-caption text-warning pt-1 border-t border-warning/20">
-              <Clock className="h-3 w-3" />
-              Hold tối đa 3 ngày — còn {plan.holdDaysLeft} ngày (hết hạn {plan.holdDeadline}). Auto xuất sau.
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ───────────────────────────────────────────────────────────────────
-// Edit container dialog
-// ───────────────────────────────────────────────────────────────────
-
-function EditContainerDialog({
-  plan, open, onClose, onSave,
-}: {
-  plan: ContainerPlan | null;
-  open: boolean;
-  onClose: () => void;
-  onSave: (updated: ContainerPlan) => void;
-}) {
-  const [vehicle, setVehicle] = useState<VehicleType>(plan?.vehicleType ?? "cont_40ft");
-  const [drops, setDrops] = useState<DropPoint[]>(plan?.drops ?? []);
-  const [note, setNote] = useState(plan?.noteFromFarmer ?? "");
-
-  // Reset state when plan changes
-  useMemo(() => {
-    if (plan) {
-      setVehicle(plan.vehicleType);
-      setDrops(plan.drops);
-      setNote(plan.noteFromFarmer ?? "");
-    }
-  }, [plan]);
-
-  if (!plan) return null;
-
-  const newCapacity = VEHICLE_LABEL[vehicle].capacity;
-  const totalQty = drops.reduce((a, d) => a + d.qtyM2, 0);
-  const newFill = newCapacity > 0 ? Math.round((totalQty / newCapacity) * 100) : 0;
-  const overflow = newFill > 100;
-
-  const handleRemoveDrop = (cnCode: string) => {
-    if (drops.length <= 1) return;
-    setDrops(drops.filter(d => d.cnCode !== cnCode));
-  };
-
-  const handleSave = () => {
-    onSave({
-      ...plan,
-      vehicleType: vehicle,
-      vehicleLabel: VEHICLE_LABEL[vehicle].label,
-      capacityM2: newCapacity,
-      drops: drops.map((d, i) => ({ ...d, order: i + 1 })),
-      totalQtyM2: totalQty,
-      fillPct: newFill,
-      isConsolidated: drops.length > 1,
-      noteFromFarmer: note || undefined,
-      poIds: drops.map(d => d.poId),
-    });
-    onClose();
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Chỉnh sửa container {plan.id}</DialogTitle>
-          <DialogDescription>
-            Thay đổi loại xe, drop points, hoặc PO. Fill % và cước sẽ tự tính lại.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
-          {/* Vehicle type */}
-          <div className="space-y-1.5">
-            <Label className="text-table-sm">Loại xe</Label>
-            <Select value={vehicle} onValueChange={(v) => setVehicle(v as VehicleType)}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(VEHICLE_LABEL) as VehicleType[]).map(vt => {
-                  const cap = VEHICLE_LABEL[vt].capacity;
-                  const projFill = Math.round((totalQty / cap) * 100);
-                  return (
-                    <SelectItem key={vt} value={vt}>
-                      <span className="flex items-center gap-2">
-                        {VEHICLE_LABEL[vt].label}
-                        <span className="text-caption text-text-3">
-                          (cap {cap.toLocaleString("vi-VN")}m² · fill {projFill}%)
-                        </span>
-                        {projFill > 100 && <span className="text-danger text-caption">❌ vượt</span>}
-                      </span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-            <div className="text-caption text-text-3">
-              Fill mới: <FillBadge pct={Math.min(newFill, 100)} />
-              {overflow && (
-                <span className="text-danger font-semibold ml-2">
-                  ❌ Vượt capacity ({newFill}%) — chọn xe lớn hơn
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Drops */}
-          <div className="space-y-1.5">
-            <Label className="text-table-sm">
-              Drop points ({drops.length}) {drops.length > 1 && <Badge variant="outline" className="ml-1 text-caption">Ghép tuyến</Badge>}
-            </Label>
-            <div className="space-y-1.5">
-              {drops.map((d, i) => (
-                <div key={d.cnCode} className="flex items-center gap-2 rounded border border-surface-3 bg-surface-2 px-3 py-2">
-                  <span className="font-mono text-caption text-text-3">#{i + 1}</span>
-                  <div className="flex-1">
-                    <div className="text-table-sm font-medium text-text-1">{d.cnCode} · {d.cnName}</div>
-                    <div className="text-caption text-text-3">{d.qtyM2.toLocaleString("vi-VN")} m² · {d.poId}</div>
-                  </div>
-                  {drops.length > 1 && (
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handleRemoveDrop(d.cnCode)}>
-                      <Trash2 className="h-3.5 w-3.5 text-danger" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-              <Button size="sm" variant="outline" className="h-8 w-full text-caption" disabled>
-                <Plus className="h-3.5 w-3.5 mr-1" /> Thêm Drop (cần CN cùng tuyến)
-              </Button>
-            </div>
-          </div>
-
-          {/* Note */}
-          <div className="space-y-1.5">
-            <Label className="text-table-sm">Ghi chú farmer</Label>
-            <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="VD: Tuyến ĐT→BD→DN hay kẹt xe chiều về. Nên giao CN-DN trước."
-              className="min-h-20 text-table-sm"
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button onClick={handleSave} disabled={overflow}>Lưu thay đổi ✓</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ───────────────────────────────────────────────────────────────────
-// Create container dialog
-// ───────────────────────────────────────────────────────────────────
-
-function CreateContainerDialog({
-  open, onClose, onCreate,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onCreate: (plan: ContainerPlan) => void;
-}) {
-  const [vehicle, setVehicle] = useState<VehicleType>("cont_40ft");
-  const [nm, setNm] = useState("NM-DT");
-  const [cn, setCn] = useState("CN-BD");
-  const [qty, setQty] = useState("1500");
-
-  const handleCreate = () => {
-    const cap = VEHICLE_LABEL[vehicle].capacity;
-    const q = Number(qty) || 0;
-    const newPlan: ContainerPlan = {
-      id: `TP-${String(Date.now()).slice(-3)}`,
-      vehicleType: vehicle,
-      vehicleLabel: VEHICLE_LABEL[vehicle].label,
-      nmId: nm, nmName: nm === "NM-DT" ? "NM Đồng Tâm" : nm === "NM-MKD" ? "NM Mikado" : "NM Toko",
-      nmShortCode: nm === "NM-DT" ? "ĐT" : nm === "NM-MKD" ? "MKD" : "TOKO",
-      capacityM2: cap, totalQtyM2: q,
-      fillPct: cap > 0 ? Math.round((q / cap) * 100) : 0,
-      isConsolidated: false,
-      estimatedCost: Math.round(q * 7000),
-      savingAmount: 0,
-      status: "draft",
-      poIds: [`PO-MAN-${Date.now().toString().slice(-4)}`],
-      drops: [{
-        order: 1, cnCode: cn, cnName: cn,
-        qtyM2: q, poId: `PO-MAN-${Date.now().toString().slice(-4)}`,
-        eta: "—", distanceKm: 50,
-        skuLines: [{ sku: "MANUAL", qty: q }],
-      }],
-      noteFromFarmer: "Container thủ công bởi farmer",
-    };
-    onCreate(newPlan);
-    onClose();
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Tạo container thủ công</DialogTitle>
-          <DialogDescription>
-            Hệ thống không tự tối ưu container thủ công. Chỉ dùng khi cần ghép gấp ngoài DRP.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-3 py-2">
-          <div className="space-y-1.5">
-            <Label className="text-table-sm">Loại xe</Label>
-            <Select value={vehicle} onValueChange={(v) => setVehicle(v as VehicleType)}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(VEHICLE_LABEL) as VehicleType[]).map(vt => (
-                  <SelectItem key={vt} value={vt}>{VEHICLE_LABEL[vt].label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-table-sm">Nhà máy</Label>
-            <Select value={nm} onValueChange={setNm}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="NM-DT">Đồng Tâm</SelectItem>
-                <SelectItem value="NM-MKD">Mikado</SelectItem>
-                <SelectItem value="NM-TOKO">Toko</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-table-sm">Drop 1 — CN</Label>
-            <Select value={cn} onValueChange={setCn}>
-              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="CN-BD">CN Bình Dương</SelectItem>
-                <SelectItem value="CN-DN">CN Đồng Nai</SelectItem>
-                <SelectItem value="CN-HN">CN Hà Nội</SelectItem>
-                <SelectItem value="CN-CT">CN Cần Thơ</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-table-sm">Số lượng (m²)</Label>
-            <Input type="number" value={qty} onChange={(e) => setQty(e.target.value)} className="h-9" />
-          </div>
-
-          <div className="rounded border border-warning/30 bg-warning-bg/40 px-3 py-2 text-caption text-warning">
-            ⚠️ Container thủ công. Hệ thống không tự tối ưu fill rate hay tuyến.
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Hủy</Button>
-          <Button onClick={handleCreate}>Tạo ✓</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ───────────────────────────────────────────────────────────────────
-// Consolidate detail popover (popup ghép tuyến)
-// ───────────────────────────────────────────────────────────────────
-
-function ConsolidatePopup({
-  plan, open, onClose, onSplit,
-}: {
-  plan: ContainerPlan | null;
-  open: boolean;
-  onClose: () => void;
-  onSplit: (plan: ContainerPlan) => void;
-}) {
-  if (!plan) return null;
-  const totalDistance = plan.drops.reduce((a, d) => a + d.distanceKm, 0);
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Route className="h-4 w-4 text-orange-500" /> Ghép tuyến — {plan.id}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3 py-2 text-table-sm">
-          <div className="rounded border border-surface-3 bg-surface-2 p-3 space-y-1">
-            <div className="font-medium text-text-1">
-              {plan.nmShortCode}
-              {plan.drops.map(d => <span key={d.cnCode}> → {d.cnCode} (drop {d.order})</span>)}
-            </div>
-            <div className="text-caption text-text-3">
-              {plan.drops.length} CN · {plan.vehicleLabel}
-            </div>
-          </div>
-          <div className="space-y-1 text-caption">
-            <div className="flex justify-between">
-              <span className="text-text-3">Tiết kiệm:</span>
-              <span className="font-semibold text-success">
-                {formatVnd(plan.savingAmount)}₫ (vs {formatVnd(plan.estimatedCost + plan.savingAmount)}₫ xe riêng)
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-3">Khoảng cách tổng:</span>
-              <span className="font-semibold text-text-1">
-                {plan.drops.map(d => `${d.distanceKm}km`).join(" + ")} = {totalDistance}km
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-text-3">Cước hiện tại:</span>
-              <span className="font-semibold tabular-nums">{formatVnd(plan.estimatedCost)}₫</span>
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onSplit(plan)}>
-            <X className="h-3.5 w-3.5 mr-1" /> Tách 2 xe riêng
-          </Button>
-          <Button onClick={onClose}>✅ Giữ ghép</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ───────────────────────────────────────────────────────────────────
-// MAIN section
-// ───────────────────────────────────────────────────────────────────
-
-export function ContainerPlanningSection() {
-  const [plans, setPlans] = useState<ContainerPlan[]>(CONTAINER_PLANS);
-  const [editPlan, setEditPlan] = useState<ContainerPlan | null>(null);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [consolidatePlan, setConsolidatePlan] = useState<ContainerPlan | null>(null);
-
-  const summary = useMemo(() => summarizeContainerPlans(plans), [plans]);
-
-  // Sort: low fill first
-  const sortedPlans = useMemo(
-    () => [...plans].sort((a, b) => {
-      // Active first, then fill asc
-      const aActive = a.status !== "delivered" ? 0 : 1;
-      const bActive = b.status !== "delivered" ? 0 : 1;
-      if (aActive !== bActive) return aActive - bActive;
-      return a.fillPct - b.fillPct;
-    }),
-    [plans],
-  );
-
-  const handleSavePlan = (updated: ContainerPlan) => {
-    setPlans(ps => ps.map(p => p.id === updated.id ? updated : p));
-  };
-
-  const handleCreate = (newPlan: ContainerPlan) => {
-    setPlans(ps => [newPlan, ...ps]);
-  };
-
-  const handleSplitConsolidate = (plan: ContainerPlan) => {
-    // Tạo N container riêng từ N drops
-    const splits: ContainerPlan[] = plan.drops.map((d, i) => ({
-      ...plan,
-      id: `${plan.id}-S${i + 1}`,
-      isConsolidated: false,
-      drops: [{ ...d, order: 1 }],
-      totalQtyM2: d.qtyM2,
-      fillPct: Math.round((d.qtyM2 / plan.capacityM2) * 100),
-      poIds: [d.poId],
-      estimatedCost: Math.round((plan.estimatedCost + plan.savingAmount) / plan.drops.length),
-      savingAmount: 0,
-    }));
-    setPlans(ps => [...splits, ...ps.filter(p => p.id !== plan.id)]);
-    setConsolidatePlan(null);
-  };
-
-  const cards: SummaryCard[] = [
-    {
-      key: "total", label: "Tổng chuyến", value: summary.totalContainers, unit: "chuyến",
-      severity: "ok",
-      tooltip: `${summary.totalCont} container + ${summary.totalTruck} xe tải`,
+      ),
+      accessor: (r) => r.id,
     },
     {
-      key: "consolidated", label: "Ghép tuyến", value: summary.consolidatedCount, unit: "chuyến",
-      severity: summary.consolidatedCount > 0 ? "ok" : undefined,
-      tooltip: "Số chuyến chở 2-3 CN — tiết kiệm cước & xe",
-      trend: summary.totalSaving > 0
-        ? { delta: `Tiết kiệm ${formatVnd(summary.totalSaving)}₫`, direction: "down", color: "green" }
-        : undefined,
-    },
-    {
-      key: "fill", label: "Fill TB", value: `${summary.avgFill}%`,
-      severity: summary.avgFill >= 80 ? "ok" : summary.avgFill >= 70 ? "warn" : "critical",
-      tooltip: `${summary.lowFillCount} chuyến < 70% (cần xử lý)`,
-      trend: summary.lowFillCount > 0
-        ? { delta: `⚠️ ${summary.lowFillCount} chuyến < 70%`, direction: "flat", color: "red" }
-        : undefined,
-    },
-    {
-      key: "cost", label: "Cước tổng", value: `${formatVnd(summary.totalCost)}`, unit: "₫",
-      severity: "ok",
-      tooltip: "Tổng cước vận chuyển dự kiến",
-      trend: summary.totalSaving > 0
-        ? { delta: `↓ tiết kiệm ${formatVnd(summary.totalSaving)}₫`, direction: "down", color: "green" }
-        : undefined,
-    },
-  ];
-
-  // Columns
-  const columns: SmartTableColumn<ContainerPlan>[] = [
-    {
-      key: "id", label: "Chuyến", width: 90, sortable: true, filter: "text",
-      accessor: r => r.id,
-      render: r => <span className="font-mono font-semibold text-text-1">{r.id}</span>,
-    },
-    {
-      key: "vehicle", label: "Loại", width: 90, sortable: true, filter: "enum",
-      accessor: r => r.vehicleLabel,
+      key: "vehicle", label: "Loại xe", width: 80,
+      render: (r) => <span className="text-text-2">{r.vehicle}</span>,
+      accessor: (r) => r.vehicle,
+      filter: "enum",
       filterOptions: [
-        { value: "20ft", label: "20ft" }, { value: "40ft", label: "40ft" },
-        { value: "Xe 10T", label: "Xe 10T" }, { value: "Xe 15T", label: "Xe 15T" },
+        { value: "40ft", label: "40ft" },
+        { value: "20ft", label: "20ft" },
+        { value: "Xe10T", label: "Xe10T" },
       ],
-      render: r => <span className="text-table-sm text-text-2">{r.vehicleLabel}</span>,
     },
     {
-      key: "nm", label: "Nhà máy", width: 130, sortable: true, filter: "enum",
-      accessor: r => r.nmName,
-      filterOptions: Array.from(new Set(CONTAINER_PLANS.map(p => p.nmName))).map(n => ({ value: n, label: n })),
-      render: r => <span className="text-table-sm text-text-1">{r.nmName.replace(/^NM\s+/, "")}</span>,
+      key: "factory", label: "Nhà máy", width: 110,
+      render: (r) => <span className="text-text-1">{r.factoryName}</span>,
+      accessor: (r) => r.factoryName,
     },
     {
-      key: "route", label: "Tuyến", minWidth: 180,
-      render: r => <RouteCell plan={r} />,
-    },
-    {
-      key: "qty", label: "Số lượng", width: 110, sortable: true, numeric: true, align: "right",
-      accessor: r => r.totalQtyM2,
-      render: r => <span className="tabular-nums text-text-1">{r.totalQtyM2.toLocaleString("vi-VN")} m²</span>,
-    },
-    {
-      key: "fill", label: "Fill", width: 80, sortable: true, align: "center",
-      accessor: r => r.fillPct,
-      render: r => <FillBadge pct={r.fillPct} />,
-    },
-    {
-      key: "po", label: "Số PO", width: 70, sortable: true, align: "center", numeric: true,
-      accessor: r => r.poIds.length,
-      render: r => <span className="text-table-sm text-text-2 tabular-nums">{r.poIds.length} PO</span>,
-    },
-    {
-      key: "cost", label: "Cước", width: 100, sortable: true, numeric: true, align: "right",
-      accessor: r => r.estimatedCost,
-      render: r => (
-        <div className="text-right">
-          <div className="tabular-nums text-text-1">{formatVnd(r.estimatedCost)}₫</div>
-          {r.isConsolidated && <ConsolidatedBadge plan={r} onClick={() => setConsolidatePlan(r)} />}
+      key: "route", label: "Tuyến", minWidth: 220,
+      render: (r) => (
+        <div className="flex items-center gap-1.5 text-text-1">
+          <MapPin className="h-3 w-3 text-text-3 shrink-0" />
+          <span className="truncate">{r.routeLabel}</span>
+          {r.consolidated && (
+            <span className="ml-1 inline-flex items-center gap-0.5 rounded-full border border-warning/40 bg-warning-bg px-1.5 py-0.5 text-[10px] font-semibold text-warning">
+              <Link2 className="h-2.5 w-2.5" /> GHÉP
+            </span>
+          )}
         </div>
       ),
     },
     {
-      key: "status", label: "Trạng thái", width: 130, sortable: true, filter: "enum",
-      accessor: r => STATUS_META[r.status].label,
-      filterOptions: Object.entries(STATUS_META).map(([v, m]) => ({ value: m.label, label: m.label })),
-      render: r => <StatusPill status={r.status} />,
+      key: "fill", label: "Lấp đầy", width: 100, align: "right",
+      render: (r) => {
+        const sev = r.fillPct < 70 ? "danger" : r.fillPct < 85 ? "warning" : "success";
+        return (
+          <div className="flex items-center justify-end gap-1.5 tabular-nums">
+            {r.fillPct < 70 && <AlertTriangle className="h-3 w-3 text-warning" />}
+            <span className={cn("font-semibold",
+              sev === "success" && "text-success",
+              sev === "warning" && "text-warning",
+              sev === "danger" && "text-danger")}>
+              {r.fillPct}%
+            </span>
+          </div>
+        );
+      },
+      accessor: (r) => r.fillPct,
+      numeric: true,
     },
     {
-      key: "actions", label: "Hành động", width: 130, align: "center",
-      render: r => {
-        const editable = r.status === "draft" || r.status === "low_fill" || r.status === "ready";
+      key: "cnpo", label: "CN / PO", minWidth: 200,
+      render: (r) => (
+        <div className="flex flex-wrap gap-1">
+          {r.drops.map((d) => (
+            <button
+              key={d.cnCode}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onCnClick) {
+                  onCnClick(d.cnCode);
+                  toast.info(`Chuyển sang Phân bổ — ${d.cnCode}`);
+                }
+              }}
+              title={`Click để xem phân bổ ${d.cnName}`}
+              className="inline-flex items-center gap-0.5 rounded-full border border-primary/30 bg-primary/5 px-1.5 py-0.5 text-[11px] font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+            >
+              {d.cnCode}
+            </button>
+          ))}
+          <span className="text-text-3 text-[11px] self-center ml-1">
+            ({r.poIds.length} PO)
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: "freight", label: "Cước", width: 100, align: "right",
+      render: (r) => (
+        <div className="text-right tabular-nums">
+          <div className="text-text-1 font-medium">{fmtVndShort(r.freightVnd)}</div>
+          {r.savingVnd > 0 && (
+            <div className="text-[10px] text-success">−{fmtVndShort(r.savingVnd)}</div>
+          )}
+        </div>
+      ),
+      accessor: (r) => r.freightVnd,
+      numeric: true,
+    },
+    {
+      key: "status", label: "Trạng thái", width: 130,
+      render: (r) => (
+        <div className="flex flex-col gap-0.5">
+          <span className={cn("inline-flex items-center self-start rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
+            STATUS_CLASS[r.status])}>
+            {STATUS_LABEL[r.status]}
+          </span>
+          {r.status === "hold" && r.holdDeadline && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-warning">
+              <Clock className="h-2.5 w-2.5" /> {r.holdDeadline}
+            </span>
+          )}
+        </div>
+      ),
+      accessor: (r) => STATUS_LABEL[r.status],
+      filter: "enum",
+      filterOptions: Object.entries(STATUS_LABEL).map(([value, label]) => ({ value: label, label })),
+    },
+    {
+      key: "actions", label: "Hành động", width: 90, align: "right",
+      render: (r) => {
+        const editable = r.status === "draft" || r.status === "ready" || r.status === "hold";
         return editable ? (
-          <div className="flex justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-            <Button size="sm" variant="outline" className="h-7 px-2 text-caption" onClick={() => setEditPlan(r)}>
-              <Pencil className="h-3 w-3 mr-1" /> Sửa
-            </Button>
-          </div>
-        ) : <span className="text-text-3 text-caption">—</span>;
+          <Button
+            variant="ghost" size="sm"
+            className="h-7 px-2 text-[11px]"
+            onClick={(e) => { e.stopPropagation(); setEditing(r); }}
+          >
+            <Pencil className="h-3 w-3 mr-1" /> Sửa
+          </Button>
+        ) : (
+          <span className="text-text-3 text-[11px]">—</span>
+        );
       },
     },
   ];
 
   return (
-    <section className="space-y-3 mt-6 mb-6 rounded-card border border-primary/20 bg-primary/5 p-4">
-      {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-2">
+    <section className="space-y-4">
+      {/* ─── Section header ─── */}
+      <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-card-title font-semibold text-text-1 flex items-center gap-2">
-            <Package className="h-5 w-5 text-primary" />
-            Đóng container — {summary.totalContainers} chuyến · {summary.totalM2.toLocaleString("vi-VN")} m² · {formatVnd(summary.totalCost)}₫
+          <h3 className="text-base font-semibold text-text-1 flex items-center gap-2">
+            <Truck className="h-4 w-4 text-primary" />
+            Đóng container — kế hoạch vận chuyển tuần
           </h3>
           <p className="text-caption text-text-3 mt-0.5">
-            Hệ thống tự đóng container từ {plans.reduce((a, p) => a + p.poIds.length, 0)} PO. Farmer có thể chỉnh sửa.
+            Hệ thống đã tối ưu {summary.total} chuyến, ghép {summary.consolidated} tuyến — tiết kiệm{" "}
+            <span className="text-success font-medium">{fmtVndShort(summary.totalSaving)}</span>.
+            Bạn có thể chỉnh xe, gỡ điểm giao, hoặc tách chuyến.
           </p>
         </div>
-        <Button size="sm" variant="outline" className="h-8" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-3.5 w-3.5 mr-1" /> Tạo container mới
+        <Button
+          size="sm" variant="outline"
+          onClick={() => toast.info("Tạo chuyến thủ công — coming soon")}
+        >
+          <Truck className="h-3.5 w-3.5 mr-1" /> Tạo chuyến mới
         </Button>
       </div>
 
-      {/* Summary cards (4 inline) */}
-      <SummaryCards cards={cards} screenId="drp-container-planning" editable={false} />
+      {/* ─── Mini summary chips ─── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
+          <div className="text-caption text-text-3">Tổng chuyến</div>
+          <div className="text-xl font-semibold text-text-1 tabular-nums">{summary.total}</div>
+        </div>
+        <div className="rounded-card border border-warning/30 bg-warning-bg/40 p-3">
+          <div className="text-caption text-warning flex items-center gap-1">
+            <Link2 className="h-3 w-3" /> Ghép tuyến
+          </div>
+          <div className="text-xl font-semibold text-warning tabular-nums">{summary.consolidated}</div>
+        </div>
+        <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
+          <div className="text-caption text-text-3">Fill TB</div>
+          <div className={cn("text-xl font-semibold tabular-nums",
+            summary.avgFill < 75 ? "text-warning" : "text-success")}>
+            {summary.avgFill}%
+          </div>
+        </div>
+        <div className="rounded-card border border-success/30 bg-success-bg/40 p-3">
+          <div className="text-caption text-success flex items-center gap-1">
+            <TrendingUp className="h-3 w-3" /> Tiết kiệm
+          </div>
+          <div className="text-xl font-semibold text-success tabular-nums">
+            {fmtVndShort(summary.totalSaving)}
+          </div>
+        </div>
+      </div>
 
-      {/* Table */}
-      <SmartTable<ContainerPlan>
-        columns={columns}
-        data={sortedPlans}
+      {/* ─── Container table ─── */}
+      <SmartTable
         screenId="drp-container-list"
+        columns={cols}
+        data={CONTAINER_PLANS}
         defaultDensity="compact"
-        title="Danh sách container"
-        exportFilename="container-plans"
-        getRowId={(r) => r.id}
-        rowSeverity={(r) => r.fillPct < 70 ? "watch" : undefined}
-        drillDown={(r) => (
-          <ContainerDrillDown
-            plan={r}
-            onShowConsolidate={() => setConsolidatePlan(r)}
-            onMergeMore={() => alert(`Gom thêm PO cho ${r.id} (mock)`)}
-          />
-        )}
+        title={`Kế hoạch ${summary.total} chuyến container`}
+        exportFilename={`drp-container-w20`}
+        rowSeverity={(r) =>
+          r.fillPct < 70 ? "watch" : undefined
+        }
         autoExpandWhen={(r) => r.fillPct < 70}
+        drillDown={(r) => (
+          <div className="space-y-3 p-3 bg-surface-1/40 rounded-card">
+            {/* Suggestion banner */}
+            {r.suggestion && r.suggestionLabel && (
+              <div className={cn("rounded-card border px-3 py-2 text-table-sm font-medium flex items-center gap-2",
+                SUGGESTION_CLASS[r.suggestion] ?? "border-info/40 bg-info-bg text-info")}>
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span>{r.suggestionLabel}</span>
+              </div>
+            )}
+
+            {/* Route visual */}
+            <div className="flex items-center gap-2 text-table-sm">
+              <span className="font-semibold text-text-1">Tuyến:</span>
+              <span className="text-text-2">{r.routeLabel}</span>
+              <span className="text-text-3">·</span>
+              <span className="text-text-3 tabular-nums">{r.distanceKm} km</span>
+              <span className="text-text-3">·</span>
+              <span className="tabular-nums text-text-2">
+                Fill {r.fillM2.toLocaleString()} / {r.capacityM2.toLocaleString()} m²
+              </span>
+            </div>
+
+            {/* Drop points */}
+            <div>
+              <div className="text-caption text-text-3 mb-1.5 font-medium">
+                Điểm giao ({r.drops.length})
+              </div>
+              <table className="w-full text-table-sm">
+                <thead>
+                  <tr className="text-text-3 text-caption border-b border-surface-3">
+                    <th className="text-left py-1 font-medium">#</th>
+                    <th className="text-left py-1 font-medium">CN</th>
+                    <th className="text-right py-1 font-medium">SL m²</th>
+                    <th className="text-left py-1 font-medium pl-3">SKU</th>
+                    <th className="text-left py-1 font-medium">ETA</th>
+                    <th className="text-right py-1 font-medium">Hành động</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {r.drops.map((d) => (
+                    <tr key={d.cnCode} className="border-b border-surface-3/40">
+                      <td className="py-1.5 text-text-3 tabular-nums">{d.order}</td>
+                      <td className="py-1.5">
+                        <button
+                          type="button"
+                          onClick={() => onCnClick?.(d.cnCode)}
+                          className="text-primary hover:underline font-medium"
+                          title="Xem phân bổ CN này"
+                        >
+                          {d.cnName}
+                        </button>
+                        <span className="text-text-3 ml-1">({d.cnCode})</span>
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums text-text-1">
+                        {d.qtyM2.toLocaleString()}
+                      </td>
+                      <td className="py-1.5 pl-3 text-text-2">
+                        {d.skuLines.map((s) => `${s.sku} ${s.qty}m²`).join(" · ")}
+                      </td>
+                      <td className="py-1.5 text-text-2 tabular-nums">{d.eta}</td>
+                      <td className="py-1.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => toast.info(`Gỡ ${d.cnCode} khỏi ${r.id}`)}
+                          className="text-[11px] text-danger hover:underline"
+                        >
+                          Gỡ
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Cost line */}
+            <div className="flex items-center justify-between text-table-sm border-t border-surface-3 pt-2">
+              <div className="flex items-center gap-3 text-text-2">
+                <span>Cước: <strong className="text-text-1 tabular-nums">{fmtVnd(r.freightVnd)}</strong></span>
+                {r.savingVnd > 0 && (
+                  <span className="text-success">
+                    Tiết kiệm <strong className="tabular-nums">{fmtVnd(r.savingVnd)}</strong>
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-text-3">
+                <Package className="h-3 w-3" />
+                <span>{r.poIds.length} PO: <span className="font-mono">{r.poIds.join(", ")}</span></span>
+              </div>
+            </div>
+          </div>
+        )}
         emptyState={{
-          icon: <Truck />,
-          title: "Chưa có container",
-          description: "DRP sẽ tự đóng container khi có PO/TO được tạo.",
-          action: { label: "Tạo container thủ công", onClick: () => setCreateOpen(true) },
+          icon: <Truck className="h-10 w-10" />,
+          title: "Chưa có chuyến container nào",
+          description: "DRP chưa tạo kế hoạch vận chuyển. Chạy DRP lại hoặc tạo chuyến thủ công.",
         }}
       />
 
-      {/* Hold/ship reminder for low fill */}
-      {summary.lowFillCount > 0 && (
-        <div className="rounded-card border border-warning/30 bg-warning-bg/40 px-3 py-2 text-table-sm flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
-          <div className="text-text-2">
-            <span className="font-semibold text-warning">{summary.lowFillCount} chuyến fill &lt; 70%</span> đang được giữ tối đa 3 ngày.
-            Hệ thống sẽ tự xuất sau hoặc gom PO tuần tới — mở chi tiết để xử lý ngay.
-          </div>
-        </div>
-      )}
+      {/* ─── Edit dialog (lite) ─── */}
+      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-4 w-4" />
+              Chỉnh chuyến {editing?.id}
+            </DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-3">
+              <div className="rounded-card border border-surface-3 bg-surface-2 p-3 space-y-1 text-table-sm">
+                <div className="flex justify-between">
+                  <span className="text-text-3">Loại xe hiện tại</span>
+                  <span className="font-semibold text-text-1">{editing.vehicle} ({editing.capacityM2.toLocaleString()}m²)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-3">Đang chở</span>
+                  <span className="tabular-nums">{editing.fillM2.toLocaleString()}m² ({editing.fillPct}%)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-3">Tuyến</span>
+                  <span>{editing.routeLabel}</span>
+                </div>
+              </div>
+              <div className="text-caption text-text-3">
+                Đổi loại xe hoặc gỡ điểm giao để tối ưu fill rate. Hệ thống sẽ tính lại cước & cảnh báo nếu vượt sức chứa.
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditing(null)}>Đóng</Button>
+            <Button onClick={() => {
+              toast.success(`Đã lưu thay đổi cho ${editing?.id}`);
+              setEditing(null);
+            }}>Lưu thay đổi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Dialogs */}
-      <EditContainerDialog
-        plan={editPlan}
-        open={!!editPlan}
-        onClose={() => setEditPlan(null)}
-        onSave={handleSavePlan}
-      />
-      <CreateContainerDialog
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreate={handleCreate}
-      />
-      <ConsolidatePopup
-        plan={consolidatePlan}
-        open={!!consolidatePlan}
-        onClose={() => setConsolidatePlan(null)}
-        onSplit={handleSplitConsolidate}
-      />
+      {/* ─── Footer action ─── */}
+      <div className="flex items-center justify-between border-t border-surface-3 pt-3">
+        <div className="text-caption text-text-3">
+          {summary.total} chuyến · {summary.consolidated} ghép tuyến · Fill TB {summary.avgFill}% ·
+          Cước {fmtVndShort(summary.totalFreight)}
+        </div>
+        <Button
+          size="sm"
+          onClick={() => {
+            navigate("/orders?tab=approval");
+            toast.success("Đã chuyển sang Đơn hàng — các PO/TO từ DRP đã được lọc");
+          }}
+        >
+          Duyệt & Chuyển Đơn hàng <ArrowRight className="h-3.5 w-3.5 ml-1" />
+        </Button>
+      </div>
     </section>
   );
 }

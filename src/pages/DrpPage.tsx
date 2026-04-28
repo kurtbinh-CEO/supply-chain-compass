@@ -29,11 +29,14 @@ import { DrpPreflight, type PreflightItem } from "@/components/drp/DrpPreflight"
 import { computePreflightAudit } from "@/lib/drp-preflight";
 import { DrpProgress, type ProgressStep } from "@/components/drp/DrpProgress";
 import { DrpCalcSummaryLine, type CalcToken } from "@/components/drp/DrpCalcSummaryLine";
-import { ContainerPlanningSection } from "@/components/drp/ContainerPlanningSection";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 import { drpCompare } from "@/lib/compare-metrics";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ContainerPlanningSection } from "@/components/drp/ContainerPlanningSection";
+import { CONTAINER_PLANS, getContainersForCn, summarizeContainers } from "@/data/container-plans";
+import { Truck as TruckIcon, Link2 as Link2Icon, Package as PackageIcon } from "lucide-react";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -826,6 +829,25 @@ export default function DrpPage() {
   const [progressCanCancel, setProgressCanCancel] = useState(true);
   const [approveExceptionDialog, setApproveExceptionDialog] = useState(false);
 
+  /* ── Bước 3 sub-tabs: Phân bổ vs Đóng container + cross-link highlight ── */
+  const [resultsTab, setResultsTab] = useState<"allocation" | "container">("allocation");
+  const [crossHighlight, setCrossHighlight] = useState<string | null>(null);
+  const crossLink = (target: "allocation" | "container", id: string) => {
+    setResultsTab(target);
+    setCrossHighlight(id);
+    setTimeout(() => {
+      const prefix = target === "allocation" ? "alloc-row-" : "container-row-";
+      const el = document.getElementById(`${prefix}${id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("ring-2", "ring-primary", "ring-offset-2", "bg-primary/5");
+        setTimeout(() => {
+          el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "bg-primary/5");
+        }, 1600);
+      }
+    }, 150);
+  };
+
   // Preflight items — TÍNH TỪ DATA THỰC qua evaluator dùng chung với /drp/preflight-audit
   const { sopLock } = useWorkspace();
 
@@ -1483,10 +1505,57 @@ export default function DrpPage() {
         );
       })()}
 
-      {/* ═══ CONTAINER PLANNING — đóng container từ PO/TO ═══ */}
-      <ContainerPlanningSection />
+      {/* ═══ BƯỚC 3 — 2 SUB-TABS: Phân bổ vs Đóng container ═══ */}
+      {(() => {
+        const cnCount = data.length;
+        const shortCount = data.filter(r => r.fillRate < 80).length;
+        const cSum = summarizeContainers(CONTAINER_PLANS);
+        return (
+          <Tabs value={resultsTab} onValueChange={(v) => setResultsTab(v as "allocation" | "container")} className="mb-2">
+            <TabsList className="h-auto bg-surface-2 p-1 gap-1 overflow-x-auto max-w-full justify-start">
+              <TabsTrigger value="allocation" className="data-[state=active]:bg-background gap-2 px-3 py-2">
+                <PackageIcon className="h-4 w-4" />
+                <span>Phân bổ</span>
+                <span className="rounded-full bg-surface-3 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums">
+                  {cnCount} CN
+                </span>
+                {shortCount > 0 && (
+                  <span className="rounded-full bg-danger/15 text-danger px-1.5 py-0.5 text-[10px] font-semibold">
+                    {shortCount} thiếu
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="container" className="data-[state=active]:bg-background gap-2 px-3 py-2">
+                <TruckIcon className="h-4 w-4" />
+                <span>Đóng container</span>
+                <span className="rounded-full bg-surface-3 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums">
+                  {cSum.total} chuyến
+                </span>
+                {cSum.lowFill > 0 && (
+                  <span className="rounded-full bg-warning/15 text-warning px-1.5 py-0.5 text-[10px] font-semibold">
+                    {cSum.lowFill} fill thấp
+                  </span>
+                )}
+                {cSum.consolidated > 0 && (
+                  <span className="rounded-full bg-warning-bg text-warning px-1.5 py-0.5 text-[10px] font-semibold flex items-center gap-0.5">
+                    <Link2Icon className="h-2.5 w-2.5" /> {cSum.consolidated} ghép
+                  </span>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        );
+      })()}
 
+      {resultsTab === "container" ? (
+        <ContainerPlanningSection
+          highlightId={crossHighlight}
+          onCnClick={(cn) => crossLink("allocation", cn)}
+        />
+      ) : (
+      <>
       {/* ═══ SUMMARY PILLS ═══ */}
+
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <button
           onClick={() => setFilter(filter === "ok" ? "watch+short" : "ok")}
@@ -1573,12 +1642,13 @@ export default function DrpPage() {
                   <TermTooltip term="FillRate">Lấp đầy</TermTooltip>
                 </th>
                 <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Nguồn hàng</th>
+                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Container</th>
                 <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Hành động</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-8 text-text-3 text-table-sm">
+                <tr><td colSpan={8} className="text-center py-8 text-text-3 text-table-sm">
                   Không có CN nào khớp bộ lọc.
                 </td></tr>
               )}
@@ -1595,8 +1665,8 @@ export default function DrpPage() {
 
                 return (
                   <Fragment key={rowKey}>
-                    <tr className={cn(
-                      "border-b border-surface-3 transition-colors cursor-pointer",
+                    <tr id={`alloc-row-${r.cn}`} className={cn(
+                      "border-b border-surface-3 transition-all cursor-pointer",
                       sev === "short" && "bg-danger-bg/20 border-l-2 border-l-danger",
                       sev === "watch" && "bg-warning-bg/15 border-l-2 border-l-warning",
                       sev === "ok" && "hover:bg-surface-1/40",
@@ -1652,6 +1722,46 @@ export default function DrpPage() {
                           )}
                         </div>
                       </td>
+                      <td className="px-3 py-2.5">
+                        {(() => {
+                          const cs = getContainersForCn(r.cn);
+                          if (cs.length === 0) return <span className="text-text-3 text-[11px]">—</span>;
+                          return (
+                            <div className="flex flex-wrap gap-1">
+                              {cs.slice(0, 2).map((c) => {
+                                const low = c.fillPct < 70;
+                                return (
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); crossLink("container", c.id); }}
+                                    title={`${c.id} ${c.vehicle} ${c.fillPct}% — click để xem chi tiết chuyến`}
+                                    className={cn(
+                                      "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] font-semibold transition-colors",
+                                      low
+                                        ? "border-warning/40 bg-warning-bg text-warning hover:bg-warning hover:text-warning-foreground"
+                                        : "border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground",
+                                    )}
+                                  >
+                                    <span className="font-mono">{c.id}</span>
+                                    <span className="opacity-70">{c.vehicle}</span>
+                                    <span className="tabular-nums">{c.fillPct}%</span>
+                                    {c.consolidated && (
+                                      <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/20 px-1 text-[9px]">
+                                        <Link2Icon className="h-2 w-2" />GHÉP
+                                      </span>
+                                    )}
+                                    {low && <AlertTriangle className="h-2.5 w-2.5" />}
+                                  </button>
+                                );
+                              })}
+                              {cs.length > 2 && (
+                                <span className="text-[11px] text-text-3 self-center">+{cs.length - 2}</span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td className="px-3 py-2.5 text-right">
                         {sev === "short" && (
                           <button onClick={(e) => { e.stopPropagation(); toggleRow(rowKey); }}
@@ -1672,7 +1782,7 @@ export default function DrpPage() {
                     {/* Expanded SKU breakdown */}
                     {isOpen && (
                       <tr>
-                        <td colSpan={7} className="bg-surface-1/40 px-4 py-3 border-b border-surface-3">
+                        <td colSpan={8} className="bg-surface-1/40 px-4 py-3 border-b border-surface-3">
                           <div className="text-caption text-text-3 mb-2">
                             Chi tiết {r.cn} — {r.allSkus.length} mã hàng
                           </div>
@@ -1763,6 +1873,8 @@ export default function DrpPage() {
           </table>
         </div>
       </div>
+      )}
+      </>
       )}
 
       {/* Footer note */}
