@@ -112,6 +112,63 @@ export type Database = {
           },
         ]
       }
+      drp_preflight_snapshots: {
+        Row: {
+          block_count: number
+          block_reasons: string[]
+          can_run: boolean
+          created_at: string
+          created_by: string | null
+          cycle_id: string | null
+          cycle_label: string | null
+          cycle_status: string | null
+          cycle_version: number | null
+          id: string
+          ok_count: number
+          rows: Json
+          source: string
+          tenant: string
+          total_count: number
+          warn_count: number
+        }
+        Insert: {
+          block_count?: number
+          block_reasons?: string[]
+          can_run?: boolean
+          created_at?: string
+          created_by?: string | null
+          cycle_id?: string | null
+          cycle_label?: string | null
+          cycle_status?: string | null
+          cycle_version?: number | null
+          id?: string
+          ok_count?: number
+          rows?: Json
+          source?: string
+          tenant?: string
+          total_count?: number
+          warn_count?: number
+        }
+        Update: {
+          block_count?: number
+          block_reasons?: string[]
+          can_run?: boolean
+          created_at?: string
+          created_by?: string | null
+          cycle_id?: string | null
+          cycle_label?: string | null
+          cycle_status?: string | null
+          cycle_version?: number | null
+          id?: string
+          ok_count?: number
+          rows?: Json
+          source?: string
+          tenant?: string
+          total_count?: number
+          warn_count?: number
+        }
+        Relationships: []
+      }
       drp_runs: {
         Row: {
           approved_at: string | null
