@@ -897,6 +897,16 @@ export default function DrpPage() {
     { id: 10, label: "Tạo PO/TO nháp", result: "5 PO · 4 TO" },
   ], []);
 
+  // Hiển thị "Đang làm mới…" trên banner mỗi khi tick bump (≈600ms)
+  useEffect(() => {
+    if (preflightRefreshTick === 0) return; // bỏ mount đầu
+    setPreflightRefreshing(true);
+    const t = window.setTimeout(() => {
+      setPreflightRefreshing(false);
+      setPreflightLastRefreshAt(new Date());
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [preflightRefreshTick]);
 
 
   /* ── Version History / Compare / Lock state ── */
