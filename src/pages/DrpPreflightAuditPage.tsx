@@ -337,6 +337,22 @@ export default function DrpPreflightAuditPage() {
         ))}
       </section>
 
+      {/* Snapshot history */}
+      <div className="mt-6">
+        <PreflightSnapshotPanel
+          snapshots={snapshots}
+          loading={snapLoading}
+          currentSummary={{
+            canRun: summary.canRun,
+            ok: summary.ok,
+            warn: summary.warn,
+            block: summary.block,
+            total: summary.total,
+          }}
+          onRefresh={loadSnapshots}
+        />
+      </div>
+
       {/* Footer note */}
       <p className="mt-5 text-caption text-text-3">
         Trang này dùng chung evaluator với /drp Bước 1 — kết quả luôn khớp
