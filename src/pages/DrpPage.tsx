@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, Fragment } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
