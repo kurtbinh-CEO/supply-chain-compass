@@ -132,11 +132,6 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   /* SmartTable handles per-row expand internally; legacy state removed */
 
   /* ═══ SKU-first pivot ═══ */
-  interface BalSkuPivot {
-    item: string; variant: string; demand: number; stock: number; pipeline: number; netReq: number;
-    worstCn: string; worstCover: number; cnGapCount: number; lcnb: string | null;
-    cnBreakdown: { cn: string; demand: number; stock: number; pipeline: number; cover: number; ssTarget: number; ssGap: number; netReq: number; status: string }[];
-  }
 
   const skuPivotData: BalSkuPivot[] = (() => {
     const map = new Map<string, BalSkuPivot>();
