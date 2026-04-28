@@ -102,6 +102,8 @@ function DropPointsEditor({
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
+  // Drop bị gỡ tạm trong preview (qua nút Áp dụng từ FillExceptionAlert hoặc nút Gỡ)
+  const [removedCnCodes, setRemovedCnCodes] = useState<Set<string>>(new Set());
 
   // ── Draft state ──────────────────────────────────────────────────────────
   const [pendingDraft, setPendingDraft] = useState<ContainerEditDraft | null>(null);
@@ -109,9 +111,22 @@ function DropPointsEditor({
   const autoSaveTimer = useRef<number | null>(null);
 
   const calc = useMemo(() => recalcRoute(container, order), [container, order]);
+  const activeDrops = useMemo(
+    () => order.filter((d) => !removedCnCodes.has(d.cnCode)),
+    [order, removedCnCodes],
+  );
+  const currentFillM2 = useMemo(
+    () => activeDrops.reduce((s, d) => s + d.qtyM2, 0),
+    [activeDrops],
+  );
+  const currentFillPct = container.capacityM2 > 0
+    ? Math.round((currentFillM2 / container.capacityM2) * 100)
+    : container.fillPct;
   const dirty = useMemo(
-    () => order.some((d, i) => d.cnCode !== container.drops[i]?.cnCode),
-    [order, container.drops],
+    () =>
+      removedCnCodes.size > 0 ||
+      order.some((d, i) => d.cnCode !== container.drops[i]?.cnCode),
+    [order, container.drops, removedCnCodes],
   );
   const canReorder = container.drops.length >= 2 &&
     (container.status === "draft" || container.status === "ready" || container.status === "hold");
