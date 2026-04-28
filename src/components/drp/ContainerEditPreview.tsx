@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/tooltip";
 import type { ContainerPlan, DropPoint } from "@/data/container-plans";
 import { inferContainerRoute, REGION_LABELS } from "@/data/route-constraints";
+import { emitTransportAudit } from "@/lib/transport-audit";
+import { useAuth } from "@/components/AuthContext";
 
 /* ── Vehicle catalog (capacity m² + cost/km) ── */
 const VEHICLES: Record<string, { label: string; capacity: number; costPerKm: number }> = {
