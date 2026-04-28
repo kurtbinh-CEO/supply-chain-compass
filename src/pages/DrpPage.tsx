@@ -874,6 +874,22 @@ export default function DrpPage() {
 
   /* ── Bước 3 sub-tabs: Phân bổ vs Đóng container + cross-link highlight ── */
   const [resultsTab, setResultsTab] = useState<"allocation" | "container">("allocation");
+
+  /* ── Suggestion-action dialogs (DRP-INTERACTION-FIX-L4 · TASK 1) ── */
+  type SuggestCtx = { cn: string; sku: string; qty: number };
+  const [lcnbDialog, setLcnbDialog] = useState<SuggestCtx | null>(null);
+  const [lcnbForm, setLcnbForm] = useState({ source: "CN-BD", qty: 0, etaDays: 1, costM: 3.2 });
+  const [poDialog, setPoDialog] = useState<SuggestCtx | null>(null);
+  const [poForm, setPoForm] = useState({ nm: "NM Toko", qty: 0, etaDays: 14, costM: 11.0 });
+  const [waitDialog, setWaitDialog] = useState<SuggestCtx | null>(null);
+  const openLcnbDialog = (ctx: SuggestCtx) => {
+    setLcnbForm({ source: "CN-BD", qty: ctx.qty, etaDays: 1, costM: 3.2 });
+    setLcnbDialog(ctx);
+  };
+  const openPoDialog = (ctx: SuggestCtx) => {
+    setPoForm({ nm: "NM Toko", qty: ctx.qty, etaDays: 14, costM: 11.0 });
+    setPoDialog(ctx);
+  };
   const [crossHighlight, setCrossHighlight] = useState<string | null>(null);
   const crossLink = (target: "allocation" | "container", id: string) => {
     setResultsTab(target);
@@ -1924,17 +1940,17 @@ export default function DrpPage() {
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); toast.success(`Đã tạo TO chuyển ngang → ${r.cn} ${skuShort}m² ${sk.item}`); }}
+                                    onClick={(e) => { e.stopPropagation(); openLcnbDialog({ cn: r.cn, sku: sk.item, qty: skuShort }); }}
                                     className="rounded-button border border-success/40 bg-success-bg/40 px-3 py-1.5 text-caption font-medium text-success hover:bg-success-bg">
                                     ✅ Chuyển ngang từ CN sibling (1 ngày, ~3,2 triệu ₫)
                                   </button>
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); toast.success(`Đã tạo PO mới NM cho ${sk.item}`); }}
+                                    onClick={(e) => { e.stopPropagation(); openPoDialog({ cn: r.cn, sku: sk.item, qty: skuShort }); }}
                                     className="rounded-button border border-info/40 bg-info-bg/40 px-3 py-1.5 text-caption font-medium text-info hover:bg-info-bg">
                                     📦 Đặt PO mới NM (14 ngày, ~11 triệu ₫)
                                   </button>
                                   <button
-                                    onClick={(e) => { e.stopPropagation(); toast.info("Đã đánh dấu chờ tuần sau"); }}
+                                    onClick={(e) => { e.stopPropagation(); setWaitDialog({ cn: r.cn, sku: sk.item, qty: skuShort }); }}
                                     className="rounded-button border border-surface-3 bg-surface-1 px-3 py-1.5 text-caption font-medium text-text-2 hover:text-text-1">
                                     ⏸️ Chờ tuần sau (HSTK còn 4 ngày)
                                   </button>
@@ -2098,6 +2114,137 @@ export default function DrpPage() {
             <Button onClick={() => { setLcnbToDetail(null); navigate("/orders?tab=approval&filter=TO"); }}>
               Duyệt TO <ArrowRight className="h-3.5 w-3.5 ml-1" />
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ═══ TASK 1 — LCNB request dialog ═══ */}
+      <Dialog open={lcnbDialog !== null} onOpenChange={(o) => !o && setLcnbDialog(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tạo LCNB request — {lcnbDialog?.sku}</DialogTitle>
+          </DialogHeader>
+          {lcnbDialog && (
+            <div className="space-y-3 text-table-sm">
+              <div className="text-text-3 text-caption">CN nhận: <span className="text-text-1 font-medium">{lcnbDialog.cn}</span></div>
+              <label className="block">
+                <span className="text-caption text-text-3">Source CN (dư hàng)</span>
+                <select value={lcnbForm.source} onChange={(e) => setLcnbForm({ ...lcnbForm, source: e.target.value })}
+                  className="mt-1 w-full rounded border border-surface-3 bg-surface-1 px-2 py-1.5">
+                  <option>CN-BD</option><option>CN-QN</option><option>CN-HN</option><option>CN-HCM</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-caption text-text-3">Số lượng (m²)</span>
+                <input type="number" value={lcnbForm.qty}
+                  onChange={(e) => setLcnbForm({ ...lcnbForm, qty: Number(e.target.value) })}
+                  className="mt-1 w-full rounded border border-surface-3 bg-surface-1 px-2 py-1.5 tabular-nums" />
+              </label>
+              <div className="flex gap-2">
+                <label className="flex-1">
+                  <span className="text-caption text-text-3">ETA (ngày)</span>
+                  <input type="number" value={lcnbForm.etaDays}
+                    onChange={(e) => setLcnbForm({ ...lcnbForm, etaDays: Number(e.target.value) })}
+                    className="mt-1 w-full rounded border border-surface-3 bg-surface-1 px-2 py-1.5 tabular-nums" />
+                </label>
+                <label className="flex-1">
+                  <span className="text-caption text-text-3">Chi phí (M₫)</span>
+                  <input type="number" step="0.1" value={lcnbForm.costM}
+                    onChange={(e) => setLcnbForm({ ...lcnbForm, costM: Number(e.target.value) })}
+                    className="mt-1 w-full rounded border border-surface-3 bg-surface-1 px-2 py-1.5 tabular-nums" />
+                </label>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLcnbDialog(null)}>Huỷ</Button>
+            <Button onClick={() => {
+              if (!lcnbDialog) return;
+              console.log("[DRP-AUDIT] LCNB request created", { ...lcnbDialog, ...lcnbForm, ts: new Date().toISOString() });
+              toast.success(`LCNB request đã tạo cho ${lcnbDialog.sku} qty ${lcnbForm.qty}m²`, {
+                description: `${lcnbForm.source} → ${lcnbDialog.cn} · ETA ${lcnbForm.etaDays}d · ${lcnbForm.costM}M₫`,
+              });
+              setLcnbDialog(null);
+            }}>Tạo LCNB Request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ═══ TASK 1 — PO mới NM dialog ═══ */}
+      <Dialog open={poDialog !== null} onOpenChange={(o) => !o && setPoDialog(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Tạo PO mới NM — {poDialog?.sku}</DialogTitle>
+          </DialogHeader>
+          {poDialog && (
+            <div className="space-y-3 text-table-sm">
+              <div className="text-text-3 text-caption">CN nhận: <span className="text-text-1 font-medium">{poDialog.cn}</span></div>
+              <label className="block">
+                <span className="text-caption text-text-3">Nhà máy</span>
+                <select value={poForm.nm} onChange={(e) => setPoForm({ ...poForm, nm: e.target.value })}
+                  className="mt-1 w-full rounded border border-surface-3 bg-surface-1 px-2 py-1.5">
+                  <option>NM Toko</option><option>NM Đồng Tiến</option><option>NM Bình Minh</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-caption text-text-3">Số lượng (m²)</span>
+                <input type="number" value={poForm.qty}
+                  onChange={(e) => setPoForm({ ...poForm, qty: Number(e.target.value) })}
+                  className="mt-1 w-full rounded border border-surface-3 bg-surface-1 px-2 py-1.5 tabular-nums" />
+              </label>
+              <div className="flex gap-2">
+                <label className="flex-1">
+                  <span className="text-caption text-text-3">ETA (ngày)</span>
+                  <input type="number" value={poForm.etaDays}
+                    onChange={(e) => setPoForm({ ...poForm, etaDays: Number(e.target.value) })}
+                    className="mt-1 w-full rounded border border-surface-3 bg-surface-1 px-2 py-1.5 tabular-nums" />
+                </label>
+                <label className="flex-1">
+                  <span className="text-caption text-text-3">Chi phí (M₫)</span>
+                  <input type="number" step="0.1" value={poForm.costM}
+                    onChange={(e) => setPoForm({ ...poForm, costM: Number(e.target.value) })}
+                    className="mt-1 w-full rounded border border-surface-3 bg-surface-1 px-2 py-1.5 tabular-nums" />
+                </label>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPoDialog(null)}>Huỷ</Button>
+            <Button onClick={() => {
+              if (!poDialog) return;
+              console.log("[DRP-AUDIT] PO request created", { ...poDialog, ...poForm, ts: new Date().toISOString() });
+              toast.success(`PO request đã tạo`, {
+                description: `${poForm.nm} → ${poDialog.cn} · ${poForm.qty}m² ${poDialog.sku} · ETA ${poForm.etaDays}d · ${poForm.costM}M₫`,
+              });
+              setPoDialog(null);
+            }}>Tạo PO</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ═══ TASK 1 — Wait next week confirmation ═══ */}
+      <Dialog open={waitDialog !== null} onOpenChange={(o) => !o && setWaitDialog(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Chờ tuần sau — {waitDialog?.sku}</DialogTitle>
+          </DialogHeader>
+          {waitDialog && (
+            <div className="space-y-2 text-table-sm text-text-2">
+              <div>CN: <span className="font-medium text-text-1">{waitDialog.cn}</span> · Thiếu <span className="tabular-nums">{waitDialog.qty.toLocaleString()}m²</span></div>
+              <div className="text-text-3">HSTK còn 4 ngày. Lock decision này cho tuần này?</div>
+              <div className="text-caption text-warning">⚠️ Sau khi lock, decision sẽ ghi vào audit log và không tự động tạo TO/PO cho item này trong W20.</div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWaitDialog(null)}>Huỷ</Button>
+            <Button onClick={() => {
+              if (!waitDialog) return;
+              console.log("[DRP-AUDIT] Wait-next-week locked", { ...waitDialog, ts: new Date().toISOString() });
+              toast.warning("Đã lock decision Chờ tuần sau", {
+                description: `${waitDialog.cn} · ${waitDialog.sku} · ${waitDialog.qty}m²`,
+              });
+              setWaitDialog(null);
+            }}>Confirm</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

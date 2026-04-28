@@ -199,6 +199,11 @@ function OnboardingAutoStart() {
     if (activeTour) return;
     if (isTourCompleted(tour.id)) return;
     try {
+      // DRP-INTERACTION-FIX-L4 · TASK 7 — Default-disable auto-tour for demo.
+      // User can still launch tour manually via sidebar "Hướng dẫn màn này".
+      if (localStorage.getItem("scp:onboarding:enabled") === null) {
+        localStorage.setItem("scp:onboarding:enabled", "false");
+      }
       const enabled = localStorage.getItem("scp:onboarding:enabled");
       if (enabled === "false") return;
     } catch {}
