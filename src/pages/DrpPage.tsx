@@ -1648,7 +1648,7 @@ export default function DrpPage() {
             </thead>
             <tbody>
               {filteredRows.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-8 text-text-3 text-table-sm">
+                <tr><td colSpan={8} className="text-center py-8 text-text-3 text-table-sm">
                   Không có CN nào khớp bộ lọc.
                 </td></tr>
               )}
