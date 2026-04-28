@@ -313,6 +313,20 @@ function AuditRow({ event: e }: { event: TransportAuditEvent }) {
             <Fact label="Event ID" value={e.id} mono />
           </div>
 
+          {/* Highlights — exception-first scan */}
+          {highlights.length > 0 && (
+            <div className="rounded-card border border-primary/30 bg-primary/5 overflow-hidden">
+              <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-primary border-b border-primary/20 flex items-center gap-1">
+                <Sparkles className="h-3 w-3" /> Điểm cần chú ý
+              </div>
+              <div className="divide-y divide-primary/10">
+                {highlights.map((h) => (
+                  <HighlightRow key={h.key} item={h} />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Structured metadata */}
           {metaEntries.length > 0 && (
             <div className="rounded-card border border-surface-3 bg-surface-1">
@@ -320,12 +334,20 @@ function AuditRow({ event: e }: { event: TransportAuditEvent }) {
                 Metadata chi tiết
               </div>
               <div className="divide-y divide-surface-3/40">
-                {metaEntries.map(([k, v]) => (
-                  <div key={k} className="grid grid-cols-[120px_1fr] gap-2 px-2 py-1 text-[11px]">
-                    <span className="font-mono text-text-3">{k}</span>
-                    <MetaValue value={v} />
-                  </div>
-                ))}
+                {metaEntries.map(([k, v]) => {
+                  const dim = highlightedKeys.has(k);
+                  return (
+                    <div key={k} className={cn(
+                      "grid grid-cols-[120px_1fr] gap-2 px-2 py-1 text-[11px]",
+                      dim && "opacity-60",
+                    )}>
+                      <span className="font-mono text-text-3">
+                        {k}{dim && <span className="ml-1 text-[9px] text-primary/70">↑</span>}
+                      </span>
+                      <MetaValue value={v} />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
