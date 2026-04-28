@@ -232,7 +232,25 @@ function DropPointsEditor({
     toast.info(`Đã bỏ nháp ${container.id}`);
   };
 
-  const fmtKm = (v: number) => v.toLocaleString("vi-VN") + " km";
+  // ── Close-confirm handlers (gọi từ Dialog "Đóng preview khi có thay đổi") ──
+  const handleConfirmSave = () => {
+    save();
+    setCloseConfirmOpen(false);
+    onCloseAllowed?.();
+  };
+  const handleConfirmDiscard = () => {
+    setOrder(container.drops);
+    clearDraft(container.id);
+    setDraftSavedAt(null);
+    setReorderMode(false);
+    setCloseConfirmOpen(false);
+    toast.info(`Đã bỏ thay đổi cho ${container.id}`);
+    onCloseAllowed?.();
+  };
+  const handleConfirmCancel = () => {
+    setCloseConfirmOpen(false);
+  };
+
   const fmtDelta = (v: number) => {
     const sign = v >= 0 ? "+" : "−";
     const abs = Math.abs(v);
