@@ -423,14 +423,41 @@ export default function OrdersPage() {
             ),
           },
           {
-            key: "route", label: "Tuyến", width: 240,
+            key: "route", label: "Tuyến", width: 280,
             filter: "text",
             accessor: (g) => `${g.fromName} → ${g.toName}`,
             render: (g) => (
-              <div className="flex flex-col text-table-sm">
+              <div className="flex flex-col text-table-sm min-w-0">
                 <span className="text-text-1 font-medium truncate">{g.fromName}</span>
-                <span className="text-text-3 text-[11px]">→ {g.toName}</span>
+                <div className="flex items-center gap-1 min-w-0">
+                  <span className="text-text-3 text-[11px] truncate">
+                    → {g.isConsolidated
+                        ? g.drops.map(d => d.cn).join(" → ")
+                        : g.toName}
+                  </span>
+                </div>
               </div>
+            ),
+          },
+          {
+            key: "drops", label: "Điểm giao", width: 100, align: "center",
+            accessor: (g) => g.drops.length,
+            render: (g) => (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-[10px] font-semibold",
+                  g.isConsolidated
+                    ? "border-warning/40 text-warning bg-warning-bg/40"
+                    : "border-surface-3 text-text-3 bg-surface-1",
+                )}
+                title={g.isConsolidated && g.savingAmount
+                  ? `Ghép tuyến — tiết kiệm ${(g.savingAmount / 1e6).toFixed(1)}M₫`
+                  : "Giao 1 điểm"}
+              >
+                {g.drops.length} CN
+                {g.isConsolidated && " 🔗"}
+              </Badge>
             ),
           },
           {
