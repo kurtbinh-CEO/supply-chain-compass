@@ -89,6 +89,7 @@ export function OrderDetailPanel({ group, onAction, onCancel, onClose }: Props) 
   const stage = group.stage;
   const next = NEXT_ACTION[stage];
   const Icon = next?.icon;
+  const [lightbox, setLightbox] = useState<PoEvidence | null>(null);
 
   const totalValue = group.lines.reduce((s, l) => s + l.qty * unitPrice(l.skuLabel), 0);
 
