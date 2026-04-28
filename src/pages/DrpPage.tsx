@@ -207,7 +207,7 @@ function buildSkuRow(cnCode: string, baseCode: string): SkuFull | null {
       demand: exc.demand, allocated: exc.allocated,
       fillPct: exc.demand > 0 ? Math.round((exc.allocated / exc.demand) * 100) : 100,
       status: exc.type,
-      sources: { onHand: exc.onHand, pipeline: exc.pipeline, hubPo: exc.hubCover, lcnbIn: exc.lcnbCover, internalTransfer: 0 },
+      sources: buildSourcesFromSeed(exc),
     };
   }
   const onHand = Math.min(drp.onHandM2, demand);
