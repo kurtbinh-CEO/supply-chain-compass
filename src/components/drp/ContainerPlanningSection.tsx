@@ -617,6 +617,24 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
 
   const [editing, setEditing] = useState<ContainerPlan | null>(null);
 
+  // ── Dirty tracking per container (cho close-confirm guard) ──
+  const dirtyMap = useRef<Map<string, boolean>>(new Map());
+  const [closeRequests, setCloseRequests] = useState<Record<string, number>>({});
+  const pendingCloseRef = useRef<Set<string>>(new Set());
+
+  const handleDirtyChange = (containerId: string, dirty: boolean) => {
+    if (dirty) dirtyMap.current.set(containerId, true);
+    else dirtyMap.current.delete(containerId);
+  };
+
+  // Trả false để chặn collapse → editor sẽ hiển thị confirm Dialog
+  const beforeCollapse = (row: ContainerPlan): boolean => {
+    if (!dirtyMap.current.get(row.id)) return true;
+    pendingCloseRef.current.add(row.id);
+    setCloseRequests((m) => ({ ...m, [row.id]: (m[row.id] ?? 0) + 1 }));
+    return false;
+  };
+
   // Khi highlightId đổi (cross-link arrive) → flash row & scroll
   useEffect(() => {
     if (!highlightId) return;
