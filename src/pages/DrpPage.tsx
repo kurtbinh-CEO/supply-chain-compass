@@ -783,7 +783,9 @@ export default function DrpPage() {
   const isHistory = !timeRange.isCurrent;
 
   /* ── Step navigation ── */
-  const [activeStep, setActiveStep] = useState<number>(5);
+  // Mặc định KHÔNG mở step nào — farmer click token mới hiện chi tiết.
+  // (Trước đây auto-mở step 5 khiến farmer "Bước 5 ở đâu ra?" — UX-CONSISTENCY FIX 1)
+  const [activeStep, setActiveStep] = useState<number | null>(null);
 
   /* ── Pivot ── */
   const [pivot, setPivot] = useState<"cn" | "sku">("cn");
