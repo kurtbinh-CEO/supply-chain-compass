@@ -84,13 +84,23 @@ function recalcRoute(container: _CP, newOrder: DropPoint[]) {
 interface DropPointsEditorProps {
   container: _CP;
   onCnClick?: (cnCode: string) => void;
+  /** Báo dirty state lên parent (để parent gắn beforeCollapse guard). */
+  onDirtyChange?: (containerId: string, dirty: boolean) => void;
+  /** Tăng số này từ parent khi user click row đang mở → editor sẽ xử lý confirm. */
+  closeRequestNonce?: number;
+  /** Editor gọi khi user xác nhận đóng (đã save / đã discard / không dirty). */
+  onCloseAllowed?: () => void;
 }
 
-function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
+function DropPointsEditor({
+  container, onCnClick,
+  onDirtyChange, closeRequestNonce, onCloseAllowed,
+}: DropPointsEditorProps) {
   const [reorderMode, setReorderMode] = useState(false);
   const [order, setOrder] = useState<DropPoint[]>(container.drops);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
 
   // ── Draft state ──────────────────────────────────────────────────────────
   const [pendingDraft, setPendingDraft] = useState<ContainerEditDraft | null>(null);
