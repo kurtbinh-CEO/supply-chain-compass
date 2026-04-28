@@ -19,6 +19,7 @@ import {
   FileText,
   Filter,
   Layers,
+  RefreshCw,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -262,6 +263,9 @@ export function TableDownloadButton({
   const [menuOpen, setMenuOpen] = useState(false);
   const [preview, setPreview] = useState<{ fmt: Format; scope: Scope } | null>(null);
   const [confirmedLarge, setConfirmedLarge] = useState(false);
+  /** Bump để force re-đọc bảng/CSV nguồn khi user bấm "Làm mới" trong modal. */
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
   const [lastChoice, setLastChoice] = useState<{ fmt: Format; scope: Scope } | null>(() =>
     typeof window === "undefined" ? null : readLast(),
   );
@@ -293,7 +297,8 @@ export function TableDownloadButton({
     tableRef?.current ??
     (targetId ? (document.getElementById(targetId) as HTMLTableElement | null) : null);
 
-  // Compute matrix cho preview
+  // Compute matrix cho preview — phụ thuộc thêm refreshTick để re-đọc nguồn
+  // mỗi khi user bấm "Làm mới" sau khi đổi filter ngoài bảng.
   const previewData = useMemo(() => {
     if (!preview) return null;
     if (preview.scope === "all" && getAllRowsCsv) {
@@ -302,7 +307,7 @@ export function TableDownloadButton({
     const t = getTable();
     return t ? tableToMatrix(t) : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preview]);
+  }, [preview, refreshTick]);
 
   const baseName = filename.replace(/\.(csv|pdf)$/i, "");
   const title = pdfTitle ?? baseName;
@@ -311,6 +316,13 @@ export function TableDownloadButton({
     setMenuOpen(false);
     setConfirmedLarge(false);
     setPreview({ fmt, scope });
+    setRefreshedAt(new Date());
+  };
+
+  const refreshPreview = () => {
+    setRefreshTick((n) => n + 1);
+    setRefreshedAt(new Date());
+    toast.success("Đã làm mới xem trước theo bảng hiện tại");
   };
 
   const confirmDownload = async () => {
@@ -578,14 +590,30 @@ export function TableDownloadButton({
                   </span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setPreview(null)}
-                className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-button text-text-3 hover:bg-surface-2 hover:text-text-1"
-                aria-label="Đóng"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="shrink-0 flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={refreshPreview}
+                  className="inline-flex h-7 items-center gap-1 rounded-button border border-surface-3 bg-surface-1 px-2 text-caption font-medium text-text-2 hover:bg-surface-2 hover:text-text-1"
+                  title={
+                    refreshedAt
+                      ? `Đọc lại bảng nguồn theo filter hiện tại · cập nhật lần cuối ${refreshedAt.toLocaleTimeString("vi-VN")}`
+                      : "Đọc lại bảng nguồn theo filter hiện tại"
+                  }
+                  aria-label="Làm mới xem trước"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Làm mới
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreview(null)}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-button text-text-3 hover:bg-surface-2 hover:text-text-1"
+                  aria-label="Đóng"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             {/* Filter chips — danh sách filter/trạng thái đang áp dụng */}
@@ -624,9 +652,17 @@ export function TableDownloadButton({
                 </div>
               ) : (
                 <>
-                  <div className="text-caption text-text-3 mb-2">
-                    Hiển thị {Math.min(PREVIEW_ROWS, totalRows)} / {totalRows.toLocaleString("vi-VN")}{" "}
-                    dòng đầu
+                  <div className="text-caption text-text-3 mb-2 flex items-center justify-between gap-2">
+                    <span>
+                      Hiển thị {Math.min(PREVIEW_ROWS, totalRows)} / {totalRows.toLocaleString("vi-VN")}{" "}
+                      dòng đầu
+                    </span>
+                    {refreshedAt && (
+                      <span className="inline-flex items-center gap-1 text-text-3">
+                        <RefreshCw className="h-3 w-3" />
+                        Cập nhật {refreshedAt.toLocaleTimeString("vi-VN")}
+                      </span>
+                    )}
                   </div>
                   <div className="overflow-auto rounded-card border border-surface-3">
                     <table className="w-full text-table-sm border-collapse">
