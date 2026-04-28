@@ -91,8 +91,8 @@ interface Props { scale: number }
 /* ═══ SKU drill (CN-first) — SmartTable compact ═══ */
 interface SkuDrillRow extends SkuRow { _rowId: string; _cn: string }
 function CnSkuDrill({
-  rows, cn, onSku, onBridge, expandedBridge,
-}: { rows: SkuDrillRow[]; cn: string; onSku: (k: string) => void; onBridge: (k: string | null) => void; expandedBridge: string | null }) {
+  rows, cnName, onSku, onBridge, expandedBridge,
+}: { rows: SkuDrillRow[]; cnName: string; onSku: (k: string) => void; onBridge: (k: string | null) => void; expandedBridge: string | null }) {
   const cols: SmartTableColumn<SkuDrillRow>[] = [
     {
       key: "sku", label: "SKU", width: 180, hideable: false, priority: "high",
