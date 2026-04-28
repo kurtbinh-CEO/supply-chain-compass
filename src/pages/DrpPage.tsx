@@ -1184,11 +1184,22 @@ export default function DrpPage() {
 
       {/* ══ BƯỚC 1 — PREFLIGHT ══ */}
       {wizardStep === 1 && (
-        <DrpPreflight
-          items={preflightItems}
-          onRun={handleRunDrp}
-          onBack={undefined}
-        />
+        <div className="space-y-2">
+          <div className="flex justify-end">
+            <button
+              onClick={() => navigate("/drp/preflight-audit")}
+              className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 py-1.5 text-table-sm text-text-2 hover:text-text-1"
+              title="Xem lý do pass/block chi tiết cho từng điều kiện"
+            >
+              <Info className="h-3.5 w-3.5" /> Mở Audit chi tiết →
+            </button>
+          </div>
+          <DrpPreflight
+            items={preflightItems}
+            onRun={handleRunDrp}
+            onBack={undefined}
+          />
+        </div>
       )}
 
       {/* ══ BƯỚC 2 — PROGRESS ══ */}
