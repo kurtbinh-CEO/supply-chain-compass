@@ -76,6 +76,14 @@ export default function WorkspacePage() {
         duration: 6000,
       });
       setHighlightId(focus);
+      // Tự cuộn tới task được focus sau khi DOM render
+      setTimeout(() => {
+        document.getElementById(`workspace-item-${focus}`)?.scrollIntoView({
+          behavior: "smooth", block: "center",
+        });
+      }, 200);
+      // Tắt highlight sau 6s
+      setTimeout(() => setHighlightId(null), 6000);
       const next = new URLSearchParams(searchParams);
       next.delete("focus"); next.delete("from"); next.delete("nm");
       setSearchParams(next, { replace: true });
