@@ -7,13 +7,54 @@
    - poIds & cnCodes để cross-link sang tab Phân bổ và sang /orders.
 */
 
+/* ─── Trọng lượng SKU (kg/m²) — UNIS gạch men ─── */
+export const SKU_WEIGHT_KG_PER_M2: Record<string, number> = {
+  "GA-300": 5,    // gạch ốp 300
+  "GA-300 A4": 5,
+  "GA-400": 8,    // gạch lát 400
+  "GA-600": 22,   // gạch lát 600 — nặng nhất
+  "GA-600 B2": 22,
+  "GR60-IV-A": 22,
+  "GR60-BG-A": 22,
+  "GR80-WH-B": 24,
+  "GT-300": 6,    // gạch trang trí
+  "GM-300": 12,   // gạch mosaic
+};
+export const VEHICLE_MAX_WEIGHT_KG = 28000; // UNIS 28T
+
+export function skuWeight(sku: string): number {
+  return SKU_WEIGHT_KG_PER_M2[sku] ?? 10; // fallback
+}
+
+export interface PoLine {
+  poNumber: string;       // PO-BD-W20-002
+  cnCode: string;
+  cnName: string;
+  sku: string;
+  qtyM2: number;
+  eta: string;
+}
+
 export interface DropPoint {
   order: number;
   cnCode: string;
   cnName: string;
   qtyM2: number;
-  eta: string;            // "20/05" hoặc ISO
+  eta: string;
   skuLines: { sku: string; qty: number }[];
+}
+
+/** PO chưa xếp được vào chuyến nào — section ③ */
+export interface UnscheduledPo {
+  poNumber: string;
+  factoryCode: string;
+  factoryName: string;
+  cnCode: string;
+  cnName: string;
+  sku: string;
+  qtyM2: number;
+  reason: string;         // "Không tuyến", "Bổ sung kịch bản"…
+  suggestedContainerId?: string; // gợi ý ghép vào TP-xxx
 }
 
 export type ContainerStatus = "draft" | "ready" | "hold" | "in_transit" | "delivered";
