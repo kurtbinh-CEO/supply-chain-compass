@@ -63,6 +63,33 @@ export default function WorkspacePage() {
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  // Deep-link từ Khoảng cách & Kịch bản: toast + highlight khi tới với ?focus=NEG-...&from=gap
+  useEffect(() => {
+    const focus = searchParams.get("focus");
+    const from = searchParams.get("from");
+    if (focus && from === "gap") {
+      toast.info("Đến từ Khoảng cách & Kịch bản", {
+        description: `Task đàm phán ${focus} (deadline 5 ngày). Tạo sau khi chọn kịch bản giải quyết khoảng cách.`,
+        duration: 6000,
+      });
+      setHighlightId(focus);
+      const next = new URLSearchParams(searchParams);
+      next.delete("focus"); next.delete("from"); next.delete("nm");
+      setSearchParams(next, { replace: true });
+    } else if (from === "gap-preview") {
+      toast.info("Xem trước từ Khoảng cách & Kịch bản", {
+        description: "Đây là Việc cần làm — sau khi xác nhận kịch bản, task đàm phán sẽ xuất hiện ở đây với hạn 5 ngày.",
+        duration: 5000,
+      });
+      const next = new URLSearchParams(searchParams);
+      next.delete("from");
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Auto-check bảng giá NM (chỉ chạy 1 lần / mount)
   const priceCheckRan = useRef(false);
