@@ -42,6 +42,17 @@ import {
   getTierStatus,
   type TierStatus,
 } from "@/data/price-tiers";
+import {
+  computeImpact,
+  setResolution,
+  clearResolution,
+  useResolutions,
+  type ChosenScenario,
+  type ScenarioImpact,
+} from "@/data/scenario-resolutions";
+import { ConfirmScenarioDialog } from "@/components/gap/ConfirmScenarioDialog";
+import { ResolutionBanner } from "@/components/gap/ResolutionBanner";
+import { useWorkspace } from "@/components/WorkspaceContext";
 
 // Map mỗi NM → SKU base chính (dùng để tra giá thực)
 const NM_TOP_SKU: Record<NmId, string> = {
@@ -434,6 +445,7 @@ function GapTrackingTable({
   rows: GapRow[];
   onSelect: (row: GapRow) => void;
 }) {
+  const resolutions = useResolutions();
   const columns: SmartTableColumn<GapRow>[] = [
     {
       key: "nm",
@@ -633,19 +645,50 @@ function GapTrackingTable({
       priority: "low",
     },
     {
+      key: "scenario",
+      label: "Kịch bản KC",
+      width: 200,
+      render: (r) => {
+        const res = resolutions[r.nm.id];
+        if (!res) {
+          if (r.status === "on_track" && r.gapPct < 5) {
+            return <span className="text-table-sm text-success">🟢 Trong biên (&lt;5%)</span>;
+          }
+          return <span className="text-table-sm text-danger">🔴 Chưa xử lý</span>;
+        }
+        const pendingLabels: string[] = [];
+        if (res.poTopupId) pendingLabels.push(`📦 PO ${res.poTopupQty?.toLocaleString("vi-VN")}m² nháp`);
+        if (res.negotiateTaskId) pendingLabels.push(`📞 Đàm phán ${res.negotiateQty?.toLocaleString("vi-VN")}m² 5d`);
+        return (
+          <div>
+            <p className="text-table-sm">
+              <span className="text-warning font-semibold">🟡 Đang giải quyết</span>
+              <span className="text-text-3"> · KB {res.scenarioKey}</span>
+            </p>
+            {pendingLabels.length > 0 && (
+              <p className="text-caption text-text-3 mt-0.5 truncate">{pendingLabels.join(" + ")}</p>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       key: "action",
       label: "",
-      width: 110,
+      width: 130,
       align: "right",
-      render: (r) => (
-        <Button
-          size="sm"
-          variant={r.status === "critical" ? "default" : "outline"}
-          onClick={(e) => { e.stopPropagation(); onSelect(r); }}
-        >
-          Mô phỏng
-        </Button>
-      ),
+      render: (r) => {
+        const res = resolutions[r.nm.id];
+        return (
+          <Button
+            size="sm"
+            variant={res ? "ghost" : r.status === "critical" ? "default" : "outline"}
+            onClick={(e) => { e.stopPropagation(); onSelect(r); }}
+          >
+            {res ? "Xem kịch bản" : "Chọn kịch bản"}
+          </Button>
+        );
+      },
     },
   ];
 
@@ -831,11 +874,19 @@ function GapNmSkuDrill({ row }: { row: GapRow }) {
 
 function ScenarioCard({
   scenario,
+  impact,
   onChoose,
 }: {
   scenario: Scenario;
+  impact: ScenarioImpact;
   onChoose: (s: Scenario) => void;
 }) {
+  const tierLabel = (t: ScenarioImpact["tierAfter"]) =>
+    t === "tier1" ? "Tier 1 ✅"
+    : t === "tier2" ? "Tier 2 🟡"
+    : t === "tier3" ? "Tier 3 🔴"
+    : "Chờ đàm phán";
+
   return (
     <div
       className={cn(
@@ -891,7 +942,6 @@ function ScenarioCard({
           note={scenario.aiRationale ?? scenario.costFormula}
         />
         <p className="text-caption text-text-3 mt-0.5">{scenario.costFormula}</p>
-        {/* Phụ phí breakdown */}
         {scenario.priceInfo?.surchargeText && (scenario.key === "A" || scenario.key === "D") && (
           <p className="text-caption text-info mt-1.5 leading-relaxed">
             💡 Giá gốc: <span className="tabular-nums">{scenario.priceInfo.basePrice.toLocaleString("vi-VN")}₫</span>
@@ -900,7 +950,6 @@ function ScenarioCard({
         )}
       </div>
 
-      {/* AI rationale (M9 — explanation tiếng Việt) */}
       {scenario.recommended && scenario.aiRationale && (
         <div className="rounded-button bg-primary/5 border border-primary/20 px-3 py-2 text-caption text-text-1 leading-relaxed">
           {scenario.aiRationale}
@@ -926,6 +975,32 @@ function ScenarioCard({
             {scenario.cons.map((c) => (
               <li key={c}>• {c}</li>
             ))}
+          </ul>
+        </div>
+
+        {/* TÁC ĐỘNG SAU CHỌN — preview downstream */}
+        <div className="pt-2 border-t border-surface-3">
+          <p className="text-caption font-semibold text-primary uppercase tracking-wider mb-1.5">
+            Tác động sau chọn
+          </p>
+          <ul className="text-table-sm text-text-2 space-y-1">
+            {impact.actions.slice(0, 3).map((a, i) => (
+              <li key={i} className="flex gap-1.5 leading-snug">
+                <span>{a.icon}</span>
+                <span className="flex-1">{a.title}</span>
+              </li>
+            ))}
+            <li className="flex gap-1.5 leading-snug">
+              <span>💰</span>
+              <span className="flex-1">
+                Tier sau chọn: <strong className={cn(
+                  impact.tierAfter === "tier1" ? "text-success"
+                  : impact.tierAfter === "tier2" ? "text-warning"
+                  : impact.tierAfter === "tier3" ? "text-danger"
+                  : "text-text-2"
+                )}>{tierLabel(impact.tierAfter)}</strong>
+              </span>
+            </li>
           </ul>
         </div>
       </div>
@@ -1009,9 +1084,18 @@ function ScenarioTab({
   onPick,
 }: {
   selected: GapRow | null;
-  onPick: (row: GapRow) => void;
+  onPick: (row: GapRow | null) => void;
 }) {
   const rows = useMemo(() => buildRows(), []);
+  const { addApproval, addNotification } = useWorkspace();
+  const resolutions = useResolutions();
+  const [pendingScenario, setPendingScenario] = useState<Scenario | null>(null);
+
+  // hybrid split % từ config (D = topupPct% mua bù + (1-topupPct)% đàm phán)
+  const hybridSplitPct = useMemo(() => {
+    const v = (CONFIG_KEYS.find((c) => c.key === "scenario.hybrid_split_pct")?.defaultValue as number) ?? 50;
+    return v / 100;
+  }, []);
 
   if (!selected) {
     return (
@@ -1044,12 +1128,98 @@ function ScenarioTab({
 
   const scenarios = buildScenarios(selected);
   const meta = STATUS_META[selected.status];
+  const skuBase = NM_TOP_SKU[selected.nm.id];
+  const existingResolution = resolutions[selected.nm.id];
+
+  const computeImpactFor = (s: Scenario): ScenarioImpact => computeImpact({
+    scenarioKey: s.key,
+    nmName: selected.nm.name,
+    skuBase,
+    gapM2: selected.gapM2,
+    committedM2: selected.totalCommittedM2,
+    totalRequestedM2: selected.totalRequestedM2,
+    upliftIfDrop: selected.tier?.upliftIfDrop ?? 0,
+    currentTier: selected.tier?.current ?? "tier1",
+    hybridSplitPct,
+  });
 
   const handleChoose = (s: Scenario) => {
-    toast.success(`Đã chọn kịch bản ${s.key}: ${s.title}`, {
-      description: `${selected.nm.name} · Chi phí ${fmtVnd(
-        s.cost
-      )} · Đã gửi vào hàng đợi phê duyệt.`,
+    setPendingScenario(s);
+  };
+
+  const handleConfirm = () => {
+    if (!pendingScenario) return;
+    const s = pendingScenario;
+    const impact = computeImpactFor(s);
+    const now = Date.now();
+    const deadline = now + 5 * 24 * 60 * 60 * 1000;
+
+    // Generate downstream artifacts
+    const poTopupQty = s.key === "A" ? selected.gapM2
+                     : s.key === "D" ? Math.round(selected.gapM2 * hybridSplitPct)
+                     : undefined;
+    const negotiateQty = s.key === "C" ? selected.gapM2
+                       : s.key === "D" ? selected.gapM2 - (poTopupQty ?? 0)
+                       : undefined;
+    const poTopupId = poTopupQty != null
+      ? `PO-${selected.nm.code}-TOPUP-${String(now).slice(-4)}`
+      : undefined;
+    const negotiateTaskId = negotiateQty != null
+      ? `NEG-${selected.nm.code}-${String(now).slice(-4)}`
+      : undefined;
+
+    // Persist resolution
+    const res: ChosenScenario = {
+      nmId: selected.nm.id,
+      nmName: selected.nm.name,
+      scenarioKey: s.key,
+      scenarioTitle: s.title,
+      gapM2: selected.gapM2,
+      gapPctBefore: selected.gapPct,
+      gapPctAfter: impact.gapAfterPct,
+      cost: s.cost,
+      chosenAt: now,
+      chosenBy: "Planner Thuỳ",
+      resolveDeadline: deadline,
+      poTopupId,
+      poTopupQty,
+      negotiateTaskId,
+      negotiateQty,
+      tierImpact: s.key === "B" && selected.tier ? {
+        from: selected.tier.current,
+        to: "tier2",
+        upliftAmount: selected.tier.upliftIfDrop,
+      } : undefined,
+      negotiationStatus: (s.key === "C" || s.key === "D") ? "pending" : undefined,
+    };
+    setResolution(res);
+
+    // Push downstream items vào Workspace
+    if (poTopupId && poTopupQty) {
+      addApproval({
+        id: poTopupId,
+        type: "PO bổ sung",
+        typeColor: "info",
+        description: `${selected.nm.name} ${skuBase} ${poTopupQty.toLocaleString("vi-VN")}m² (Kịch bản ${s.key})`,
+        submitter: "Hệ thống · Gap",
+        timeAgo: "vừa xong",
+      });
+    }
+    if (negotiateTaskId && negotiateQty) {
+      addNotification({
+        id: negotiateTaskId,
+        type: "NEGOTIATE",
+        typeColor: "warning",
+        message: `Đàm phán ${selected.nm.name}: chuyển ${negotiateQty.toLocaleString("vi-VN")}m² sang T6 (5 ngày)`,
+        timeAgo: "vừa xong",
+        read: false,
+        url: "/workspace",
+      });
+    }
+
+    setPendingScenario(null);
+    toast.success(`✅ Kịch bản ${s.key} đã chọn — ${impact.actions.length} hành động đã tạo.`, {
+      description: `${selected.nm.name} · Hạn xử lý: 5 ngày`,
     });
   };
 
@@ -1063,6 +1233,18 @@ function ScenarioTab({
 
   return (
     <div className="space-y-5">
+      {/* Banner: kịch bản đã chọn (nếu có) */}
+      {existingResolution && (
+        <ResolutionBanner
+          resolution={existingResolution}
+          onChange={() => {
+            clearResolution(selected.nm.id);
+            toast.info(`Đã hủy kịch bản ${existingResolution.scenarioKey} cho ${selected.nm.name}. Chọn lại bên dưới.`);
+          }}
+          onDetail={() => onPick(selected)}
+        />
+      )}
+
       {/* Header summary */}
       <div className="rounded-card border border-surface-3 bg-surface-1 p-5">
         <div className="flex items-start justify-between flex-wrap gap-3">
@@ -1096,7 +1278,7 @@ function ScenarioTab({
               </p>
             </div>
             <button
-              onClick={() => onPick(null as unknown as GapRow)}
+              onClick={() => onPick(null)}
               className="text-caption text-text-3 hover:text-text-1 underline-offset-2 hover:underline"
             >
               Đổi NM
@@ -1153,12 +1335,34 @@ function ScenarioTab({
       {/* 4 scenarios */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {scenarios.map((s) => (
-          <ScenarioCard key={s.key} scenario={s} onChoose={handleChoose} />
+          <ScenarioCard
+            key={s.key}
+            scenario={s}
+            impact={computeImpactFor(s)}
+            onChoose={handleChoose}
+          />
         ))}
       </div>
 
       {/* E custom */}
       <CustomScenarioForm row={selected} onSubmit={handleCustomSubmit} />
+
+      {/* Confirm dialog */}
+      {pendingScenario && (
+        <ConfirmScenarioDialog
+          open={!!pendingScenario}
+          onOpenChange={(o) => !o && setPendingScenario(null)}
+          scenarioKey={pendingScenario.key}
+          scenarioTitle={pendingScenario.title}
+          scenarioSubtitle={pendingScenario.subtitle}
+          nmName={selected.nm.name}
+          gapM2={selected.gapM2}
+          gapPctBefore={selected.gapPct}
+          cost={pendingScenario.cost}
+          impact={computeImpactFor(pendingScenario)}
+          onConfirm={handleConfirm}
+        />
+      )}
     </div>
   );
 }
