@@ -1176,41 +1176,45 @@ function ContainersTab() {
         importDescription="Chọn nguồn nhập danh mục container"
         placeholder="Tìm theo mã, tên..."
       />
-      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <table className="w-full text-table">
-          <thead>
-            <tr className="bg-surface-1">
-              {["Mã", "Tên", "Sức chứa (m²)", "Pallet limit", "Tải trọng (kg)", "Cước (VND/km)", "Ghi chú"].map((h) => (
-                <th key={h} className="text-left px-4 py-2.5 text-table-header uppercase text-text-3 font-medium">{h}</th>
-              ))}
-              <th className="px-4 py-2.5 text-right text-table-header uppercase text-text-3 font-medium w-[88px]">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((c, i) => (
-              <tr key={`${c.code}-${c.source}`} className={`group ${i % 2 === 0 ? "bg-surface-2" : "bg-surface-0"} hover:bg-surface-3 transition-colors`}>
-                <td className="px-4 py-2.5 font-mono font-medium text-text-1">
-                  <div className="flex items-center gap-1.5">
-                    {c.code}
-                    {c.source === "cloud" && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-2.5 text-text-2">{c.name}</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.capacityM2.toLocaleString("vi-VN")}</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.palletLimit}</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.weightLimitKg.toLocaleString("vi-VN")}</td>
-                <td className="px-4 py-2.5 text-text-2 tabular-nums">{c.costPerKm.toLocaleString("vi-VN")}</td>
-                <td className="px-4 py-2.5 text-text-3">{c.note}</td>
-                <td className="px-4 py-2.5">
-                  <RowActions onEdit={() => setEditing(c)} onDelete={() => setDeleting(c)} onHistory={() => setHistoryCode(c.code)} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {(() => {
+        const cols: SmartTableColumn<MergedContainer>[] = [
+          {
+            key: "code", label: "Mã", width: 100, hideable: false, sortable: true,
+            render: (r) => (
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono font-medium text-text-1">{r.code}</span>
+                {r.source === "cloud" && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-success-bg text-success text-[10px] font-medium uppercase">Cloud</span>
+                )}
+              </div>
+            ),
+          },
+          { key: "name", label: "Tên", width: 180, sortable: true, render: (r) => <span className="text-text-2">{r.name}</span> },
+          { key: "capacityM2", label: "Sức chứa (m²)", width: 130, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.capacityM2.toLocaleString("vi-VN")}</span> },
+          { key: "palletLimit", label: "Pallet limit", width: 110, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.palletLimit}</span> },
+          { key: "weightLimitKg", label: "Tải trọng (kg)", width: 130, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.weightLimitKg.toLocaleString("vi-VN")}</span> },
+          { key: "costPerKm", label: "Cước (VND/km)", width: 130, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.costPerKm.toLocaleString("vi-VN")}</span> },
+          { key: "note", label: "Ghi chú", width: 200, priority: "low", render: (r) => <span className="text-text-3">{r.note}</span> },
+          {
+            key: "actions", label: "Thao tác", width: 100, align: "right", hideable: false,
+            render: (r) => (
+              <div onClick={(e) => e.stopPropagation()}>
+                <RowActions onEdit={() => setEditing(r)} onDelete={() => setDeleting(r)} onHistory={() => setHistoryCode(r.code)} />
+              </div>
+            ),
+          },
+        ];
+        return (
+          <SmartTable<MergedContainer>
+            screenId="master-containers"
+            exportFilename="container"
+            columns={cols}
+            data={rows}
+            defaultDensity="compact"
+            getRowId={(r) => `${r.code}-${r.source}`}
+          />
+        );
+      })()}
       <p className="text-table-sm text-text-3">
         {rows.length} loại container · <span className="text-success">{cloudContainers.length} từ cloud</span> + {CONTAINER_TYPES.length} từ dataset mẫu
       </p>
