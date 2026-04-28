@@ -361,13 +361,7 @@ export default function OrdersPage() {
             ? "Chưa có đơn trong tuần. Tải đơn mới từ DRP batch."
             : "Thử bỏ bớt bộ lọc hoặc bấm \"Tất cả\" để xem toàn bộ.",
         }}
-        drillDown={(g) => (
-          <GroupDrillDown
-            group={g}
-            onAction={(line) => setActionRow(line)}
-            onCancel={(line) => setCancelRow(line)}
-          />
-        )}
+        onRowClick={(g) => setPanelGroup(g)}
         columns={[
           {
             key: "poNumber", label: "Mã đơn", width: 180, sortable: true, hideable: false, priority: "high",
