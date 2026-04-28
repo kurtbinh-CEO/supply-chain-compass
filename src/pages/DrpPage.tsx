@@ -336,21 +336,28 @@ function StepDetail({ stepId, scale }: { stepId: number; scale: number }) {
 
   if (stepId === 5) return (
     <div className="space-y-2 text-table-sm">
-      <div className="rounded bg-success-bg/40 border border-success/20 px-3 py-2">
-        <div className="font-medium text-success">9 CN đủ hàng — bỏ qua</div>
-        <div className="text-caption text-text-3 mt-0.5">Net Req ≤ 0, fill ≥ 95%</div>
+      {/* Pills NGANG (UX-CONSISTENCY FIX 2): bỏ block dọc, dùng 1 dòng exception pills */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-success/30 bg-success-bg/60 px-2.5 py-1 text-caption font-medium text-success">
+          <span className="h-2 w-2 rounded-full bg-success" /> 9 CN đủ — bỏ qua
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-warning/30 bg-warning-bg/60 px-2.5 py-1 text-caption font-medium text-warning">
+          <span className="h-2 w-2 rounded-full bg-warning" /> 2 CN theo dõi
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-danger/30 bg-danger-bg/60 px-2.5 py-1 text-caption font-medium text-danger">
+          <span className="h-2 w-2 rounded-full bg-danger" /> 1 CN thiếu
+        </span>
       </div>
-      <div className="rounded bg-warning-bg/40 border border-warning/20 px-3 py-2">
-        <div className="font-medium text-warning">3 CN cần phân bổ</div>
-        <ul className="text-text-2 mt-1 space-y-0.5">
-          <li>CN-BD: +{sc(1200).toLocaleString()}m²</li>
-          <li>CN-NA: +{sc(120).toLocaleString()}m²</li>
-          <li>CN-CT: +{sc(80).toLocaleString()}m²</li>
-        </ul>
+      {/* Phân bổ chi tiết — 1 dòng compact thay 3 dòng dọc */}
+      <div className="text-caption text-text-2 pt-1">
+        Cần phân bổ: <span className="text-text-1 font-medium">CN-BD +{sc(1200).toLocaleString()}</span> · CN-NA +{sc(120).toLocaleString()} · CN-CT +{sc(80).toLocaleString()}
       </div>
       <div className="flex justify-between border-t border-surface-3 pt-2 font-semibold">
         <span>→ Tổng cần phân bổ</span>
         <ClickableNumber value={`${sc(1400).toLocaleString()}m²`} color="text-warning" /></div>
+      <div className="text-caption text-text-3 pt-1">
+        💡 Chi tiết per CN xem ở Summary Cards và bảng phân bổ bên dưới — không cần section riêng.
+      </div>
     </div>
   );
 
