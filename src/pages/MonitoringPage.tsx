@@ -28,6 +28,8 @@ import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "
 import { monitoringCompare } from "@/lib/compare-metrics";
 import { SectionTableHeader } from "@/components/SectionTableHeader";
 import { TableDownloadButton } from "@/components/TableDownloadButton";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import { StatusChip } from "@/components/StatusChip";
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
