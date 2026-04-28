@@ -1195,44 +1195,59 @@ export default function GapScenarioPage() {
           editable
           cards={[
             {
-              key: "total_gap",
-              label: "Tổng Gap",
-              value: totalGap > 0 ? totalGap.toLocaleString("vi-VN") : "1.200",
+              key: "burned",
+              label: "Tổng đã kéo",
+              value: `${(totalReleased / 1000).toFixed(1)}/${(totalCommitted / 1000).toFixed(1)}k`,
               unit: "m²",
               trend: {
-                delta: `${rows.filter((r) => r.gapM2 > 0).length} NM`,
-                direction: "down",
-                color: "green",
+                delta: `${burnedPct}% burned`,
+                direction: burnedPct >= 70 ? "up" : "flat",
+                color: burnedPct >= 70 ? "green" : burnedPct >= 50 ? "gray" : "red",
               },
-              severity: "warn",
-              tooltip: "Tổng m² còn thiếu so với cam kết NM",
-            },
-            {
-              key: "scenarios",
-              label: "Kịch bản tạo",
-              value: 4,
-              unit: "kịch bản",
-              trend: { delta: "AI đề xuất: C", direction: "flat", color: "gray" },
-              severity: "ok",
-              onClick: () => setActiveTab("scenario"),
-            },
-            {
-              key: "cost_range",
-              label: "Chi phí ước tính",
-              value: "86–173",
-              unit: "triệu ₫",
-              trend: { delta: "A: 173M · C: 86M", direction: "flat", color: "gray" },
-              severity: "ok",
-              tooltip: "Khoảng chi phí giữa kịch bản đắt nhất (A) và rẻ nhất (C)",
-            },
-            {
-              key: "risk_nm",
-              label: "NM rủi ro",
-              value: rows.filter((r) => r.status === "critical").length || 1,
-              unit: "NM",
-              trend: { delta: "Phú Mỹ 48%", direction: "down", color: "red" },
-              severity: "critical",
+              severity: burnedPct >= 70 ? "ok" : burnedPct >= 50 ? "warn" : "critical",
+              tooltip: "Đã release PO / Tổng cam kết NM",
               onClick: () => setActiveTab("tracking"),
+            },
+            {
+              key: "remaining",
+              label: "Còn lại cần kéo",
+              value: totalRemaining.toLocaleString("vi-VN"),
+              unit: "m²",
+              trend: {
+                delta: `${rows.filter((r) => r.remainingM2 > 0).length} NM còn`,
+                direction: "down",
+                color: "gray",
+              },
+              severity: totalRemaining > 0 ? "warn" : "ok",
+            },
+            {
+              key: "tier_risk",
+              label: "Rủi ro tier",
+              value: tierAtRiskRows.length,
+              unit: "NM",
+              trend: {
+                delta: tierAtRiskRows.length > 0
+                  ? tierAtRiskRows.map((r) => r.nm.name).slice(0, 2).join(" + ")
+                  : "Tất cả Tier 1 ✅",
+                direction: tierAtRiskRows.length > 0 ? "down" : "flat",
+                color: tierAtRiskRows.length > 0 ? "red" : "green",
+              },
+              severity: tierAtRiskRows.length >= 2 ? "critical" : tierAtRiskRows.length === 1 ? "warn" : "ok",
+              tooltip: "Số NM đang ở Tier 2/3 — sẽ chịu phụ phí retroactive nếu không kéo đủ",
+              onClick: () => setActiveTab("tracking"),
+            },
+            {
+              key: "uplift",
+              label: "Uplift dự kiến",
+              value: totalUplift > 0 ? fmtVnd(totalUplift).replace("₫", "").trim() : "0",
+              unit: "₫",
+              trend: {
+                delta: totalUplift > 0 ? "🔴 retroactive" : "—",
+                direction: "down",
+                color: totalUplift > 0 ? "red" : "gray",
+              },
+              severity: totalUplift > 50_000_000 ? "critical" : totalUplift > 0 ? "warn" : "ok",
+              tooltip: "Phụ phí retroactive nếu các NM ở Tier 2/3 không kéo đủ ngưỡng Tier 1",
             },
           ]}
         />
