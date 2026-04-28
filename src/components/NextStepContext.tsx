@@ -10,8 +10,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
  *  the user dismisses it).
  *
  *  Closed loop:
- *    /demand → /sop → /supply → /hub → /gap-scenario → /sync → /cn-portal →
- *    /drp → /allocation → /transport → /orders → /orders (track) →
+ *    /demand → /sop → /inventory → /hub → /gap-scenario → /sync → /cn-portal →
+ *    /drp → /orders → /orders (track) →
  *    /monitoring → back to /demand (new cycle)
  * ──────────────────────────────────────────────────────────────────────────── */
 
@@ -88,15 +88,15 @@ export const NEXT_STEPS: Record<NextStepKey, NextStepConfig> = {
   },
   "drp.viewed": {
     label: "DRP xong",
-    ctaLabel: "Phân bổ",
-    ctaRoute: "/allocation",
-    hint: "DRP layer 1 đã review — sang Allocation để phân bổ chi tiết.",
+    ctaLabel: "Duyệt PO/TO",
+    ctaRoute: "/orders",
+    hint: "DRP đã review — sang Đơn hàng để duyệt PO & TO chuyển ngang.",
   },
   "allocation.done": {
     label: "Phân bổ xong",
     ctaLabel: "Đóng hàng",
-    ctaRoute: "/transport",
-    hint: "Allocation đã ký — chuyển sang đóng hàng & vận chuyển.",
+    ctaRoute: "/orders?tab=packing",
+    hint: "Allocation đã ký — sang Đóng gói & vận chuyển.",
   },
   "transport.done": {
     label: "Đóng hàng xong",

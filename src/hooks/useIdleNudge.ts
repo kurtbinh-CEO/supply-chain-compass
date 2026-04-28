@@ -11,8 +11,8 @@ import { toast } from "sonner";
  * ──────────────────────────────────────────────────────────────────────────── */
 
 const WORK_ROUTES = new Set<string>([
-  "/workspace", "/demand", "/demand-weekly", "/sop", "/supply", "/hub",
-  "/gap-scenario", "/sync", "/cn-portal", "/drp", "/allocation", "/transport",
+  "/workspace", "/demand", "/demand-weekly", "/sop", "/inventory", "/hub",
+  "/gap-scenario", "/sync", "/cn-portal", "/drp",
   "/orders", "/monitoring",
 ]);
 
