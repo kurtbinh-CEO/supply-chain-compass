@@ -12,7 +12,8 @@
  * Mọi text tiếng Việt.
  */
 import { useMemo, useState } from "react";
-import { CheckCircle2, AlertTriangle, AlertOctagon, ArrowRight, Play, ShieldAlert } from "lucide-react";
+import { CheckCircle2, AlertTriangle, AlertOctagon, ArrowRight, Play, ShieldAlert, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -225,6 +226,66 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
       )}>
         {summaryText}
       </div>
+
+      {/* ── BLOCKING BANNER — list từng điều kiện chặn + nút điều hướng trực tiếp ── */}
+      {blocking.length > 0 && (
+        <div className="rounded-md border border-danger/40 bg-danger-bg/30 p-3 space-y-2">
+          <div className="flex items-center gap-2 text-table-sm font-semibold text-danger">
+            <AlertOctagon className="h-4 w-4" />
+            Không thể chạy DRP — {blocking.length} điều kiện đang chặn
+          </div>
+          <ul className="space-y-1.5">
+            {blocking.map((b) => (
+              <li
+                key={b.key}
+                className="flex flex-wrap items-center justify-between gap-2 rounded border border-danger/20 bg-surface-1/60 px-2.5 py-1.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-table-sm font-medium text-text-1">{b.label}</div>
+                  <div className="text-table-xs text-text-2 truncate">{b.result}</div>
+                </div>
+                {b.fixHref ? (
+                  <Link
+                    to={b.fixHref}
+                    className="inline-flex items-center gap-1 rounded-button border border-danger/40 bg-danger text-primary-foreground px-2.5 py-1 text-table-xs font-semibold hover:opacity-90 shrink-0"
+                    title={`Đi tới ${b.fixHref} để xử lý`}
+                  >
+                    {b.fixLabel ?? "Xử lý ngay"}
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                ) : (
+                  <span className="text-table-xs text-text-3 italic shrink-0">Chưa có link xử lý</span>
+                )}
+              </li>
+            ))}
+          </ul>
+          {warnings.length > 0 && (
+            <details className="text-table-xs text-text-2">
+              <summary className="cursor-pointer hover:text-text-1">
+                + {warnings.length} cảnh báo (không chặn) — xem
+              </summary>
+              <ul className="mt-1.5 space-y-1 pl-3">
+                {warnings.map((w) => (
+                  <li key={w.key} className="flex items-center justify-between gap-2">
+                    <span>
+                      <AlertTriangle className="inline h-3 w-3 text-warning mr-1" />
+                      <span className="text-text-1 font-medium">{w.label}:</span> {w.result}
+                    </span>
+                    {w.fixHref && (
+                      <Link
+                        to={w.fixHref}
+                        className="inline-flex items-center gap-0.5 text-info hover:underline shrink-0"
+                      >
+                        {w.fixLabel ?? "Mở"} <ExternalLink className="h-2.5 w-2.5" />
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-end gap-2">
         {onBack && (
