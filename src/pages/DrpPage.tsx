@@ -38,6 +38,8 @@ import { PillTabs, type PillTab } from "@/components/PillTabs";
 import { ContainerPlanningSection } from "@/components/drp/ContainerPlanningSection";
 import { CONTAINER_PLANS, getContainersForCn, summarizeContainers } from "@/data/container-plans";
 import { Truck as TruckIcon, Link2 as Link2Icon, Package as PackageIcon } from "lucide-react";
+import type { AllocSources, SuggestedAction } from "@/components/drp/AllocSourceBar";
+export type { AllocSources, SuggestedAction };
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -46,8 +48,6 @@ const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7
    ═══════════════════════════════════════════════════════════════════════════ */
 
 interface AllocLayer { name: string; qty: number; pass: boolean; delta?: number; explain: string }
-import type { AllocSources, SuggestedAction } from "@/components/drp/AllocSourceBar";
-export type { AllocSources, SuggestedAction };
 interface SkuException {
   item: string; variant: string;
   demand: number; allocated: number; gap: number;
