@@ -857,8 +857,8 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
               changed ? "border-info/60 bg-info-bg/40 text-info" :
               "border-surface-3 bg-surface-1 text-text-1";
             return (
-              <>
-                <tr key={`${l.poNumber}-${l.sku}-${i}`} className="border-b border-surface-3/40">
+              <Fragment key={`${l.poNumber}-${l.sku}-${i}`}>
+                <tr className="border-b border-surface-3/40">
                   <td className="py-1.5 font-mono text-text-1 text-[11px]">{l.poNumber}</td>
                   <td className="py-1.5 text-text-2">{l.cnCode}</td>
                   <td className="py-1.5 text-text-2 font-mono text-[11px]">{l.sku}</td>
