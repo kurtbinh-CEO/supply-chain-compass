@@ -670,60 +670,157 @@ function GapTrackingTable({
  * Tận dụng `commitments` field nếu có; fallback ra 1 dòng tổng.
  */
 function GapNmSkuDrill({ row }: { row: GapRow }) {
-  // Build SKU breakdown from commitments if present, else single aggregate row
-  type SkuGap = { sku: string; requested: number; committed: number; gap: number; gapPct: number };
-  const skuRows: SkuGap[] = (() => {
-    const commits = (row as unknown as { commitments?: { skuBaseCode: string; requestedM2: number; committedM2: number }[] }).commitments;
-    if (commits && commits.length > 0) {
-      return commits.map((c) => {
-        const gap = c.requestedM2 - c.committedM2;
-        return {
-          sku: c.skuBaseCode,
-          requested: c.requestedM2,
-          committed: c.committedM2,
-          gap,
-          gapPct: c.requestedM2 > 0 ? Math.round((gap / c.requestedM2) * 1000) / 10 : 0,
-        };
-      });
-    }
-    return [{
-      sku: NM_TOP_SKU[row.nmId] ?? "—",
-      requested: row.totalRequestedM2,
-      committed: row.totalCommittedM2,
-      gap: row.gapM2,
-      gapPct: row.gapPct,
-    }];
-  })();
+  const tier = row.tier;
+  const skuRows = SKU_RELEASED_BY_NM[row.nmId] ?? [];
+  const weekly = WEEKLY_BURN_BY_NM[row.nmId] ?? [];
 
-  const childCols: SmartTableColumn<SkuGap>[] = [
+  type SkuLine = {
+    sku: string;
+    committed: number;
+    released: number;
+    remaining: number;
+    pct: number;
+    lastPo: string;
+  };
+  const skuLines: SkuLine[] = skuRows.map((s) => ({
+    sku: s.sku,
+    committed: s.committed,
+    released: s.released,
+    remaining: Math.max(0, s.committed - s.released),
+    pct: s.committed > 0 ? Math.round((s.released / s.committed) * 100) : 0,
+    lastPo: s.lastPo,
+  }));
+
+  // Pace + ETA tier 1 (mock): trung bình 4 tuần đã hoàn tất
+  const doneWeeks = weekly.filter((w) => w.status === "done");
+  const pace = doneWeeks.length > 0
+    ? Math.round(doneWeeks.reduce((a, w) => a + w.pulled, 0) / doneWeeks.length)
+    : 0;
+  const weeksToTier1 = tier && tier.toNextTier > 0 && pace > 0
+    ? Math.ceil(tier.toNextTier / pace)
+    : 0;
+
+  const childCols: SmartTableColumn<SkuLine>[] = [
     { key: "sku", label: "Mã hàng", width: 110, render: (r) => <span className="font-mono text-text-1">{r.sku}</span> },
-    { key: "requested", label: "Yêu cầu", width: 110, numeric: true, align: "right", render: (r) => fmtM2(r.requested) },
-    { key: "committed", label: "Cam kết", width: 110, numeric: true, align: "right", render: (r) => fmtM2(r.committed) },
-    { key: "gap", label: "Gap", width: 110, numeric: true, align: "right",
+    { key: "committed", label: "Cam kết", width: 100, numeric: true, align: "right", render: (r) => fmtM2(r.committed) },
+    { key: "released", label: "Đã kéo", width: 100, numeric: true, align: "right",
+      render: (r) => <span className="tabular-nums font-medium text-text-1">{fmtM2(r.released)}</span>,
+    },
+    { key: "remaining", label: "Còn lại", width: 100, numeric: true, align: "right",
       render: (r) => (
-        <span className={cn("tabular-nums font-medium", r.gap > 0 ? "text-danger" : "text-success")}>
-          {r.gap > 0 ? "+" : ""}{fmtM2(r.gap)}
+        <span className={cn("tabular-nums font-medium", r.remaining > 0 ? "text-warning" : "text-success")}>
+          {fmtM2(r.remaining)}
         </span>
       ),
     },
-    { key: "gapPct", label: "% Gap", width: 80, numeric: true, align: "right",
-      render: (r) => (
-        <span className={cn("tabular-nums font-medium", r.gapPct > 15 ? "text-danger" : r.gapPct > 5 ? "text-warning" : "text-success")}>
-          {r.gapPct}%
-        </span>
-      ),
+    { key: "pct", label: "% Kéo", width: 80, numeric: true, align: "right",
+      render: (r) => {
+        const c = r.pct >= 80 ? "text-success" : r.pct >= 50 ? "text-warning" : "text-danger";
+        return <span className={cn("tabular-nums font-semibold", c)}>{r.pct}%</span>;
+      },
     },
+    { key: "lastPo", label: "PO gần nhất", width: 180, render: (r) => <span className="text-table-sm text-text-2">{r.lastPo}</span> },
   ];
 
+  const totalCommitted = skuLines.reduce((a, s) => a + s.committed, 0);
+  const totalReleased = skuLines.reduce((a, s) => a + s.released, 0);
+  const totalRemaining = skuLines.reduce((a, s) => a + s.remaining, 0);
+  const totalPct = totalCommitted > 0 ? Math.round((totalReleased / totalCommitted) * 100) : 0;
+
   return (
-    <div className="px-4 py-3 bg-surface-1/40">
-      <SmartTable<SkuGap>
-        screenId={`gap-tracking-${row.nmId}-skus`}
-        columns={childCols}
-        data={skuRows}
-        defaultDensity="compact"
-        getRowId={(r) => r.sku}
-      />
+    <div className="px-4 py-3 bg-surface-1/40 space-y-4">
+      {/* TIER PRICING block */}
+      {tier && (
+        <div className="rounded-card border border-surface-3 bg-surface-0 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="font-display text-table font-semibold text-text-1">
+              {row.nm.name} — Burn-down chi tiết
+            </h4>
+            <span className="text-caption text-text-3">{tier.schedule.period}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-table-sm">
+            <div className={cn("rounded-button border p-2.5",
+              tier.current === "tier1" ? "border-success/40 bg-success-bg" : "border-surface-3 bg-surface-1")}>
+              <p className="text-caption text-text-3 uppercase">Tier 1 ≥ {tier.schedule.tier1Threshold.toLocaleString("vi-VN")} m²</p>
+              <p className="font-display text-h3 font-semibold text-text-1 tabular-nums">{tier.schedule.tier1Price.toLocaleString("vi-VN")}₫/m²</p>
+              <p className="text-caption text-success font-medium">Giá ưu đãi</p>
+            </div>
+            <div className={cn("rounded-button border p-2.5",
+              tier.current === "tier2" ? "border-warning/40 bg-warning-bg" : "border-surface-3 bg-surface-1")}>
+              <p className="text-caption text-text-3 uppercase">Tier 2 ≥ {tier.schedule.tier2Threshold.toLocaleString("vi-VN")} m²</p>
+              <p className="font-display text-h3 font-semibold text-text-1 tabular-nums">{tier.schedule.tier2Price.toLocaleString("vi-VN")}₫/m²</p>
+              <p className="text-caption text-warning font-medium">+{Math.round(((tier.schedule.tier2Price - tier.schedule.tier1Price) / tier.schedule.tier1Price) * 100)}%</p>
+            </div>
+            <div className={cn("rounded-button border p-2.5",
+              tier.current === "tier3" ? "border-danger/40 bg-danger-bg" : "border-surface-3 bg-surface-1")}>
+              <p className="text-caption text-text-3 uppercase">Tier 3 (mặc định)</p>
+              <p className="font-display text-h3 font-semibold text-text-1 tabular-nums">{tier.schedule.tier3Price.toLocaleString("vi-VN")}₫/m²</p>
+              <p className="text-caption text-danger font-medium">+{Math.round(((tier.schedule.tier3Price - tier.schedule.tier1Price) / tier.schedule.tier1Price) * 100)}%</p>
+            </div>
+          </div>
+          <p className="text-table-sm text-text-2 mt-2">
+            Hiện tại: <strong className="text-text-1">{fmtM2(row.releasedM2)}</strong> →{" "}
+            <strong className={cn(
+              tier.current === "tier1" ? "text-success" : tier.current === "tier2" ? "text-warning" : "text-danger"
+            )}>
+              {tier.current === "tier1" ? "Tier 1 ✅" : tier.current === "tier2" ? "Tier 2" : "Tier 3"}
+            </strong>{" "}
+            — {tier.message}
+            {tier.upliftIfDrop > 0 && (
+              <span className="text-danger font-medium"> · Uplift retroactive: {fmtVnd(tier.upliftIfDrop)}</span>
+            )}
+          </p>
+        </div>
+      )}
+
+      {/* PER SKU table */}
+      {skuLines.length > 0 && (
+        <SmartTable<SkuLine>
+          screenId={`gap-tracking-${row.nmId}-skus`}
+          columns={childCols}
+          data={skuLines}
+          defaultDensity="compact"
+          getRowId={(r) => r.sku}
+          summaryRow={{
+            sku: <span className="font-bold text-text-1">TỔNG</span>,
+            committed: fmtM2(totalCommitted),
+            released: <span className="font-bold tabular-nums">{fmtM2(totalReleased)}</span>,
+            remaining: fmtM2(totalRemaining),
+            pct: <span className="font-bold tabular-nums">{totalPct}%</span>,
+          }}
+        />
+      )}
+
+      {/* WEEKLY burn-down */}
+      {weekly.length > 0 && (
+        <div className="rounded-card border border-surface-3 bg-surface-0 p-4">
+          <h4 className="font-display text-table font-semibold text-text-1 mb-2">
+            Burn-down theo tuần
+          </h4>
+          <div className="flex flex-wrap items-end gap-3">
+            {weekly.map((w) => {
+              const icon = w.status === "done" ? "✅" : w.status === "shipping" ? "🚛" : "📝";
+              const color = w.status === "done" ? "text-success" : w.status === "shipping" ? "text-info" : "text-text-3";
+              return (
+                <div key={w.week} className="flex flex-col items-center min-w-[64px]">
+                  <span className={cn("text-table-sm font-semibold tabular-nums", color)}>
+                    {w.pulled.toLocaleString("vi-VN")}
+                  </span>
+                  <span className="text-caption text-text-3">{w.week} {icon}</span>
+                </div>
+              );
+            })}
+          </div>
+          {pace > 0 && (
+            <p className="text-caption text-text-2 mt-2">
+              Pace TB: <strong className="text-text-1">{pace.toLocaleString("vi-VN")} m²/tuần</strong>
+              {weeksToTier1 > 0 && tier && (
+                <> · Đạt Tier 1 sau ~<strong className="text-text-1">{weeksToTier1} tuần</strong> (cần thêm {fmtM2(tier.toNextTier)})</>
+              )}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
