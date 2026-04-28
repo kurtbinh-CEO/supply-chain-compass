@@ -966,64 +966,124 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
-   §  Drill Zone B — Round-up gợi ý
+   §  Drill Zone B — Fill-up decision tree (consolidation / round-up / hold / ship)
    ════════════════════════════════════════════════════════════════════════════ */
 function RoundUpSuggestion({ container }: { container: ContainerPlan }) {
   const totalM2 = container.fillM2;
   const moq = container.factoryCode === "NM-DT" ? 3000 :
               container.factoryCode === "NM-VGR" ? 2500 : 2000;
-  const gap = moq - totalM2;
-  const gapPct = (gap / moq) * 100;
+  const gap = Math.max(0, moq - totalM2);
+  const gapPct = moq > 0 ? (gap / moq) * 100 : 0;
   const remainCap = container.capacityM2 - totalM2;
-  const totalKg = containerWeightKg(container);
-  const remainKg = VEHICLE_MAX_WEIGHT_KG - totalKg;
+  const remainKg = VEHICLE_MAX_WEIGHT_KG - containerWeightKg(container);
 
-  if (gap <= 0) {
+  // Drop eligibility: dùng base CN đầu tiên trong drops
+  const baseCn = container.drops[0]?.cnCode;
+  const candidates = baseCn
+    ? getCandidateDropCns(container.factoryCode, baseCn, container.drops.map((d) => d.cnCode))
+    : [];
+  const eligibleCandidates = candidates.filter((c) => c.eligible);
+  const hasEligibleConsolidation = eligibleCandidates.length > 0;
+  // Estimate fill if added best candidate (assume +800m² avg)
+  const estAddedM2 = Math.min(800, remainCap);
+  const fillAfterConsolidation = Math.round(((totalM2 + estAddedM2) / container.capacityM2) * 100);
+
+  // Mock CN context
+  const cnHstkDays = container.status === "hold" ? 4 : 9; // hold thường vì CN còn hàng
+  const hasNextWeekPo = true; // simplification
+  const holdDaysSoFar = container.status === "hold" ? 1 : 0;
+
+  const decision = decideFillUp({
+    fillPct: container.fillPct,
+    hasEligibleConsolidation,
+    fillAfterConsolidationPct: fillAfterConsolidation,
+    gapToMoqPct: gapPct,
+    hasNextWeekPo,
+    cnHstkDays,
+    holdDaysSoFar,
+  });
+
+  // OK case
+  if (decision.strategy === "ok") {
     return (
       <div className="rounded-card border border-success/30 bg-success-bg/50 p-2.5 text-table-sm text-success flex items-center gap-2">
         <Check className="h-4 w-4 shrink-0" />
-        <span>Đã đạt MOQ {moq.toLocaleString()}m² — không cần round-up.</span>
-      </div>
-    );
-  }
-  if (gapPct >= 15) {
-    return (
-      <div className="rounded-card border border-warning/30 bg-warning-bg/50 p-2.5 text-table-sm text-warning flex items-center gap-2">
-        <AlertTriangle className="h-4 w-4 shrink-0" />
-        <span>
-          Gap {gap.toLocaleString()}m² ({gapPct.toFixed(0)}% MOQ) <strong>quá lớn</strong> — đặt PO riêng thay vì round-up.
-        </span>
+        <span>{decision.primaryAction}</span>
       </div>
     );
   }
 
-  const fillAfter = Math.min(100, ((totalM2 + Math.min(gap, remainCap)) / container.capacityM2) * 100);
+  const tone =
+    decision.strategy === "consolidation" || decision.strategy === "consolidation_plus_round_up"
+      ? { border: "border-success/40", bg: "bg-success-bg/50", text: "text-success", icon: Sparkles }
+      : decision.strategy === "round_up"
+        ? { border: "border-info/40", bg: "bg-info-bg/50", text: "text-info", icon: Sparkles }
+        : decision.strategy === "hold"
+          ? { border: "border-warning/40", bg: "bg-warning-bg/50", text: "text-warning", icon: Clock }
+          : { border: "border-warning/40", bg: "bg-warning-bg/50", text: "text-warning", icon: AlertTriangle };
+  const Icon = tone.icon;
 
   return (
-    <div className="rounded-card border border-info/30 bg-info-bg/50 p-3 space-y-2">
-      <div className="flex items-center gap-2 text-table-sm font-semibold text-info">
-        <Sparkles className="h-3.5 w-3.5" /> Round-up gợi ý
+    <div className={cn("rounded-card border p-3 space-y-2", tone.border, tone.bg)}>
+      <div className={cn("flex items-center gap-2 text-table-sm font-semibold", tone.text)}>
+        <Icon className="h-3.5 w-3.5" />
+        AI đề xuất: {STRATEGY_LABELS[decision.strategy]}
       </div>
-      <div className="text-caption text-text-2 leading-snug">
-        MOQ {container.factoryName}: <strong>{moq.toLocaleString()}m²</strong>.
-        Hiện: <strong>{totalM2.toLocaleString()}m²</strong> (thiếu {gap.toLocaleString()}m²).
-        Container còn chứa được: <strong>{remainCap.toLocaleString()}m²</strong> (weight còn {remainKg.toLocaleString()}kg).
+
+      <div className="text-table-sm text-text-1 font-medium">
+        {decision.primaryAction}
       </div>
-      <div className="text-caption text-text-1">
-        Gợi ý: +{Math.round(gap * 0.6)} GA-300 + {Math.round(gap * 0.4)} GA-600
-        → fill <strong className="text-success">{fillAfter.toFixed(0)}%</strong>
+
+      <div className="text-caption text-text-2 leading-snug italic">
+        💡 {decision.reason}
       </div>
-      <div className="flex items-center gap-1.5">
+
+      {decision.warning && (
+        <div className="rounded-button border border-warning/40 bg-warning-bg/70 px-2 py-1 text-[11px] text-warning flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3 shrink-0" /> {decision.warning}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2 text-caption text-text-3">
+        <div>
+          MOQ: <strong className="text-text-2 tabular-nums">{moq.toLocaleString()}m²</strong>
+          {gap > 0 && <> · thiếu <strong className="text-text-2 tabular-nums">{gap.toLocaleString()}m²</strong></>}
+        </div>
+        <div className="text-right">
+          Còn chứa: <strong className="text-text-2 tabular-nums">{Math.max(0, remainCap).toLocaleString()}m²</strong>
+          {" "}/ <strong className="text-text-2 tabular-nums">{Math.max(0, remainKg).toLocaleString()}kg</strong>
+        </div>
+      </div>
+
+      {/* Eligible CN preview cho consolidation */}
+      {(decision.strategy === "consolidation" || decision.strategy === "consolidation_plus_round_up") && eligibleCandidates.length > 0 && (
+        <div className="rounded-button border border-success/30 bg-surface-1 px-2 py-1.5 text-[11px]">
+          <div className="text-text-3 mb-0.5 font-medium">CN có thể ghép:</div>
+          <div className="flex flex-wrap gap-1">
+            {eligibleCandidates.slice(0, 4).map((c) => (
+              <span key={c.cn2}
+                className="inline-flex items-center gap-1 rounded-full border border-success/40 bg-success-bg px-1.5 py-0.5 text-success font-semibold">
+                {c.cn2}
+                <span className="text-success/70 font-normal">+{c.detourKm}km</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-1.5 flex-wrap">
         <Button size="sm" className="h-7 px-2.5 text-[11px]"
-          onClick={() => toast.success(`Đã round-up ${container.id} — fill ${fillAfter.toFixed(0)}%`)}>
-          <Check className="h-3 w-3 mr-1" /> Round up
+          onClick={() => toast.success(`Áp dụng "${STRATEGY_LABELS[decision.strategy]}" cho ${container.id}`)}>
+          <Check className="h-3 w-3 mr-1" /> Áp dụng
         </Button>
-        <Button size="sm" variant="outline" className="h-7 px-2.5 text-[11px]"
-          onClick={() => toast.info("Chọn SKU thủ công — coming soon")}>
-          Chọn SKU khác
-        </Button>
+        {decision.altActions.map((alt) => (
+          <Button key={alt.strategy} size="sm" variant="outline" className="h-7 px-2.5 text-[11px]"
+            onClick={() => toast.info(`Chuyển sang: ${alt.label}`)}>
+            {alt.label}
+          </Button>
+        ))}
         <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-text-3"
-          onClick={() => toast.info("Bỏ qua round-up — giữ nguyên kế hoạch")}>
+          onClick={() => toast.info("Bỏ qua — giữ nguyên kế hoạch")}>
           Bỏ qua
         </Button>
       </div>
