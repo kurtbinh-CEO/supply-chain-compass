@@ -222,92 +222,165 @@ export function ContainerEditPreview({ container, onClose }: Props) {
             )}
           </div>
 
-          {/* ── Vehicle picker — filter theo route-constraint ── */}
+          {/* ── Vehicle picker — exception-first: tonal status chip + rule tooltip ── */}
           {(() => {
             const route = inferContainerRoute(
               container.factoryCode,
               activeDrops.map((d) => d.cnCode),
             );
             const allowedCanon = new Set<string>(route.constraint.allowedVehicles);
+            const preferredCanon = route.constraint.preferredVehicle;
             const VEHICLE_CANON: Record<string, string> = {
               "Xe5T": "truck_5t", "Xe10T": "truck_10t",
               "20ft": "container_20ft", "40ft": "container_40ft",
             };
+            const routeLabel = `${REGION_LABELS[route.origin]} → ${REGION_LABELS[route.dest]}`;
+
+            /** Exception-first status resolution. Order matters: blocked > overflow > preferred > allowed. */
+            type Status = "blocked" | "overflow" | "preferred" | "allowed";
+            const resolveStatus = (canon: string, capacity: number): {
+              status: Status; chipLabel: string; chipClass: string;
+              tooltipTitle: string; tooltipRule: string;
+            } => {
+              if (!allowedCanon.has(canon)) {
+                return {
+                  status: "blocked",
+                  chipLabel: "Cấm",
+                  chipClass: "border-danger/40 bg-danger-bg text-danger",
+                  tooltipTitle: `Không hợp lệ cho tuyến ${routeLabel}`,
+                  tooltipRule: route.constraint.containerRequired
+                    ? `Quy tắc: tuyến này bắt buộc container. ${route.constraint.notes}`
+                    : `Quy tắc: ${route.constraint.notes}`,
+                };
+              }
+              if (after.fillM2 > capacity) {
+                const over = after.fillM2 - capacity;
+                return {
+                  status: "overflow",
+                  chipLabel: "Vượt tải",
+                  chipClass: "border-warning/40 bg-warning-bg text-warning",
+                  tooltipTitle: `Vượt sức chứa ${over.toLocaleString()}m²`,
+                  tooltipRule: `Tải ${after.fillM2.toLocaleString()}m² > sức chứa ${capacity.toLocaleString()}m². Hãy gỡ bớt drop hoặc chọn xe lớn hơn.`,
+                };
+              }
+              if (canon === preferredCanon) {
+                return {
+                  status: "preferred",
+                  chipLabel: "Ưu tiên",
+                  chipClass: "border-success/40 bg-success-bg text-success",
+                  tooltipTitle: `Xe ưu tiên cho tuyến ${routeLabel}`,
+                  tooltipRule: route.constraint.notes,
+                };
+              }
+              return {
+                status: "allowed",
+                chipLabel: "Cho phép",
+                chipClass: "border-surface-3 bg-surface-2 text-text-2",
+                tooltipTitle: `Hợp lệ cho tuyến ${routeLabel}`,
+                tooltipRule: route.constraint.notes,
+              };
+            };
+
             return (
-              <div>
-                <div className="flex items-center justify-between mb-1.5 gap-2">
-                  <div className="text-table-sm font-semibold text-text-1">Loại xe</div>
-                  <span className="text-[10px] text-text-3 inline-flex items-center gap-1">
-                    Tuyến: <strong className="text-text-2">{REGION_LABELS[route.origin]} → {REGION_LABELS[route.dest]}</strong>
-                    {route.constraint.containerRequired && (
-                      <span className="ml-1 rounded-full border border-warning/40 bg-warning-bg px-1.5 py-0.5 text-warning font-semibold">
-                        Bắt buộc container
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {Object.entries(VEHICLES).map(([key, v]) => {
-                    const selected = vehicleKey === key;
-                    const wouldOverflow = after.fillM2 > v.capacity;
-                    const canon = VEHICLE_CANON[key] ?? key;
-                    const allowed = allowedCanon.has(canon);
-                    const blocked = !allowed;
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        disabled={blocked}
-                        onClick={() => !blocked && setVehicleKey(key)}
-                        title={blocked
-                          ? `Không hợp lệ cho tuyến ${REGION_LABELS[route.origin]} → ${REGION_LABELS[route.dest]} — ${route.constraint.notes}`
-                          : v.label}
-                        className={cn(
-                          "rounded-card border px-3 py-2 text-left transition-all",
-                          blocked
-                            ? "border-surface-3 bg-surface-2/50 opacity-50 cursor-not-allowed"
-                            : selected
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-surface-3 bg-surface-2 hover:border-primary/40",
-                        )}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className={cn("text-table-sm font-semibold",
-                            blocked ? "text-text-3 line-through" : "text-text-1")}>
-                            {v.label}
-                          </span>
-                          {selected && !blocked && <Check className="h-3 w-3 text-primary" />}
-                        </div>
-                        <div className="text-[11px] text-text-3 tabular-nums mt-0.5">
-                          {v.capacity.toLocaleString()}m² · {(v.costPerKm / 1000).toFixed(0)}K/km
-                        </div>
-                        {blocked && (
-                          <div className="mt-1 text-[10px] text-text-3 flex items-center gap-1">
-                            <X className="h-2.5 w-2.5" /> Không hợp lệ tuyến
-                          </div>
-                        )}
-                        {!blocked && wouldOverflow && !selected && (
-                          <div className="mt-1 text-[10px] text-danger flex items-center gap-1">
-                            <AlertTriangle className="h-2.5 w-2.5" /> Vượt sức chứa
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-                {after.overflow > 0 && (
-                  <div className="mt-2 rounded-card border border-danger/40 bg-danger-bg/40 px-3 py-2 text-table-sm text-danger flex items-center gap-2">
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                    <span>
-                      Vượt sức chứa <strong className="tabular-nums">{after.overflow.toLocaleString()}m²</strong> —
-                      hãy chọn xe lớn hơn hoặc gỡ bớt drop.
+              <TooltipProvider delayDuration={150}>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5 gap-2">
+                    <div className="text-table-sm font-semibold text-text-1">Loại xe</div>
+                    <span className="text-[10px] text-text-3 inline-flex items-center gap-1">
+                      Tuyến: <strong className="text-text-2">{routeLabel}</strong>
+                      {route.constraint.containerRequired && (
+                        <span className="ml-1 rounded-full border border-warning/40 bg-warning-bg px-1.5 py-0.5 text-warning font-semibold">
+                          Bắt buộc container
+                        </span>
+                      )}
                     </span>
                   </div>
-                )}
-                <div className="mt-1.5 text-[10px] text-text-3 italic">
-                  💡 {route.constraint.notes}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {Object.entries(VEHICLES).map(([key, v]) => {
+                      const selected = vehicleKey === key;
+                      const canon = VEHICLE_CANON[key] ?? key;
+                      const meta = resolveStatus(canon, v.capacity);
+                      const blocked = meta.status === "blocked";
+                      const isException = meta.status === "blocked" || meta.status === "overflow";
+                      return (
+                        <Tooltip key={key}>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              disabled={blocked}
+                              onClick={() => !blocked && setVehicleKey(key)}
+                              aria-label={`${v.label} — ${meta.chipLabel}`}
+                              className={cn(
+                                "rounded-card border px-3 py-2 text-left transition-all relative",
+                                blocked
+                                  ? "border-danger/30 bg-danger-bg/30 opacity-70 cursor-not-allowed"
+                                  : selected
+                                    ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                    : meta.status === "overflow"
+                                      ? "border-warning/40 bg-warning-bg/30 hover:border-warning"
+                                      : meta.status === "preferred"
+                                        ? "border-success/40 bg-success-bg/30 hover:border-success"
+                                        : "border-surface-3 bg-surface-2 hover:border-primary/40",
+                              )}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className={cn(
+                                  "text-table-sm font-semibold truncate",
+                                  blocked ? "text-text-3 line-through" : "text-text-1",
+                                )}>
+                                  {v.label}
+                                </span>
+                                {selected && !blocked && <Check className="h-3 w-3 text-primary shrink-0" />}
+                              </div>
+                              <div className="text-[11px] text-text-3 tabular-nums mt-0.5">
+                                {v.capacity.toLocaleString()}m² · {(v.costPerKm / 1000).toFixed(0)}K/km
+                              </div>
+                              <div className="mt-1.5 flex items-center gap-1">
+                                <span className={cn(
+                                  "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
+                                  meta.chipClass,
+                                )}>
+                                  {meta.status === "blocked" && <X className="h-2.5 w-2.5" />}
+                                  {meta.status === "overflow" && <AlertTriangle className="h-2.5 w-2.5" />}
+                                  {meta.status === "preferred" && <Check className="h-2.5 w-2.5" />}
+                                  {meta.chipLabel}
+                                </span>
+                              </div>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent
+                            side="top"
+                            className={cn(
+                              "max-w-[260px] text-[11px] leading-snug",
+                              isException && "border-danger/30",
+                            )}
+                          >
+                            <div className="font-semibold mb-0.5 flex items-center gap-1">
+                              {meta.status === "blocked" && <X className="h-3 w-3 text-danger" />}
+                              {meta.status === "overflow" && <AlertTriangle className="h-3 w-3 text-warning" />}
+                              {meta.status === "preferred" && <Check className="h-3 w-3 text-success" />}
+                              {meta.tooltipTitle}
+                            </div>
+                            <div className="text-text-2">{meta.tooltipRule}</div>
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                  {after.overflow > 0 && (
+                    <div className="mt-2 rounded-card border border-danger/40 bg-danger-bg/40 px-3 py-2 text-table-sm text-danger flex items-center gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      <span>
+                        Vượt sức chứa <strong className="tabular-nums">{after.overflow.toLocaleString()}m²</strong> —
+                        hãy chọn xe lớn hơn hoặc gỡ bớt drop.
+                      </span>
+                    </div>
+                  )}
+                  <div className="mt-1.5 text-[10px] text-text-3 italic">
+                    💡 {route.constraint.notes}
+                  </div>
                 </div>
-              </div>
+              </TooltipProvider>
             );
           })()}
 
