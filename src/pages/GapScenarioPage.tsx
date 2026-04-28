@@ -502,7 +502,7 @@ function GapTrackingTable({
       title="Khoảng cách cam kết theo NM"
       columns={columns}
       data={rows}
-      defaultDensity="comfortable" as never
+      defaultDensity="normal"
       getRowId={(r) => r.nmId}
       rowSeverity={(r) => r.status === "critical" ? "shortage" : r.status === "watch" ? "watch" : "ok"}
       autoExpandWhen={(r) => r.status === "critical"}
