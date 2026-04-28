@@ -103,6 +103,8 @@ interface Props {
 }
 
 export function ContainerEditPreview({ container, onClose }: Props) {
+  const { roles } = useAuth();
+  const actorRole = roles[0] ?? "guest";
   const [vehicleKey, setVehicleKey] = useState<string>(container?.vehicle ?? "40ft");
   const [activeDrops, setActiveDrops] = useState<DropPoint[]>(container?.drops ?? []);
   const [removed, setRemoved] = useState<DropPoint[]>([]);
