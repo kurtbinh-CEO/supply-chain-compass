@@ -154,6 +154,7 @@ export default function OrdersPage() {
     setStatusFilter(new Set());
     setKindFilter(new Set());
     setOverdueOnly(false);
+    setDropFilter(null);
   };
 
   /* ── Mutations from dialogs (cascade qua tất cả SKU lines cùng stage trong group) ── */
