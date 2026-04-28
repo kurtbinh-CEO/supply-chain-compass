@@ -312,7 +312,19 @@ export function ContainerEditPreview({ container, onClose }: Props) {
                             <button
                               type="button"
                               disabled={blocked}
-                              onClick={() => !blocked && setVehicleKey(key)}
+                              onClick={() => {
+                                if (blocked) return;
+                                setVehicleKey(key);
+                                emitTransportAudit({
+                                  category: "vehicle",
+                                  severity: meta.status === "overflow" ? "warn" : meta.status === "preferred" ? "success" : "info",
+                                  title: `Chọn xe ${v.label} (${meta.chipLabel})`,
+                                  detail: `Tuyến ${routeLabel} · ${meta.tooltipRule}`,
+                                  containerId: container.id,
+                                  actorRole,
+                                  meta: { canon, status: meta.status, fillM2: after.fillM2, capacity: v.capacity },
+                                });
+                              }}
                               aria-label={`${v.label} — ${meta.chipLabel}`}
                               className={cn(
                                 "rounded-card border px-3 py-2 text-left transition-all relative",
