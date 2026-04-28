@@ -26,6 +26,7 @@ import { VersionCompareInline } from "@/components/VersionCompareInline";
 import { VersionLockDialog, ViewingVersionBanner } from "@/components/VersionLockDialog";
 import { DrpStepIndicator, type DrpStep } from "@/components/drp/DrpStepIndicator";
 import { DrpPreflight, type PreflightItem } from "@/components/drp/DrpPreflight";
+import { computePreflightAudit } from "@/lib/drp-preflight";
 import { DrpProgress, type ProgressStep } from "@/components/drp/DrpProgress";
 import { DrpCalcSummaryLine, type CalcToken } from "@/components/drp/DrpCalcSummaryLine";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
