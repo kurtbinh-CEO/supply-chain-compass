@@ -441,8 +441,98 @@ function GapTrackingTable({
       render: (r) => fmtM2(r.totalCommittedM2),
     },
     {
+      key: "released",
+      label: "Đã kéo (PO)",
+      width: 150,
+      numeric: true,
+      sortable: true,
+      align: "right",
+      accessor: (r) => r.releasedM2,
+      render: (r) => (
+        <div>
+          <div className="tabular-nums font-medium text-text-1">{fmtM2(r.releasedM2)}</div>
+          <BurnDownBar
+            committed={r.totalCommittedM2}
+            released={r.releasedM2}
+            tierThreshold={r.tier?.schedule.tier1Threshold}
+          />
+        </div>
+      ),
+    },
+    {
+      key: "remaining",
+      label: "Còn lại",
+      width: 100,
+      numeric: true,
+      sortable: true,
+      align: "right",
+      accessor: (r) => r.remainingM2,
+      render: (r) => (
+        <span className={cn("tabular-nums font-medium", r.remainingM2 > 0 ? "text-warning" : "text-success")}>
+          {fmtM2(r.remainingM2)}
+        </span>
+      ),
+    },
+    {
+      key: "pulledPct",
+      label: "% Kéo",
+      width: 80,
+      numeric: true,
+      sortable: true,
+      align: "right",
+      accessor: (r) => r.pulledPct,
+      render: (r) => {
+        const color = r.pulledPct >= 80 ? "text-success" : r.pulledPct >= 50 ? "text-warning" : "text-danger";
+        return <span className={cn("tabular-nums font-semibold", color)}>{r.pulledPct}%</span>;
+      },
+    },
+    {
+      key: "tier",
+      label: "Tier hiện tại",
+      width: 100,
+      align: "center",
+      accessor: (r) => r.tier?.current ?? "—",
+      render: (r) => {
+        if (!r.tier) return <span className="text-text-3">—</span>;
+        const t = r.tier.current;
+        const cls = t === "tier1"
+          ? "bg-success-bg text-success border-success/30"
+          : t === "tier2"
+          ? "bg-warning-bg text-warning border-warning/30"
+          : "bg-danger-bg text-danger border-danger/30";
+        return (
+          <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 border text-caption font-semibold uppercase", cls)}>
+            {t === "tier1" ? "Tier 1" : t === "tier2" ? "Tier 2" : "Tier 3"}
+          </span>
+        );
+      },
+    },
+    {
+      key: "tierRisk",
+      label: "Rủi ro tier",
+      width: 240,
+      render: (r) => {
+        if (!r.tier) return <span className="text-text-3">—</span>;
+        const t = r.tier.current;
+        if (t === "tier1") {
+          return <span className="text-table-sm text-success">Đã đạt Tier 1 ✅</span>;
+        }
+        const cls = t === "tier3" ? "text-danger" : "text-warning";
+        return (
+          <div>
+            <p className={cn("text-table-sm font-medium", cls)}>{r.tier.message}</p>
+            {r.tier.upliftIfDrop > 0 && (
+              <p className="text-caption text-danger mt-0.5">
+                Uplift nếu giữ {t === "tier2" ? "Tier 2" : "Tier 3"}: {fmtVnd(r.tier.upliftIfDrop)}
+              </p>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       key: "gap",
-      label: "Khoảng cách",
+      label: "Cảnh báo",
       width: 130,
       numeric: true,
       sortable: true,
