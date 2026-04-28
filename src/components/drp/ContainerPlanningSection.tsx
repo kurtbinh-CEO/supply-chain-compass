@@ -46,6 +46,300 @@ const SUGGESTION_CLASS: Record<string, string> = {
   tach_xe: "border-info/40 bg-info-bg text-info",
 };
 
+/* ════════════════════════════════════════════════════════════════════════════
+   §  DropPointsEditor — sắp xếp lại thứ tự giao bằng drag-and-drop
+   §  Live recalc: km tăng tỉ lệ với độ lệch khỏi thứ tự gốc (tối ưu).
+   §  Cước tỉ lệ thuận với km. Tiết kiệm giảm dần khi route lệch.
+   ════════════════════════════════════════════════════════════════════════════ */
+import type { DropPoint, ContainerPlan as _CP } from "@/data/container-plans";
+
+function permutationDeviation(order: DropPoint[], baseline: DropPoint[]): number {
+  if (baseline.length <= 1) return 0;
+  const baseIdx = new Map(baseline.map((d, i) => [d.cnCode, i]));
+  let dev = 0;
+  order.forEach((d, i) => {
+    const orig = baseIdx.get(d.cnCode) ?? i;
+    dev += Math.abs(orig - i);
+  });
+  const maxDev = Math.floor((baseline.length * baseline.length) / 2);
+  return maxDev > 0 ? dev / maxDev : 0;
+}
+
+function recalcRoute(container: _CP, newOrder: DropPoint[]) {
+  const dev = permutationDeviation(newOrder, container.drops);
+  const kmFactor = 1 + dev * 0.25;
+  const newKm = Math.round(container.distanceKm * kmFactor);
+  const newFreight = Math.round(container.freightVnd * kmFactor);
+  const deltaKm = newKm - container.distanceKm;
+  const deltaFreight = newFreight - container.freightVnd;
+  return { newKm, newFreight, deltaKm, deltaFreight, dev };
+}
+
+interface DropPointsEditorProps {
+  container: _CP;
+  onCnClick?: (cnCode: string) => void;
+}
+
+function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
+  const [reorderMode, setReorderMode] = useState(false);
+  const [order, setOrder] = useState<DropPoint[]>(container.drops);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
+
+  const calc = useMemo(() => recalcRoute(container, order), [container, order]);
+  const dirty = useMemo(
+    () => order.some((d, i) => d.cnCode !== container.drops[i]?.cnCode),
+    [order, container.drops],
+  );
+  const canReorder = container.drops.length >= 2 &&
+    (container.status === "draft" || container.status === "ready" || container.status === "hold");
+
+  useEffect(() => { setOrder(container.drops); }, [container]);
+
+  const move = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= order.length) return;
+    const next = [...order];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setOrder(next);
+  };
+
+  const reset = () => setOrder(container.drops);
+  const save = () => {
+    setReorderMode(false);
+    if (!dirty) return;
+    toast.success(
+      `Đã lưu thứ tự mới cho ${container.id}: ${order.map((d) => d.cnCode).join(" → ")} ` +
+      `(+${calc.deltaKm}km · ${calc.deltaFreight >= 0 ? "+" : ""}${(calc.deltaFreight / 1_000_000).toFixed(1)}M₫)`,
+    );
+  };
+
+  const fmtKm = (v: number) => v.toLocaleString("vi-VN") + " km";
+  const fmtDelta = (v: number) => {
+    const sign = v >= 0 ? "+" : "−";
+    const abs = Math.abs(v);
+    if (abs >= 1_000_000) return sign + (abs / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M₫";
+    if (abs >= 1_000) return sign + Math.round(abs / 1000) + "K₫";
+    return sign + abs + "₫";
+  };
+
+  const dynamicRoute = order.length > 0
+    ? `${container.factoryCode.replace(/^NM-/, "")} → ${order.map((d) => d.cnCode).join(" → ")}`
+    : container.routeLabel;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="text-caption text-text-3 font-medium">
+          Điểm giao ({order.length})
+        </div>
+        {canReorder && (
+          <div className="flex items-center gap-1">
+            {reorderMode && dirty && (
+              <button
+                type="button"
+                onClick={reset}
+                className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-1 px-2 py-1 text-[11px] font-medium text-text-2 hover:text-text-1"
+              >
+                <RotateCcw className="h-3 w-3" /> Hoàn tác
+              </button>
+            )}
+            {reorderMode ? (
+              <button
+                type="button"
+                onClick={save}
+                className="inline-flex items-center gap-1 rounded-button bg-primary text-primary-foreground px-2.5 py-1 text-[11px] font-semibold hover:bg-primary/90"
+              >
+                <Save className="h-3 w-3" /> Lưu thứ tự
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setReorderMode(true)}
+                className="inline-flex items-center gap-1 rounded-button border border-primary/40 bg-primary/5 text-primary px-2.5 py-1 text-[11px] font-semibold hover:bg-primary hover:text-primary-foreground transition-colors"
+                title="Bật chế độ kéo-thả để sắp xếp lại thứ tự giao"
+              >
+                <Shuffle className="h-3 w-3" /> Sắp xếp lại thứ tự giao
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Live impact bar */}
+      {reorderMode && (
+        <div className={cn(
+          "rounded-card border px-3 py-2 text-table-sm flex flex-wrap items-center justify-between gap-3 transition-colors",
+          dirty
+            ? calc.deltaKm > 0
+              ? "border-warning/40 bg-warning-bg/60"
+              : "border-info/40 bg-info-bg"
+            : "border-surface-3 bg-surface-2",
+        )}>
+          <div className="flex items-center gap-2 text-text-2 min-w-0">
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
+            <span className="font-mono text-text-1 truncate">{dynamicRoute}</span>
+          </div>
+          <div className="flex items-center gap-3 tabular-nums">
+            <div className="flex flex-col items-end">
+              <span className="text-[10px] text-text-3 uppercase">Tổng km</span>
+              <div className="flex items-center gap-1">
+                <span className="font-semibold text-text-1">{fmtKm(calc.newKm)}</span>
+                {dirty && (
+                  <span className={cn(
+                    "text-[10px] font-semibold",
+                    calc.deltaKm > 0 ? "text-warning" : "text-success",
+                  )}>
+                    ({calc.deltaKm > 0 ? "+" : ""}{calc.deltaKm}km)
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="h-8 w-px bg-surface-3" />
+            <div className="flex flex-col items-end">
+              <span className="text-[10px] text-text-3 uppercase">Cước</span>
+              <div className="flex items-center gap-1">
+                <span className="font-semibold text-text-1">
+                  {(calc.newFreight / 1_000_000).toFixed(1).replace(/\.0$/, "")}M₫
+                </span>
+                {dirty && (
+                  <span className={cn(
+                    "text-[10px] font-semibold",
+                    calc.deltaFreight > 0 ? "text-warning" : "text-success",
+                  )}>
+                    ({fmtDelta(calc.deltaFreight)})
+                  </span>
+                )}
+              </div>
+            </div>
+            {!dirty && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-text-3 ml-1">
+                <Check className="h-3 w-3 text-success" /> Thứ tự gốc (tối ưu)
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Drop points table */}
+      <table className="w-full text-table-sm">
+        <thead>
+          <tr className="text-text-3 text-caption border-b border-surface-3">
+            {reorderMode && <th className="w-6"></th>}
+            <th className="text-left py-1 font-medium w-8">#</th>
+            <th className="text-left py-1 font-medium">CN</th>
+            <th className="text-right py-1 font-medium">SL m²</th>
+            {!reorderMode && <th className="text-left py-1 font-medium pl-3">SKU</th>}
+            <th className="text-left py-1 font-medium">ETA</th>
+            <th className="text-right py-1 font-medium">Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          {order.map((d, i) => {
+            const isDragging = dragIdx === i;
+            const isOver = overIdx === i && dragIdx !== null && dragIdx !== i;
+            return (
+              <tr
+                key={d.cnCode}
+                draggable={reorderMode}
+                onDragStart={(e) => {
+                  if (!reorderMode) return;
+                  setDragIdx(i);
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+                onDragOver={(e) => {
+                  if (!reorderMode || dragIdx === null) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setOverIdx(i);
+                }}
+                onDragLeave={() => setOverIdx((cur) => (cur === i ? null : cur))}
+                onDrop={(e) => {
+                  if (!reorderMode || dragIdx === null) return;
+                  e.preventDefault();
+                  move(dragIdx, i);
+                  setDragIdx(null);
+                  setOverIdx(null);
+                }}
+                onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
+                className={cn(
+                  "border-b border-surface-3/40 transition-colors",
+                  reorderMode && "cursor-move select-none",
+                  isDragging && "opacity-40",
+                  isOver && "bg-primary/10 outline outline-2 outline-primary/60",
+                )}
+              >
+                {reorderMode && (
+                  <td className="py-1.5 text-text-3">
+                    <GripVertical className="h-3.5 w-3.5" />
+                  </td>
+                )}
+                <td className="py-1.5 text-text-3 tabular-nums">{i + 1}</td>
+                <td className="py-1.5">
+                  {reorderMode ? (
+                    <span className="font-medium text-text-1">{d.cnName}</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onCnClick?.(d.cnCode)}
+                      className="text-primary hover:underline font-medium"
+                      title="Xem phân bổ CN này"
+                    >
+                      {d.cnName}
+                    </button>
+                  )}
+                  <span className="text-text-3 ml-1">({d.cnCode})</span>
+                </td>
+                <td className="py-1.5 text-right tabular-nums text-text-1">
+                  {d.qtyM2.toLocaleString()}
+                </td>
+                {!reorderMode && (
+                  <td className="py-1.5 pl-3 text-text-2">
+                    {d.skuLines.map((s) => `${s.sku} ${s.qty}m²`).join(" · ")}
+                  </td>
+                )}
+                <td className="py-1.5 text-text-2 tabular-nums">{d.eta}</td>
+                <td className="py-1.5 text-right">
+                  {reorderMode ? (
+                    <div className="inline-flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        disabled={i === 0}
+                        onClick={() => move(i, i - 1)}
+                        className="p-1 rounded hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Đẩy lên"
+                      >
+                        <ArrowUp className="h-3 w-3 text-text-2" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={i === order.length - 1}
+                        onClick={() => move(i, i + 1)}
+                        className="p-1 rounded hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="Đẩy xuống"
+                      >
+                        <ArrowDown className="h-3 w-3 text-text-2" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => toast.info(`Gỡ ${d.cnCode} khỏi ${container.id}`)}
+                      className="text-[11px] text-danger hover:underline"
+                    >
+                      Gỡ
+                    </button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 interface Props {
   /** Cross-link: click CN badge → switch sang tab Phân bổ + highlight CN */
   onCnClick?: (cnCode: string) => void;
