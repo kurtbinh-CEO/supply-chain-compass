@@ -704,6 +704,11 @@ function SkuFirstPivotTable({
         )}>{r.fillPct}%</span>
       ),
       accessor: (r) => r.fillPct },
+    { key: "ss", label: "SS", width: 168, sortable: true,
+      render: (r) => r.ssTarget > 0 ? (
+        <SafetyStockBadge ssTarget={r.ssTarget} ssReserved={r.ssReserved} allocated={r.totalAlloc} size="sm" />
+      ) : <span className="text-text-3 text-caption">—</span>,
+      accessor: (r) => r.ssTarget > 0 ? r.ssReserved / r.ssTarget : 1 },
     { key: "cnShortage", label: "CN thiếu", width: 120, sortable: true,
       render: (r) => r.cnShortage.length > 0 ? (
         <span
