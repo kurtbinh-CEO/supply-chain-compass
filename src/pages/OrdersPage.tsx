@@ -81,6 +81,8 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<Set<LifecycleStage>>(new Set());
   const [kindFilter, setKindFilter] = useState<Set<"RPO" | "TO">>(new Set());
   const [overdueOnly, setOverdueOnly] = useState(false);
+  /** "single" = chỉ 1 CN, "multi" = ghép tuyến 2+ CN, null = all */
+  const [dropFilter, setDropFilter] = useState<"single" | "multi" | null>(null);
 
   // Drill-down popup từ summary cards
   const [drillFocus, setDrillFocus] = useState<DrillFocus>(null);
@@ -105,6 +107,7 @@ export default function OrdersPage() {
     };
     let todo = 0, transit = 0, done = 0, overdue = 0;
     let po = 0, to = 0;
+    let single = 0, multi = 0, totalSaving = 0;
     for (const g of groups) {
       stage[g.stage]++;
       if (g.kind === "RPO") po++; else to++;
@@ -112,11 +115,13 @@ export default function OrdersPage() {
       if (g.stage === "pickup" || g.stage === "in_transit") transit++;
       if (g.stage === "completed") done++;
       if (groupOverdue(g)) overdue++;
+      if (g.isConsolidated) { multi++; totalSaving += g.savingAmount ?? 0; }
+      else single++;
     }
     return {
       stage, todo, transit, done, overdue,
       total: groups.length, totalLines: rows.length,
-      po, to,
+      po, to, single, multi, totalSaving,
     };
   }, [groups, rows.length]);
 
@@ -126,9 +131,11 @@ export default function OrdersPage() {
       if (kindFilter.size > 0 && !kindFilter.has(g.kind)) return false;
       if (overdueOnly && !groupOverdue(g)) return false;
       if (statusFilter.size > 0 && !statusFilter.has(g.stage)) return false;
+      if (dropFilter === "single" && g.isConsolidated) return false;
+      if (dropFilter === "multi" && !g.isConsolidated) return false;
       return true;
     });
-  }, [groups, statusFilter, kindFilter, overdueOnly]);
+  }, [groups, statusFilter, kindFilter, overdueOnly, dropFilter]);
 
   // Toggle helpers
   const toggleStatus = (s: LifecycleStage) =>
