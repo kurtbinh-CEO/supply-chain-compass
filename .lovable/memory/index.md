@@ -4,7 +4,6 @@
 Smartlog SCP/DRP — supply chain planning platform for VN logistics. Light theme default, dark mode supported.
 Manrope display, Inter body, JetBrains Mono. Design tokens in design-tokens.css, Tailwind semantic colors.
 i18n: VI default, EN supported. All UI text via `t()` hook from I18nContext.
-Mọi bảng data PHẢI dùng SmartTable + drillDown compact. Không raw <table>, không custom expand state.
 
 ## Memories
 - [Color palette](mem://design/color-palette) — White-dominant surfaces, slate text, vivid status colors
@@ -49,4 +48,6 @@ Mọi bảng data PHẢI dùng SmartTable + drillDown compact. Không raw <table
 - [Farmer mode](mem://features/farmer-mode) — Mobile toggle in TopBar bumping KpiCard/HeroCard padding+font for quick scan
 - [KPI thresholds](mem://design/kpi-thresholds) — Centralized length cutoffs + max-widths for KpiCard/HeroCard auto-shrink in src/lib/kpi-thresholds.ts
 - [ScreenHeader standard](mem://design/screen-header) — Standardized page header: truncate title/subtitle, h-8 actions, no wrap, fragment-based actions
-- [SmartTable migration](mem://features/smarttable-migration) — Progress 7 views → SmartTable. Done: GapScenario + SOP BalanceLock. Pending: ConsensusTab, DRP, Monitoring, MasterData, DemandTotal.
+- [Demo readiness](mem://architecture/demo-readiness) — Lazy load, dev-only routes, NotFound redesign, SEO, Workspace demo CTA
+- [Gap scenario resolution](mem://features/gap-scenario-resolution) — Chọn kịch bản A/B/C/D → ConfirmDialog → tạo PO/Task/tier impact, banner + cột tracking
+- [Transport logic](mem://features/transport-logic) — 4 ma trận route/drop/fill-up/edit + ConfigPage Vận tải tab + wired vào ContainerEditPreview, PoLinesEditor, RoundUpSuggestion
