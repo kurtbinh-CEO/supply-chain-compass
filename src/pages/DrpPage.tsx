@@ -831,6 +831,8 @@ export default function DrpPage() {
   // ── Auto-refresh banner khi quay lại từ trang xử lý (không reload toàn trang) ──
   // Tăng refreshTick mỗi khi: tab visible lại, window focus, pageshow (bfcache), hoặc route đổi về /drp.
   const [preflightRefreshTick, setPreflightRefreshTick] = useState(0);
+  const [preflightRefreshing, setPreflightRefreshing] = useState(false);
+  const [preflightLastRefreshAt, setPreflightLastRefreshAt] = useState<Date | null>(null);
   const lastBlockingCountRef = useRef<number | null>(null);
   const location = useLocation();
   useEffect(() => {
