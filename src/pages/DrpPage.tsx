@@ -9,7 +9,7 @@ import {
   CheckCircle2, AlertTriangle, Info, X, RefreshCw, Shield, Download,
 } from "lucide-react";
 import { exportToXlsx, type ExportColumn } from "@/lib/export-utils";
-import { getSsStatus } from "@/components/SafetyStockBadge";
+import { SafetyStockBadge, getSsStatus } from "@/components/SafetyStockBadge";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { TermTooltip } from "@/components/TermTooltip";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
@@ -1851,6 +1851,7 @@ export default function DrpPage() {
                     <th className="text-right py-1 font-medium">Phân bổ</th>
                     <th className="text-right py-1 font-medium">Lấp đầy</th>
                     <th className="text-left py-1 font-medium pl-3">Nguồn</th>
+                    <th className="text-left py-1 font-medium pl-3">SS</th>
                     <th className="text-left py-1 font-medium">Trạng thái</th>
                   </tr>
                 </thead>
@@ -1878,6 +1879,13 @@ export default function DrpPage() {
                               {sk.sources.hubPo > 0 && <SourceBadge kind="hubPo" qty={sk.sources.hubPo} />}
                               {sk.sources.lcnbIn > 0 && <SourceBadge kind="lcnb" qty={sk.sources.lcnbIn} />}
                             </div>
+                          </td>
+                          <td className="py-1.5 pl-3">
+                            {sk.ssTarget !== undefined && sk.ssReserved !== undefined && sk.ssTarget > 0 ? (
+                              <SafetyStockBadge ssTarget={sk.ssTarget} ssReserved={sk.ssReserved} allocated={sk.allocated} size="sm" />
+                            ) : (
+                              <span className="text-text-3 text-caption">—</span>
+                            )}
                           </td>
                           <td className="py-1.5">
                             {skuSev === "ok" && <span className="text-success text-caption">Đủ hàng</span>}
