@@ -1240,16 +1240,22 @@ export default function DrpPage() {
       {/* ══ BƯỚC 1 — PREFLIGHT ══ */}
       {wizardStep === 1 && (
         <div className="space-y-2">
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {preflightLastRefreshAt && !preflightRefreshing && (
+              <span className="text-table-xs text-text-3">
+                Cập nhật lúc {preflightLastRefreshAt.toLocaleTimeString("vi-VN")}
+              </span>
+            )}
             <button
               onClick={() => {
                 setPreflightRefreshTick((n) => n + 1);
-                toast.success("Đã làm mới preflight theo dữ liệu mới nhất");
               }}
-              className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 py-1.5 text-table-sm text-text-2 hover:text-text-1"
+              disabled={preflightRefreshing}
+              className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 py-1.5 text-table-sm text-text-2 hover:text-text-1 disabled:opacity-60 disabled:cursor-wait"
               title="Tính lại các điều kiện preflight ngay"
             >
-              <RefreshCw className="h-3.5 w-3.5" /> Làm mới
+              <RefreshCw className={cn("h-3.5 w-3.5", preflightRefreshing && "animate-spin")} />
+              {preflightRefreshing ? "Đang làm mới…" : "Làm mới"}
             </button>
             <button
               onClick={() => navigate("/drp/preflight-audit")}
@@ -1263,6 +1269,8 @@ export default function DrpPage() {
             items={preflightItems}
             onRun={handleRunDrp}
             onBack={undefined}
+            refreshing={preflightRefreshing}
+            lastRefreshAt={preflightLastRefreshAt}
           />
         </div>
       )}
