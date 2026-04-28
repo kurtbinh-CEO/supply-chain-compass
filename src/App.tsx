@@ -23,41 +23,52 @@ import { OnboardingProvider, useOnboarding } from "@/components/onboarding/Onboa
 import { OnboardingOverlay } from "@/components/onboarding/OnboardingOverlay";
 import { getTourForRoute } from "@/components/onboarding/tours";
 import { PlanningPeriodProvider } from "@/components/PlanningPeriodContext";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, lazy, Suspense } from "react";
 import { dispatchExpandAll } from "@/hooks/useExpandableRows";
 import { useIdleNudge } from "@/hooks/useIdleNudge";
 import { useWorkspace } from "@/components/WorkspaceContext";
+
+// Eager: auth & landing (cần ngay khi load)
 import AuthPage from "./pages/AuthPage";
 import Index from "./pages/Index";
-import DesignTest from "./pages/DesignTest";
-import WorkspacePage from "./pages/WorkspacePage";
-import MonitoringPage from "./pages/MonitoringPage";
-import DemandPage from "./pages/DemandPage";
-import SopPage from "./pages/SopPage";
-import HubPage from "./pages/HubPage";
-import GapScenarioPage from "./pages/GapScenarioPage";
-import DemoScenariosPage from "./pages/DemoScenariosPage";
-import ComparePage from "./pages/ComparePage";
-// M2 — /inventory page (đã đổi tên SupplyPage → InventoryPage)
-import InventoryPage from "./pages/InventoryPage";
-import DemandWeeklyPage from "./pages/DemandWeeklyPage";
-import DrpPage from "./pages/DrpPage";
-import DrpPreflightAuditPage from "./pages/DrpPreflightAuditPage";
-import OrdersPage from "./pages/OrdersPage";
-import SyncPage from "./pages/SyncPage";
-// M1 — /allocation, /supplier-portal, /transport đã gộp vào module khác
-import MasterDataPage from "./pages/MasterDataPage";
-import ReportsPage from "./pages/ReportsPage";
-import ConfigPage from "./pages/ConfigPage";
-import LogicPage from "./pages/LogicPage";
-import GuidePage from "./pages/GuidePage";
 import NotFound from "./pages/NotFound";
-import CnPortalPage from "./pages/CnPortalPage";
-import ProfilePage from "./pages/ProfilePage";
-import ExecutivePage from "./pages/ExecutivePage";
-import AuditPage from "./pages/AuditPage";
-import AppearancePage from "./pages/AppearancePage";
-import QaKpiPage from "./pages/QaKpiPage";
+import WorkspacePage from "./pages/WorkspacePage";
+
+// Lazy: tất cả page nặng — code-split mỗi route thành chunk riêng
+const DesignTest = lazy(() => import("./pages/DesignTest"));
+const MonitoringPage = lazy(() => import("./pages/MonitoringPage"));
+const DemandPage = lazy(() => import("./pages/DemandPage"));
+const SopPage = lazy(() => import("./pages/SopPage"));
+const HubPage = lazy(() => import("./pages/HubPage"));
+const GapScenarioPage = lazy(() => import("./pages/GapScenarioPage"));
+const DemoScenariosPage = lazy(() => import("./pages/DemoScenariosPage"));
+const ComparePage = lazy(() => import("./pages/ComparePage"));
+const InventoryPage = lazy(() => import("./pages/InventoryPage"));
+const DemandWeeklyPage = lazy(() => import("./pages/DemandWeeklyPage"));
+const DrpPage = lazy(() => import("./pages/DrpPage"));
+const DrpPreflightAuditPage = lazy(() => import("./pages/DrpPreflightAuditPage"));
+const OrdersPage = lazy(() => import("./pages/OrdersPage"));
+const SyncPage = lazy(() => import("./pages/SyncPage"));
+const MasterDataPage = lazy(() => import("./pages/MasterDataPage"));
+const ReportsPage = lazy(() => import("./pages/ReportsPage"));
+const ConfigPage = lazy(() => import("./pages/ConfigPage"));
+const LogicPage = lazy(() => import("./pages/LogicPage"));
+const GuidePage = lazy(() => import("./pages/GuidePage"));
+const CnPortalPage = lazy(() => import("./pages/CnPortalPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const ExecutivePage = lazy(() => import("./pages/ExecutivePage"));
+const AuditPage = lazy(() => import("./pages/AuditPage"));
+const AppearancePage = lazy(() => import("./pages/AppearancePage"));
+const QaKpiPage = lazy(() => import("./pages/QaKpiPage"));
+
+const PageFallback = () => (
+  <div className="min-h-screen bg-surface-0 flex items-center justify-center">
+    <div className="flex flex-col items-center gap-3">
+      <div className="h-8 w-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+      <span className="text-table-sm text-text-3">Đang tải trang...</span>
+    </div>
+  </div>
+);
 
 const queryClient = new QueryClient();
 
@@ -112,6 +123,7 @@ function ProtectedRoutes() {
         <IdleNudgeMount />
         <OnboardingOverlay />
         <OnboardingAutoStart />
+        <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/" element={<RouteGuard><Index /></RouteGuard>} />
           <Route path="/workspace" element={<RouteGuard><WorkspacePage /></RouteGuard>} />
@@ -139,14 +151,20 @@ function ProtectedRoutes() {
           <Route path="/cn-portal" element={<RouteGuard><CnPortalPage /></RouteGuard>} />
           <Route path="/logic" element={<RouteGuard><LogicPage /></RouteGuard>} />
           <Route path="/guide" element={<RouteGuard><GuidePage /></RouteGuard>} />
-          <Route path="/design-test" element={<RouteGuard><DesignTest /></RouteGuard>} />
           <Route path="/profile" element={<RouteGuard><ProfilePage /></RouteGuard>} />
           <Route path="/executive" element={<RouteGuard><ExecutivePage /></RouteGuard>} />
           <Route path="/audit" element={<RouteGuard><AuditPage /></RouteGuard>} />
           <Route path="/appearance" element={<RouteGuard><AppearancePage /></RouteGuard>} />
-          <Route path="/qa/kpi" element={<RouteGuard><QaKpiPage /></RouteGuard>} />
+          {/* Dev-only routes — chỉ truy cập được khi không phải production build */}
+          {import.meta.env.DEV && (
+            <>
+              <Route path="/design-test" element={<RouteGuard><DesignTest /></RouteGuard>} />
+              <Route path="/qa/kpi" element={<RouteGuard><QaKpiPage /></RouteGuard>} />
+            </>
+          )}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </Suspense>
       </OnboardingProvider>
       </CommandPaletteProvider>
       </PlanningPeriodProvider>

@@ -250,6 +250,16 @@ export default function WorkspacePage() {
             {items.length}
           </span>
         )}
+        <div className="flex-1" />
+        <button
+          type="button"
+          onClick={() => navigate("/guide")}
+          title="Xem full luồng demo: Demand → SOP → Hub → DRP → Đơn hàng → Giám sát"
+          className="inline-flex items-center gap-2 rounded-button bg-gradient-primary text-primary-foreground px-4 py-2 text-table-sm font-semibold shadow-sm hover:opacity-90 transition-opacity"
+        >
+          <Play className="h-4 w-4" />
+          Demo full luồng (5 phút)
+        </button>
       </div>
 
       <div className="space-y-5">

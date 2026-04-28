@@ -736,7 +736,7 @@ const demoSteps: DemoStep[] = [
       "LCNB priority first (lock CN-bộ phận trước) → Net = Demand − tồn − pipeline + SS",
       "GA-300 CN-BD: Net 840 m² → cần đặt mới qua Mikado primary",
     ],
-    keyAction: "DRP done → mở /transport",
+    keyAction: "DRP done → duyệt PO/TO ở /orders",
     metric: [
       { label: "Lớp", value: "6" },
       { label: "Fill rate", value: "95%" },
@@ -745,8 +745,8 @@ const demoSteps: DemoStep[] = [
   },
   {
     num: 6,
-    route: "/transport",
-    routeLabel: "Transport & Orders",
+    route: "/orders?tab=packing",
+    routeLabel: "Đơn hàng — Đóng gói",
     title: "Container fill 53% → HOLD, PO lifecycle",
     duration: "1'",
     icon: <Truck className="h-5 w-5" />,
