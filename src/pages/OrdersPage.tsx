@@ -1133,15 +1133,13 @@ function ActionDialog({
 }) {
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg p-0 gap-0 max-h-[90vh] max-sm:w-screen max-sm:h-[100dvh] max-sm:max-w-none max-sm:max-h-none max-sm:rounded-none flex flex-col">
-        <div className="flex-1 overflow-y-auto p-6 max-sm:p-4 pb-2">
-          {row.stage === "approved"     && <SendNmForm row={row} onSubmit={onAdvance} />}
-          {row.stage === "sent_nm"      && <NmConfirmForm row={row} onSubmit={onAdvance} />}
-          {row.stage === "nm_confirmed" && <BookCarrierForm row={row} onSubmit={onAdvance} />}
-          {row.stage === "pickup"       && <PickupForm row={row} onSubmit={onAdvance} />}
-          {row.stage === "in_transit"   && <ArrivalForm row={row} onSubmit={onAdvance} />}
-          {row.stage === "delivering"   && <PodForm row={row} onSubmit={onAdvance} />}
-        </div>
+      <DialogContent className="max-w-lg p-0 gap-0 max-h-[90vh] max-sm:w-screen max-sm:h-[100dvh] max-sm:max-w-none max-sm:max-h-none max-sm:rounded-none flex flex-col overflow-hidden">
+        {row.stage === "approved"     && <SendNmForm row={row} onSubmit={onAdvance} />}
+        {row.stage === "sent_nm"      && <NmConfirmForm row={row} onSubmit={onAdvance} />}
+        {row.stage === "nm_confirmed" && <BookCarrierForm row={row} onSubmit={onAdvance} />}
+        {row.stage === "pickup"       && <PickupForm row={row} onSubmit={onAdvance} />}
+        {row.stage === "in_transit"   && <ArrivalForm row={row} onSubmit={onAdvance} />}
+        {row.stage === "delivering"   && <PodForm row={row} onSubmit={onAdvance} />}
       </DialogContent>
     </Dialog>
   );
