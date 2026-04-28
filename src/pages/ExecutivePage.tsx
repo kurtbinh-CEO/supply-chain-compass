@@ -778,22 +778,14 @@ export default function ExecutivePage() {
                   <SheetDescription>{kpiTargetLabel(k.key, k.target)} · {k.delta.dir === "up" ? "↑" : k.delta.dir === "down" ? "↓" : "→"} {k.delta.value} vs tháng trước</SheetDescription>
                 </SheetHeader>
 
-                {/* Tab bar */}
-                <div className="flex items-center gap-0 border-b border-surface-3 mt-4 mb-4">
-                  {tabs.map((t) => (
-                    <button
-                      key={t.key}
-                      onClick={() => setDrillTab(t.key)}
-                      className={cn(
-                        "px-3 py-2 text-table-sm font-medium transition-colors border-b-2",
-                        drillTab === t.key
-                          ? "border-primary text-primary"
-                          : "border-transparent text-text-2 hover:text-text-1"
-                      )}
-                    >
-                      {t.label}
-                    </button>
-                  ))}
+                {/* Tab bar (Pattern A — PillTabs size sm) */}
+                <div className="mt-4 mb-4">
+                  <PillTabs
+                    size="sm"
+                    tabs={tabs.map((t) => ({ key: t.key, label: t.label }))}
+                    active={drillTab}
+                    onChange={(k) => setDrillTab(k as typeof drillTab)}
+                  />
                 </div>
 
                 {/* Tab content */}
