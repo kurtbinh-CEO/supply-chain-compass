@@ -686,7 +686,15 @@ function LogicExplainer() {
 function PoLinesEditor({ container }: { container: ContainerPlan }) {
   const initial = useMemo(() => getPoLines(container), [container]);
   const [lines, setLines] = useState(initial);
-  useEffect(() => { setLines(getPoLines(container)); }, [container]);
+  // Track original qty per line index để validate
+  const originalQtys = useMemo(() => initial.map((l) => l.qtyM2), [initial]);
+  const [editValidations, setEditValidations] = useState<Record<number, QtyEditValidation | null>>({});
+  const [decreaseReasons, setDecreaseReasons] = useState<Record<number, string>>({});
+  useEffect(() => {
+    setLines(getPoLines(container));
+    setEditValidations({});
+    setDecreaseReasons({});
+  }, [container]);
 
   const totalM2 = lines.reduce((a, l) => a + l.qtyM2, 0);
   const totalKg = lines.reduce((a, l) => a + l.qtyM2 * skuWeight(l.sku), 0);
@@ -695,13 +703,57 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
   const overWeight = totalKg > VEHICLE_MAX_WEIGHT_KG;
   const nearLimit = !overWeight && totalKg > VEHICLE_MAX_WEIGHT_KG * 0.91;
 
-  const editQty = (idx: number, v: number) =>
-    setLines((arr) => arr.map((l, i) => i === idx ? { ...l, qtyM2: Math.max(0, v) } : l));
+  // Mock NM available qty (heuristic: 150% original cho mỗi line)
+  const nmAvailableFor = (idx: number) => Math.round(originalQtys[idx] * 1.5);
+  // Mock SKU MOQ
+  const moqFor = () => 500;
+
+  const editQty = (idx: number, v: number) => {
+    const newQty = Math.max(0, v);
+    const orig = originalQtys[idx];
+    const sku = lines[idx].sku;
+    // Tổng container weight TRỪ original line này (để validate độc lập)
+    const otherLinesWeight = lines.reduce(
+      (a, l, i) => i === idx ? a : a + l.qtyM2 * skuWeight(l.sku), 0,
+    );
+    const otherLinesM2 = lines.reduce(
+      (a, l, i) => i === idx ? a : a + l.qtyM2, 0,
+    );
+    const validation = validateQtyEdit({
+      originalQty: orig,
+      newQty,
+      sku,
+      containerCurrentWeightKg: otherLinesWeight,
+      containerCapacityM2: container.capacityM2,
+      containerCurrentFillM2: otherLinesM2,
+      nmAvailableQty: nmAvailableFor(idx),
+      skuMoq: moqFor(),
+    });
+    // Nếu BLOCK → không cho update
+    if (validation.severity === "block") {
+      setEditValidations((m) => ({ ...m, [idx]: validation }));
+      toast.error(`Không thể cập nhật: ${validation.message}`);
+      return;
+    }
+    setLines((arr) => arr.map((l, i) => i === idx ? { ...l, qtyM2: newQty } : l));
+    setEditValidations((m) => ({ ...m, [idx]: validation }));
+  };
   const removePo = (idx: number) => {
     const removed = lines[idx];
     setLines((arr) => arr.filter((_, i) => i !== idx));
+    setEditValidations((m) => { const c = { ...m }; delete c[idx]; return c; });
     toast.info(`Đã gỡ ${removed.poNumber} (${removed.sku}) — chuyển sang "PO chưa xếp"`);
   };
+
+  // Drop eligibility cho "Thêm drop"
+  const currentCns = useMemo(() => Array.from(new Set(lines.map((l) => l.cnCode))), [lines]);
+  const baseCn = currentCns[0];
+  const candidates = useMemo(
+    () => baseCn ? getCandidateDropCns(container.factoryCode, baseCn, currentCns) : [],
+    [container.factoryCode, baseCn, currentCns],
+  );
+  const eligibleCandidates = candidates.filter((c) => c.eligible);
+  const ineligibleCandidates = candidates.filter((c) => !c.eligible);
 
   return (
     <div className="rounded-card border border-surface-3 bg-surface-1 p-3 space-y-2">
@@ -714,10 +766,70 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
             onClick={() => toast.info("Thêm PO — chọn từ danh sách PO chưa xếp")}>
             <Plus className="h-3 w-3 mr-0.5" /> Thêm PO
           </Button>
-          <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]"
-            onClick={() => toast.info("Thêm SKU thủ công — cần SC Manager duyệt")}>
-            <Plus className="h-3 w-3 mr-0.5" /> Thêm SKU
-          </Button>
+          {/* Thêm drop — dropdown filter theo eligibility */}
+          {baseCn && candidates.length > 0 && (
+            <Select onValueChange={(cn) => {
+              const pair = candidates.find((c) => c.cn2 === cn);
+              if (!pair) return;
+              if (!pair.eligible) {
+                toast.error(`Không thể ghép ${cn}: ${pair.reason}`);
+                return;
+              }
+              toast.success(
+                `Đã thêm ${cn} vào chuyến (detour +${pair.detourKm}km, ` +
+                `tiết kiệm ~${((pair.estSavingVnd ?? 0) / 1_000_000).toFixed(1)}M₫)`,
+              );
+            }}>
+              <SelectTrigger className="h-6 px-2 text-[11px] w-auto gap-1 border-0 bg-transparent hover:bg-surface-2">
+                <Plus className="h-3 w-3" /> <span>Thêm drop</span>
+              </SelectTrigger>
+              <SelectContent className="max-w-[320px]">
+                {eligibleCandidates.length > 0 && (
+                  <>
+                    <div className="px-2 py-1 text-[10px] uppercase font-semibold text-success">
+                      ✓ Có thể ghép ({eligibleCandidates.length})
+                    </div>
+                    {eligibleCandidates.map((c) => (
+                      <SelectItem key={c.cn2} value={c.cn2} className="text-[11px]">
+                        <div className="flex flex-col gap-0.5 py-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-semibold">{c.cn2}</span>
+                            <span className="text-text-3">+{c.detourKm}km</span>
+                            {c.estSavingVnd && (
+                              <span className="text-success text-[10px] font-semibold">
+                                tiết kiệm ~{((c.estSavingVnd) / 1_000_000).toFixed(1)}M₫
+                              </span>
+                            )}
+                          </div>
+                          {c.direction && (
+                            <div className="text-text-3 text-[10px] italic">{c.direction}</div>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
+                {ineligibleCandidates.length > 0 && (
+                  <>
+                    <div className="px-2 py-1 text-[10px] uppercase font-semibold text-text-3 mt-1">
+                      ✗ Không ghép được ({ineligibleCandidates.length})
+                    </div>
+                    {ineligibleCandidates.map((c) => (
+                      <SelectItem key={c.cn2} value={c.cn2} disabled className="text-[11px] opacity-50">
+                        <div className="flex flex-col gap-0.5 py-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono line-through">{c.cn2}</span>
+                            <span className="text-text-3">+{c.detourKm}km</span>
+                          </div>
+                          <div className="text-danger text-[10px]">{c.reason}</div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
@@ -735,25 +847,82 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
         <tbody>
           {lines.map((l, i) => {
             const kg = l.qtyM2 * skuWeight(l.sku);
+            const v = editValidations[i];
+            const orig = originalQtys[i];
+            const changed = l.qtyM2 !== orig;
+            const sevColor =
+              v?.severity === "warn" ? "border-warning/60 bg-warning-bg/50 text-warning" :
+              v?.severity === "require_reason" ? "border-warning/60 bg-warning-bg/60 text-warning" :
+              v?.severity === "block" ? "border-danger/60 bg-danger-bg/50 text-danger" :
+              changed ? "border-info/60 bg-info-bg/40 text-info" :
+              "border-surface-3 bg-surface-1 text-text-1";
             return (
-              <tr key={`${l.poNumber}-${l.sku}-${i}`} className="border-b border-surface-3/40">
-                <td className="py-1.5 font-mono text-text-1 text-[11px]">{l.poNumber}</td>
-                <td className="py-1.5 text-text-2">{l.cnCode}</td>
-                <td className="py-1.5 text-text-2 font-mono text-[11px]">{l.sku}</td>
-                <td className="py-1.5 text-right">
-                  <input type="number" value={l.qtyM2}
-                    onChange={(e) => editQty(i, Number(e.target.value))}
-                    className="w-20 h-6 px-1.5 text-right tabular-nums rounded-button border border-surface-3 bg-surface-1 text-text-1 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
-                  />
-                </td>
-                <td className="py-1.5 text-right tabular-nums text-text-2">{kg.toLocaleString()}</td>
-                <td className="py-1.5 text-right">
-                  <button type="button" onClick={() => removePo(i)}
-                    className="text-danger hover:bg-danger/10 rounded p-0.5" title="Gỡ PO">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </td>
-              </tr>
+              <>
+                <tr key={`${l.poNumber}-${l.sku}-${i}`} className="border-b border-surface-3/40">
+                  <td className="py-1.5 font-mono text-text-1 text-[11px]">{l.poNumber}</td>
+                  <td className="py-1.5 text-text-2">{l.cnCode}</td>
+                  <td className="py-1.5 text-text-2 font-mono text-[11px]">{l.sku}</td>
+                  <td className="py-1.5 text-right">
+                    <div className="inline-flex flex-col items-end gap-0.5">
+                      <input type="number" value={l.qtyM2}
+                        onChange={(e) => editQty(i, Number(e.target.value))}
+                        className={cn(
+                          "w-20 h-6 px-1.5 text-right tabular-nums rounded-button border focus:outline-none focus:ring-1 focus:ring-primary/40",
+                          sevColor,
+                        )}
+                      />
+                      {changed && (
+                        <span className="text-[10px] text-text-3 tabular-nums">
+                          gốc: {orig.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-1.5 text-right tabular-nums text-text-2">{kg.toLocaleString()}</td>
+                  <td className="py-1.5 text-right">
+                    <button type="button" onClick={() => removePo(i)}
+                      className="text-danger hover:bg-danger/10 rounded p-0.5" title="Gỡ PO">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </td>
+                </tr>
+                {v && v.severity !== "ok" && (
+                  <tr key={`${l.poNumber}-${i}-msg`} className="border-b border-surface-3/40">
+                    <td colSpan={6} className="pb-2 pl-2">
+                      <div className={cn(
+                        "rounded-card border px-2.5 py-1.5 text-[11px] flex items-start gap-1.5",
+                        v.severity === "block" && "border-danger/40 bg-danger-bg text-danger",
+                        v.severity === "warn" && "border-warning/40 bg-warning-bg text-warning",
+                        v.severity === "require_reason" && "border-warning/40 bg-warning-bg text-warning",
+                      )}>
+                        <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                        <div className="flex-1 space-y-1">
+                          <div>{v.message}</div>
+                          {v.severity === "require_reason" && (
+                            <Select
+                              value={decreaseReasons[i] ?? ""}
+                              onValueChange={(val) =>
+                                setDecreaseReasons((m) => ({ ...m, [i]: val }))
+                              }
+                            >
+                              <SelectTrigger className="h-6 text-[11px] w-full max-w-xs">
+                                <SelectValue placeholder="Chọn lý do giảm…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {DECREASE_REASONS.map((r) => (
+                                  <SelectItem key={r.value} value={r.value} className="text-[11px]">
+                                    {r.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
             );
           })}
         </tbody>
