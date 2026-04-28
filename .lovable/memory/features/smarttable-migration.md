@@ -6,19 +6,21 @@ type: feature
 
 Mục tiêu: mọi bảng data dùng `<SmartTable>` + `drillDown` compact (defaultDensity="compact"). Bỏ raw `<table>` và custom expand state.
 
-## Done (đợt CRITICAL)
+## Done
 - ✅ GapScenarioPage — tracking table → SmartTable + drillDown per NM × SKU gap.
-- ✅ SOP BalanceLockTab — `BalanceCnTable` + `BalanceSkuTable` với drillDown compact. AOP Reconciliation + Decision Log vẫn raw (3-5 dòng tĩnh).
-- ✅ SOP ConsensusTab — `ConsensusCnTable` + `ConsensusSkuTable` với drillDown. **Bỏ HÀNH TRÌNH VERSION** (v0→v1→v2→v3) — đã có trong cột. Variance textarea giải trình nằm trong drillDown CN-first khi `_isVariance`. autoExpandWhen `|Δ top-down vs Σ(SKU v3)| > 10%`. SKU-first autoExpand `|Δ vs AOP| > 10%`.
+- ✅ SOP BalanceLockTab — `BalanceCnTable` + `BalanceSkuTable` với drillDown compact.
+- ✅ SOP ConsensusTab — `ConsensusCnTable` + `ConsensusSkuTable` với drillDown. Bỏ HÀNH TRÌNH VERSION. Variance textarea trong drillDown CN-first khi `_isVariance`. autoExpandWhen `|Δ| > 10%`.
+- ✅ DemandTotalTab — pivot 3-level (CN→SKU→Variant) + SKU-first đều dùng SmartTable nested drillDown. Bỏ 4 expand state sets. Variant breakdown (L3) là `DemandVariantTable` shared cho cả 2 pivot. Timeline tables (12m/3m/week) giữ raw vì là pivot matrix sticky-CN không phù hợp SmartTable.
 
 ## Pending (đợt sau)
 - ⏳ DrpPage (6 raw tables + 4 custom expand)
-- ⏳ MonitoringPage (6 raw tables + 6 custom expand)
-- ⏳ MasterDataPage (7 tabs)
-- ⏳ DemandPage / DemandTotalTab (5 raw tables — pivot 3-level)
+- ⏳ MonitoringPage (6 raw tables — heatmap matrix có thể giữ raw, conflict-log/recurring-exceptions/closed-loop migrate được)
+- ⏳ MasterDataPage (7 tabs — LT matrix giữ raw, list tabs migrate)
+- ⏳ InventorySSTab (3 raw + 3 custom expand)
 
 ## Convention
-- Parent: `defaultDensity="compact"`, `getRowId`, `rowSeverity`, `autoExpandWhen` cho exception rows, `summaryRow` cho TỔNG.
-- Child (drillDown): wrap trong `<div className="px-3 py-2 bg-surface-1/40">`, SmartTable compact với `screenId` dạng `${parent}-${rowId}-${child}`.
-- Editable cells (EditableCell, NoteCell) cần `e.stopPropagation()` để click không trigger expand toggle.
-- AOP Reconciliation + Decision Log trong BalanceLockTab vẫn là raw table (3-5 row tĩnh) — pragmatic giữ raw.
+- Parent: `defaultDensity="compact"`, `getRowId`, `rowSeverity`, `autoExpandWhen` cho exception, `summaryRow` cho TỔNG.
+- Child (drillDown): wrap `<div className="px-3 py-2 bg-surface-1/40">`, SmartTable compact, `screenId` dạng `${parent}-${rowId}-${child}`.
+- Editable cells cần `e.stopPropagation()` để click không trigger expand toggle.
+- Pivot matrix sticky-column (1 row × N month columns) giữ raw — SmartTable không phù hợp matrix layout.
+- AOP Reconciliation + Decision Log trong BalanceLockTab vẫn raw (3-5 row tĩnh).
