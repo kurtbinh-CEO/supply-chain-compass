@@ -1231,6 +1231,8 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
    §  Drill Zone B — Fill-up decision tree (consolidation / round-up / hold / ship)
    ════════════════════════════════════════════════════════════════════════════ */
 function RoundUpSuggestion({ container }: { container: ContainerPlan }) {
+  const { roles } = useAuth();
+  const actorRole = roles[0] ?? "guest";
   const totalM2 = container.fillM2;
   const moq = container.factoryCode === "NM-DT" ? 3000 :
               container.factoryCode === "NM-VGR" ? 2500 : 2000;
