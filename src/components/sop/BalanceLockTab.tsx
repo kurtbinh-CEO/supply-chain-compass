@@ -198,9 +198,9 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
           <div>
             <p className="text-table font-semibold text-danger mb-1">CN-BD cover 2,5d CRITICAL</p>
             <p className="text-table-sm text-text-2 mb-2">Net requirement {balRows[0] ? Math.max(0, balRows[0].demand - balRows[0].stock - balRows[0].pipeline).toLocaleString() : 0}m²</p>
-            <button onClick={() => setExpandedCns(prev => { const n = new Set(prev); n.has(0) ? n.delete(0) : n.add(0); return n; })} className="text-danger text-table-sm font-medium hover:underline flex items-center gap-0.5">
-              Xem SKU <ChevronRight className="h-3.5 w-3.5" />
-            </button>
+            <span className="text-danger text-table-sm font-medium">
+              Mở dòng CN-BD trong bảng để xem SKU ▸
+            </span>
           </div>
         </div>
         <div className="rounded-card border border-info/30 bg-info-bg p-4 flex items-start gap-3">
