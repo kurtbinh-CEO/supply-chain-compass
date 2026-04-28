@@ -884,33 +884,30 @@ export default function MonitoringPage() {
                   </div>
                 ))}
               </div>
-              <div>
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <h4 className="text-table-sm font-medium text-text-2">Top 5 recurring exceptions</h4>
-                  <TableDownloadButton targetId="monitoring-recurring-exceptions" filename="recurring-exceptions" size="xs" />
-                </div>
-                <table id="monitoring-recurring-exceptions" className="w-full">
-                  <thead>
-                    <tr className="border-b border-surface-3 bg-surface-1/50">
-                      {["Exception", "SKU", "CN", "Frequency", "Avg resolve", "Trend"].map((h, i) => (
-                        <th key={i} className="px-4 py-2 text-left text-table-header uppercase text-text-3">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recurringExceptions.map((r, i) => (
-                      <tr key={i} className="border-b border-surface-3/50 hover:bg-surface-1/30">
-                        <td className="px-4 py-2 text-table font-medium text-text-1">{r.exception}</td>
-                        <td className="px-4 py-2 text-table text-text-2">{r.sku}</td>
-                        <td className="px-4 py-2 text-table text-text-2">{r.cn}</td>
-                        <td className="px-4 py-2 text-table tabular-nums text-text-1">{r.freq}</td>
-                        <td className="px-4 py-2 text-table tabular-nums text-text-2">{r.avgResolve}</td>
-                        <td className="px-4 py-2 text-table text-text-2 flex items-center gap-1"><TrendIcon trend={r.trend} /> {r.trend}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {(() => {
+                type RecRow = typeof recurringExceptions[number] & { _id: string };
+                const rows: RecRow[] = recurringExceptions.map((r, i) => ({ ...r, _id: `${r.sku}-${r.cn}-${i}` }));
+                const cols: SmartTableColumn<RecRow>[] = [
+                  { key: "exception", label: "Exception", width: 170, hideable: false, sortable: true, render: (r) => <span className="font-medium text-text-1">{r.exception}</span> },
+                  { key: "sku", label: "SKU", width: 140, sortable: true, render: (r) => <span className="text-text-2">{r.sku}</span> },
+                  { key: "cn", label: "CN", width: 100, sortable: true, render: (r) => <span className="text-text-2">{r.cn}</span> },
+                  { key: "freq", label: "Frequency", width: 110, numeric: true, align: "right", sortable: true, accessor: (r) => parseInt(r.freq), render: (r) => <span className="tabular-nums text-text-1">{r.freq}</span> },
+                  { key: "avgResolve", label: "Avg resolve", width: 110, numeric: true, align: "right", sortable: true, accessor: (r) => parseFloat(r.avgResolve), render: (r) => <span className="tabular-nums text-text-2">{r.avgResolve}</span> },
+                  { key: "trend", label: "Trend", width: 140, render: (r) => <span className="text-text-2 flex items-center gap-1"><TrendIcon trend={r.trend} /> {r.trend}</span> },
+                ];
+                return (
+                  <SmartTable<RecRow>
+                    screenId="monitoring-recurring-exceptions"
+                    title="Top 5 recurring exceptions"
+                    exportFilename="recurring-exceptions"
+                    columns={cols}
+                    data={rows}
+                    defaultDensity="compact"
+                    getRowId={(r) => r._id}
+                    rowSeverity={(r) => (r.trend.includes("tệ") ? "shortage" : r.trend.includes("giảm") ? "ok" : "watch")}
+                  />
+                );
+              })()}
             </div>
           </CollapsibleSection>
 
