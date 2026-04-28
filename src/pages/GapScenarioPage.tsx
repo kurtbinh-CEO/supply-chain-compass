@@ -34,6 +34,14 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 import { useNavigate } from "react-router-dom";
 import { SummaryCards } from "@/components/SummaryCards";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import {
+  PRICE_TIERS,
+  RELEASED_BY_NM,
+  WEEKLY_BURN_BY_NM,
+  SKU_RELEASED_BY_NM,
+  getTierStatus,
+  type TierStatus,
+} from "@/data/price-tiers";
 
 // Map mỗi NM → SKU base chính (dùng để tra giá thực)
 const NM_TOP_SKU: Record<NmId, string> = {
@@ -99,6 +107,10 @@ interface GapRow extends CommitmentGapRow {
   velocity: "Tăng" | "Ổn định" | "Giảm";
   stale: boolean;
   relationshipPct: number;
+  releasedM2: number;       // đã kéo (PO released + delivered + completed)
+  remainingM2: number;      // cam kết − đã kéo
+  pulledPct: number;        // đã kéo / cam kết × 100
+  tier: TierStatus | null;  // tier hiện tại + risk + uplift
 }
 
 function buildRows(): GapRow[] {
@@ -121,6 +133,11 @@ function buildRows(): GapRow[] {
       relationship: 80,
       velocity: "Ổn định" as const,
     };
+    const releasedM2 = RELEASED_BY_NM[g.nmId] ?? 0;
+    const remainingM2 = Math.max(0, g.totalCommittedM2 - releasedM2);
+    const pulledPct = g.totalCommittedM2 > 0
+      ? Math.round((releasedM2 / g.totalCommittedM2) * 100)
+      : 0;
     return {
       ...g,
       nm,
@@ -129,6 +146,10 @@ function buildRows(): GapRow[] {
       velocity: m.velocity,
       stale: m.stale,
       relationshipPct: m.relationship,
+      releasedM2,
+      remainingM2,
+      pulledPct,
+      tier: getTierStatus(g.nmId, releasedM2),
     };
   });
 }
