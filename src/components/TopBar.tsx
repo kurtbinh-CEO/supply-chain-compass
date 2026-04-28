@@ -12,6 +12,7 @@ import { useCommandPalette } from "@/components/CommandPalette";
 import { NM_INVENTORY, FACTORIES } from "@/data/unis-enterprise-dataset";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { isMac, formatShortcut } from "@/lib/platform";
 
 const routeKeys: Record<string, string> = {
   "/workspace": "route.workspace",
@@ -209,6 +210,12 @@ export function TopBar() {
   const { open: openPalette } = useCommandPalette();
   const { enabled: farmerOn, toggle: toggleFarmer } = useFarmerMode();
 
+  /* OS-aware shortcut label for the Command Palette trigger.
+     Mac → "⌘K"; Windows/Linux → "Ctrl+K". useMemo so we only sniff UA once. */
+  const mac = useMemo(() => isMac(), []);
+  const paletteShortcut = useMemo(() => formatShortcut("⌘K"), []);
+  const osLabel = mac ? "Mac" : "Windows/Linux";
+
   const routeKey = routeKeys[location.pathname];
   const pageName = routeKey ? t(routeKey) : t("route.overview");
   const groupName = routeGroups[location.pathname] || "";
@@ -245,16 +252,40 @@ export function TopBar() {
 
       {/* ─── RIGHT: Search + Controls + User ─── */}
 
-      {/* Search — primary action, always visible */}
-      <button
-        onClick={openPalette}
-        className="flex shrink-0 items-center gap-2 rounded-lg border border-surface-3 bg-surface-0 px-3 h-8 text-table-sm text-text-3 hover:border-primary/40 hover:bg-surface-1 transition-all"
-        title="Command palette (⌘K)"
-      >
-        <Search className="h-3.5 w-3.5" />
-        <span className="hidden xl:inline">{t("search.placeholder")}</span>
-        <kbd className="hidden xl:inline ml-2 rounded bg-surface-3/60 px-1.5 py-0.5 text-[10px] font-mono text-text-3 border border-surface-3">⌘K</kbd>
-      </button>
+      {/* Search — primary action, always visible.
+          Tooltip giải thích phím tắt theo HĐH (Mac ⌘K vs Windows/Linux Ctrl+K). */}
+      <Tooltip delayDuration={150}>
+        <TooltipTrigger asChild>
+          <button
+            onClick={openPalette}
+            className="flex shrink-0 items-center gap-2 rounded-lg border border-surface-3 bg-surface-0 px-3 h-8 text-table-sm text-text-3 hover:border-primary/40 hover:bg-surface-1 transition-all"
+            aria-label={`Command palette (${paletteShortcut})`}
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span className="hidden xl:inline">{t("search.placeholder")}</span>
+            <kbd className="hidden xl:inline ml-2 rounded bg-surface-3/60 px-1.5 py-0.5 text-[10px] font-mono text-text-3 border border-surface-3">
+              {paletteShortcut}
+            </kbd>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" align="end" className="max-w-[260px]">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">Command Palette</span>
+              <kbd className="rounded bg-surface-3 px-1.5 py-0.5 text-[10px] font-mono">{paletteShortcut}</kbd>
+            </div>
+            <div className="text-caption text-text-3 leading-snug">
+              {mac
+                ? "Bạn đang dùng Mac — nhấn ⌘ + K để mở nhanh."
+                : "Bạn đang dùng Windows/Linux — nhấn Ctrl + K để mở nhanh."}
+            </div>
+            <div className="text-caption text-text-3/80 leading-snug pt-0.5 border-t border-surface-3 mt-0.5">
+              {mac ? "Trên Windows/Linux dùng Ctrl + K." : "Trên Mac dùng ⌘ + K."}
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+      <span className="sr-only">Phím tắt cho {osLabel}: {paletteShortcut}</span>
 
       {/* Farmer mode toggle — chỉ hiện ở mobile (<md). Desktop có ZoomControls
           riêng nên không cần. Aria-pressed để screen reader phát đúng trạng thái. */}
