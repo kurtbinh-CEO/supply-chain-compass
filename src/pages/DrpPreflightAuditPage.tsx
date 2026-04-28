@@ -102,22 +102,23 @@ export default function DrpPreflightAuditPage() {
 
     let cancelled = false;
     (async () => {
-      const { error } = await supabase.from("drp_preflight_snapshots").insert({
-        tenant,
-        cycle_id: planCycle.id,
-        cycle_label: planCycle.label,
-        cycle_status: planCycle.status,
-        cycle_version: planCycle.version,
-        can_run: summary.canRun,
-        ok_count: summary.ok,
-        warn_count: summary.warn,
-        block_count: summary.block,
-        total_count: summary.total,
-        block_reasons: summary.blockReasons,
-        // rows là PreflightAuditRow[] — JSONB sẽ giữ nguyên cấu trúc
-        rows: rows as unknown as object,
-        source: "audit_page",
-      });
+      const { error } = await supabase.from("drp_preflight_snapshots").insert([
+        {
+          tenant,
+          cycle_id: planCycle.id,
+          cycle_label: planCycle.label,
+          cycle_status: planCycle.status,
+          cycle_version: planCycle.version,
+          can_run: summary.canRun,
+          ok_count: summary.ok,
+          warn_count: summary.warn,
+          block_count: summary.block,
+          total_count: summary.total,
+          block_reasons: summary.blockReasons,
+          rows: rows as unknown as object,
+          source: "audit_page",
+        },
+      ]);
       if (cancelled) return;
       if (error) {
         // Không chặn UX — chỉ cảnh báo nhẹ và vẫn load history
