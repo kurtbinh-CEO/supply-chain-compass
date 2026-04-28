@@ -620,20 +620,27 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
   // ── Dirty tracking per container (cho close-confirm guard) ──
   const dirtyMap = useRef<Map<string, boolean>>(new Map());
   const [closeRequests, setCloseRequests] = useState<Record<string, number>>({});
-  const pendingCloseRef = useRef<Set<string>>(new Set());
+  const [collapseSignal, setCollapseSignal] =
+    useState<{ id: string; nonce: number } | null>(null);
 
   const handleDirtyChange = (containerId: string, dirty: boolean) => {
     if (dirty) dirtyMap.current.set(containerId, true);
     else dirtyMap.current.delete(containerId);
   };
 
-  // Trả false để chặn collapse → editor sẽ hiển thị confirm Dialog
+  // Trả false → chặn collapse, editor sẽ hiển thị confirm Dialog
   const beforeCollapse = (row: ContainerPlan): boolean => {
     if (!dirtyMap.current.get(row.id)) return true;
-    pendingCloseRef.current.add(row.id);
     setCloseRequests((m) => ({ ...m, [row.id]: (m[row.id] ?? 0) + 1 }));
     return false;
   };
+
+  // Editor xác nhận xong (Lưu hoặc Hủy) → ra lệnh SmartTable collapse row
+  const handleCloseAllowed = (containerId: string) => {
+    dirtyMap.current.delete(containerId);
+    setCollapseSignal({ id: containerId, nonce: Date.now() });
+  };
+
 
   // Khi highlightId đổi (cross-link arrive) → flash row & scroll
   useEffect(() => {
