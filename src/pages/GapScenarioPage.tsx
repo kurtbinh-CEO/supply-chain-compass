@@ -1155,6 +1155,12 @@ export default function GapScenarioPage() {
     totalRequested === 0
       ? 0
       : Math.round((totalGap / totalRequested) * 1000) / 10;
+  const totalCommitted = rows.reduce((s, r) => s + r.totalCommittedM2, 0);
+  const totalReleased = rows.reduce((s, r) => s + r.releasedM2, 0);
+  const totalRemaining = rows.reduce((s, r) => s + r.remainingM2, 0);
+  const burnedPct = totalCommitted > 0 ? Math.round((totalReleased / totalCommitted) * 100) : 0;
+  const tierAtRiskRows = rows.filter((r) => r.tier && r.tier.current !== "tier1");
+  const totalUplift = tierAtRiskRows.reduce((s, r) => s + (r.tier?.upliftIfDrop ?? 0), 0);
 
   return (
     <AppLayout>
