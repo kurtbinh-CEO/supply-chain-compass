@@ -645,19 +645,50 @@ function GapTrackingTable({
       priority: "low",
     },
     {
+      key: "scenario",
+      label: "Kịch bản KC",
+      width: 200,
+      render: (r) => {
+        const res = resolutions[r.nm.id];
+        if (!res) {
+          if (r.status === "on_track" && r.gapPct < 5) {
+            return <span className="text-table-sm text-success">🟢 Trong biên (&lt;5%)</span>;
+          }
+          return <span className="text-table-sm text-danger">🔴 Chưa xử lý</span>;
+        }
+        const pendingLabels: string[] = [];
+        if (res.poTopupId) pendingLabels.push(`📦 PO ${res.poTopupQty?.toLocaleString("vi-VN")}m² nháp`);
+        if (res.negotiateTaskId) pendingLabels.push(`📞 Đàm phán ${res.negotiateQty?.toLocaleString("vi-VN")}m² 5d`);
+        return (
+          <div>
+            <p className="text-table-sm">
+              <span className="text-warning font-semibold">🟡 Đang giải quyết</span>
+              <span className="text-text-3"> · KB {res.scenarioKey}</span>
+            </p>
+            {pendingLabels.length > 0 && (
+              <p className="text-caption text-text-3 mt-0.5 truncate">{pendingLabels.join(" + ")}</p>
+            )}
+          </div>
+        );
+      },
+    },
+    {
       key: "action",
       label: "",
-      width: 110,
+      width: 130,
       align: "right",
-      render: (r) => (
-        <Button
-          size="sm"
-          variant={r.status === "critical" ? "default" : "outline"}
-          onClick={(e) => { e.stopPropagation(); onSelect(r); }}
-        >
-          Mô phỏng
-        </Button>
-      ),
+      render: (r) => {
+        const res = resolutions[r.nm.id];
+        return (
+          <Button
+            size="sm"
+            variant={res ? "ghost" : r.status === "critical" ? "default" : "outline"}
+            onClick={(e) => { e.stopPropagation(); onSelect(r); }}
+          >
+            {res ? "Xem kịch bản" : "Chọn kịch bản"}
+          </Button>
+        );
+      },
     },
   ];
 
