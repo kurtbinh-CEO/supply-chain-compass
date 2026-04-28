@@ -385,6 +385,48 @@ function TrackingTab({
 /* Gap tracking table — SmartTable wrapper                                     */
 /* ─────────────────────────────────────────────────────────────────────────── */
 
+/**
+ * BurnDownBar — bar 2 lớp:
+ *  · nền = committed
+ *  · fill = released (% kéo)
+ *  · marker dọc = ngưỡng tier 1 (giữ giá ưu đãi)
+ */
+function BurnDownBar({
+  committed,
+  released,
+  tierThreshold,
+}: {
+  committed: number;
+  released: number;
+  tierThreshold?: number;
+}) {
+  if (committed <= 0) return null;
+  const pct = Math.min(100, (released / committed) * 100);
+  const fillColor = pct >= 80 ? "bg-success" : pct >= 50 ? "bg-warning" : "bg-danger";
+  const tierLeft = tierThreshold && tierThreshold > 0
+    ? Math.min(100, (tierThreshold / committed) * 100)
+    : null;
+  const tierReached = tierThreshold ? released >= tierThreshold : true;
+  return (
+    <div className="relative mt-1 h-1.5 w-full rounded-full bg-surface-3 overflow-visible">
+      <div
+        className={cn("h-full rounded-full transition-all", fillColor)}
+        style={{ width: `${pct}%` }}
+      />
+      {tierLeft != null && (
+        <div
+          className={cn(
+            "absolute -top-0.5 h-2.5 w-px",
+            tierReached ? "bg-success" : "bg-text-2"
+          )}
+          style={{ left: `${tierLeft}%` }}
+          title={`Ngưỡng Tier 1: ${tierThreshold!.toLocaleString("vi-VN")} m²`}
+        />
+      )}
+    </div>
+  );
+}
+
 function GapTrackingTable({
   rows,
   onSelect,
