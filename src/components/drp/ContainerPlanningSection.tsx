@@ -3,14 +3,16 @@ import { useNavigate } from "react-router-dom";
 import {
   Truck, Package, AlertTriangle, ArrowRight, Clock, MapPin, Pencil,
   TrendingUp, Link2, GripVertical, ArrowUp, ArrowDown, RotateCcw, Save,
-  Shuffle, Check, FileClock, X,
+  Shuffle, Check, FileClock, X, ChevronDown, ChevronRight, Info,
+  Plus, Scissors, Weight, Sparkles, ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import {
-  CONTAINER_PLANS, summarizeContainers,
-  type ContainerPlan,
+  CONTAINER_PLANS, summarizeContainers, containerWeightKg, getPoLines,
+  skuWeight, VEHICLE_MAX_WEIGHT_KG, UNSCHEDULED_POS,
+  type ContainerPlan, type UnscheduledPo,
 } from "@/data/container-plans";
 import { RouteMapPreview } from "./RouteMapPreview";
 import { KpiImpactGrid } from "./KpiImpactGrid";
@@ -18,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   getDraft, saveDraft, clearDraft, formatDraftAge,
   type ContainerEditDraft,
@@ -619,6 +622,313 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
     setCollapseSignal({ id: containerId, nonce: Date.now() });
   };
 
+/* ════════════════════════════════════════════════════════════════════════════
+   §  ① LogicExplainer — collapsible 4-bước đóng container
+   ════════════════════════════════════════════════════════════════════════════ */
+function LogicExplainer() {
+  const [open, setOpen] = useState(false);
+  const steps = [
+    { n: "❶", title: "GỘP", desc: "PO cùng nhà máy + cùng hướng + cùng ngày giao → ghép vào 1 chuyến." },
+    { n: "❷", title: "CHỌN XE", desc: "Ưu tiên xe lớn nhất (40ft → 20ft → Xe 10T). Greedy fill từ trên xuống." },
+    { n: "❸", title: "ROUND UP", desc: "Khoảng trống < 15% MOQ → gợi ý thêm SKU bán chạy để đầy chuyến." },
+    { n: "❹", title: "CÂN TRỌNG TẢI", desc: "Mỗi chuyến tối đa 28T. Vượt → tự động tách 2 chuyến." },
+  ];
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button type="button"
+          className="w-full flex items-center justify-between rounded-card border border-info/30 bg-info-bg px-3 py-2 text-table-sm text-info hover:bg-info-bg/70 transition-colors"
+        >
+          <span className="flex items-center gap-2">
+            <Info className="h-4 w-4" />
+            <strong>4 bước đóng container</strong>
+            <span className="text-info/70 hidden sm:inline">— hệ thống tối ưu thế nào?</span>
+          </span>
+          <span className="inline-flex items-center gap-1 text-caption font-medium">
+            {open ? <>Thu gọn <ChevronDown className="h-3.5 w-3.5" /></> : <>Xem <ChevronRight className="h-3.5 w-3.5" /></>}
+          </span>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-2 rounded-card border border-info/20 bg-surface-1 p-3 space-y-2">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            {steps.map((s) => (
+              <div key={s.n} className="rounded-card border border-surface-3 bg-surface-2 p-2.5">
+                <div className="flex items-center gap-1.5 text-text-1 font-semibold text-table-sm">
+                  <span>{s.n}</span><span>{s.title}</span>
+                </div>
+                <div className="text-caption text-text-2 mt-1 leading-snug">{s.desc}</div>
+              </div>
+            ))}
+          </div>
+          <div className="text-caption text-text-3 border-t border-surface-3 pt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <strong className="text-text-2">Ưu tiên:</strong>
+            <span>Fill% cao</span><ArrowRight className="h-3 w-3" />
+            <span>Ít chuyến</span><ArrowRight className="h-3 w-3" />
+            <span>Ít cước</span><ArrowRight className="h-3 w-3" />
+            <span>Đúng SLA</span>
+          </div>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   §  Drill Zone A — PO lines bên trong container (editable qty)
+   ════════════════════════════════════════════════════════════════════════════ */
+function PoLinesEditor({ container }: { container: ContainerPlan }) {
+  const initial = useMemo(() => getPoLines(container), [container]);
+  const [lines, setLines] = useState(initial);
+  useEffect(() => { setLines(getPoLines(container)); }, [container]);
+
+  const totalM2 = lines.reduce((a, l) => a + l.qtyM2, 0);
+  const totalKg = lines.reduce((a, l) => a + l.qtyM2 * skuWeight(l.sku), 0);
+  const remainM2 = container.capacityM2 - totalM2;
+  const remainKg = VEHICLE_MAX_WEIGHT_KG - totalKg;
+  const overWeight = totalKg > VEHICLE_MAX_WEIGHT_KG;
+  const nearLimit = !overWeight && totalKg > VEHICLE_MAX_WEIGHT_KG * 0.91;
+
+  const editQty = (idx: number, v: number) =>
+    setLines((arr) => arr.map((l, i) => i === idx ? { ...l, qtyM2: Math.max(0, v) } : l));
+  const removePo = (idx: number) => {
+    const removed = lines[idx];
+    setLines((arr) => arr.filter((_, i) => i !== idx));
+    toast.info(`Đã gỡ ${removed.poNumber} (${removed.sku}) — chuyển sang "PO chưa xếp"`);
+  };
+
+  return (
+    <div className="rounded-card border border-surface-3 bg-surface-1 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="text-table-sm font-semibold text-text-1 flex items-center gap-1.5">
+          <Package className="h-3.5 w-3.5 text-primary" /> PO trong container
+        </div>
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]"
+            onClick={() => toast.info("Thêm PO — chọn từ danh sách PO chưa xếp")}>
+            <Plus className="h-3 w-3 mr-0.5" /> Thêm PO
+          </Button>
+          <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]"
+            onClick={() => toast.info("Thêm SKU thủ công — cần SC Manager duyệt")}>
+            <Plus className="h-3 w-3 mr-0.5" /> Thêm SKU
+          </Button>
+        </div>
+      </div>
+
+      <table className="w-full text-table-sm">
+        <thead>
+          <tr className="text-text-3 text-caption border-b border-surface-3">
+            <th className="text-left py-1 font-medium">PO#</th>
+            <th className="text-left py-1 font-medium">CN</th>
+            <th className="text-left py-1 font-medium">SKU</th>
+            <th className="text-right py-1 font-medium">SL m²</th>
+            <th className="text-right py-1 font-medium">KG</th>
+            <th className="w-8"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((l, i) => {
+            const kg = l.qtyM2 * skuWeight(l.sku);
+            return (
+              <tr key={`${l.poNumber}-${l.sku}-${i}`} className="border-b border-surface-3/40">
+                <td className="py-1.5 font-mono text-text-1 text-[11px]">{l.poNumber}</td>
+                <td className="py-1.5 text-text-2">{l.cnCode}</td>
+                <td className="py-1.5 text-text-2 font-mono text-[11px]">{l.sku}</td>
+                <td className="py-1.5 text-right">
+                  <input type="number" value={l.qtyM2}
+                    onChange={(e) => editQty(i, Number(e.target.value))}
+                    className="w-20 h-6 px-1.5 text-right tabular-nums rounded-button border border-surface-3 bg-surface-1 text-text-1 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  />
+                </td>
+                <td className="py-1.5 text-right tabular-nums text-text-2">{kg.toLocaleString()}</td>
+                <td className="py-1.5 text-right">
+                  <button type="button" onClick={() => removePo(i)}
+                    className="text-danger hover:bg-danger/10 rounded p-0.5" title="Gỡ PO">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+        <tfoot>
+          <tr className="border-t-2 border-surface-3 font-semibold text-text-1">
+            <td colSpan={3} className="py-1.5 text-right text-text-3">TỔNG</td>
+            <td className="py-1.5 text-right tabular-nums">{totalM2.toLocaleString()}m²</td>
+            <td className={cn("py-1.5 text-right tabular-nums", overWeight && "text-danger", nearLimit && "text-warning")}>
+              {totalKg.toLocaleString()}kg
+            </td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 text-caption">
+        <div className="flex items-center gap-3">
+          <span className="text-text-3">
+            Capacity: <span className="text-text-1 tabular-nums font-medium">{container.capacityM2.toLocaleString()}m²</span> /{" "}
+            <span className="text-text-1 tabular-nums font-medium">{VEHICLE_MAX_WEIGHT_KG.toLocaleString()}kg</span>
+          </span>
+          <span className="text-text-3">·</span>
+          <span className={cn("tabular-nums font-medium",
+            remainM2 < 0 || remainKg < 0 ? "text-danger" : "text-success")}>
+            Còn: {Math.max(0, remainM2).toLocaleString()}m² ({Math.max(0, remainKg).toLocaleString()}kg)
+          </span>
+        </div>
+        {overWeight && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-danger/40 bg-danger-bg px-2 py-0.5 text-[11px] font-semibold text-danger">
+            <AlertTriangle className="h-3 w-3" /> Vượt 28T! Giảm hoặc tách chuyến.
+          </span>
+        )}
+        {nearLimit && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-warning/40 bg-warning-bg px-2 py-0.5 text-[11px] font-semibold text-warning">
+            <Weight className="h-3 w-3" /> Gần trọng tải tối đa
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   §  Drill Zone B — Round-up gợi ý
+   ════════════════════════════════════════════════════════════════════════════ */
+function RoundUpSuggestion({ container }: { container: ContainerPlan }) {
+  const totalM2 = container.fillM2;
+  const moq = container.factoryCode === "NM-DT" ? 3000 :
+              container.factoryCode === "NM-VGR" ? 2500 : 2000;
+  const gap = moq - totalM2;
+  const gapPct = (gap / moq) * 100;
+  const remainCap = container.capacityM2 - totalM2;
+  const totalKg = containerWeightKg(container);
+  const remainKg = VEHICLE_MAX_WEIGHT_KG - totalKg;
+
+  if (gap <= 0) {
+    return (
+      <div className="rounded-card border border-success/30 bg-success-bg/50 p-2.5 text-table-sm text-success flex items-center gap-2">
+        <Check className="h-4 w-4 shrink-0" />
+        <span>Đã đạt MOQ {moq.toLocaleString()}m² — không cần round-up.</span>
+      </div>
+    );
+  }
+  if (gapPct >= 15) {
+    return (
+      <div className="rounded-card border border-warning/30 bg-warning-bg/50 p-2.5 text-table-sm text-warning flex items-center gap-2">
+        <AlertTriangle className="h-4 w-4 shrink-0" />
+        <span>
+          Gap {gap.toLocaleString()}m² ({gapPct.toFixed(0)}% MOQ) <strong>quá lớn</strong> — đặt PO riêng thay vì round-up.
+        </span>
+      </div>
+    );
+  }
+
+  const fillAfter = Math.min(100, ((totalM2 + Math.min(gap, remainCap)) / container.capacityM2) * 100);
+
+  return (
+    <div className="rounded-card border border-info/30 bg-info-bg/50 p-3 space-y-2">
+      <div className="flex items-center gap-2 text-table-sm font-semibold text-info">
+        <Sparkles className="h-3.5 w-3.5" /> Round-up gợi ý
+      </div>
+      <div className="text-caption text-text-2 leading-snug">
+        MOQ {container.factoryName}: <strong>{moq.toLocaleString()}m²</strong>.
+        Hiện: <strong>{totalM2.toLocaleString()}m²</strong> (thiếu {gap.toLocaleString()}m²).
+        Container còn chứa được: <strong>{remainCap.toLocaleString()}m²</strong> (weight còn {remainKg.toLocaleString()}kg).
+      </div>
+      <div className="text-caption text-text-1">
+        Gợi ý: +{Math.round(gap * 0.6)} GA-300 + {Math.round(gap * 0.4)} GA-600
+        → fill <strong className="text-success">{fillAfter.toFixed(0)}%</strong>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <Button size="sm" className="h-7 px-2.5 text-[11px]"
+          onClick={() => toast.success(`Đã round-up ${container.id} — fill ${fillAfter.toFixed(0)}%`)}>
+          <Check className="h-3 w-3 mr-1" /> Round up
+        </Button>
+        <Button size="sm" variant="outline" className="h-7 px-2.5 text-[11px]"
+          onClick={() => toast.info("Chọn SKU thủ công — coming soon")}>
+          Chọn SKU khác
+        </Button>
+        <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-text-3"
+          onClick={() => toast.info("Bỏ qua round-up — giữ nguyên kế hoạch")}>
+          Bỏ qua
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   §  ③ UnscheduledPosSection — PO chưa xếp
+   ════════════════════════════════════════════════════════════════════════════ */
+function UnscheduledPosSection({ pos }: { pos: UnscheduledPo[] }) {
+  const [open, setOpen] = useState(true);
+  if (pos.length === 0) {
+    return (
+      <div className="rounded-card border border-success/30 bg-success-bg/40 px-3 py-2 text-table-sm text-success flex items-center gap-2">
+        <Check className="h-4 w-4" /> Tất cả PO đã được xếp vào chuyến.
+      </div>
+    );
+  }
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button type="button"
+          className="w-full flex items-center justify-between rounded-card border border-warning/30 bg-warning-bg/50 px-3 py-2 text-table-sm text-warning hover:bg-warning-bg transition-colors"
+        >
+          <span className="flex items-center gap-2">
+            <ListChecks className="h-4 w-4" />
+            <strong>{pos.length} PO chưa xếp</strong>
+            <span className="text-warning/70 hidden sm:inline">— cần xử lý trước khi duyệt</span>
+          </span>
+          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-2 rounded-card border border-surface-3 bg-surface-1 overflow-hidden">
+          <table className="w-full text-table-sm">
+            <thead className="bg-surface-2">
+              <tr className="text-text-3 text-caption">
+                <th className="text-left px-3 py-1.5 font-medium">PO#</th>
+                <th className="text-left px-3 py-1.5 font-medium">NM</th>
+                <th className="text-left px-3 py-1.5 font-medium">CN</th>
+                <th className="text-left px-3 py-1.5 font-medium">SKU</th>
+                <th className="text-right px-3 py-1.5 font-medium">SL</th>
+                <th className="text-left px-3 py-1.5 font-medium">Lý do</th>
+                <th className="text-right px-3 py-1.5 font-medium">Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pos.map((p) => (
+                <tr key={p.poNumber} className="border-t border-surface-3/60">
+                  <td className="px-3 py-1.5 font-mono text-text-1 text-[11px]">{p.poNumber}</td>
+                  <td className="px-3 py-1.5 text-text-2">{p.factoryName}</td>
+                  <td className="px-3 py-1.5 text-text-2">{p.cnCode}</td>
+                  <td className="px-3 py-1.5 text-text-2 font-mono text-[11px]">{p.sku}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums text-text-1">{p.qtyM2.toLocaleString()}m²</td>
+                  <td className="px-3 py-1.5 text-caption text-text-3">{p.reason}</td>
+                  <td className="px-3 py-1.5 text-right">
+                    <div className="inline-flex items-center gap-1">
+                      <Button size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                        onClick={() => toast.success(`Đã tạo chuyến mới cho ${p.poNumber}`)}>
+                        Tạo cont
+                      </Button>
+                      {p.suggestedContainerId && (
+                        <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px] text-primary"
+                          onClick={() => toast.success(`Đã ghép ${p.poNumber} vào ${p.suggestedContainerId}`)}>
+                          Ghép {p.suggestedContainerId}
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
 
   // Khi highlightId đổi (cross-link arrive) → flash row & scroll
   useEffect(() => {
@@ -720,6 +1030,29 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
       ),
     },
     {
+      key: "weight", label: "Trọng lượng", width: 110, align: "right",
+      render: (r) => {
+        const kg = containerWeightKg(r);
+        const tons = (kg / 1000).toFixed(1).replace(/\.0$/, "");
+        const over = kg > VEHICLE_MAX_WEIGHT_KG;
+        const near = !over && kg > VEHICLE_MAX_WEIGHT_KG * 0.91;
+        return (
+          <div className="flex items-center justify-end gap-1 tabular-nums">
+            {over && <AlertTriangle className="h-3 w-3 text-danger" />}
+            <span className={cn(
+              "font-medium",
+              over && "text-danger font-bold",
+              near && "text-warning",
+            )}>
+              {tons}T / 28T
+            </span>
+          </div>
+        );
+      },
+      accessor: (r) => containerWeightKg(r),
+      numeric: true,
+    },
+    {
       key: "freight", label: "Cước", width: 100, align: "right",
       render: (r) => (
         <div className="text-right tabular-nums">
@@ -770,6 +1103,19 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
     },
   ];
 
+  // Sort: fill ASC (thấp lên đầu) — farmer thấy chuyến cần xử lý trước
+  const sortedPlans = useMemo(
+    () => [...CONTAINER_PLANS].sort((a, b) => a.fillPct - b.fillPct),
+    [],
+  );
+
+  const overloadCount = summary.overweight ?? 0;
+  const holdCount = CONTAINER_PLANS.filter((p) => p.status === "hold").length;
+  const readyCount = CONTAINER_PLANS.filter(
+    (p) => (p.status === "draft" || p.status === "ready") &&
+           containerWeightKg(p) <= VEHICLE_MAX_WEIGHT_KG,
+  ).length;
+
   return (
     <section className="space-y-4">
       {/* ─── Section header ─── */}
@@ -782,7 +1128,7 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
           <p className="text-caption text-text-3 mt-0.5">
             Hệ thống đã tối ưu {summary.total} chuyến, ghép {summary.consolidated} tuyến — tiết kiệm{" "}
             <span className="text-success font-medium">{fmtVndShort(summary.totalSaving)}</span>.
-            Bạn có thể chỉnh xe, gỡ điểm giao, hoặc tách chuyến.
+            Bạn có thể chỉnh PO, đổi xe, round-up hoặc tách chuyến.
           </p>
         </div>
         <Button
@@ -792,6 +1138,9 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
           <Truck className="h-3.5 w-3.5 mr-1" /> Tạo chuyến mới
         </Button>
       </div>
+
+      {/* ─── ① Logic explainer (collapsed mặc định) ─── */}
+      <LogicExplainer />
 
       {/* ─── Mini summary chips ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -822,70 +1171,88 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
         </div>
       </div>
 
-      {/* ─── Container table ─── */}
+      {/* ─── ② Container table — sort fill ASC ─── */}
       <SmartTable
         screenId="drp-container-list"
         columns={cols}
-        data={CONTAINER_PLANS}
+        data={sortedPlans}
         defaultDensity="compact"
         title={`Kế hoạch ${summary.total} chuyến container`}
         exportFilename={`drp-container-w20`}
         getRowId={(r) => r.id}
         beforeCollapse={beforeCollapse}
         collapseRowSignal={collapseSignal}
-        rowSeverity={(r) =>
-          r.fillPct < 70 ? "watch" : undefined
+        rowSeverity={(r) => {
+          if (containerWeightKg(r) > VEHICLE_MAX_WEIGHT_KG) return "shortage";
+          if (r.fillPct < 70) return "watch";
+          return undefined;
+        }}
+        autoExpandWhen={(r) =>
+          r.fillPct < 70 || containerWeightKg(r) > VEHICLE_MAX_WEIGHT_KG
         }
-        autoExpandWhen={(r) => r.fillPct < 70}
-        drillDown={(r) => (
-          <div className="space-y-3 p-3 bg-surface-1/40 rounded-card">
-            {/* Suggestion banner */}
-            {r.suggestion && r.suggestionLabel && (
-              <div className={cn("rounded-card border px-3 py-2 text-table-sm font-medium flex items-center gap-2",
-                SUGGESTION_CLASS[r.suggestion] ?? "border-info/40 bg-info-bg text-info")}>
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                <span>{r.suggestionLabel}</span>
-              </div>
-            )}
-
-            {/* Route visual */}
-            <div className="flex items-center gap-2 text-table-sm">
-              <span className="font-semibold text-text-1">Tuyến:</span>
-              <span className="text-text-2">{r.routeLabel}</span>
-              <span className="text-text-3">·</span>
-              <span className="text-text-3 tabular-nums">{r.distanceKm} km</span>
-              <span className="text-text-3">·</span>
-              <span className="tabular-nums text-text-2">
-                Fill {r.fillM2.toLocaleString()} / {r.capacityM2.toLocaleString()} m²
-              </span>
-            </div>
-
-            {/* Drop points — with reorder mode + close-confirm wiring */}
-            <DropPointsEditor
-              container={r}
-              onCnClick={onCnClick}
-              onDirtyChange={handleDirtyChange}
-              closeRequestNonce={closeRequests[r.id] ?? 0}
-              onCloseAllowed={() => handleCloseAllowed(r.id)}
-            />
-
-            {/* Cost line */}
-            <div className="flex items-center justify-between text-table-sm border-t border-surface-3 pt-2">
-              <div className="flex items-center gap-3 text-text-2">
-                <span>Cước: <strong className="text-text-1 tabular-nums">{fmtVnd(r.freightVnd)}</strong></span>
-                {r.savingVnd > 0 && (
-                  <span className="text-success">
-                    Tiết kiệm <strong className="tabular-nums">{fmtVnd(r.savingVnd)}</strong>
+        drillDown={(r) => {
+          const overWeight = containerWeightKg(r) > VEHICLE_MAX_WEIGHT_KG;
+          return (
+            <div className="space-y-3 p-3 bg-surface-1/40 rounded-card">
+              {/* Suggestion / overload banner */}
+              {overWeight && (
+                <div className="rounded-card border border-danger/40 bg-danger-bg px-3 py-2 text-table-sm font-medium flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-danger">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    Vượt 28T ({(containerWeightKg(r) / 1000).toFixed(1)}T) — bắt buộc tách 2 chuyến
                   </span>
-                )}
+                  <Button size="sm" className="h-7 px-2.5 text-[11px] bg-danger text-danger-foreground hover:bg-danger/90"
+                    onClick={() => toast.success(`Đã tách ${r.id} → ${r.id}A (40ft 27,9T) + ${r.id}B (20ft 20,5T)`)}>
+                    <Scissors className="h-3 w-3 mr-1" /> Tách tự động
+                  </Button>
+                </div>
+              )}
+              {!overWeight && r.suggestion && r.suggestionLabel && (
+                <div className={cn("rounded-card border px-3 py-2 text-table-sm font-medium flex items-center gap-2",
+                  SUGGESTION_CLASS[r.suggestion] ?? "border-info/40 bg-info-bg text-info")}>
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  <span>{r.suggestionLabel}</span>
+                </div>
+              )}
+
+              {/* ─── Zone A: PO trong container (editable) ─── */}
+              <PoLinesEditor container={r} />
+
+              {/* ─── Zone B: Round-up gợi ý ─── */}
+              <RoundUpSuggestion container={r} />
+
+              {/* ─── Zone C: Tuyến giao + drop reorder ─── */}
+              <div className="rounded-card border border-surface-3 bg-surface-1 p-3 space-y-2">
+                <div className="text-table-sm font-semibold text-text-1 flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-primary" /> Tuyến giao
+                </div>
+                <DropPointsEditor
+                  container={r}
+                  onCnClick={onCnClick}
+                  onDirtyChange={handleDirtyChange}
+                  closeRequestNonce={closeRequests[r.id] ?? 0}
+                  onCloseAllowed={() => handleCloseAllowed(r.id)}
+                />
               </div>
-              <div className="flex items-center gap-2 text-text-3">
-                <Package className="h-3 w-3" />
-                <span>{r.poIds.length} PO: <span className="font-mono">{r.poIds.join(", ")}</span></span>
+
+              {/* Cost line */}
+              <div className="flex items-center justify-between text-table-sm border-t border-surface-3 pt-2">
+                <div className="flex items-center gap-3 text-text-2">
+                  <span>Cước: <strong className="text-text-1 tabular-nums">{fmtVnd(r.freightVnd)}</strong></span>
+                  {r.savingVnd > 0 && (
+                    <span className="text-success">
+                      Tiết kiệm <strong className="tabular-nums">{fmtVnd(r.savingVnd)}</strong>
+                    </span>
+                  )}
+                </div>
+                <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]"
+                  onClick={(e) => { e.stopPropagation(); setEditing(r); }}>
+                  <Pencil className="h-3 w-3 mr-1" /> Đổi xe / preview
+                </Button>
               </div>
             </div>
-          </div>
-        )}
+          );
+        }}
         emptyState={{
           icon: <Truck className="h-10 w-10" />,
           title: "Chưa có chuyến container nào",
@@ -896,20 +1263,34 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
       {/* ─── Edit preview dialog (full workspace với live recalc) ─── */}
       <ContainerEditPreview container={editing} onClose={() => setEditing(null)} />
 
+      {/* ─── ③ PO chưa xếp ─── */}
+      <UnscheduledPosSection pos={UNSCHEDULED_POS} />
+
       {/* ─── Footer action ─── */}
-      <div className="flex items-center justify-between border-t border-surface-3 pt-3">
-        <div className="text-caption text-text-3">
-          {summary.total} chuyến · {summary.consolidated} ghép tuyến · Fill TB {summary.avgFill}% ·
-          Cước {fmtVndShort(summary.totalFreight)}
+      <div className="flex items-center justify-between border-t border-surface-3 pt-3 gap-3 flex-wrap">
+        <div className="text-caption text-text-3 flex items-center gap-3 flex-wrap">
+          <span>
+            <strong className="text-text-1">{readyCount}/{summary.total}</strong> sẵn sàng
+          </span>
+          {holdCount > 0 && (
+            <span className="text-warning">· {holdCount} giữ chờ</span>
+          )}
+          {overloadCount > 0 && (
+            <span className="text-danger font-semibold">
+              · ⚠️ {overloadCount} vượt tải — cần [Tách] trước khi duyệt
+            </span>
+          )}
         </div>
         <Button
           size="sm"
+          disabled={overloadCount > 0}
+          title={overloadCount > 0 ? "Còn chuyến vượt tải — bấm [Tách tự động] trong drill-down" : undefined}
           onClick={() => {
             navigate("/orders?tab=approval");
-            toast.success("Đã chuyển sang Đơn hàng — các PO/TO từ DRP đã được lọc");
+            toast.success(`Đã chuyển ${readyCount} container sang Đơn hàng`);
           }}
         >
-          Duyệt & Chuyển Đơn hàng <ArrowRight className="h-3.5 w-3.5 ml-1" />
+          Duyệt {readyCount} container <ArrowRight className="h-3.5 w-3.5 ml-1" />
         </Button>
       </div>
     </section>

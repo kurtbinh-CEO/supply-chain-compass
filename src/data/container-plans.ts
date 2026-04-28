@@ -7,13 +7,54 @@
    - poIds & cnCodes để cross-link sang tab Phân bổ và sang /orders.
 */
 
+/* ─── Trọng lượng SKU (kg/m²) — UNIS gạch men ─── */
+export const SKU_WEIGHT_KG_PER_M2: Record<string, number> = {
+  "GA-300": 5,    // gạch ốp 300
+  "GA-300 A4": 5,
+  "GA-400": 8,    // gạch lát 400
+  "GA-600": 22,   // gạch lát 600 — nặng nhất
+  "GA-600 B2": 22,
+  "GR60-IV-A": 22,
+  "GR60-BG-A": 22,
+  "GR80-WH-B": 24,
+  "GT-300": 6,    // gạch trang trí
+  "GM-300": 12,   // gạch mosaic
+};
+export const VEHICLE_MAX_WEIGHT_KG = 28000; // UNIS 28T
+
+export function skuWeight(sku: string): number {
+  return SKU_WEIGHT_KG_PER_M2[sku] ?? 10; // fallback
+}
+
+export interface PoLine {
+  poNumber: string;       // PO-BD-W20-002
+  cnCode: string;
+  cnName: string;
+  sku: string;
+  qtyM2: number;
+  eta: string;
+}
+
 export interface DropPoint {
   order: number;
   cnCode: string;
   cnName: string;
   qtyM2: number;
-  eta: string;            // "20/05" hoặc ISO
+  eta: string;
   skuLines: { sku: string; qty: number }[];
+}
+
+/** PO chưa xếp được vào chuyến nào — section ③ */
+export interface UnscheduledPo {
+  poNumber: string;
+  factoryCode: string;
+  factoryName: string;
+  cnCode: string;
+  cnName: string;
+  sku: string;
+  qtyM2: number;
+  reason: string;         // "Không tuyến", "Bổ sung kịch bản"…
+  suggestedContainerId?: string; // gợi ý ghép vào TP-xxx
 }
 
 export type ContainerStatus = "draft" | "ready" | "hold" | "in_transit" | "delivered";
@@ -92,23 +133,23 @@ export const CONTAINER_PLANS: ContainerPlan[] = [
     poIds: ["PO-HCM-W20-001"],
   },
 
-  /* ──── 4: Ghép HN → HP → QN, fill 78% ──── */
+  /* ──── 4: VƯỢT TẢI 48,4T — đòi hỏi tách xe (demo trọng tải) ──── */
   {
     id: "TP-004", vehicle: "40ft", capacityM2: 2400,
-    factoryCode: "NM-VGR", factoryName: "Viglacera",
-    fillPct: 78, fillM2: 1872,
-    freightVnd: 19_400_000, savingVnd: 5_100_000,
-    routeLabel: "VGR → CN-HN → CN-HP → CN-QN", distanceKm: 320,
-    status: "ready", consolidated: true,
+    factoryCode: "NM-DT", factoryName: "Đồng Tâm",
+    fillPct: 92, fillM2: 2200,
+    freightVnd: 19_400_000, savingVnd: 0,
+    routeLabel: "ĐT → CN-HN → CN-HP", distanceKm: 320,
+    status: "draft", consolidated: true,
+    suggestion: "tach_xe",
+    suggestionLabel: "Vượt 28T (đang 48,4T) — bắt buộc tách 2 chuyến",
     drops: [
-      { order: 1, cnCode: "CN-HN", cnName: "CN Hà Nội", qtyM2: 900, eta: "21/05",
-        skuLines: [{ sku: "GR60-IV-A", qty: 600 }, { sku: "GR80-WH-B", qty: 300 }] },
-      { order: 2, cnCode: "CN-HP", cnName: "CN Hải Phòng", qtyM2: 600, eta: "21/05",
-        skuLines: [{ sku: "GR60-BG-A", qty: 600 }] },
-      { order: 3, cnCode: "CN-QN", cnName: "CN Quảng Ninh", qtyM2: 372, eta: "22/05",
-        skuLines: [{ sku: "GR60-IV-A", qty: 372 }] },
+      { order: 1, cnCode: "CN-HN", cnName: "CN Hà Nội", qtyM2: 1270, eta: "21/05",
+        skuLines: [{ sku: "GA-600", qty: 1270 }] },
+      { order: 2, cnCode: "CN-HP", cnName: "CN Hải Phòng", qtyM2: 930, eta: "21/05",
+        skuLines: [{ sku: "GA-600", qty: 930 }] },
     ],
-    poIds: ["PO-HN-W20-002", "PO-HP-W20-001", "PO-QN-W20-001"],
+    poIds: ["PO-HN-W20-002", "PO-HP-W20-001"],
   },
 
   /* ──── 5: ĐT → CT, single, fill 95% ──── */
@@ -239,14 +280,55 @@ export function getContainersForCn(cnCode: string): ContainerPlan[] {
   return CONTAINER_PLANS.filter((c) => c.drops.some((d) => d.cnCode === cnCode));
 }
 
+/** Tổng trọng lượng container (kg) — sum tất cả SKU lines */
+export function containerWeightKg(c: ContainerPlan): number {
+  return c.drops.reduce((sum, d) =>
+    sum + d.skuLines.reduce((ws, l) => ws + l.qty * skuWeight(l.sku), 0), 0);
+}
+
+/** Quy đổi PO line từ drops (ghép theo poIds heuristically) */
+export function getPoLines(c: ContainerPlan): PoLine[] {
+  const lines: PoLine[] = [];
+  c.drops.forEach((d) => {
+    // Tìm PO của CN này trong poIds
+    const po = c.poIds.find((p) => p.includes(d.cnCode.replace(/^CN-/, ""))) ?? c.poIds[0];
+    d.skuLines.forEach((s) => {
+      lines.push({
+        poNumber: po, cnCode: d.cnCode, cnName: d.cnName,
+        sku: s.sku, qtyM2: s.qty, eta: d.eta,
+      });
+    });
+  });
+  return lines;
+}
+
 export function summarizeContainers(plans: ContainerPlan[]) {
   const total = plans.length;
   const consolidated = plans.filter((p) => p.consolidated).length;
   const lowFill = plans.filter((p) => p.fillPct < 70).length;
+  const overweight = plans.filter((p) => containerWeightKg(p) > VEHICLE_MAX_WEIGHT_KG).length;
   const totalFreight = plans.reduce((a, p) => a + p.freightVnd, 0);
   const totalSaving = plans.reduce((a, p) => a + p.savingVnd, 0);
   const avgFill = total > 0
     ? Math.round(plans.reduce((a, p) => a + p.fillPct, 0) / total)
     : 0;
-  return { total, consolidated, lowFill, totalFreight, totalSaving, avgFill };
+  return { total, consolidated, lowFill, overweight, totalFreight, totalSaving, avgFill };
 }
+
+/* ─── PO chưa xếp ─── */
+export const UNSCHEDULED_POS: UnscheduledPo[] = [
+  {
+    poNumber: "PO-AG-W20-001", factoryCode: "NM-VGR", factoryName: "Viglacera",
+    cnCode: "CN-AG", cnName: "CN An Giang",
+    sku: "GA-400", qtyM2: 150,
+    reason: "Không tuyến — chưa có chuyến đi An Giang tuần này",
+  },
+  {
+    poNumber: "PO-BD-TOPUP-2401", factoryCode: "NM-TKO", factoryName: "Toko",
+    cnCode: "CN-BD", cnName: "CN Bình Dương",
+    sku: "GA-600", qtyM2: 625,
+    reason: "Bổ sung kịch bản — phát sinh từ Gap Scenario",
+    suggestedContainerId: "TP-001",
+  },
+];
+
