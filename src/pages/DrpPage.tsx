@@ -1833,6 +1833,8 @@ export default function DrpPage() {
         </div>
       </div>
       )}
+      </>
+      )}
 
       {/* Footer note */}
       <div className="mt-4 flex items-center gap-2 text-caption text-text-3">
