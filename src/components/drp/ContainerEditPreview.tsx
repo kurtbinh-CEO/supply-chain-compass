@@ -111,13 +111,32 @@ export function ContainerEditPreview({ container, onClose }: Props) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
 
-  // Reset when container changes
+  // Reset when container changes + log auto-disabled vehicles (one-shot per open)
   useEffect(() => {
     if (!container) return;
     setVehicleKey(container.vehicle in VEHICLES ? container.vehicle : "40ft");
     setActiveDrops(container.drops);
     setRemoved([]);
-  }, [container]);
+    // One-shot audit: which vehicles are auto-disabled by route-vehicle matrix?
+    const route = inferContainerRoute(container.factoryCode, container.drops.map((d) => d.cnCode));
+    const allowed = new Set<string>(route.constraint.allowedVehicles);
+    const VC: Record<string, string> = {
+      "Xe5T": "truck_5t", "Xe10T": "truck_10t",
+      "20ft": "container_20ft", "40ft": "container_40ft",
+    };
+    const blocked = Object.keys(VEHICLES).filter((k) => !allowed.has(VC[k] ?? k));
+    if (blocked.length > 0) {
+      emitTransportAudit({
+        category: "vehicle",
+        severity: "block",
+        title: `Tự động chặn ${blocked.length} loại xe trên tuyến ${REGION_LABELS[route.origin]} → ${REGION_LABELS[route.dest]}`,
+        detail: `Bị chặn: ${blocked.map((k) => VEHICLES[k].label).join(", ")} · Quy tắc: ${route.constraint.notes}`,
+        containerId: container.id,
+        actorRole,
+        meta: { blocked, route: route.constraint.id, containerRequired: route.constraint.containerRequired },
+      });
+    }
+  }, [container, actorRole]);
 
   const before = useMemo<RecalcOutput | null>(
     () => container ? recalc({ base: container, drops: container.drops, vehicleKey: container.vehicle }) : null,
