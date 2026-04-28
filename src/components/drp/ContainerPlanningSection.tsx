@@ -166,6 +166,7 @@ function DropPointsEditor({
     setReorderMode(false);
     setDraftSavedAt(null);
     setPendingDraft(null);
+    setRemovedCnCodes(new Set());
     const existing = getDraft(container.id);
     if (existing && container.drops.length >= 2) {
       const baseline = container.drops.map((d) => d.cnCode).join("|");
