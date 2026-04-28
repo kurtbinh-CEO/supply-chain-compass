@@ -210,6 +210,12 @@ export function TopBar() {
   const { open: openPalette } = useCommandPalette();
   const { enabled: farmerOn, toggle: toggleFarmer } = useFarmerMode();
 
+  /* OS-aware shortcut label for the Command Palette trigger.
+     Mac → "⌘K"; Windows/Linux → "Ctrl+K". useMemo so we only sniff UA once. */
+  const mac = useMemo(() => isMac(), []);
+  const paletteShortcut = useMemo(() => formatShortcut("⌘K"), []);
+  const osLabel = mac ? "Mac" : "Windows/Linux";
+
   const routeKey = routeKeys[location.pathname];
   const pageName = routeKey ? t(routeKey) : t("route.overview");
   const groupName = routeGroups[location.pathname] || "";
