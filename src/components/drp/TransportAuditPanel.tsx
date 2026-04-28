@@ -6,7 +6,9 @@ import { useMemo, useState } from "react";
 import {
   ChevronDown, ChevronRight, History, Truck, Pencil, MapPin,
   Sparkles, Trash2, Filter, Check, AlertTriangle, X, Info,
+  Copy, CheckCheck,
 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -126,48 +128,171 @@ export function TransportAuditPanel({ defaultOpen = false }: { defaultOpen?: boo
             </div>
           ) : (
             <div className="max-h-[360px] overflow-y-auto rounded-card border border-surface-3 divide-y divide-surface-3/60">
-              {filtered.map((e) => {
-                const CatIcon = CATEGORY_META[e.category].icon;
-                const SevIcon = SEV_ICON[e.severity];
-                return (
-                  <div key={e.id} className="px-3 py-2 hover:bg-surface-2/60 transition-colors">
-                    <div className="flex items-start gap-2">
-                      <div className={cn(
-                        "shrink-0 mt-0.5 rounded-full border p-1",
-                        SEV_TONE[e.severity],
-                      )}>
-                        <SevIcon className="h-3 w-3" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <div className="flex items-center gap-1.5 text-table-sm font-medium text-text-1 min-w-0">
-                            <CatIcon className="h-3 w-3 text-text-3 shrink-0" />
-                            <span className="truncate">{e.title}</span>
-                            {e.containerId && (
-                              <span className="font-mono text-[10px] text-primary shrink-0">{e.containerId}</span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[10px] text-text-3 tabular-nums shrink-0">
-                            <span className="rounded-full border border-surface-3 bg-surface-2 px-1.5 py-0.5 font-mono uppercase">
-                              {e.actorRole}
-                            </span>
-                            <span>{fmtTs(e.ts)}</span>
-                          </div>
-                        </div>
-                        {e.detail && (
-                          <div className="mt-0.5 text-[11px] text-text-2 leading-snug">
-                            {e.detail}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {filtered.map((e) => (
+                <AuditRow key={e.id} event={e} />
+              ))}
             </div>
           )}
         </div>
       </CollapsibleContent>
     </Collapsible>
   );
+}
+
+function AuditRow({ event: e }: { event: TransportAuditEvent }) {
+  const CatIcon = CATEGORY_META[e.category].icon;
+  const SevIcon = SEV_ICON[e.severity];
+  const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const json = useMemo(() => JSON.stringify(e, null, 2), [e]);
+  const metaEntries = useMemo(
+    () => (e.meta ? Object.entries(e.meta) : []),
+    [e.meta],
+  );
+
+  async function copyJson(ev: React.MouseEvent) {
+    ev.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(json);
+      setCopied(true);
+      toast({ title: "Đã sao chép", description: "JSON payload đã copy vào clipboard." });
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast({ title: "Sao chép thất bại", description: "Trình duyệt không cho phép clipboard.", variant: "destructive" });
+    }
+  }
+
+  return (
+    <div className="hover:bg-surface-2/60 transition-colors">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full text-left px-3 py-2"
+      >
+        <div className="flex items-start gap-2">
+          <div className={cn(
+            "shrink-0 mt-0.5 rounded-full border p-1",
+            SEV_TONE[e.severity],
+          )}>
+            <SevIcon className="h-3 w-3" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 text-table-sm font-medium text-text-1 min-w-0">
+                {expanded
+                  ? <ChevronDown className="h-3 w-3 text-text-3 shrink-0" />
+                  : <ChevronRight className="h-3 w-3 text-text-3 shrink-0" />}
+                <CatIcon className="h-3 w-3 text-text-3 shrink-0" />
+                <span className="truncate">{e.title}</span>
+                {e.containerId && (
+                  <span className="font-mono text-[10px] text-primary shrink-0">{e.containerId}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] text-text-3 tabular-nums shrink-0">
+                <span className="rounded-full border border-surface-3 bg-surface-2 px-1.5 py-0.5 font-mono uppercase">
+                  {e.actorRole}
+                </span>
+                <span>{fmtTs(e.ts)}</span>
+              </div>
+            </div>
+            {e.detail && (
+              <div className="mt-0.5 ml-[18px] text-[11px] text-text-2 leading-snug">
+                {e.detail}
+              </div>
+            )}
+          </div>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="px-3 pb-3 pl-[34px] space-y-2 border-t border-surface-3/60 bg-surface-2/40">
+          {/* Quick facts grid */}
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 pt-2 text-[11px]">
+            <Fact label="Ma trận" value={CATEGORY_META[e.category].label} />
+            <Fact label="Mức độ" value={e.severity} mono />
+            <Fact label="Vai trò" value={e.actorRole} mono />
+            <Fact label="Container" value={e.containerId ?? "—"} mono />
+            <Fact label="Thời gian" value={fmtTs(e.ts)} mono />
+            <Fact label="Event ID" value={e.id} mono />
+          </div>
+
+          {/* Structured metadata */}
+          {metaEntries.length > 0 && (
+            <div className="rounded-card border border-surface-3 bg-surface-1">
+              <div className="px-2 py-1 text-[10px] uppercase tracking-wide text-text-3 border-b border-surface-3/60">
+                Metadata chi tiết
+              </div>
+              <div className="divide-y divide-surface-3/40">
+                {metaEntries.map(([k, v]) => (
+                  <div key={k} className="grid grid-cols-[120px_1fr] gap-2 px-2 py-1 text-[11px]">
+                    <span className="font-mono text-text-3">{k}</span>
+                    <MetaValue value={v} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* JSON payload */}
+          <div className="rounded-card border border-surface-3 bg-surface-1">
+            <div className="flex items-center justify-between px-2 py-1 border-b border-surface-3/60">
+              <span className="text-[10px] uppercase tracking-wide text-text-3">JSON payload</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-[11px]"
+                onClick={copyJson}
+              >
+                {copied
+                  ? <><CheckCheck className="h-3 w-3 mr-1 text-success" /> Đã copy</>
+                  : <><Copy className="h-3 w-3 mr-1" /> Copy JSON</>}
+              </Button>
+            </div>
+            <pre className="px-2 py-1 text-[10.5px] leading-snug font-mono text-text-2 overflow-x-auto max-h-[220px] whitespace-pre">
+{json}
+            </pre>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Fact({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-center gap-1.5 min-w-0">
+      <span className="text-text-3 shrink-0">{label}:</span>
+      <span className={cn("truncate text-text-1", mono && "font-mono text-[10.5px]")}>{value}</span>
+    </div>
+  );
+}
+
+function MetaValue({ value }: { value: unknown }) {
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-text-3 italic">[]</span>;
+    return (
+      <div className="flex flex-wrap gap-1">
+        {value.map((v, i) => (
+          <span key={i} className="rounded-full border border-surface-3 bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-text-2">
+            {typeof v === "object" ? JSON.stringify(v) : String(v)}
+          </span>
+        ))}
+      </div>
+    );
+  }
+  if (value && typeof value === "object") {
+    return (
+      <pre className="font-mono text-[10.5px] text-text-2 whitespace-pre-wrap break-all">
+        {JSON.stringify(value, null, 2)}
+      </pre>
+    );
+  }
+  if (typeof value === "boolean") {
+    return <span className={cn("font-mono", value ? "text-success" : "text-danger")}>{String(value)}</span>;
+  }
+  if (value === null || value === undefined) {
+    return <span className="text-text-3 italic">—</span>;
+  }
+  return <span className="text-text-1 break-all">{String(value)}</span>;
 }
