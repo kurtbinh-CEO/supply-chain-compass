@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ChevronDown, Info, TrendingUp, TrendingDown, Minus, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
+import { ArrowRight, TrendingUp, TrendingDown, Minus, CheckCircle2, AlertTriangle } from "lucide-react";
 import { LogicTooltip } from "@/components/LogicTooltip";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { toast } from "sonner";
 import { ViewPivotToggle, usePivotMode, CnGapBadge } from "@/components/ViewPivotToggle";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import type { DemandCnSummary } from "@/hooks/useDemandForecasts";
 import { BRANCHES, DEMAND_FC, SKU_BASES, SKU_VARIANTS } from "@/data/unis-enterprise-dataset";
 import { FcSourceBadge } from "@/components/demand/FcSourceBadge";
@@ -20,13 +21,12 @@ const FC_VERSIONS: { key: FcVersion; label: string; desc: string }[] = [
   { key: "v3", label: "v3 — SC Manager đã điều chỉnh", desc: "Bản chốt sau S&OP / SC Manager" },
 ];
 
-/* Deterministic per-CN accuracy (%) for v0 baseline vs v3 adjusted.    */
-/* FVA = accuracy(v3) − accuracy(v0). Positive → adjustment improved.   */
+/* Deterministic per-CN accuracy (%) for v0 baseline vs v3 adjusted. */
 const CN_FVA_TABLE: Record<string, { accV0: number; accV3: number }> = {
   "CN-HN":  { accV0: 78, accV3: 86 },  "CN-HP":  { accV0: 80, accV3: 84 },
   "CN-NA":  { accV0: 72, accV3: 75 },  "CN-DN":  { accV0: 81, accV3: 88 },
-  "CN-QN":  { accV0: 76, accV3: 79 },  "CN-NT":  { accV0: 70, accV3: 68 }, // FVA<0
-  "CN-BMT": { accV0: 74, accV3: 77 },  "CN-PK":  { accV0: 68, accV3: 65 }, // FVA<0
+  "CN-QN":  { accV0: 76, accV3: 79 },  "CN-NT":  { accV0: 70, accV3: 68 },
+  "CN-BMT": { accV0: 74, accV3: 77 },  "CN-PK":  { accV0: 68, accV3: 65 },
   "CN-BD":  { accV0: 82, accV3: 90 },  "CN-HCM": { accV0: 84, accV3: 91 },
   "CN-CT":  { accV0: 77, accV3: 81 },  "CN-LA":  { accV0: 75, accV3: 78 },
 };
@@ -46,39 +46,6 @@ interface Props {
 type View = "12m" | "3m" | "week";
 
 const tenantScale: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.72, "Mondelez": 1.35 };
-
-// Mock fallback data
-const baseCnDataMock = [
-  { cn: "CN-BD", fc: 1600, b2b: 680, po: 345, vsLm: 14, stock: 210 },
-  { cn: "CN-ĐN", fc: 1150, b2b: 420, po: 280, vsLm: 7, stock: 840 },
-  { cn: "CN-HN", fc: 1350, b2b: 520, po: 310, vsLm: -4, stock: 630 },
-  { cn: "CN-CT", fc: 700, b2b: 380, po: 165, vsLm: -4, stock: 440 },
-];
-
-const skuPerCnMock: Record<string, { item: string; variant: string; fc: number; b2b: number; po: number; vsLm: number; source: string; mape: number }[]> = {
-  "CN-BD": [
-    { item: "GA-300", variant: "A4", fc: 580, b2b: 340, po: 155, vsLm: 8, source: "Holt-Winters", mape: 18.4 },
-    { item: "GA-300", variant: "B2", fc: 120, b2b: 40, po: 20, vsLm: -3, source: "XGBoost", mape: 12.1 },
-    { item: "GA-600", variant: "A4", fc: 620, b2b: 220, po: 130, vsLm: 15, source: "XGBoost", mape: 14.2 },
-    { item: "GA-600", variant: "B2", fc: 280, b2b: 80, po: 40, vsLm: 22, source: "Holt-Winters", mape: 16.8 },
-  ],
-  "CN-ĐN": [
-    { item: "GA-300", variant: "A4", fc: 420, b2b: 180, po: 110, vsLm: 5, source: "XGBoost", mape: 11.2 },
-    { item: "GA-600", variant: "A4", fc: 480, b2b: 160, po: 120, vsLm: 9, source: "XGBoost", mape: 13.5 },
-    { item: "GA-400", variant: "A4", fc: 250, b2b: 80, po: 50, vsLm: 4, source: "Holt-Winters", mape: 19.0 },
-  ],
-  "CN-HN": [
-    { item: "GA-300", variant: "A4", fc: 500, b2b: 220, po: 130, vsLm: -2, source: "XGBoost", mape: 10.8 },
-    { item: "GA-300", variant: "C1", fc: 280, b2b: 95, po: 55, vsLm: -6, source: "Holt-Winters", mape: 20.1 },
-    { item: "GA-600", variant: "A4", fc: 380, b2b: 150, po: 90, vsLm: -3, source: "XGBoost", mape: 15.0 },
-    { item: "GA-400", variant: "D5", fc: 190, b2b: 55, po: 35, vsLm: -8, source: "Holt-Winters", mape: 22.3 },
-  ],
-  "CN-CT": [
-    { item: "GA-300", variant: "A4", fc: 300, b2b: 180, po: 75, vsLm: -2, source: "XGBoost", mape: 14.5 },
-    { item: "GA-400", variant: "A4", fc: 250, b2b: 130, po: 55, vsLm: -5, source: "Holt-Winters", mape: 17.2 },
-    { item: "GA-600", variant: "B2", fc: 150, b2b: 70, po: 35, vsLm: -7, source: "XGBoost", mape: 13.8 },
-  ],
-};
 
 const months12 = ["T1","T2","T3","T4","T5","T6","T7","T8","T9","T10","T11","T12"];
 const base12m = [4200,3800,4100,7280,7650,7280,6620,5500,4800,5200,3800,3500];
@@ -150,7 +117,7 @@ function CompositionBar({ fc, b2b, po, total }: { fc: number; b2b: number; po: n
 }
 
 // ── Mini Sparkline (pure SVG) ──
-function MiniSparkline({ data, color = "var(--primary)", width = 56, height = 20 }: { data: number[]; color?: string; width?: number; height?: number }) {
+function MiniSparkline({ data, width = 56, height = 20 }: { data: number[]; width?: number; height?: number }) {
   if (data.length < 2) return null;
   const min = Math.min(...data);
   const max = Math.max(...data);
@@ -162,18 +129,17 @@ function MiniSparkline({ data, color = "var(--primary)", width = 56, height = 20
   });
   const trend = data[data.length - 1] - data[0];
   const strokeColor = trend > 0 ? "hsl(var(--success))" : trend < 0 ? "hsl(var(--danger))" : "hsl(var(--text-3))";
-  // Fill area
   const areaPoints = `0,${height} ${points.join(" ")} ${width},${height}`;
   return (
     <svg width={width} height={height} className="inline-block" viewBox={`0 0 ${width} ${height}`}>
       <polygon points={areaPoints} fill={strokeColor} fillOpacity={0.08} />
       <polyline points={points.join(" ")} fill="none" stroke={strokeColor} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={String((data.length - 1) / (data.length - 1) * width)} cy={String(height - ((data[data.length - 1] - min) / range) * (height - 4) - 2)} r="2" fill={strokeColor} />
+      <circle cx={String(width)} cy={String(height - ((data[data.length - 1] - min) / range) * (height - 4) - 2)} r="2" fill={strokeColor} />
     </svg>
   );
 }
 
-// ── 3-month trend data per CN (T3, T4, T5) ──
+// ── 3-month trend data per CN ──
 const cnTrend3m: Record<string, number[]> = {
   "CN-BD": [5800, 6200, 7045],
   "CN-ĐN": [3600, 3900, 4130],
@@ -181,105 +147,107 @@ const cnTrend3m: Record<string, number[]> = {
   "CN-CT": [1300, 1280, 1245],
 };
 
-// ── Trend Icon ──
 function TrendIcon({ value }: { value: number }) {
   if (value > 0) return <TrendingUp className="h-3 w-3 text-success inline" />;
   if (value < 0) return <TrendingDown className="h-3 w-3 text-danger inline" />;
   return <Minus className="h-3 w-3 text-text-3 inline" />;
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   Domain types
+   ════════════════════════════════════════════════════════════════════════ */
+interface CnRow {
+  cn: string;
+  fc: number;
+  b2b: number;
+  po: number;
+  total: number;
+  stock: number;
+  cover: number;
+  vsLm: number;
+  shareOfTotal: number;
+}
+interface SkuRow {
+  item: string;
+  variant: string;
+  fc: number;
+  b2b: number;
+  po: number;
+  total: number;
+  vsLm: number;
+  source: string;
+  mape: number;
+}
+interface SkuAggRow {
+  item: string;
+  variant: string;
+  totalFc: number;
+  totalB2b: number;
+  totalPo: number;
+  totalDemand: number;
+  cnDetails: { cn: string; fc: number; b2b: number; po: number; total: number; vsLm: number; mape: number; source: string }[];
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Main component
+   ════════════════════════════════════════════════════════════════════════ */
 export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
   const [view, setView] = useState<View>("12m");
-  const [expandedCns, setExpandedCns] = useState<Set<string>>(new Set());
-  const [expandedSkus, setExpandedSkus] = useState<Set<string>>(new Set());
-  /** L3 — variants opened under a CN→SKU pair, keyed by `${cnCode}::${skuBase}`. */
-  const [expandedCnSkus, setExpandedCnSkus] = useState<Set<string>>(new Set());
-  /** L3 (SKU-first) — CN→variant breakdown opened under a SKU→CN pair. */
-  const [expandedSkuCns, setExpandedSkuCns] = useState<Set<string>>(new Set());
   const [overrideModal, setOverrideModal] = useState<{ sku: string; value: number } | null>(null);
   const [pivotMode, setPivotMode] = usePivotMode("demand");
   const [fcVersion, setFcVersion] = useState<FcVersion>("v3");
 
   const s = tenantScale[tenant] || 1;
 
-  // Per-version multiplier on top of v0 baseline (FC numbers).
-  // Versions reflect successive review passes; v3 is the SC Manager-locked plan.
   const versionMult: Record<FcVersion, number> = { v0: 0.96, v1: 0.99, v2: 1.02, v3: 1.0 };
   const vMult = versionMult[fcVersion];
 
-  const toggleCn = (cnKey: string) => {
-    setExpandedCns(prev => {
-      const next = new Set(prev);
-      if (next.has(cnKey)) next.delete(cnKey); else next.add(cnKey);
-      return next;
-    });
-  };
-
-  const toggleSku = (skuKey: string) => {
-    setExpandedSkus(prev => {
-      const next = new Set(prev);
-      if (next.has(skuKey)) next.delete(skuKey); else next.add(skuKey);
-      return next;
-    });
-  };
-
-  const toggleCnSku = (key: string) => {
-    setExpandedCnSkus(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  };
-
-  const toggleSkuCn = (key: string) => {
-    setExpandedSkuCns(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  };
-
-  /** Variant split per SKU base. Phú Mỹ bases ship only A4+B2 (see dataset). */
+  /** Variant split per SKU base. */
   const variantSplit = (baseCode: string): Array<{ tag: "A4" | "B2" | "C1"; share: number }> => {
     const variants = SKU_VARIANTS.filter(v => v.baseCode === baseCode);
     if (variants.length === 2) return [{ tag: "A4", share: 0.62 }, { tag: "B2", share: 0.38 }];
     return [{ tag: "A4", share: 0.50 }, { tag: "B2", share: 0.30 }, { tag: "C1", share: 0.20 }];
   };
 
-  /* ── Single source of truth: DEMAND_FC (12 CN × 15 SKU bases ≈ 47 000 m²) ── */
-  const cnData = useMemo(() => {
+  /* ── Single source of truth: DEMAND_FC ── */
+  const cnDataRaw = useMemo(() => {
     return BRANCHES.map((br) => {
       const fcRows = DEMAND_FC.filter((r) => r.cnCode === br.code);
       const fcRaw = fcRows.reduce((a, r) => a + r.fcM2, 0);
       const fc = Math.round(fcRaw * s * vMult);
       const b2b = b2bPerCn[br.code] ?? 0;
-      // PO confirmed ≈ 22 % of FC (deterministic estimate per branch)
       const po = Math.round(fc * 0.22);
       const total = fc + b2b + po;
       const stock = Math.round(total * 0.45);
       const cover = total > 0 ? Math.round((stock / (total / 30)) * 10) / 10 : 0;
-      // vsLM derived deterministically from CN trust hash → −8 .. +14
       const seed = br.code.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
       const vsLm = (seed % 23) - 8;
-      return { cn: br.code, fc, b2b, po, total, stock, cover, vsLm, skus: [] as DemandCnSummary["skus"] };
+      return { cn: br.code, fc, b2b, po, total, stock, cover, vsLm };
     });
   }, [s, vMult, b2bPerCn]);
 
-  // DB summaries (when present) are merged in only as overlay info — totals stay canonical.
   const useDbData = cnSummaries.length > 0;
 
   const totals = useMemo(() => ({
-    fc: cnData.reduce((a, c) => a + c.fc, 0),
-    b2b: cnData.reduce((a, c) => a + c.b2b, 0),
-    po: cnData.reduce((a, c) => a + c.po, 0),
-    total: cnData.reduce((a, c) => a + c.total, 0),
+    fc: cnDataRaw.reduce((a, c) => a + c.fc, 0),
+    b2b: cnDataRaw.reduce((a, c) => a + c.b2b, 0),
+    po: cnDataRaw.reduce((a, c) => a + c.po, 0),
+    total: cnDataRaw.reduce((a, c) => a + c.total, 0),
     vsLm: 4,
     cover: 8.5,
-  }), [cnData]);
+  }), [cnDataRaw]);
+
+  const cnData: CnRow[] = useMemo(
+    () => cnDataRaw.map((c) => ({
+      ...c,
+      shareOfTotal: totals.total > 0 ? Math.round((c.total / totals.total) * 100) : 0,
+    })),
+    [cnDataRaw, totals.total],
+  );
 
   /* ── skuPerCn built from DEMAND_FC ── */
   const skuPerCn = useMemo(() => {
-    const result: Record<string, { item: string; variant: string; fc: number; b2b: number; po: number; vsLm: number; source: string; mape: number }[]> = {};
+    const result: Record<string, SkuRow[]> = {};
     BRANCHES.forEach((br) => {
       const rows = DEMAND_FC.filter((r) => r.cnCode === br.code);
       result[br.code] = rows
@@ -287,37 +255,33 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
           const base = SKU_BASES.find((b) => b.code === r.skuBaseCode);
           const fc = Math.round(r.fcM2 * s * vMult);
           const seed = (br.code + r.skuBaseCode).split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-          const mape = 9 + (seed % 14); // 9–22 %
+          const mape = 9 + (seed % 14);
           const vsLm = ((seed % 19) - 7);
+          const b2b = Math.round(fc * 0.18);
+          const po = Math.round(fc * 0.22);
           return {
             item: r.skuBaseCode,
             variant: base?.name?.split(" ")[0] ?? "—",
-            fc,
-            b2b: Math.round(fc * 0.18),
-            po: Math.round(fc * 0.22),
+            fc, b2b, po,
+            total: fc + b2b + po,
             vsLm,
             source: mape <= 14 ? "XGBoost" : "Holt-Winters",
             mape,
           };
         })
         .sort((a, b) => b.fc - a.fc)
-        .slice(0, 6); // keep table compact
+        .slice(0, 6);
     });
     return result;
   }, [s, vMult]);
 
   // SKU-first aggregation
-  const skuAggregated = useMemo(() => {
-    const skuMap: Record<string, { item: string; variant: string; totalFc: number; totalB2b: number; totalPo: number; totalDemand: number;
-      cnDetails: { cn: string; fc: number; b2b: number; po: number; total: number; vsLm: number; mape: number; source: string }[];
-    }> = {};
+  const skuAggregated: SkuAggRow[] = useMemo(() => {
+    const skuMap: Record<string, SkuAggRow> = {};
     Object.entries(skuPerCn).forEach(([cnKey, skus]) => {
       skus.forEach(sk => {
         const key = `${sk.item}-${sk.variant}`;
-        // skuPerCn already scaled by tenant `s` × FC version `vMult`.
-        const fc = sk.fc;
-        const b2b = sk.b2b;
-        const po = sk.po;
+        const fc = sk.fc, b2b = sk.b2b, po = sk.po;
         if (!skuMap[key]) {
           skuMap[key] = { item: sk.item, variant: sk.variant, totalFc: 0, totalB2b: 0, totalPo: 0, totalDemand: 0, cnDetails: [] };
         }
@@ -329,9 +293,10 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
       });
     });
     return Object.values(skuMap).sort((a, b) => b.totalDemand - a.totalDemand);
-  }, [s, skuPerCn, useDbData]);
+  }, [skuPerCn]);
+
   // ═══════════════════════════════════════════
-  // SECTION 1: KPI Summary Cards
+  // KPI Cards
   // ═══════════════════════════════════════════
   const renderKpiCards = () => {
     const fcShare = totals.total > 0 ? Math.round((totals.fc / totals.total) * 100) : 0;
@@ -374,395 +339,148 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
   };
 
   // ═══════════════════════════════════════════
-  // SECTION 2: Summary Table (CN-first)
+  // CN-first table — SmartTable
   // ═══════════════════════════════════════════
-  const renderCnTable = () => (
-    <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-      <table className="w-full text-table-sm">
-        <thead>
-          <tr className="border-b border-surface-3 bg-surface-1/50">
-            <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 w-[36px]"></th>
-            <th className="px-2 py-2.5 text-left text-table-header uppercase text-text-3 min-w-[90px]">Chi nhánh</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-primary">FC (m²)</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-info">B2B (m²)</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-warning">PO (m²)</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-1 font-semibold border-l border-surface-3">Total (m²)</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Trend 3M</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Cơ cấu</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">vs LM</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Cover</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3" title="FVA = accuracy(điều chỉnh) − accuracy(v0)">FVA</th>
-          </tr>
-        </thead>
-        <tbody>
-          {cnData.map((c, i) => {
-            const isExpanded = expandedCns.has(c.cn);
-            const skus = (skuPerCn[c.cn] || []).map(sk => {
-              // Already scaled by tenant + FC version inside skuPerCn useMemo.
-              return { ...sk, total: sk.fc + sk.b2b + sk.po };
-            });
-            const shareOfTotal = totals.total > 0 ? Math.round((c.total / totals.total) * 100) : 0;
-            return (
-              <React.Fragment key={c.cn}>
-                <tr
-                  onClick={() => toggleCn(c.cn)}
-                  className={cn(
-                    "border-b border-surface-3/50 cursor-pointer transition-colors hover:bg-primary/5",
-                    isExpanded ? "bg-primary/[0.03]" : i % 2 === 0 ? "bg-surface-0" : "bg-surface-2"
-                  )}
-                >
-                  <td className="px-3 py-3 text-center">
-                    <div className={cn("transition-transform duration-200 inline-block", isExpanded && "rotate-90")}>
-                      <ChevronRight className="h-3.5 w-3.5 text-text-3" />
-                    </div>
-                  </td>
-                  <td className="px-2 py-3 font-bold text-text-1">{c.cn}</td>
-                  <td className="px-3 py-3 text-center tabular-nums text-text-1">{c.fc.toLocaleString()}</td>
-                  <td className="px-3 py-3 text-center tabular-nums text-text-1">{c.b2b.toLocaleString()}</td>
-                  <td className="px-3 py-3 text-center tabular-nums text-text-2">{c.po.toLocaleString()}</td>
-                  <td className="px-3 py-3 text-center tabular-nums font-bold text-primary border-l border-surface-3">{c.total.toLocaleString()}</td>
-                  <td className="px-3 py-3 text-center">
-                    <div className="flex items-center justify-center" title={`T3→T5: ${(cnTrend3m[c.cn] || []).map(v => v.toLocaleString()).join(" → ")}`}>
-                      <MiniSparkline data={cnTrend3m[c.cn] || [c.total * 0.9, c.total * 0.95, c.total]} />
-                    </div>
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-2 justify-center">
-                      <CompositionBar fc={c.fc} b2b={c.b2b} po={c.po} total={c.total} />
-                      <span className="text-caption text-text-3 tabular-nums w-8 text-right">{shareOfTotal}%</span>
-                    </div>
-                  </td>
-                  <td className={cn("px-3 py-3 text-center tabular-nums font-medium",
-                    c.vsLm > 0 ? "text-success" : c.vsLm < 0 ? "text-danger" : "text-text-3"
-                  )}>
-                    <span className="inline-flex items-center gap-1">
-                      <TrendIcon value={c.vsLm} /> {c.vsLm > 0 ? "+" : ""}{c.vsLm}%
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <span className={cn("inline-flex items-center gap-1 tabular-nums font-medium px-2 py-0.5 rounded-full text-caption",
-                      c.cover < 5 ? "text-danger bg-danger/10" : c.cover < 10 ? "text-warning bg-warning/10" : "text-success bg-success/10"
-                    )}>
-                      {c.cover}d
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    {(() => {
-                      const f = cnFva(c.cn);
-                      if (!f) return <span className="text-text-3 text-caption">—</span>;
-                      const positive = f.fva > 0;
-                      const zero = f.fva === 0;
-                      return (
-                        <LogicTooltip
-                          title={`FVA — ${c.cn}`}
-                          content={`Accuracy v0 (baseline): ${f.accV0}%\nAccuracy ${fcVersion}: ${f.accV3}%\nFVA = ${f.accV3} − ${f.accV0} = ${f.fva > 0 ? "+" : ""}${f.fva} pp\n${positive ? "Điều chỉnh cải thiện độ chính xác." : zero ? "Điều chỉnh không thay đổi accuracy." : "Điều chỉnh làm tệ hơn — review lại."}`}
-                        >
-                          <span
-                            className={cn(
-                              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-semibold cursor-help tabular-nums",
-                              positive ? "bg-success/10 text-success border-success/30"
-                                : zero ? "bg-surface-3 text-text-2 border-surface-3"
-                                : "bg-danger/10 text-danger border-danger/30",
-                            )}
-                          >
-                            {positive ? <CheckCircle2 className="h-3 w-3" /> : zero ? null : <AlertTriangle className="h-3 w-3" />}
-                            {f.fva > 0 ? "+" : ""}{f.fva} pp
-                          </span>
-                        </LogicTooltip>
-                      );
-                    })()}
-                  </td>
-                </tr>
-
-                {isExpanded && skus.map((sk) => {
-                  const cnSkuKey = `${c.cn}::${sk.item}`;
-                  const skuExpanded = expandedCnSkus.has(cnSkuKey);
-                  const variants = variantSplit(sk.item);
-                  return (
-                    <React.Fragment key={`${c.cn}-${sk.item}-${sk.variant}`}>
-                      <tr
-                        onClick={() => toggleCnSku(cnSkuKey)}
-                        className="border-b border-surface-3/30 bg-primary/[0.02] hover:bg-primary/[0.06] transition-colors animate-fade-in cursor-pointer"
-                      >
-                        <td className="px-3 py-2 text-center">
-                          <div className={cn("transition-transform duration-200 inline-block", skuExpanded && "rotate-90")}>
-                            <ChevronRight className="h-3 w-3 text-text-3" />
-                          </div>
-                        </td>
-                        <td className="px-2 py-2 pl-6">
-                          <span className="font-mono text-text-2 text-table-sm">{sk.item}</span>
-                          <span className="ml-1 text-text-3 text-table-sm">{sk.variant}</span>
-                          <span className="ml-1.5 text-[10px] text-text-3">({variants.length} variants)</span>
-                        </td>
-                        <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">
-                          <span className="inline-flex items-center gap-1.5">
-                            {sk.fc.toLocaleString()}
-                            <LogicTooltip
-                              title={`${sk.item} ${sk.variant} — FC Model`}
-                              content={`Model: ${sk.source}\nHistory: 24 tháng (05/2024–04/2026)\nMAPE: ${sk.mape}% (accuracy ${(100 - sk.mape).toFixed(1)}%)\nAuto-selected: ${sk.source === "Holt-Winters" ? "HW" : "XGB"} vì MAPE thấp hơn cho SKU này.\nChạy: 01/05/2026 auto.`}
-                            >
-                              <span className={cn(
-                                "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium cursor-pointer",
-                                sk.mape <= 15 ? "bg-success-bg text-success" : sk.mape <= 20 ? "bg-warning-bg text-warning" : "bg-danger-bg text-danger"
-                              )}>
-                                {sk.source === "Holt-Winters" ? "HW" : "XGB"} {sk.mape}%
-                              </span>
-                            </LogicTooltip>
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">{sk.b2b.toLocaleString()}</td>
-                        <td className="px-3 py-2 text-center tabular-nums text-text-3 text-table-sm">{sk.po.toLocaleString()}</td>
-                        <td className="px-3 py-2 text-center tabular-nums font-semibold text-primary/80 text-table-sm border-l border-surface-3/50">{sk.total.toLocaleString()}</td>
-                        <td className="px-3 py-2 text-center">
-                          <MiniSparkline data={[Math.round(sk.total * 0.88), Math.round(sk.total * 0.94), sk.total]} width={40} height={16} />
-                        </td>
-                        <td className="px-3 py-2">
-                          <CompositionBar fc={sk.fc} b2b={sk.b2b} po={sk.po} total={sk.total} />
-                        </td>
-                        <td className={cn("px-3 py-2 text-center tabular-nums text-table-sm",
-                          sk.vsLm > 0 ? "text-success" : sk.vsLm < 0 ? "text-danger" : "text-text-3"
-                        )}>
-                          {sk.vsLm > 0 ? "+" : ""}{sk.vsLm}%
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <button onClick={(e) => { e.stopPropagation(); setOverrideModal({ sku: `${sk.item} ${sk.variant}`, value: sk.total }); }}
-                            className="text-[11px] text-primary hover:underline font-medium">Ghi đè</button>
-                        </td>
-                        <td />
-                      </tr>
-
-                      {/* ── L3: Variant breakdown ── */}
-                      {skuExpanded && variants.map((v) => {
-                        const fcV = Math.round(sk.fc * v.share);
-                        const b2bV = Math.round(sk.b2b * v.share);
-                        const poV = Math.round(sk.po * v.share);
-                        const totalV = fcV + b2bV + poV;
-                        return (
-                          <tr
-                            key={`${cnSkuKey}-${v.tag}`}
-                            className="border-b border-surface-3/20 bg-primary/[0.04] hover:bg-primary/[0.08] transition-colors animate-fade-in"
-                          >
-                            <td className="px-3 py-1.5" />
-                            <td className="px-2 py-1.5 pl-12">
-                              <span className="inline-flex items-center gap-1.5">
-                                <span className="h-1 w-1 rounded-full bg-text-3" />
-                                <span className="font-mono text-text-3 text-[11px]">{sk.item}-{v.tag}</span>
-                                <span className="text-text-3 text-[10px]">({Math.round(v.share * 100)}%)</span>
-                              </span>
-                            </td>
-                            <td className="px-3 py-1.5 text-center tabular-nums text-text-3 text-[11px]">{fcV.toLocaleString()}</td>
-                            <td className="px-3 py-1.5 text-center tabular-nums text-text-3 text-[11px]">{b2bV.toLocaleString()}</td>
-                            <td className="px-3 py-1.5 text-center tabular-nums text-text-3 text-[11px]">{poV.toLocaleString()}</td>
-                            <td className="px-3 py-1.5 text-center tabular-nums font-medium text-primary/70 text-[11px] border-l border-surface-3/30">{totalV.toLocaleString()}</td>
-                            <td className="px-3 py-1.5" />
-                            <td className="px-3 py-1.5">
-                              <CompositionBar fc={fcV} b2b={b2bV} po={poV} total={totalV} />
-                            </td>
-                            <td className="px-3 py-1.5 text-center text-text-3 text-[10px]">—</td>
-                            <td className="px-3 py-1.5 text-center">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setOverrideModal({ sku: `${sk.item}-${v.tag}`, value: totalV }); }}
-                                className="text-[10px] text-primary/70 hover:text-primary hover:underline"
-                              >
-                                Ghi đè
-                              </button>
-                            </td>
-                            <td />
-                          </tr>
-                        );
-                      })}
-                    </React.Fragment>
-                  );
-                })}
-              </React.Fragment>
-            );
-          })}
-          <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
-            <td />
-            <td className="px-2 py-3 text-text-1">TỔNG</td>
-            <td className="px-3 py-3 text-center tabular-nums text-text-1">{totals.fc.toLocaleString()}</td>
-            <td className="px-3 py-3 text-center tabular-nums text-text-1">{totals.b2b.toLocaleString()}</td>
-            <td className="px-3 py-3 text-center tabular-nums text-text-1">{totals.po.toLocaleString()}</td>
-            <td className="px-3 py-3 text-center tabular-nums text-primary border-l border-surface-3">{totals.total.toLocaleString()}</td>
-            <td className="px-3 py-3 text-center">
-              <MiniSparkline data={[Math.round(totals.total * 0.91), Math.round(totals.total * 0.96), totals.total]} />
-            </td>
-            <td className="px-3 py-3">
-              <CompositionBar fc={totals.fc} b2b={totals.b2b} po={totals.po} total={totals.total} />
-            </td>
-            <td className="px-3 py-3 text-center tabular-nums text-success">+{totals.vsLm}%</td>
-            <td className="px-3 py-3 text-center tabular-nums text-text-1">{totals.cover}d</td>
-            <td className="px-3 py-3 text-center text-text-3 text-caption">—</td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* Legend */}
-      <div className="flex items-center gap-5 px-4 py-2 border-t border-surface-3/50 bg-surface-1/30">
-        <span className="flex items-center gap-1.5 text-caption text-text-3">
-          <span className="w-3 h-1.5 rounded-full bg-primary/70" /> FC — Forecast
+  const cnCols: SmartTableColumn<CnRow>[] = [
+    {
+      key: "cn", label: "Chi nhánh", width: 100, sortable: true, filter: "text",
+      accessor: (r) => r.cn,
+      render: (r) => <span className="font-bold text-text-1">{r.cn}</span>,
+    },
+    { key: "fc", label: "FC (m²)", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.fc, render: (r) => <span className="text-text-1">{r.fc.toLocaleString()}</span> },
+    { key: "b2b", label: "B2B (m²)", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.b2b, render: (r) => <span className="text-text-1">{r.b2b.toLocaleString()}</span> },
+    { key: "po", label: "PO (m²)", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.po, render: (r) => <span className="text-text-2">{r.po.toLocaleString()}</span> },
+    { key: "total", label: "Total (m²)", width: 110, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.total,
+      render: (r) => <span className="font-bold text-primary tabular-nums">{r.total.toLocaleString()}</span> },
+    {
+      key: "trend", label: "Trend 3M", width: 90, align: "center", priority: "low",
+      render: (r) => (
+        <div className="flex items-center justify-center" title={`T3→T5: ${(cnTrend3m[r.cn] || []).map(v => v.toLocaleString()).join(" → ")}`}>
+          <MiniSparkline data={cnTrend3m[r.cn] || [r.total * 0.9, r.total * 0.95, r.total]} />
+        </div>
+      ),
+    },
+    {
+      key: "composition", label: "Cơ cấu", width: 140, priority: "medium",
+      render: (r) => (
+        <div className="flex items-center gap-2">
+          <CompositionBar fc={r.fc} b2b={r.b2b} po={r.po} total={r.total} />
+          <span className="text-caption text-text-3 tabular-nums w-8 text-right">{r.shareOfTotal}%</span>
+        </div>
+      ),
+    },
+    {
+      key: "vsLm", label: "vs LM", width: 90, numeric: true, sortable: true, align: "center",
+      accessor: (r) => r.vsLm,
+      render: (r) => (
+        <span className={cn("inline-flex items-center gap-1 tabular-nums font-medium",
+          r.vsLm > 0 ? "text-success" : r.vsLm < 0 ? "text-danger" : "text-text-3")}>
+          <TrendIcon value={r.vsLm} /> {r.vsLm > 0 ? "+" : ""}{r.vsLm}%
         </span>
-        <span className="flex items-center gap-1.5 text-caption text-text-3">
-          <span className="w-3 h-1.5 rounded-full bg-info/70" /> B2B — Weighted deals
+      ),
+    },
+    {
+      key: "cover", label: "Cover", width: 80, numeric: true, sortable: true, align: "center",
+      accessor: (r) => r.cover,
+      render: (r) => (
+        <span className={cn("inline-flex items-center gap-1 tabular-nums font-medium px-2 py-0.5 rounded-full text-caption",
+          r.cover < 5 ? "text-danger bg-danger/10" : r.cover < 10 ? "text-warning bg-warning/10" : "text-success bg-success/10"
+        )}>
+          {r.cover}d
         </span>
-        <span className="flex items-center gap-1.5 text-caption text-text-3">
-          <span className="w-3 h-1.5 rounded-full bg-warning/70" /> PO — Confirmed orders
-        </span>
-      </div>
-    </div>
-  );
+      ),
+    },
+    {
+      key: "fva", label: "FVA", width: 90, align: "center", priority: "low",
+      render: (r) => {
+        const f = cnFva(r.cn);
+        if (!f) return <span className="text-text-3 text-caption">—</span>;
+        const positive = f.fva > 0;
+        const zero = f.fva === 0;
+        return (
+          <LogicTooltip
+            title={`FVA — ${r.cn}`}
+            content={`Accuracy v0 (baseline): ${f.accV0}%\nAccuracy ${fcVersion}: ${f.accV3}%\nFVA = ${f.accV3} − ${f.accV0} = ${f.fva > 0 ? "+" : ""}${f.fva} pp\n${positive ? "Điều chỉnh cải thiện độ chính xác." : zero ? "Điều chỉnh không thay đổi accuracy." : "Điều chỉnh làm tệ hơn — review lại."}`}
+          >
+            <span className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-semibold cursor-help tabular-nums",
+              positive ? "bg-success/10 text-success border-success/30"
+                : zero ? "bg-surface-3 text-text-2 border-surface-3"
+                : "bg-danger/10 text-danger border-danger/30",
+            )}>
+              {positive ? <CheckCircle2 className="h-3 w-3" /> : zero ? null : <AlertTriangle className="h-3 w-3" />}
+              {f.fva > 0 ? "+" : ""}{f.fva} pp
+            </span>
+          </LogicTooltip>
+        );
+      },
+    },
+  ];
+
+  const cnSummary: Partial<Record<string, React.ReactNode>> = {
+    cn: <span className="font-bold text-text-1">TỔNG</span>,
+    fc: totals.fc.toLocaleString(),
+    b2b: totals.b2b.toLocaleString(),
+    po: totals.po.toLocaleString(),
+    total: <span className="text-primary font-bold tabular-nums">{totals.total.toLocaleString()}</span>,
+    composition: <CompositionBar fc={totals.fc} b2b={totals.b2b} po={totals.po} total={totals.total} />,
+    vsLm: <span className="text-success">+{totals.vsLm}%</span>,
+    cover: <span className="text-text-1">{totals.cover}d</span>,
+  };
 
   // ═══════════════════════════════════════════
-  // SECTION 2: Summary Table (SKU-first)
+  // SKU-first table — SmartTable
   // ═══════════════════════════════════════════
-  const renderSkuTable = () => (
-    <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-      <table className="w-full text-table-sm">
-        <thead>
-          <tr className="border-b border-surface-3 bg-surface-1/50">
-            <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3 w-[36px]"></th>
-            <th className="px-2 py-2.5 text-left text-table-header uppercase text-text-3">Item</th>
-            <th className="px-2 py-2.5 text-left text-table-header uppercase text-text-3">Variant</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-primary">FC (m²)</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-info">B2B (m²)</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-warning">PO (m²)</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-1 font-semibold border-l border-surface-3">Total (m²)</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3">Cơ cấu</th>
-            <th className="px-3 py-2.5 text-center text-table-header uppercase text-text-3"># CN</th>
-          </tr>
-        </thead>
-        <tbody>
-          {skuAggregated.map((sk, i) => {
-            const skuKey = `${sk.item}-${sk.variant}`;
-            const isExpanded = expandedSkus.has(skuKey);
-            return (
-              <React.Fragment key={skuKey}>
-                <tr
-                  onClick={() => toggleSku(skuKey)}
-                  className={cn(
-                    "border-b border-surface-3/50 cursor-pointer transition-colors hover:bg-primary/5",
-                    isExpanded ? "bg-primary/[0.03]" : i % 2 === 0 ? "bg-surface-0" : "bg-surface-2"
-                  )}
-                >
-                  <td className="px-3 py-3 text-center">
-                    <div className={cn("transition-transform duration-200 inline-block", isExpanded && "rotate-90")}>
-                      <ChevronRight className="h-3.5 w-3.5 text-text-3" />
-                    </div>
-                  </td>
-                  <td className="px-2 py-3 font-medium text-text-1 font-mono">{sk.item}</td>
-                  <td className="px-2 py-3 text-text-2">{sk.variant}</td>
-                  <td className="px-3 py-3 text-center tabular-nums text-text-1">{sk.totalFc.toLocaleString()}</td>
-                  <td className="px-3 py-3 text-center tabular-nums text-text-1">{sk.totalB2b.toLocaleString()}</td>
-                  <td className="px-3 py-3 text-center tabular-nums text-text-2">{sk.totalPo.toLocaleString()}</td>
-                  <td className="px-3 py-3 text-center tabular-nums font-bold text-primary border-l border-surface-3">{sk.totalDemand.toLocaleString()}</td>
-                  <td className="px-3 py-3">
-                    <CompositionBar fc={sk.totalFc} b2b={sk.totalB2b} po={sk.totalPo} total={sk.totalDemand} />
-                  </td>
-                  <td className="px-3 py-3 text-center">
-                    <CnGapBadge count={sk.cnDetails.length} />
-                  </td>
-                </tr>
+  const skuCols: SmartTableColumn<SkuAggRow>[] = [
+    { key: "item", label: "Item", width: 100, sortable: true, filter: "text",
+      render: (r) => <span className="font-medium text-text-1 font-mono">{r.item}</span> },
+    { key: "variant", label: "Variant", width: 90, sortable: true,
+      render: (r) => <span className="text-text-2">{r.variant}</span> },
+    { key: "totalFc", label: "FC (m²)", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.totalFc, render: (r) => r.totalFc.toLocaleString() },
+    { key: "totalB2b", label: "B2B (m²)", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.totalB2b, render: (r) => r.totalB2b.toLocaleString() },
+    { key: "totalPo", label: "PO (m²)", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.totalPo, render: (r) => <span className="text-text-2">{r.totalPo.toLocaleString()}</span> },
+    { key: "totalDemand", label: "Total (m²)", width: 110, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.totalDemand,
+      render: (r) => <span className="font-bold text-primary tabular-nums">{r.totalDemand.toLocaleString()}</span> },
+    { key: "composition", label: "Cơ cấu", width: 140, priority: "medium",
+      render: (r) => <CompositionBar fc={r.totalFc} b2b={r.totalB2b} po={r.totalPo} total={r.totalDemand} /> },
+    { key: "cnCount", label: "# CN", width: 80, align: "center", numeric: true, sortable: true,
+      accessor: (r) => r.cnDetails.length,
+      render: (r) => <CnGapBadge count={r.cnDetails.length} /> },
+  ];
 
-                {isExpanded && sk.cnDetails.map((c) => {
-                  const skuCnKey = `${skuKey}::${c.cn}`;
-                  const cnExpanded = expandedSkuCns.has(skuCnKey);
-                  const variants = variantSplit(sk.item);
-                  return (
-                    <React.Fragment key={`${skuKey}-${c.cn}`}>
-                      <tr
-                        onClick={() => toggleSkuCn(skuCnKey)}
-                        className="border-b border-surface-3/30 bg-primary/[0.02] hover:bg-primary/[0.06] transition-colors animate-fade-in cursor-pointer"
-                      >
-                        <td className="px-3 py-2 text-center">
-                          <div className={cn("transition-transform duration-200 inline-block", cnExpanded && "rotate-90")}>
-                            <ChevronRight className="h-3 w-3 text-text-3" />
-                          </div>
-                        </td>
-                        <td className="px-2 py-2 pl-6 text-text-2 text-table-sm" colSpan={2}>
-                          {c.cn}
-                          <span className="ml-1.5 text-[10px] text-text-3">({variants.length} variants)</span>
-                        </td>
-                        <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">
-                          <span className="cursor-help group relative">
-                            {c.fc.toLocaleString()}
-                            <span className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 bg-text-1 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap z-20">
-                              {c.source}, MAPE {c.mape}%
-                            </span>
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-center tabular-nums text-text-2 text-table-sm">{c.b2b.toLocaleString()}</td>
-                        <td className="px-3 py-2 text-center tabular-nums text-text-3 text-table-sm">{c.po.toLocaleString()}</td>
-                        <td className="px-3 py-2 text-center tabular-nums font-semibold text-primary/80 text-table-sm border-l border-surface-3/50">{c.total.toLocaleString()}</td>
-                        <td className="px-3 py-2">
-                          <CompositionBar fc={c.fc} b2b={c.b2b} po={c.po} total={c.total} />
-                        </td>
-                        <td className={cn("px-3 py-2 text-center tabular-nums text-table-sm",
-                          c.vsLm > 0 ? "text-success" : c.vsLm < 0 ? "text-danger" : "text-text-3"
-                        )}>
-                          {c.vsLm > 0 ? "+" : ""}{c.vsLm}%
-                        </td>
-                      </tr>
+  const skuTotals = useMemo(() => ({
+    fc: skuAggregated.reduce((a, s) => a + s.totalFc, 0),
+    b2b: skuAggregated.reduce((a, s) => a + s.totalB2b, 0),
+    po: skuAggregated.reduce((a, s) => a + s.totalPo, 0),
+    demand: skuAggregated.reduce((a, s) => a + s.totalDemand, 0),
+  }), [skuAggregated]);
 
-                      {/* ── L3: Variant breakdown for this SKU at this CN ── */}
-                      {cnExpanded && variants.map((v) => {
-                        const fcV = Math.round(c.fc * v.share);
-                        const b2bV = Math.round(c.b2b * v.share);
-                        const poV = Math.round(c.po * v.share);
-                        const totalV = fcV + b2bV + poV;
-                        return (
-                          <tr
-                            key={`${skuCnKey}-${v.tag}`}
-                            className="border-b border-surface-3/20 bg-primary/[0.04] hover:bg-primary/[0.08] transition-colors animate-fade-in"
-                          >
-                            <td className="px-3 py-1.5" />
-                            <td className="px-2 py-1.5 pl-12 text-table-sm" colSpan={2}>
-                              <span className="inline-flex items-center gap-1.5">
-                                <span className="h-1 w-1 rounded-full bg-text-3" />
-                                <span className="font-mono text-text-3 text-[11px]">{sk.item}-{v.tag}</span>
-                                <span className="text-text-3 text-[10px]">({Math.round(v.share * 100)}%)</span>
-                              </span>
-                            </td>
-                            <td className="px-3 py-1.5 text-center tabular-nums text-text-3 text-[11px]">{fcV.toLocaleString()}</td>
-                            <td className="px-3 py-1.5 text-center tabular-nums text-text-3 text-[11px]">{b2bV.toLocaleString()}</td>
-                            <td className="px-3 py-1.5 text-center tabular-nums text-text-3 text-[11px]">{poV.toLocaleString()}</td>
-                            <td className="px-3 py-1.5 text-center tabular-nums font-medium text-primary/70 text-[11px] border-l border-surface-3/30">{totalV.toLocaleString()}</td>
-                            <td className="px-3 py-1.5">
-                              <CompositionBar fc={fcV} b2b={b2bV} po={poV} total={totalV} />
-                            </td>
-                            <td className="px-3 py-1.5 text-center text-text-3 text-[10px]">—</td>
-                          </tr>
-                        );
-                      })}
-                    </React.Fragment>
-                  );
-                })}
-              </React.Fragment>
-            );
-          })}
-          <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
-            <td />
-            <td className="px-2 py-3 text-text-1" colSpan={2}>TỔNG</td>
-            <td className="px-3 py-3 text-center tabular-nums">{skuAggregated.reduce((a, s) => a + s.totalFc, 0).toLocaleString()}</td>
-            <td className="px-3 py-3 text-center tabular-nums">{skuAggregated.reduce((a, s) => a + s.totalB2b, 0).toLocaleString()}</td>
-            <td className="px-3 py-3 text-center tabular-nums">{skuAggregated.reduce((a, s) => a + s.totalPo, 0).toLocaleString()}</td>
-            <td className="px-3 py-3 text-center tabular-nums text-primary border-l border-surface-3">{skuAggregated.reduce((a, s) => a + s.totalDemand, 0).toLocaleString()}</td>
-            <td />
-            <td />
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  );
+  const skuSummary: Partial<Record<string, React.ReactNode>> = {
+    item: <span className="font-bold text-text-1">TỔNG</span>,
+    totalFc: skuTotals.fc.toLocaleString(),
+    totalB2b: skuTotals.b2b.toLocaleString(),
+    totalPo: skuTotals.po.toLocaleString(),
+    totalDemand: <span className="text-primary font-bold tabular-nums">{skuTotals.demand.toLocaleString()}</span>,
+  };
 
   // ═══════════════════════════════════════════
-  // SECTION 3: Timeline Tables (12m / 3m / week)
+  // Timeline tables (12m / 3m / week) — pivot matrix kept as raw
+  // (1 row = 1 CN, 12 cols = months, sticky CN column — không phù hợp SmartTable)
   // ═══════════════════════════════════════════
   const render12m = () => {
     const data12 = base12m.map(v => Math.round(v * s));
     return (
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-x-auto">
         <table className="w-full text-table-sm">
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr className="border-b border-surface-3 bg-surface-1/50">
               <th className="sticky left-0 bg-surface-1/50 z-10 px-3 py-2.5 text-left text-table-header uppercase text-text-3 min-w-[80px]">CN</th>
               {months12.map((m, i) => (
@@ -837,7 +555,7 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
     return (
       <div className="rounded-card border border-surface-3 bg-surface-2 overflow-x-auto">
         <table className="w-full text-table-sm">
-          <thead>
+          <thead className="sticky top-0 z-10">
             <tr className="border-b border-surface-3 bg-surface-1/50">
               <th className="sticky left-0 bg-surface-1/50 z-10 px-3 py-2.5 text-left text-table-header uppercase text-text-3 min-w-[80px]">CN</th>
               {m3.map((m, mi) => (
@@ -895,7 +613,7 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
   const renderWeek = () => (
     <div className="rounded-card border border-surface-3 bg-surface-2 overflow-x-auto">
       <table className="w-full text-table-sm">
-        <thead>
+        <thead className="sticky top-0 z-10">
           <tr className="border-b border-surface-3 bg-surface-1/50">
             <th className="sticky left-0 bg-surface-1/50 z-10 px-3 py-2.5 text-left text-table-header uppercase text-text-3 min-w-[80px]">CN</th>
             {weekLabels.map((w, i) => (
@@ -934,7 +652,6 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
   // ═══════════════════════════════════════════
   return (
     <div className="space-y-6">
-      {/* FC Source Badge — top-right */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="font-display text-section-header text-text-1">Demand tổng — Tháng 5</h2>
@@ -945,10 +662,8 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
         <FcSourceBadge />
       </div>
 
-      {/* KPI Cards */}
       {renderKpiCards()}
 
-      {/* Section 1: Demand Summary */}
       <div className="space-y-3">
         <SectionHeader title="Demand theo nguồn" subtitle="Phân tích cơ cấu FC · B2B · PO tháng hiện tại">
           <div className="flex items-center gap-2 flex-wrap">
@@ -963,10 +678,49 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
                 <option key={v.key} value={v.key}>{v.label}</option>
               ))}
             </select>
-            <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setExpandedCns(new Set()); setExpandedSkus(new Set()); setExpandedCnSkus(new Set()); setExpandedSkuCns(new Set()); }} />
+            <ViewPivotToggle value={pivotMode} onChange={(m) => setPivotMode(m)} />
           </div>
         </SectionHeader>
-        {pivotMode === "sku" ? renderSkuTable() : renderCnTable()}
+
+        {pivotMode === "sku" ? (
+          <SmartTable<SkuAggRow>
+            screenId="demand-total-sku"
+            title="Demand theo SKU — Tháng 5"
+            columns={skuCols}
+            data={skuAggregated}
+            defaultDensity="compact"
+            getRowId={(r) => `${r.item}-${r.variant}`}
+            drillDown={(r) => (
+              <DemandSkuDrill
+                row={r}
+                variantSplit={variantSplit}
+                onOverride={(label, value) => setOverrideModal({ sku: label, value })}
+              />
+            )}
+            summaryRow={skuSummary}
+            exportFilename="demand-sku"
+          />
+        ) : (
+          <SmartTable<CnRow>
+            screenId="demand-total-cn"
+            title="Demand theo CN — Tháng 5"
+            columns={cnCols}
+            data={cnData}
+            defaultDensity="compact"
+            getRowId={(r) => r.cn}
+            rowSeverity={(r) => r.cover < 5 ? "shortage" : r.cover < 10 ? "watch" : "ok"}
+            drillDown={(r) => (
+              <DemandCnDrill
+                row={r}
+                skus={skuPerCn[r.cn] || []}
+                variantSplit={variantSplit}
+                onOverride={(label, value) => setOverrideModal({ sku: label, value })}
+              />
+            )}
+            summaryRow={cnSummary}
+            exportFilename="demand-cn"
+          />
+        )}
       </div>
 
       {/* Connector */}
@@ -979,7 +733,6 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
         <div className="flex-1 h-px bg-surface-3" />
       </div>
 
-      {/* Section 2: Timeline */}
       <div className="space-y-3">
         <SectionHeader title="Demand theo thời gian" subtitle="Xu hướng và phân bổ demand theo chu kỳ">
           <div className="inline-flex rounded-button border border-surface-3 overflow-hidden">
@@ -1004,6 +757,234 @@ export function DemandTotalTab({ tenant, b2bPerCn, cnSummaries = [] }: Props) {
           onSave={() => setOverrideModal(null)}
         />
       )}
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   CN drill: SKU sub-table với nested variant drill
+   ════════════════════════════════════════════════════════════════════════ */
+function DemandCnDrill({
+  row,
+  skus,
+  variantSplit,
+  onOverride,
+}: {
+  row: CnRow;
+  skus: SkuRow[];
+  variantSplit: (baseCode: string) => Array<{ tag: "A4" | "B2" | "C1"; share: number }>;
+  onOverride: (label: string, value: number) => void;
+}) {
+  const cols: SmartTableColumn<SkuRow>[] = [
+    {
+      key: "sku", label: "SKU", width: 150,
+      render: (s) => (
+        <span>
+          <span className="font-mono text-text-2 text-table-sm">{s.item}</span>
+          <span className="ml-1 text-text-3 text-table-sm">{s.variant}</span>
+        </span>
+      ),
+    },
+    {
+      key: "fc", label: "FC", width: 130, numeric: true, align: "right",
+      accessor: (s) => s.fc,
+      render: (s) => (
+        <span className="inline-flex items-center gap-1.5 justify-end">
+          <span className="tabular-nums text-text-2">{s.fc.toLocaleString()}</span>
+          <LogicTooltip
+            title={`${s.item} ${s.variant} — FC Model`}
+            content={`Model: ${s.source}\nMAPE: ${s.mape}% (accuracy ${(100 - s.mape).toFixed(1)}%)`}
+          >
+            <span className={cn(
+              "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-medium cursor-pointer",
+              s.mape <= 15 ? "bg-success-bg text-success" : s.mape <= 20 ? "bg-warning-bg text-warning" : "bg-danger-bg text-danger"
+            )}>
+              {s.source === "Holt-Winters" ? "HW" : "XGB"} {s.mape}%
+            </span>
+          </LogicTooltip>
+        </span>
+      ),
+    },
+    { key: "b2b", label: "B2B", width: 90, numeric: true, align: "right",
+      accessor: (s) => s.b2b, render: (s) => s.b2b.toLocaleString() },
+    { key: "po", label: "PO", width: 90, numeric: true, align: "right",
+      accessor: (s) => s.po, render: (s) => <span className="text-text-3">{s.po.toLocaleString()}</span> },
+    { key: "total", label: "Total", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (s) => s.total,
+      render: (s) => <span className="font-semibold text-primary tabular-nums">{s.total.toLocaleString()}</span> },
+    { key: "composition", label: "Cơ cấu", width: 120, priority: "medium",
+      render: (s) => <CompositionBar fc={s.fc} b2b={s.b2b} po={s.po} total={s.total} /> },
+    { key: "vsLm", label: "vs LM", width: 80, align: "right", numeric: true,
+      accessor: (s) => s.vsLm,
+      render: (s) => (
+        <span className={cn("tabular-nums", s.vsLm > 0 ? "text-success" : s.vsLm < 0 ? "text-danger" : "text-text-3")}>
+          {s.vsLm > 0 ? "+" : ""}{s.vsLm}%
+        </span>
+      ),
+    },
+    {
+      key: "action", label: "", width: 70, align: "center",
+      render: (s) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); onOverride(`${s.item} ${s.variant}`, s.total); }}
+          className="text-[11px] text-primary hover:underline font-medium"
+        >
+          Ghi đè
+        </button>
+      ),
+    },
+  ];
+
+  return (
+    <div className="px-3 py-2 bg-surface-1/40">
+      <SmartTable<SkuRow>
+        screenId={`demand-cn-${row.cn}-skus`}
+        columns={cols}
+        data={skus}
+        defaultDensity="compact"
+        getRowId={(s) => `${s.item}-${s.variant}`}
+        drillDown={(s) => <DemandVariantTable parent={s} variantSplit={variantSplit} onOverride={onOverride} />}
+      />
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   SKU drill (SKU-first): CN breakdown với nested variant drill
+   ════════════════════════════════════════════════════════════════════════ */
+function DemandSkuDrill({
+  row,
+  variantSplit,
+  onOverride,
+}: {
+  row: SkuAggRow;
+  variantSplit: (baseCode: string) => Array<{ tag: "A4" | "B2" | "C1"; share: number }>;
+  onOverride: (label: string, value: number) => void;
+}) {
+  type CnDetail = SkuAggRow["cnDetails"][number];
+
+  const cols: SmartTableColumn<CnDetail>[] = [
+    { key: "cn", label: "CN", width: 100,
+      render: (c) => <span className="font-medium text-text-1">{c.cn}</span> },
+    {
+      key: "fc", label: "FC", width: 130, numeric: true, align: "right",
+      accessor: (c) => c.fc,
+      render: (c) => (
+        <LogicTooltip title={`${row.item} ${row.variant} — ${c.cn}`} content={`${c.source}, MAPE ${c.mape}%`}>
+          <span className="tabular-nums text-text-2 cursor-help">{c.fc.toLocaleString()}</span>
+        </LogicTooltip>
+      ),
+    },
+    { key: "b2b", label: "B2B", width: 90, numeric: true, align: "right",
+      accessor: (c) => c.b2b, render: (c) => c.b2b.toLocaleString() },
+    { key: "po", label: "PO", width: 90, numeric: true, align: "right",
+      accessor: (c) => c.po, render: (c) => <span className="text-text-3">{c.po.toLocaleString()}</span> },
+    { key: "total", label: "Total", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (c) => c.total,
+      render: (c) => <span className="font-semibold text-primary tabular-nums">{c.total.toLocaleString()}</span> },
+    { key: "composition", label: "Cơ cấu", width: 120, priority: "medium",
+      render: (c) => <CompositionBar fc={c.fc} b2b={c.b2b} po={c.po} total={c.total} /> },
+    { key: "vsLm", label: "vs LM", width: 80, align: "right", numeric: true,
+      accessor: (c) => c.vsLm,
+      render: (c) => (
+        <span className={cn("tabular-nums", c.vsLm > 0 ? "text-success" : c.vsLm < 0 ? "text-danger" : "text-text-3")}>
+          {c.vsLm > 0 ? "+" : ""}{c.vsLm}%
+        </span>
+      ),
+    },
+  ];
+
+  return (
+    <div className="px-3 py-2 bg-surface-1/40">
+      <SmartTable<CnDetail>
+        screenId={`demand-sku-${row.item}-${row.variant}-cns`}
+        columns={cols}
+        data={row.cnDetails}
+        defaultDensity="compact"
+        getRowId={(c) => c.cn}
+        drillDown={(c) => (
+          <DemandVariantTable
+            parent={{ item: row.item, variant: row.variant, fc: c.fc, b2b: c.b2b, po: c.po, total: c.total } as SkuRow}
+            variantSplit={variantSplit}
+            onOverride={onOverride}
+            screenIdSuffix={`sku-${row.item}-${row.variant}-${c.cn}-variants`}
+          />
+        )}
+      />
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Variant breakdown (L3) — shared by CN-first + SKU-first drills
+   ════════════════════════════════════════════════════════════════════════ */
+function DemandVariantTable({
+  parent,
+  variantSplit,
+  onOverride,
+  screenIdSuffix,
+}: {
+  parent: SkuRow;
+  variantSplit: (baseCode: string) => Array<{ tag: "A4" | "B2" | "C1"; share: number }>;
+  onOverride: (label: string, value: number) => void;
+  screenIdSuffix?: string;
+}) {
+  type VariantRow = { tag: string; share: number; fc: number; b2b: number; po: number; total: number };
+
+  const variants: VariantRow[] = variantSplit(parent.item).map((v) => {
+    const fc = Math.round(parent.fc * v.share);
+    const b2b = Math.round(parent.b2b * v.share);
+    const po = Math.round(parent.po * v.share);
+    return { tag: v.tag, share: v.share, fc, b2b, po, total: fc + b2b + po };
+  });
+
+  const cols: SmartTableColumn<VariantRow>[] = [
+    {
+      key: "tag", label: "Variant", width: 150,
+      render: (v) => (
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-1 w-1 rounded-full bg-text-3" />
+          <span className="font-mono text-text-3 text-[11px]">{parent.item}-{v.tag}</span>
+          <span className="text-text-3 text-[10px]">({Math.round(v.share * 100)}%)</span>
+        </span>
+      ),
+    },
+    { key: "fc", label: "FC", width: 90, numeric: true, align: "right",
+      accessor: (v) => v.fc,
+      render: (v) => <span className="tabular-nums text-text-3 text-[11px]">{v.fc.toLocaleString()}</span> },
+    { key: "b2b", label: "B2B", width: 90, numeric: true, align: "right",
+      accessor: (v) => v.b2b,
+      render: (v) => <span className="tabular-nums text-text-3 text-[11px]">{v.b2b.toLocaleString()}</span> },
+    { key: "po", label: "PO", width: 90, numeric: true, align: "right",
+      accessor: (v) => v.po,
+      render: (v) => <span className="tabular-nums text-text-3 text-[11px]">{v.po.toLocaleString()}</span> },
+    { key: "total", label: "Total", width: 100, numeric: true, align: "right",
+      accessor: (v) => v.total,
+      render: (v) => <span className="tabular-nums font-medium text-primary/70 text-[11px]">{v.total.toLocaleString()}</span> },
+    { key: "composition", label: "Cơ cấu", width: 120, priority: "medium",
+      render: (v) => <CompositionBar fc={v.fc} b2b={v.b2b} po={v.po} total={v.total} /> },
+    {
+      key: "action", label: "", width: 70, align: "center",
+      render: (v) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); onOverride(`${parent.item}-${v.tag}`, v.total); }}
+          className="text-[10px] text-primary/70 hover:text-primary hover:underline"
+        >
+          Ghi đè
+        </button>
+      ),
+    },
+  ];
+
+  return (
+    <div className="px-3 py-2 bg-surface-1/30">
+      <SmartTable<VariantRow>
+        screenId={screenIdSuffix ? `demand-${screenIdSuffix}` : `demand-cn-${parent.item}-${parent.variant}-variants`}
+        columns={cols}
+        data={variants}
+        defaultDensity="compact"
+        getRowId={(v) => `${parent.item}-${v.tag}`}
+      />
     </div>
   );
 }
