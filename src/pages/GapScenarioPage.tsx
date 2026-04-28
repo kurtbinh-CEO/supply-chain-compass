@@ -445,6 +445,7 @@ function GapTrackingTable({
   rows: GapRow[];
   onSelect: (row: GapRow) => void;
 }) {
+  const resolutions = useResolutions();
   const columns: SmartTableColumn<GapRow>[] = [
     {
       key: "nm",
