@@ -1030,6 +1030,29 @@ function UnscheduledPosSection({ pos }: { pos: UnscheduledPo[] }) {
       ),
     },
     {
+      key: "weight", label: "Trọng lượng", width: 110, align: "right",
+      render: (r) => {
+        const kg = containerWeightKg(r);
+        const tons = (kg / 1000).toFixed(1).replace(/\.0$/, "");
+        const over = kg > VEHICLE_MAX_WEIGHT_KG;
+        const near = !over && kg > VEHICLE_MAX_WEIGHT_KG * 0.91;
+        return (
+          <div className="flex items-center justify-end gap-1 tabular-nums">
+            {over && <AlertTriangle className="h-3 w-3 text-danger" />}
+            <span className={cn(
+              "font-medium",
+              over && "text-danger font-bold",
+              near && "text-warning",
+            )}>
+              {tons}T / 28T
+            </span>
+          </div>
+        );
+      },
+      accessor: (r) => containerWeightKg(r),
+      numeric: true,
+    },
+    {
       key: "freight", label: "Cước", width: 100, align: "right",
       render: (r) => (
         <div className="text-right tabular-nums">
@@ -1080,6 +1103,19 @@ function UnscheduledPosSection({ pos }: { pos: UnscheduledPo[] }) {
     },
   ];
 
+  // Sort: fill ASC (thấp lên đầu) — farmer thấy chuyến cần xử lý trước
+  const sortedPlans = useMemo(
+    () => [...CONTAINER_PLANS].sort((a, b) => a.fillPct - b.fillPct),
+    [],
+  );
+
+  const overloadCount = summary.overweight ?? 0;
+  const holdCount = CONTAINER_PLANS.filter((p) => p.status === "hold").length;
+  const readyCount = CONTAINER_PLANS.filter(
+    (p) => (p.status === "draft" || p.status === "ready") &&
+           containerWeightKg(p) <= VEHICLE_MAX_WEIGHT_KG,
+  ).length;
+
   return (
     <section className="space-y-4">
       {/* ─── Section header ─── */}
@@ -1092,7 +1128,7 @@ function UnscheduledPosSection({ pos }: { pos: UnscheduledPo[] }) {
           <p className="text-caption text-text-3 mt-0.5">
             Hệ thống đã tối ưu {summary.total} chuyến, ghép {summary.consolidated} tuyến — tiết kiệm{" "}
             <span className="text-success font-medium">{fmtVndShort(summary.totalSaving)}</span>.
-            Bạn có thể chỉnh xe, gỡ điểm giao, hoặc tách chuyến.
+            Bạn có thể chỉnh PO, đổi xe, round-up hoặc tách chuyến.
           </p>
         </div>
         <Button
@@ -1102,6 +1138,9 @@ function UnscheduledPosSection({ pos }: { pos: UnscheduledPo[] }) {
           <Truck className="h-3.5 w-3.5 mr-1" /> Tạo chuyến mới
         </Button>
       </div>
+
+      {/* ─── ① Logic explainer (collapsed mặc định) ─── */}
+      <LogicExplainer />
 
       {/* ─── Mini summary chips ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1132,70 +1171,88 @@ function UnscheduledPosSection({ pos }: { pos: UnscheduledPo[] }) {
         </div>
       </div>
 
-      {/* ─── Container table ─── */}
+      {/* ─── ② Container table — sort fill ASC ─── */}
       <SmartTable
         screenId="drp-container-list"
         columns={cols}
-        data={CONTAINER_PLANS}
+        data={sortedPlans}
         defaultDensity="compact"
         title={`Kế hoạch ${summary.total} chuyến container`}
         exportFilename={`drp-container-w20`}
         getRowId={(r) => r.id}
         beforeCollapse={beforeCollapse}
         collapseRowSignal={collapseSignal}
-        rowSeverity={(r) =>
-          r.fillPct < 70 ? "watch" : undefined
+        rowSeverity={(r) => {
+          if (containerWeightKg(r) > VEHICLE_MAX_WEIGHT_KG) return "exception";
+          if (r.fillPct < 70) return "watch";
+          return undefined;
+        }}
+        autoExpandWhen={(r) =>
+          r.fillPct < 70 || containerWeightKg(r) > VEHICLE_MAX_WEIGHT_KG
         }
-        autoExpandWhen={(r) => r.fillPct < 70}
-        drillDown={(r) => (
-          <div className="space-y-3 p-3 bg-surface-1/40 rounded-card">
-            {/* Suggestion banner */}
-            {r.suggestion && r.suggestionLabel && (
-              <div className={cn("rounded-card border px-3 py-2 text-table-sm font-medium flex items-center gap-2",
-                SUGGESTION_CLASS[r.suggestion] ?? "border-info/40 bg-info-bg text-info")}>
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                <span>{r.suggestionLabel}</span>
-              </div>
-            )}
-
-            {/* Route visual */}
-            <div className="flex items-center gap-2 text-table-sm">
-              <span className="font-semibold text-text-1">Tuyến:</span>
-              <span className="text-text-2">{r.routeLabel}</span>
-              <span className="text-text-3">·</span>
-              <span className="text-text-3 tabular-nums">{r.distanceKm} km</span>
-              <span className="text-text-3">·</span>
-              <span className="tabular-nums text-text-2">
-                Fill {r.fillM2.toLocaleString()} / {r.capacityM2.toLocaleString()} m²
-              </span>
-            </div>
-
-            {/* Drop points — with reorder mode + close-confirm wiring */}
-            <DropPointsEditor
-              container={r}
-              onCnClick={onCnClick}
-              onDirtyChange={handleDirtyChange}
-              closeRequestNonce={closeRequests[r.id] ?? 0}
-              onCloseAllowed={() => handleCloseAllowed(r.id)}
-            />
-
-            {/* Cost line */}
-            <div className="flex items-center justify-between text-table-sm border-t border-surface-3 pt-2">
-              <div className="flex items-center gap-3 text-text-2">
-                <span>Cước: <strong className="text-text-1 tabular-nums">{fmtVnd(r.freightVnd)}</strong></span>
-                {r.savingVnd > 0 && (
-                  <span className="text-success">
-                    Tiết kiệm <strong className="tabular-nums">{fmtVnd(r.savingVnd)}</strong>
+        drillDown={(r) => {
+          const overWeight = containerWeightKg(r) > VEHICLE_MAX_WEIGHT_KG;
+          return (
+            <div className="space-y-3 p-3 bg-surface-1/40 rounded-card">
+              {/* Suggestion / overload banner */}
+              {overWeight && (
+                <div className="rounded-card border border-danger/40 bg-danger-bg px-3 py-2 text-table-sm font-medium flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 text-danger">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    Vượt 28T ({(containerWeightKg(r) / 1000).toFixed(1)}T) — bắt buộc tách 2 chuyến
                   </span>
-                )}
+                  <Button size="sm" className="h-7 px-2.5 text-[11px] bg-danger text-danger-foreground hover:bg-danger/90"
+                    onClick={() => toast.success(`Đã tách ${r.id} → ${r.id}A (40ft 27,9T) + ${r.id}B (20ft 20,5T)`)}>
+                    <Scissors className="h-3 w-3 mr-1" /> Tách tự động
+                  </Button>
+                </div>
+              )}
+              {!overWeight && r.suggestion && r.suggestionLabel && (
+                <div className={cn("rounded-card border px-3 py-2 text-table-sm font-medium flex items-center gap-2",
+                  SUGGESTION_CLASS[r.suggestion] ?? "border-info/40 bg-info-bg text-info")}>
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  <span>{r.suggestionLabel}</span>
+                </div>
+              )}
+
+              {/* ─── Zone A: PO trong container (editable) ─── */}
+              <PoLinesEditor container={r} />
+
+              {/* ─── Zone B: Round-up gợi ý ─── */}
+              <RoundUpSuggestion container={r} />
+
+              {/* ─── Zone C: Tuyến giao + drop reorder ─── */}
+              <div className="rounded-card border border-surface-3 bg-surface-1 p-3 space-y-2">
+                <div className="text-table-sm font-semibold text-text-1 flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-primary" /> Tuyến giao
+                </div>
+                <DropPointsEditor
+                  container={r}
+                  onCnClick={onCnClick}
+                  onDirtyChange={handleDirtyChange}
+                  closeRequestNonce={closeRequests[r.id] ?? 0}
+                  onCloseAllowed={() => handleCloseAllowed(r.id)}
+                />
               </div>
-              <div className="flex items-center gap-2 text-text-3">
-                <Package className="h-3 w-3" />
-                <span>{r.poIds.length} PO: <span className="font-mono">{r.poIds.join(", ")}</span></span>
+
+              {/* Cost line */}
+              <div className="flex items-center justify-between text-table-sm border-t border-surface-3 pt-2">
+                <div className="flex items-center gap-3 text-text-2">
+                  <span>Cước: <strong className="text-text-1 tabular-nums">{fmtVnd(r.freightVnd)}</strong></span>
+                  {r.savingVnd > 0 && (
+                    <span className="text-success">
+                      Tiết kiệm <strong className="tabular-nums">{fmtVnd(r.savingVnd)}</strong>
+                    </span>
+                  )}
+                </div>
+                <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]"
+                  onClick={(e) => { e.stopPropagation(); setEditing(r); }}>
+                  <Pencil className="h-3 w-3 mr-1" /> Đổi xe / preview
+                </Button>
               </div>
             </div>
-          </div>
-        )}
+          );
+        }}
         emptyState={{
           icon: <Truck className="h-10 w-10" />,
           title: "Chưa có chuyến container nào",
@@ -1206,20 +1263,34 @@ function UnscheduledPosSection({ pos }: { pos: UnscheduledPo[] }) {
       {/* ─── Edit preview dialog (full workspace với live recalc) ─── */}
       <ContainerEditPreview container={editing} onClose={() => setEditing(null)} />
 
+      {/* ─── ③ PO chưa xếp ─── */}
+      <UnscheduledPosSection pos={UNSCHEDULED_POS} />
+
       {/* ─── Footer action ─── */}
-      <div className="flex items-center justify-between border-t border-surface-3 pt-3">
-        <div className="text-caption text-text-3">
-          {summary.total} chuyến · {summary.consolidated} ghép tuyến · Fill TB {summary.avgFill}% ·
-          Cước {fmtVndShort(summary.totalFreight)}
+      <div className="flex items-center justify-between border-t border-surface-3 pt-3 gap-3 flex-wrap">
+        <div className="text-caption text-text-3 flex items-center gap-3 flex-wrap">
+          <span>
+            <strong className="text-text-1">{readyCount}/{summary.total}</strong> sẵn sàng
+          </span>
+          {holdCount > 0 && (
+            <span className="text-warning">· {holdCount} giữ chờ</span>
+          )}
+          {overloadCount > 0 && (
+            <span className="text-danger font-semibold">
+              · ⚠️ {overloadCount} vượt tải — cần [Tách] trước khi duyệt
+            </span>
+          )}
         </div>
         <Button
           size="sm"
+          disabled={overloadCount > 0}
+          title={overloadCount > 0 ? "Còn chuyến vượt tải — bấm [Tách tự động] trong drill-down" : undefined}
           onClick={() => {
             navigate("/orders?tab=approval");
-            toast.success("Đã chuyển sang Đơn hàng — các PO/TO từ DRP đã được lọc");
+            toast.success(`Đã chuyển ${readyCount} container sang Đơn hàng`);
           }}
         >
-          Duyệt & Chuyển Đơn hàng <ArrowRight className="h-3.5 w-3.5 ml-1" />
+          Duyệt {readyCount} container <ArrowRight className="h-3.5 w-3.5 ml-1" />
         </Button>
       </div>
     </section>
