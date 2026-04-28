@@ -255,47 +255,47 @@ function ConflictLogSection({ expanded, onToggle }: { expanded: boolean; onToggl
           </div>
         )}
 
-        {/* Table */}
-        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-          <table id="conflict-log-table" className="w-full text-table-sm">
-            <thead>
-              <tr className="bg-surface-1">
-                {["Thời gian", "Loại", "Screen", "User A", "User B", "Entity", "Kết quả", ""].map((h, i) => (
-                  <th key={i} className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {thisWeek.map((c, i) => (
-                <React.Fragment key={i}>
-                  <tr className={cn("border-b border-surface-3/50 hover:bg-surface-1/30 transition-colors", (c as any).highlight && "bg-warning-bg/20")}>
-                    <td className="px-3 py-2 tabular-nums text-text-2">{c.time}</td>
-                    <td className="px-3 py-2">
-                      <span className={cn("rounded-sm px-1.5 py-0.5 text-[10px] font-medium", typeBadge(c.type))}>{c.type}</span>
-                    </td>
-                    <td className="px-3 py-2 text-text-2">{c.screen}</td>
-                    <td className="px-3 py-2 text-text-1">{c.userA}</td>
-                    <td className="px-3 py-2 text-text-1">{c.userB}</td>
-                    <td className="px-3 py-2 font-mono text-text-2">{c.entity}</td>
-                    <td className="px-3 py-2 text-text-2">{c.result}</td>
-                    <td className="px-3 py-2">
-                      <button onClick={() => setExpandedRow(expandedRow === i ? null : i)} className="text-primary text-caption font-medium hover:underline">
-                        {expandedRow === i ? "Ẩn" : "Chi tiết"}
-                      </button>
-                    </td>
-                  </tr>
-                  {expandedRow === i && (
-                    <tr>
-                      <td colSpan={8} className="px-6 py-3 bg-surface-1/50">
-                        <pre className="text-table-sm text-text-2 whitespace-pre-wrap font-body leading-relaxed">{c.detail}</pre>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {/* Table — SmartTable with drillDown for detail */}
+        {(() => {
+          const rows: ConflictRow[] = thisWeek.map((c, i) => ({ ...c, _id: `${c.time}-${i}` }));
+          const cols: SmartTableColumn<ConflictRow>[] = [
+            { key: "time", label: "Thời gian", width: 90, sortable: true, hideable: false, render: (r) => <span className="tabular-nums text-text-2">{r.time}</span> },
+            {
+              key: "type", label: "Loại", width: 150, hideable: false,
+              filter: "enum",
+              filterOptions: [
+                { value: "CELL_OVERRIDE", label: "Cell Override" },
+                { value: "VERSION_MISMATCH", label: "Version Mismatch" },
+                { value: "BATCH_QUEUE", label: "Batch Queue" },
+                { value: "FORCE_LOCK", label: "Force Lock" },
+              ],
+              accessor: (r) => r.type,
+              render: (r) => <span className={cn("rounded-sm px-1.5 py-0.5 text-[10px] font-medium", typeBadge(r.type))}>{r.type}</span>,
+            },
+            { key: "screen", label: "Screen", width: 130, sortable: true, render: (r) => <span className="text-text-2">{r.screen}</span> },
+            { key: "userA", label: "User A", width: 110, render: (r) => <span className="text-text-1">{r.userA}</span> },
+            { key: "userB", label: "User B", width: 110, render: (r) => <span className="text-text-1">{r.userB}</span> },
+            { key: "entity", label: "Entity", width: 140, render: (r) => <span className="font-mono text-text-2 text-table-sm">{r.entity}</span> },
+            { key: "result", label: "Kết quả", width: 160, render: (r) => <span className="text-text-2">{r.result}</span> },
+          ];
+          return (
+            <SmartTable<ConflictRow>
+              screenId="monitoring-conflict-log"
+              exportFilename="conflict-log-7d"
+              columns={cols}
+              data={rows}
+              defaultDensity="compact"
+              getRowId={(r) => r._id}
+              rowSeverity={(r) => ((r as any).highlight ? "watch" : "ok")}
+              autoExpandWhen={(r) => !!(r as any).highlight}
+              drillDown={(r) => (
+                <div className="px-4 py-3 bg-surface-1/40">
+                  <pre className="text-table-sm text-text-2 whitespace-pre-wrap font-body leading-relaxed">{r.detail}</pre>
+                </div>
+              )}
+            />
+          );
+        })()}
 
         {/* Weekly trend chart */}
         <div>
