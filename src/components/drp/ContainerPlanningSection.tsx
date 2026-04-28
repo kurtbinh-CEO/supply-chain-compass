@@ -400,12 +400,25 @@ function DropPointsEditor({
         )}
       </div>
 
-      {/* KPI Impact Grid — luôn hiện trong drill-down, flash khi value đổi */}
+      {/* Cảnh báo exception-first khi fill vượt ngưỡng — đặt TRÊN KPI grid */}
+      <FillExceptionAlert
+        container={container}
+        currentFillM2={currentFillM2}
+        currentCapacityM2={container.capacityM2}
+        currentVehicleCode={container.vehicle}
+        currentDrops={activeDrops}
+        onChangeVehicle={(v) =>
+          toast.info(`Gợi ý đổi xe sang ${v.label} — mở dialog "Sửa" để xác nhận`)
+        }
+        onRemoveDrop={removeDrop}
+      />
+
+      {/* KPI Impact Grid — luôn hiện, flash khi value đổi */}
       <KpiImpactGrid
         baseFillPct={container.fillPct}
         baseKm={container.distanceKm}
         baseFreightVnd={container.freightVnd}
-        newFillPct={container.fillPct /* fill không đổi vì cùng SKU/qty */}
+        newFillPct={currentFillPct}
         newKm={calc.newKm}
         newFreightVnd={calc.newFreight}
         editing={reorderMode}
