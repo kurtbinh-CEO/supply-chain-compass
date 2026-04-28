@@ -130,6 +130,14 @@ function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
 
   return (
     <div className="space-y-2">
+      {/* Bản đồ lộ trình — luôn hiện, panel "Sau khi sửa" chỉ bật khi reorderMode */}
+      <RouteMapPreview
+        factoryCode={container.factoryCode}
+        baselineCnCodes={container.drops.map((d) => d.cnCode)}
+        currentCnCodes={order.map((d) => d.cnCode)}
+        showProjected={reorderMode}
+      />
+
       <div className="flex items-center justify-between">
         <div className="text-caption text-text-3 font-medium">
           Điểm giao ({order.length})
