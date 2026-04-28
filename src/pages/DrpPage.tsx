@@ -616,6 +616,8 @@ function SkuFirstPivotTable({
     totalDemand: number;
     totalAlloc: number;
     fillPct: number;
+    ssTarget: number;
+    ssReserved: number;
     cnShortage: { cn: string; demand: number; alloc: number; fill: number }[];
     nmSources: { name: string; pct: number }[];
     perCn: { cn: string; demand: number; alloc: number; fill: number; onHand: number; lcnbIn: number; lcnbOut: number; hubPo: number; lcnbInFrom?: string; lcnbOutTo?: string }[];
@@ -627,11 +629,13 @@ function SkuFirstPivotTable({
       cn.allSkus.forEach((sk) => {
         const key = sk.item;
         if (!map.has(key)) {
-          map.set(key, { sku: key, totalDemand: 0, totalAlloc: 0, fillPct: 0, cnShortage: [], nmSources: [], perCn: [] });
+          map.set(key, { sku: key, totalDemand: 0, totalAlloc: 0, fillPct: 0, ssTarget: 0, ssReserved: 0, cnShortage: [], nmSources: [], perCn: [] });
         }
         const p = map.get(key)!;
         p.totalDemand += sk.demand;
         p.totalAlloc += sk.allocated;
+        p.ssTarget += sk.ssTarget ?? 0;
+        p.ssReserved += sk.ssReserved ?? 0;
         const fill = sk.demand > 0 ? Math.round((sk.allocated / sk.demand) * 100) : 100;
         if (fill < 95) p.cnShortage.push({ cn: cn.cn, demand: sk.demand, alloc: sk.allocated, fill });
         // Match TOs whose SKU starts with this base
