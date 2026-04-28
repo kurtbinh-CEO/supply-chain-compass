@@ -30,6 +30,7 @@ import {
 import { useRbac } from "@/components/RbacContext";
 import { getKpiTarget } from "@/data/unis-enterprise-dataset";
 import { cn } from "@/lib/utils";
+import { PillTabs } from "@/components/PillTabs";
 
 /** Map card key (Tier 1) → kpiKey trong KPI_TARGETS dataset. */
 const KPI_TARGET_MAP: Record<string, string> = {
