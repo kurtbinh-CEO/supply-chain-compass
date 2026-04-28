@@ -1228,7 +1228,17 @@ export default function DrpPage() {
       {/* ══ BƯỚC 1 — PREFLIGHT ══ */}
       {wizardStep === 1 && (
         <div className="space-y-2">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => {
+                setPreflightRefreshTick((n) => n + 1);
+                toast.success("Đã làm mới preflight theo dữ liệu mới nhất");
+              }}
+              className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 py-1.5 text-table-sm text-text-2 hover:text-text-1"
+              title="Tính lại các điều kiện preflight ngay"
+            >
+              <RefreshCw className="h-3.5 w-3.5" /> Làm mới
+            </button>
             <button
               onClick={() => navigate("/drp/preflight-audit")}
               className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 py-1.5 text-table-sm text-text-2 hover:text-text-1"
