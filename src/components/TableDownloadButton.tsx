@@ -19,6 +19,7 @@ import {
   FileText,
   Filter,
   Layers,
+  RefreshCw,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -262,6 +263,9 @@ export function TableDownloadButton({
   const [menuOpen, setMenuOpen] = useState(false);
   const [preview, setPreview] = useState<{ fmt: Format; scope: Scope } | null>(null);
   const [confirmedLarge, setConfirmedLarge] = useState(false);
+  /** Bump để force re-đọc bảng/CSV nguồn khi user bấm "Làm mới" trong modal. */
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
   const [lastChoice, setLastChoice] = useState<{ fmt: Format; scope: Scope } | null>(() =>
     typeof window === "undefined" ? null : readLast(),
   );
