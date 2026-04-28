@@ -12,6 +12,7 @@ import { useCommandPalette } from "@/components/CommandPalette";
 import { NM_INVENTORY, FACTORIES } from "@/data/unis-enterprise-dataset";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { isMac, formatShortcut } from "@/lib/platform";
 
 const routeKeys: Record<string, string> = {
   "/workspace": "route.workspace",
