@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   Play, ChevronDown, ChevronRight, ArrowRight, Lock as LockIcon,
-  CheckCircle2, AlertTriangle, Info, X,
+  CheckCircle2, AlertTriangle, Info, X, RefreshCw,
 } from "lucide-react";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { TermTooltip } from "@/components/TermTooltip";
