@@ -617,45 +617,8 @@ export function ContainerPlanningSection({ onCnClick, highlightId }: Props) {
         }}
       />
 
-      {/* ─── Edit dialog (lite) ─── */}
-      <Dialog open={!!editing} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-4 w-4" />
-              Chỉnh chuyến {editing?.id}
-            </DialogTitle>
-          </DialogHeader>
-          {editing && (
-            <div className="space-y-3">
-              <div className="rounded-card border border-surface-3 bg-surface-2 p-3 space-y-1 text-table-sm">
-                <div className="flex justify-between">
-                  <span className="text-text-3">Loại xe hiện tại</span>
-                  <span className="font-semibold text-text-1">{editing.vehicle} ({editing.capacityM2.toLocaleString()}m²)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text-3">Đang chở</span>
-                  <span className="tabular-nums">{editing.fillM2.toLocaleString()}m² ({editing.fillPct}%)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text-3">Tuyến</span>
-                  <span>{editing.routeLabel}</span>
-                </div>
-              </div>
-              <div className="text-caption text-text-3">
-                Đổi loại xe hoặc gỡ điểm giao để tối ưu fill rate. Hệ thống sẽ tính lại cước & cảnh báo nếu vượt sức chứa.
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditing(null)}>Đóng</Button>
-            <Button onClick={() => {
-              toast.success(`Đã lưu thay đổi cho ${editing?.id}`);
-              setEditing(null);
-            }}>Lưu thay đổi</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* ─── Edit preview dialog (full workspace với live recalc) ─── */}
+      <ContainerEditPreview container={editing} onClose={() => setEditing(null)} />
 
       {/* ─── Footer action ─── */}
       <div className="flex items-center justify-between border-t border-surface-3 pt-3">
