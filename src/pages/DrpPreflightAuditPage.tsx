@@ -72,6 +72,67 @@ export default function DrpPreflightAuditPage() {
 
   const summary = useMemo(() => summarizePreflight(rows), [rows]);
 
+  // ── Snapshots: tải lịch sử + tự lưu 1 bản ghi mỗi lần mở trang ──
+  const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
+  const [snapLoading, setSnapLoading] = useState(false);
+  const savedThisMount = useRef(false);
+
+  const loadSnapshots = useCallback(async () => {
+    setSnapLoading(true);
+    const { data, error } = await supabase
+      .from("drp_preflight_snapshots")
+      .select(
+        "id, created_at, cycle_label, cycle_version, cycle_status, can_run, ok_count, warn_count, block_count, total_count, block_reasons, rows, source",
+      )
+      .eq("tenant", tenant)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (error) {
+      toast.error("Không tải được lịch sử ảnh chụp", { description: error.message });
+    } else {
+      setSnapshots((data ?? []) as unknown as SnapshotRow[]);
+    }
+    setSnapLoading(false);
+  }, [tenant]);
+
+  // Lưu snapshot hiện tại (1 lần / lần mở trang) rồi load lại history
+  useEffect(() => {
+    if (savedThisMount.current) return;
+    savedThisMount.current = true;
+
+    let cancelled = false;
+    (async () => {
+      const { error } = await supabase.from("drp_preflight_snapshots").insert({
+        tenant,
+        cycle_id: planCycle.id,
+        cycle_label: planCycle.label,
+        cycle_status: planCycle.status,
+        cycle_version: planCycle.version,
+        can_run: summary.canRun,
+        ok_count: summary.ok,
+        warn_count: summary.warn,
+        block_count: summary.block,
+        total_count: summary.total,
+        block_reasons: summary.blockReasons,
+        // rows là PreflightAuditRow[] — JSONB sẽ giữ nguyên cấu trúc
+        rows: rows as unknown as object,
+        source: "audit_page",
+      });
+      if (cancelled) return;
+      if (error) {
+        // Không chặn UX — chỉ cảnh báo nhẹ và vẫn load history
+        console.warn("Lưu snapshot preflight thất bại:", error.message);
+      }
+      await loadSnapshots();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // chỉ chạy 1 lần / mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const headerActions = (
     <>
       <button
