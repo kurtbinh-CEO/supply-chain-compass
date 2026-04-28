@@ -530,6 +530,76 @@ function DropPointsEditor({
           })}
         </tbody>
       </table>
+
+      {/* Confirm khi đóng preview với thay đổi chưa lưu */}
+      <Dialog
+        open={closeConfirmOpen}
+        onOpenChange={(open) => { if (!open) handleConfirmCancel(); }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+              Có thay đổi chưa lưu cho {container.id}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-table-sm">
+            <p className="text-text-2">
+              Bạn vừa sắp xếp lại thứ tự giao nhưng chưa bấm <strong>Lưu thứ tự</strong>.
+              Đóng bây giờ sẽ mất thay đổi này.
+            </p>
+            <div className="rounded-card border border-surface-3 bg-surface-2 px-3 py-2 space-y-1">
+              <div className="flex items-center justify-between text-text-3 text-caption">
+                <span>Thứ tự mới</span>
+                <span className="font-mono text-text-1">{dynamicRoute}</span>
+              </div>
+              <div className="flex items-center justify-between text-text-3 text-caption">
+                <span>Tác động</span>
+                <span className="tabular-nums">
+                  <span className={cn(
+                    "font-semibold",
+                    calc.deltaKm > 0 ? "text-warning" : "text-success",
+                  )}>
+                    {calc.deltaKm > 0 ? "+" : ""}{calc.deltaKm}km
+                  </span>
+                  <span className="text-text-3 mx-1">·</span>
+                  <span className={cn(
+                    "font-semibold",
+                    calc.deltaFreight > 0 ? "text-warning" : "text-success",
+                  )}>
+                    {fmtDelta(calc.deltaFreight)}
+                  </span>
+                </span>
+              </div>
+            </div>
+            <p className="text-caption text-text-3">
+              💡 Nháp đã được tự động lưu — có thể quay lại tiếp tục sau.
+            </p>
+          </div>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button
+              variant="ghost"
+              onClick={handleConfirmCancel}
+              className="text-text-2"
+            >
+              Tiếp tục chỉnh
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleConfirmDiscard}
+              className="border-danger/40 text-danger hover:bg-danger hover:text-danger-foreground"
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1" /> Hủy thay đổi
+            </Button>
+            <Button
+              onClick={handleConfirmSave}
+              className="bg-primary text-primary-foreground"
+            >
+              <Save className="h-3.5 w-3.5 mr-1" /> Lưu & Đóng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
