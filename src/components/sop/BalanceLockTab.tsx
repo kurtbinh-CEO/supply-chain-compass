@@ -355,3 +355,271 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
     </div>
   );
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Sub-tables — SmartTable parent + drillDown compact (CN-first / SKU-first)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+function statusChip(status: string) {
+  const tone =
+    status === "CRITICAL" ? "bg-danger-bg text-danger" :
+    status === "EXCESS" ? "bg-info-bg text-info" :
+    "bg-success-bg text-success";
+  const label =
+    status === "CRITICAL" ? "NGHIÊM TRỌNG" :
+    status === "EXCESS" ? "DƯ THỪA" :
+    status === "OK" ? "ĐẠT" : status;
+  return <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold", tone)}>{label}</span>;
+}
+
+/* ─── CN-first ─── */
+function BalanceCnTable({
+  rows,
+  totals,
+}: {
+  rows: BalanceRow[];
+  totals: { demand: number; stock: number; pipeline: number; ssTarget: number; netReq: number };
+}) {
+  const cols: SmartTableColumn<BalanceRow>[] = [
+    { key: "cn", label: "CN", width: 90, sortable: true, filter: "text",
+      render: (r) => <span className="font-medium text-text-1">{r.cn}</span> },
+    { key: "demand", label: "Nhu cầu", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.demand, render: (r) => <span className="font-medium text-text-1">{r.demand.toLocaleString()}</span> },
+    { key: "stock", label: "Tồn kho", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.stock, render: (r) => r.stock.toLocaleString() },
+    { key: "pipeline", label: "Đang về", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.pipeline, render: (r) => <span className="text-text-2">{r.pipeline.toLocaleString()}</span> },
+    { key: "avail", label: "Sẵn dùng", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.stock + r.pipeline, render: (r) => (r.stock + r.pipeline).toLocaleString() },
+    { key: "cover", label: "Số ngày phủ", width: 130, numeric: true, sortable: true, align: "left",
+      accessor: (r) => r.demand > 0 ? r.stock / (r.demand / 30) : 0,
+      render: (r) => {
+        const cover = r.demand > 0 ? +(r.stock / (r.demand / 30)).toFixed(1) : 0;
+        const isCrit = cover < 7;
+        const coverPct = Math.min(100, (cover / 15) * 100);
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-14 h-2 rounded-full bg-surface-3 overflow-hidden">
+              <div className={cn("h-full rounded-full", cover < 5 ? "bg-danger" : cover < 10 ? "bg-warning" : "bg-success")}
+                style={{ width: `${coverPct}%` }} />
+            </div>
+            <span className={cn("tabular-nums font-medium text-table-sm", isCrit ? "text-danger" : "text-success")}>
+              {cover}d {isCrit ? "🔴" : "🟢"}
+            </span>
+          </div>
+        );
+      },
+    },
+    { key: "ssTarget", label: "SS mục tiêu", width: 110, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.ssTarget, render: (r) => r.ssTarget.toLocaleString() },
+    { key: "ssGap", label: "SS lệch", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.stock - r.ssTarget,
+      render: (r) => {
+        const ssGap = r.stock - r.ssTarget;
+        return <span className={cn("tabular-nums font-medium", ssGap < 0 ? "text-danger" : "text-success")}>{ssGap > 0 ? "+" : ""}{ssGap.toLocaleString()}</span>;
+      },
+    },
+    { key: "netReq", label: "Nhu cầu ròng", width: 120, numeric: true, sortable: true, align: "right",
+      accessor: (r) => Math.max(0, r.demand - r.stock - r.pipeline),
+      render: (r) => <span className="font-medium text-text-1">{Math.max(0, r.demand - r.stock - r.pipeline).toLocaleString()}</span> },
+    { key: "status", label: "Trạng thái", width: 130, filter: "enum",
+      filterOptions: [
+        { value: "CRITICAL", label: "NGHIÊM TRỌNG" },
+        { value: "EXCESS", label: "DƯ THỪA" },
+        { value: "OK", label: "ĐẠT" },
+      ],
+      accessor: (r) => {
+        const cover = r.demand > 0 ? r.stock / (r.demand / 30) : 0;
+        const ssGap = r.stock - r.ssTarget;
+        return cover < 7 ? "CRITICAL" : (cover > 12 && ssGap > 0) ? "EXCESS" : "OK";
+      },
+      render: (r) => {
+        const cover = r.demand > 0 ? r.stock / (r.demand / 30) : 0;
+        const ssGap = r.stock - r.ssTarget;
+        const status = cover < 7 ? "CRITICAL" : (cover > 12 && ssGap > 0) ? "EXCESS" : "OK";
+        return statusChip(status);
+      },
+    },
+  ];
+
+  const summaryRow: Partial<Record<string, React.ReactNode>> = {
+    cn: <span className="font-bold text-text-1">TỔNG</span>,
+    demand: totals.demand.toLocaleString(),
+    stock: totals.stock.toLocaleString(),
+    pipeline: totals.pipeline.toLocaleString(),
+    avail: (totals.stock + totals.pipeline).toLocaleString(),
+    cover: totals.demand > 0 ? `${(totals.stock / (totals.demand / 30)).toFixed(1)}d` : "—",
+    ssTarget: totals.ssTarget.toLocaleString(),
+    ssGap: (
+      <span className={cn("tabular-nums font-medium", (totals.stock - totals.ssTarget) >= 0 ? "text-success" : "text-danger")}>
+        {(totals.stock - totals.ssTarget) > 0 ? "+" : ""}{(totals.stock - totals.ssTarget).toLocaleString()}
+      </span>
+    ),
+    netReq: totals.netReq.toLocaleString(),
+  };
+
+  return (
+    <SmartTable<BalanceRow>
+      screenId="sop-balance-cn"
+      title="Cân đối theo CN — Tháng 5"
+      columns={cols}
+      data={rows}
+      defaultDensity="compact"
+      getRowId={(r) => r.cn}
+      rowSeverity={(r) => {
+        const cover = r.demand > 0 ? r.stock / (r.demand / 30) : 0;
+        return cover < 7 ? "shortage" : "ok";
+      }}
+      autoExpandWhen={(r) => {
+        const cover = r.demand > 0 ? r.stock / (r.demand / 30) : 0;
+        return cover < 7;
+      }}
+      drillDown={(r) => <BalanceCnSkuChild row={r} />}
+      summaryRow={summaryRow}
+      exportFilename="balance-cn"
+    />
+  );
+}
+
+function BalanceCnSkuChild({ row }: { row: BalanceRow }) {
+  const cols: SmartTableColumn<BalSkuRow>[] = [
+    { key: "sku", label: "Mã hàng", width: 130,
+      render: (s) => <span className="font-medium text-text-1">{s.item} {s.variant}</span> },
+    { key: "demand", label: "Nhu cầu", width: 90, numeric: true, align: "right", accessor: (s) => s.demand,
+      render: (s) => s.demand.toLocaleString() },
+    { key: "stock", label: "Tồn", width: 80, numeric: true, align: "right", accessor: (s) => s.stock,
+      render: (s) => s.stock.toLocaleString() },
+    { key: "pipeline", label: "Đang về", width: 130, numeric: true, align: "right", accessor: (s) => s.pipeline,
+      render: (s) => (
+        <span>
+          {s.pipeline.toLocaleString()}
+          {s.pipelineSource && <span className="ml-1 text-caption text-text-3">{s.pipelineSource}</span>}
+        </span>
+      ),
+    },
+    { key: "avail", label: "Sẵn dùng", width: 90, numeric: true, align: "right",
+      accessor: (s) => s.stock + s.pipeline, render: (s) => (s.stock + s.pipeline).toLocaleString() },
+    { key: "cover", label: "Phủ", width: 70, numeric: true, align: "right",
+      accessor: (s) => s.demand > 0 ? s.stock / (s.demand / 30) : 0,
+      render: (s) => `${s.demand > 0 ? (s.stock / (s.demand / 30)).toFixed(1) : 0}d` },
+    { key: "ss", label: "SS", width: 70, numeric: true, align: "right", accessor: (s) => s.ss,
+      render: (s) => s.ss.toLocaleString() },
+    { key: "ssGap", label: "SS lệch", width: 90, numeric: true, align: "right",
+      accessor: (s) => s.stock - s.ss,
+      render: (s) => {
+        const g = s.stock - s.ss;
+        return <span className={cn("tabular-nums font-medium", g < 0 ? "text-danger" : "text-success")}>{g > 0 ? "+" : ""}{g.toLocaleString()}</span>;
+      },
+    },
+    { key: "netReq", label: "Net req", width: 90, numeric: true, align: "right",
+      accessor: (s) => Math.max(0, s.demand - (s.stock + s.pipeline)),
+      render: (s) => {
+        const n = Math.max(0, s.demand - (s.stock + s.pipeline));
+        return <span className={cn("tabular-nums font-medium", n > 0 ? "text-danger" : "text-success")}>{n.toLocaleString()}</span>;
+      },
+    },
+    { key: "match", label: "Khớp", width: 130,
+      render: (s) => (
+        <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
+          s.match.includes("SHORT") ? "bg-danger-bg text-danger" : "bg-success-bg text-success")}>
+          {s.match}
+        </span>
+      ),
+    },
+  ];
+
+  return (
+    <div className="px-3 py-2 bg-surface-1/40">
+      <SmartTable<BalSkuRow>
+        screenId={`sop-balance-cn-${row.cn}-skus`}
+        columns={cols}
+        data={row.skus}
+        defaultDensity="compact"
+        getRowId={(s) => `${s.item}-${s.variant}`}
+      />
+    </div>
+  );
+}
+
+/* ─── SKU-first ─── */
+function BalanceSkuTable({
+  rows,
+  totals,
+}: {
+  rows: BalSkuPivot[];
+  totals: { demand: number; stock: number; pipeline: number; netReq: number };
+}) {
+  const cols: SmartTableColumn<BalSkuPivot>[] = [
+    { key: "item", label: "SKU", width: 100, sortable: true, filter: "text",
+      render: (r) => <span className="font-medium text-text-1">{r.item}</span> },
+    { key: "variant", label: "Mẫu", width: 80, sortable: true, render: (r) => <span className="text-text-2">{r.variant}</span> },
+    { key: "demand", label: "Nhu cầu", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.demand, render: (r) => <span className="font-medium text-text-1">{r.demand.toLocaleString()}</span> },
+    { key: "stock", label: "Tồn kho", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.stock, render: (r) => r.stock.toLocaleString() },
+    { key: "pipeline", label: "Đang về", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.pipeline, render: (r) => <span className="text-text-2">{r.pipeline.toLocaleString()}</span> },
+    { key: "netReq", label: "Nhu cầu ròng", width: 120, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.netReq,
+      render: (r) => <span className={cn("tabular-nums font-medium", r.netReq > 0 ? "text-danger" : "text-success")}>{r.netReq.toLocaleString()}</span> },
+    { key: "worstCn", label: "CN xấu nhất", width: 140,
+      render: (r) => <WorstCnCell cnName={r.worstCn} hstk={r.worstCover} /> },
+    { key: "cnGapCount", label: "# CN thiếu", width: 110, numeric: true, sortable: true, align: "left",
+      accessor: (r) => r.cnGapCount, render: (r) => <CnGapBadge count={r.cnGapCount} /> },
+    { key: "lcnb", label: "LCNB", width: 130,
+      render: (r) => r.lcnb ? <LcnbBadge text={r.lcnb} /> : <span className="text-text-3">—</span> },
+  ];
+
+  const summaryRow: Partial<Record<string, React.ReactNode>> = {
+    item: <span className="font-bold text-text-1">TỔNG</span>,
+    demand: totals.demand.toLocaleString(),
+    stock: totals.stock.toLocaleString(),
+    pipeline: totals.pipeline.toLocaleString(),
+    netReq: totals.netReq.toLocaleString(),
+  };
+
+  return (
+    <SmartTable<BalSkuPivot>
+      screenId="sop-balance-sku"
+      title="Cân đối theo SKU — Tháng 5"
+      columns={cols}
+      data={rows}
+      defaultDensity="compact"
+      getRowId={(r) => `${r.item}-${r.variant}`}
+      rowSeverity={(r) => r.netReq > 0 ? "shortage" : "ok"}
+      autoExpandWhen={(r) => r.netReq > 0}
+      drillDown={(r) => <BalanceSkuCnChild row={r} />}
+      summaryRow={summaryRow}
+      exportFilename="balance-sku"
+    />
+  );
+}
+
+function BalanceSkuCnChild({ row }: { row: BalSkuPivot }) {
+  type CnBreak = BalSkuPivot["cnBreakdown"][number];
+  const cols: SmartTableColumn<CnBreak>[] = [
+    { key: "cn", label: "CN", width: 90, render: (r) => <span className="font-medium text-text-1">{r.cn}</span> },
+    { key: "demand", label: "Nhu cầu", width: 100, numeric: true, align: "right", accessor: (r) => r.demand, render: (r) => r.demand.toLocaleString() },
+    { key: "stock", label: "Tồn", width: 80, numeric: true, align: "right", accessor: (r) => r.stock, render: (r) => r.stock.toLocaleString() },
+    { key: "pipeline", label: "Đang về", width: 100, numeric: true, align: "right", accessor: (r) => r.pipeline, render: (r) => r.pipeline.toLocaleString() },
+    { key: "cover", label: "Phủ", width: 70, numeric: true, align: "right", accessor: (r) => r.cover, render: (r) => `${r.cover}d` },
+    { key: "ssTarget", label: "SS", width: 80, numeric: true, align: "right", accessor: (r) => r.ssTarget, render: (r) => r.ssTarget.toLocaleString() },
+    { key: "ssGap", label: "SS lệch", width: 90, numeric: true, align: "right", accessor: (r) => r.ssGap,
+      render: (r) => <span className={cn("tabular-nums font-medium", r.ssGap < 0 ? "text-danger" : "text-success")}>{r.ssGap > 0 ? "+" : ""}{r.ssGap.toLocaleString()}</span> },
+    { key: "netReq", label: "Net req", width: 100, numeric: true, align: "right", accessor: (r) => r.netReq,
+      render: (r) => <span className={cn("tabular-nums font-medium", r.netReq > 0 ? "text-danger" : "text-success")}>{r.netReq.toLocaleString()}</span> },
+    { key: "status", label: "Trạng thái", width: 130, render: (r) => statusChip(r.status) },
+  ];
+
+  return (
+    <div className="px-3 py-2 bg-surface-1/40">
+      <SmartTable<CnBreak>
+        screenId={`sop-balance-sku-${row.item}-${row.variant}-cns`}
+        columns={cols}
+        data={row.cnBreakdown}
+        defaultDensity="compact"
+        getRowId={(r) => r.cn}
+      />
+    </div>
+  );
+}
