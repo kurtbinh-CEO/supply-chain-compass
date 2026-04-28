@@ -102,6 +102,15 @@ export interface SmartTableProps<T = any> {
   autoExpandWhen?: (row: T) => boolean;
   onRowClick?: (row: T) => void;
   /**
+   * Split-intent mode: khi cả `drillDown` và `onRowClick` cùng có:
+   *  - Click vào ô chevron (cột đầu) → chỉ toggle expand inline
+   *  - Click vào body row → chỉ gọi `onRowClick` (mở side panel)
+   * Mặc định `true` để tránh trigger cả 2 cùng lúc gây rối.
+   */
+  splitIntent?: boolean;
+  /** ID của row đang được "active" (vd: row đang mở side panel) — highlight border-left primary */
+  activeRowId?: string | null;
+  /**
    * Guard chạy trước khi đóng (collapse) một row đang mở.
    * Trả `false` để chặn đóng (parent sẽ hiển thị confirm UI riêng).
    * Trả `true`/`undefined` để cho phép đóng như bình thường.
