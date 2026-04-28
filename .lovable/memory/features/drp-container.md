@@ -17,7 +17,7 @@ DRP Step 3 results split into 2 sub-tabs (`resultsTab` state in `DrpPage.tsx`):
   - `autoExpandWhen` = fill < 70% so low-fill containers reveal the suggestion immediately.
   - 4 mini-summary chips above table: Tổng chuyến / Ghép tuyến / Fill TB / Tiết kiệm.
   - Footer CTA: `Duyệt & Chuyển Đơn hàng →` navigates to `/orders?tab=approval`.
-  - Edit dialog (Dialog) opens via "Sửa" button on draft/ready/hold rows — placeholder for vehicle change + drop removal.
+  - Edit preview opens via "Sửa" button on draft/ready/hold rows → `<ContainerEditPreview>` (`src/components/drp/ContainerEditPreview.tsx`): full workspace with side-by-side **Hiện tại / Sau khi sửa** PreviewCards (loại xe · fill% · tổng km · cước + delta chips), vehicle picker (4 cars: Xe5T/Xe10T/20ft/40ft, each with capacity + cost/km), drag-and-drop drop reorder + ↑↓ + X (gỡ), and a "Đã gỡ — gắn lại" chip row. Live recalc model: `km = base × (0.4 + 0.6 × dropRatio) × (1 + dev × 0.25)`, `freight = km × vehicle.costPerKm`. Save button is disabled when `overflow > 0` and shows the total cước delta as a chip.
 
 **DropPointsEditor** (in `ContainerPlanningSection.tsx`):
 - Toggle button "🔀 Sắp xếp lại thứ tự giao" enables HTML5 drag-and-drop on rows (only for ≥2 drops AND status draft/ready/hold).
