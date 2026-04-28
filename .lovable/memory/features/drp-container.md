@@ -13,11 +13,18 @@ DRP Step 3 results split into 2 sub-tabs (`resultsTab` state in `DrpPage.tsx`):
 - **Tab 2 "Đóng container"**: `<ContainerPlanningSection />` (`src/components/drp/ContainerPlanningSection.tsx`).
   - SmartTable (`screenId="drp-container-list"`, `defaultDensity="compact"`) with 9 cols: ID, Loại xe, NM, Tuyến, Lấp đầy, CN/PO, Cước, Trạng thái, Hành động.
   - **CN/PO column**: badges per drop point (e.g. `CN-BD`, `CN-DN`); click → switch to Phân bổ tab + flash highlight CN row.
-  - DrillDown shows: AI suggestion (gom_them/xuat_ngay/tach_xe), route visual + km, full drop-point table with SKU lines + ETA + Gỡ button, freight/saving line + linked PO list.
+  - DrillDown shows: AI suggestion (gom_them/xuat_ngay/tach_xe), route visual + km, `<DropPointsEditor>` (drag-and-drop reorder + live km/cước recalc), freight/saving line + linked PO list.
   - `autoExpandWhen` = fill < 70% so low-fill containers reveal the suggestion immediately.
   - 4 mini-summary chips above table: Tổng chuyến / Ghép tuyến / Fill TB / Tiết kiệm.
   - Footer CTA: `Duyệt & Chuyển Đơn hàng →` navigates to `/orders?tab=approval`.
   - Edit dialog (Dialog) opens via "Sửa" button on draft/ready/hold rows — placeholder for vehicle change + drop removal.
+
+**DropPointsEditor** (in `ContainerPlanningSection.tsx`):
+- Toggle button "🔀 Sắp xếp lại thứ tự giao" enables HTML5 drag-and-drop on rows (only for ≥2 drops AND status draft/ready/hold).
+- Reorder mode: rows show grip handle + ↑/↓ buttons (alternative to drag); SKU column hidden to give space; CN cell becomes plain text.
+- Live impact bar appears above table — updates instantly on every reorder showing dynamic route (`NM → CN1 → CN2 → ...`), new total km, new freight, and ±delta vs original (warning color when worse, info when same/better).
+- `recalcRoute()` formula: `kmFactor = 1 + permutationDeviation × 0.25`. Deviation = sum of |new_idx − orig_idx| / max_possible. Original order is treated as the optimal baseline.
+- Buttons: Hoàn tác (reset to original), Lưu thứ tự (toast confirmation with delta).
 
 Cross-link helper `crossLink(target, id)`:
 1. setResultsTab(target)
