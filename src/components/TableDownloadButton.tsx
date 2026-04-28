@@ -652,9 +652,17 @@ export function TableDownloadButton({
                 </div>
               ) : (
                 <>
-                  <div className="text-caption text-text-3 mb-2">
-                    Hiển thị {Math.min(PREVIEW_ROWS, totalRows)} / {totalRows.toLocaleString("vi-VN")}{" "}
-                    dòng đầu
+                  <div className="text-caption text-text-3 mb-2 flex items-center justify-between gap-2">
+                    <span>
+                      Hiển thị {Math.min(PREVIEW_ROWS, totalRows)} / {totalRows.toLocaleString("vi-VN")}{" "}
+                      dòng đầu
+                    </span>
+                    {refreshedAt && (
+                      <span className="inline-flex items-center gap-1 text-text-3">
+                        <RefreshCw className="h-3 w-3" />
+                        Cập nhật {refreshedAt.toLocaleTimeString("vi-VN")}
+                      </span>
+                    )}
                   </div>
                   <div className="overflow-auto rounded-card border border-surface-3">
                     <table className="w-full text-table-sm border-collapse">
