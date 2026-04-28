@@ -1431,21 +1431,30 @@ export default function DrpPage() {
             { stepId: 9, label: "→ Container 8 · 1 giữ" },
             { stepId: 10, label: "→ NM 4/5 PASS", severity: "danger" },
           ]}
-          onClickToken={(id) => setActiveStep(id)}
+          onClickToken={(id) => setActiveStep((cur) => (cur === id ? null : id))}
         />
 
-        {/* Step detail (chỉ hiện khi có activeStep) */}
-        <div className="mt-2 rounded border border-surface-3 bg-surface-1/40 p-3">
-          <div className="text-table-sm font-semibold text-text-1 mb-2 flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
-                {activeStep}
+        {/* Step detail — chỉ hiện khi farmer click token (mặc định ẩn) */}
+        {activeStep !== null && (
+          <div className="mt-2 rounded border border-surface-3 bg-surface-1/40 p-3 animate-fade-in">
+            <div className="text-table-sm font-semibold text-text-1 mb-2 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                  {activeStep}
+                </span>
+                <span>{PHASES.flatMap(p => p.steps).find(s => s.id === activeStep)?.label ?? `Bước ${activeStep}`}</span>
               </span>
-              <span>{PHASES.flatMap(p => p.steps).find(s => s.id === activeStep)?.label ?? `Bước ${activeStep}`}</span>
-            </span>
+              <button
+                type="button"
+                onClick={() => setActiveStep(null)}
+                className="text-caption text-text-3 hover:text-text-1 underline-offset-2 hover:underline"
+              >
+                Đóng
+              </button>
+            </div>
+            <StepDetail stepId={activeStep} scale={s} />
           </div>
-          <StepDetail stepId={activeStep} scale={s} />
-        </div>
+        )}
       </div>
 
 
