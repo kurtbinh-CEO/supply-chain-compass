@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/command";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { isMac, formatShortcut } from "@/lib/platform";
 import {
   ArrowRight, Clock, Box, Building2, Factory, FileText, Lock, RefreshCw, Play, Download,
 } from "lucide-react";
