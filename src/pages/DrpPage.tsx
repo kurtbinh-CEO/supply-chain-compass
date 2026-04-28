@@ -29,6 +29,7 @@ import { DrpPreflight, type PreflightItem } from "@/components/drp/DrpPreflight"
 import { computePreflightAudit } from "@/lib/drp-preflight";
 import { DrpProgress, type ProgressStep } from "@/components/drp/DrpProgress";
 import { DrpCalcSummaryLine, type CalcToken } from "@/components/drp/DrpCalcSummaryLine";
+import { ContainerPlanningSection } from "@/components/drp/ContainerPlanningSection";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
@@ -1481,6 +1482,9 @@ export default function DrpPage() {
           </div>
         );
       })()}
+
+      {/* ═══ CONTAINER PLANNING — đóng container từ PO/TO ═══ */}
+      <ContainerPlanningSection />
 
       {/* ═══ SUMMARY PILLS ═══ */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
