@@ -35,7 +35,6 @@ import { useNavigate } from "react-router-dom";
 import { SummaryCards } from "@/components/SummaryCards";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import {
-  PRICE_TIERS,
   RELEASED_BY_NM,
   WEEKLY_BURN_BY_NM,
   SKU_RELEASED_BY_NM,
