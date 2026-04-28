@@ -10,7 +10,7 @@
  *
  * Mọi text tiếng Việt.
  */
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CheckCircle2, AlertTriangle, AlertOctagon, ArrowRight, ArrowLeft,
@@ -29,6 +29,12 @@ import {
   type PreflightAuditRow,
 } from "@/lib/drp-preflight";
 import type { PreflightLevel } from "@/components/drp/DrpPreflight";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  PreflightSnapshotPanel,
+  type SnapshotRow,
+} from "@/components/drp/PreflightSnapshotPanel";
+import { toast } from "sonner";
 
 function levelIcon(l: PreflightLevel) {
   if (l === "ok") return <CheckCircle2 className="h-4 w-4 text-success" />;
