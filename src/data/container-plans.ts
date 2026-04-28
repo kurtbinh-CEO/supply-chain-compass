@@ -59,9 +59,11 @@ export interface UnscheduledPo {
 
 export type ContainerStatus = "draft" | "ready" | "hold" | "in_transit" | "delivered";
 
+import type { VehicleType } from "./vehicle-types";
+
 export interface ContainerPlan {
   id: string;             // TP-001
-  vehicle: string;        // "40ft" | "Xe10T" | "20ft"
+  vehicle: VehicleType;   // VehicleType union (canonical + legacy aliases)
   capacityM2: number;     // theo loại xe
   factoryCode: string;    // NM-DT
   factoryName: string;    // Đồng Tâm
