@@ -838,18 +838,7 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
           </Button>
           {/* Thêm drop — dropdown filter theo eligibility */}
           {baseCn && candidates.length > 0 && (
-            <Select onValueChange={(cn) => {
-              const pair = candidates.find((c) => c.cn2 === cn);
-              if (!pair) return;
-              if (!pair.eligible) {
-                toast.error(`Không thể ghép ${cn}: ${pair.reason}`);
-                return;
-              }
-              toast.success(
-                `Đã thêm ${cn} vào chuyến (detour +${pair.detourKm}km, ` +
-                `tiết kiệm ~${((pair.estSavingVnd ?? 0) / 1_000_000).toFixed(1)}M₫)`,
-              );
-            }}>
+            <Select value="" onValueChange={(cn) => tryAddDrop(cn)}>
               <SelectTrigger className="h-6 px-2 text-[11px] w-auto gap-1 border-0 bg-transparent hover:bg-surface-2">
                 <Plus className="h-3 w-3" /> <span>Thêm drop</span>
               </SelectTrigger>
