@@ -1897,7 +1897,7 @@ export default function DrpPage() {
                         {/* Inline action box for shortages */}
                         {skuSev === "short" && (
                           <tr>
-                            <td colSpan={6} className="pb-3 pt-1 px-2">
+                            <td colSpan={7} className="pb-3 pt-1 px-2">
                               <div className="rounded border border-danger/30 bg-danger-bg/20 p-3">
                                 <div className="text-table-sm font-medium text-text-1 mb-2">
                                   Gợi ý cho {sk.item} thiếu {skuShort.toLocaleString()}m²:
