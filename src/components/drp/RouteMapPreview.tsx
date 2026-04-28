@@ -1,87 +1,77 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   §  RouteMapPreview — mini bản đồ SVG so sánh lộ trình HIỆN TẠI vs SAU SỬA.
-   §  - Vẽ 2 panel cạnh nhau (md+) hoặc xếp chồng (mobile).
-   §  - Node đặt theo lat/lng chuẩn hoá vào khung SVG.
-   §  - Đường nối theo thứ tự drop, gắn nhãn km từng chặng.
-   §  - Chỉ minh hoạ; km tính bằng Haversine (xấp xỉ đường chim bay).
+   §  RouteMapPreview — Bản đồ so sánh lộ trình HIỆN TẠI vs SAU SỬA.
+   §  Polished: viewBox rộng hơn, header chip rõ ràng, node tách khỏi label,
+   §  arrow marker, soft shadow, legend, delta chip nổi bật.
    ═══════════════════════════════════════════════════════════════════════════ */
 import { useMemo } from "react";
-import { Factory, MapPin, ArrowRight } from "lucide-react";
+import {
+  Factory, MapPin, ArrowRight, Route, TrendingDown, TrendingUp, Minus,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  VN_LOCATIONS, getLocation, legDistances, routeTotalKm,
+  getLocation, legDistances, routeTotalKm,
   type VnLocation,
 } from "@/data/vn-locations";
 
 interface Props {
   factoryCode: string;
-  /** Thứ tự gốc (tối ưu) – dùng cho panel "Hiện tại". */
   baselineCnCodes: string[];
-  /** Thứ tự đang chỉnh – dùng cho panel "Sau khi sửa". */
   currentCnCodes: string[];
-  /** Có hiển thị panel "Sau khi sửa" không (chỉ khi reorderMode bật). */
   showProjected?: boolean;
 }
 
-const PAD = 16;
-const W = 280;
-const H = 180;
+/* — viewBox lớn hơn để typography & spacing đỡ chật — */
+const PAD_X = 32;
+const PAD_Y = 28;
+const W = 480;
+const H = 280;
 
 interface Pt { x: number; y: number; loc: VnLocation; }
 
-function project(codes: string[], factoryCode: string): Pt[] {
-  const all: VnLocation[] = [];
+function projectAll(codes: string[], factoryCode: string): Pt[] {
+  const seq: VnLocation[] = [];
   const f = getLocation(factoryCode);
-  if (f) all.push(f);
-  codes.forEach((c) => { const l = getLocation(c); if (l) all.push(l); });
-  if (all.length === 0) return [];
+  if (f) seq.push(f);
+  codes.forEach((c) => { const l = getLocation(c); if (l) seq.push(l); });
+  if (seq.length === 0) return [];
 
-  // Bounding box dùng CHUNG cho toàn bộ điểm (factory + tất cả CN trong cả 2 route)
-  // → 2 panel có cùng tỉ lệ, dễ so sánh.
-  const lats = all.map((p) => p.lat);
-  const lngs = all.map((p) => p.lng);
+  const lats = seq.map((p) => p.lat);
+  const lngs = seq.map((p) => p.lng);
   let minLat = Math.min(...lats), maxLat = Math.max(...lats);
   let minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
-  // tránh chia 0 khi chỉ có 1 điểm
   if (maxLat - minLat < 0.05) { minLat -= 0.5; maxLat += 0.5; }
   if (maxLng - minLng < 0.05) { minLng -= 0.5; maxLng += 0.5; }
 
-  const innerW = W - PAD * 2;
-  const innerH = H - PAD * 2;
+  const innerW = W - PAD_X * 2;
+  const innerH = H - PAD_Y * 2;
 
-  const seq: VnLocation[] = [];
-  if (f) seq.push(f);
-  codes.forEach((c) => { const l = getLocation(c); if (l) seq.push(l); });
-
-  return seq.map((loc) => {
-    const x = PAD + ((loc.lng - minLng) / (maxLng - minLng)) * innerW;
-    // lat lớn ở Bắc → vẽ y nhỏ (lên trên)
-    const y = PAD + (1 - (loc.lat - minLat) / (maxLat - minLat)) * innerH;
-    return { x, y, loc };
-  });
+  return seq.map((loc) => ({
+    loc,
+    x: PAD_X + ((loc.lng - minLng) / (maxLng - minLng)) * innerW,
+    y: PAD_Y + (1 - (loc.lat - minLat) / (maxLat - minLat)) * innerH,
+  }));
 }
 
 interface PanelProps {
   title: string;
-  subtitle?: string;
+  badge: string;
+  badgeTone: "neutral" | "primary";
   pts: Pt[];
   legs: number[];
   totalKm: number;
   variant: "current" | "projected";
 }
 
-function MapPanel({ title, subtitle, pts, legs, totalKm, variant }: PanelProps) {
-  const accent =
-    variant === "current"
-      ? { stroke: "hsl(var(--text-3))", node: "hsl(var(--text-2))" }
-      : { stroke: "hsl(var(--primary))", node: "hsl(var(--primary))" };
+function MapPanel({ title, badge, badgeTone, pts, legs, totalKm, variant }: PanelProps) {
+  const isProjected = variant === "projected";
+  const uid = `${variant}-${pts.length}`;
 
   // Path nối các điểm
   const pathD = pts.length >= 2
     ? "M " + pts.map((p) => `${p.x},${p.y}`).join(" L ")
     : "";
 
-  // Nhãn km giữa từng cặp điểm
+  // Nhãn km giữa từng cặp điểm — lệch khỏi đường để dễ đọc
   const legLabels = pts.slice(0, -1).map((p, i) => {
     const next = pts[i + 1];
     const mx = (p.x + next.x) / 2;
@@ -90,133 +80,236 @@ function MapPanel({ title, subtitle, pts, legs, totalKm, variant }: PanelProps) 
   });
 
   return (
-    <div className={cn(
-      "rounded-card border bg-surface-1 p-2 flex flex-col gap-1.5 min-w-0",
-      variant === "projected"
-        ? "border-primary/40 bg-primary/5"
-        : "border-surface-3",
-    )}>
-      <div className="flex items-center justify-between gap-2 px-1">
-        <div className="min-w-0">
-          <div className="text-[11px] font-semibold text-text-1 truncate">{title}</div>
-          {subtitle && <div className="text-[10px] text-text-3 truncate">{subtitle}</div>}
+    <div
+      className={cn(
+        "rounded-card border bg-surface-1 overflow-hidden flex flex-col",
+        isProjected
+          ? "border-primary/40 shadow-[0_4px_20px_-12px_hsl(var(--primary)/0.4)]"
+          : "border-surface-3",
+      )}
+    >
+      {/* ── Header ── */}
+      <div
+        className={cn(
+          "flex items-center justify-between gap-2 px-3 py-2 border-b",
+          isProjected
+            ? "bg-primary/[0.06] border-primary/20"
+            : "bg-surface-2/60 border-surface-3",
+        )}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className={cn(
+              "inline-flex items-center justify-center text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded",
+              badgeTone === "primary"
+                ? "bg-primary text-primary-foreground"
+                : "bg-text-2/15 text-text-2",
+            )}
+          >
+            {badge}
+          </span>
+          <span className="text-[12px] font-semibold text-text-1 truncate">{title}</span>
         </div>
-        <div className="text-right tabular-nums shrink-0">
-          <div className="text-[10px] text-text-3 uppercase leading-none">Tổng km</div>
-          <div className={cn(
-            "text-sm font-semibold leading-tight",
-            variant === "projected" ? "text-primary" : "text-text-1",
-          )}>{totalKm.toLocaleString("vi-VN")} km</div>
+        <div className="flex items-baseline gap-1 tabular-nums shrink-0">
+          <Route className={cn("h-3 w-3", isProjected ? "text-primary" : "text-text-3")} />
+          <span
+            className={cn(
+              "text-[15px] font-bold leading-none",
+              isProjected ? "text-primary" : "text-text-1",
+            )}
+          >
+            {totalKm.toLocaleString("vi-VN")}
+          </span>
+          <span className="text-[10px] text-text-3 font-medium">km</span>
         </div>
       </div>
 
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="w-full h-auto rounded bg-surface-2/40"
-        role="img"
-        aria-label={`Bản đồ ${title}`}
-      >
-        {/* nền lưới mờ */}
-        <defs>
-          <pattern id={`grid-${variant}`} width="20" height="20" patternUnits="userSpaceOnUse">
-            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="hsl(var(--surface-3))" strokeWidth="0.5" opacity="0.4" />
-          </pattern>
-        </defs>
-        <rect x="0" y="0" width={W} height={H} fill={`url(#grid-${variant})`} />
+      {/* ── SVG Map ── */}
+      <div className="relative bg-gradient-to-br from-surface-2/30 to-surface-2/60">
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          className="w-full h-auto block"
+          role="img"
+          aria-label={`Bản đồ ${title}`}
+        >
+          <defs>
+            {/* lưới nền mờ */}
+            <pattern id={`grid-${uid}`} width="24" height="24" patternUnits="userSpaceOnUse">
+              <path
+                d="M 24 0 L 0 0 0 24"
+                fill="none"
+                stroke="hsl(var(--surface-3))"
+                strokeWidth="0.5"
+                opacity="0.5"
+              />
+            </pattern>
+            {/* arrow head cho hướng đi */}
+            <marker
+              id={`arrow-${uid}`}
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path
+                d="M 0 0 L 10 5 L 0 10 z"
+                fill={isProjected ? "hsl(var(--primary))" : "hsl(var(--text-3))"}
+              />
+            </marker>
+            {/* soft shadow cho node */}
+            <filter id={`shadow-${uid}`} x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodOpacity="0.18" />
+            </filter>
+          </defs>
 
-        {/* tuyến đường */}
-        {pathD && (
-          <path
-            d={pathD}
-            fill="none"
-            stroke={accent.stroke}
-            strokeWidth={variant === "projected" ? 2 : 1.5}
-            strokeDasharray={variant === "projected" ? "0" : "4 3"}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        )}
+          <rect x="0" y="0" width={W} height={H} fill={`url(#grid-${uid})`} />
 
-        {/* nhãn km mỗi chặng */}
-        {legLabels.map((l) => (
-          <g key={l.key}>
-            <rect
-              x={l.x - 14} y={l.y - 7}
-              width="28" height="12" rx="3"
-              fill="hsl(var(--surface-1))"
-              stroke="hsl(var(--surface-3))"
-              strokeWidth="0.5"
-            />
-            <text
-              x={l.x} y={l.y + 2}
-              textAnchor="middle"
-              fontSize="9"
-              fill="hsl(var(--text-2))"
-              fontWeight="600"
-            >{l.km}km</text>
-          </g>
-        ))}
+          {/* tuyến đường — vẽ shadow trước, đường chính sau */}
+          {pathD && (
+            <>
+              <path
+                d={pathD}
+                fill="none"
+                stroke={isProjected ? "hsl(var(--primary))" : "hsl(var(--text-2))"}
+                strokeOpacity="0.15"
+                strokeWidth="6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d={pathD}
+                fill="none"
+                stroke={isProjected ? "hsl(var(--primary))" : "hsl(var(--text-2))"}
+                strokeWidth={isProjected ? 2.2 : 1.8}
+                strokeDasharray={isProjected ? "0" : "5 4"}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                markerEnd={`url(#arrow-${uid})`}
+              />
+            </>
+          )}
 
-        {/* nodes */}
-        {pts.map((p, i) => {
-          const isFactory = i === 0;
-          return (
-            <g key={`${p.loc.code}-${i}`}>
-              {isFactory ? (
-                <>
-                  <rect
-                    x={p.x - 7} y={p.y - 7}
-                    width="14" height="14" rx="2"
-                    fill="hsl(var(--warning))"
-                    stroke="hsl(var(--surface-1))"
-                    strokeWidth="1.5"
-                  />
-                  <text
-                    x={p.x} y={p.y + 3}
-                    textAnchor="middle"
-                    fontSize="8"
-                    fill="hsl(var(--warning-foreground, 0 0% 100%))"
-                    fontWeight="700"
-                  >NM</text>
-                </>
-              ) : (
-                <>
-                  <circle
-                    cx={p.x} cy={p.y} r="7"
-                    fill={accent.node}
-                    stroke="hsl(var(--surface-1))"
-                    strokeWidth="1.5"
-                  />
-                  <text
-                    x={p.x} y={p.y + 3}
-                    textAnchor="middle"
-                    fontSize="8"
-                    fill="hsl(var(--primary-foreground))"
-                    fontWeight="700"
-                  >{i}</text>
-                </>
-              )}
+          {/* nhãn km mỗi chặng */}
+          {legLabels.map((l) => (
+            <g key={l.key}>
+              <rect
+                x={l.x - 18} y={l.y - 8}
+                width="36" height="16" rx="8"
+                fill="hsl(var(--surface-1))"
+                stroke={isProjected ? "hsl(var(--primary) / 0.4)" : "hsl(var(--surface-3))"}
+                strokeWidth="1"
+                filter={`url(#shadow-${uid})`}
+              />
               <text
-                x={p.x} y={p.y + (isFactory ? 18 : 19)}
+                x={l.x} y={l.y + 3.5}
                 textAnchor="middle"
-                fontSize="9"
+                fontSize="10"
                 fill="hsl(var(--text-1))"
                 fontWeight="600"
-              >{p.loc.code.replace(/^(NM|CN)-/, "")}</text>
+                style={{ fontFamily: "var(--font-mono, ui-monospace)" }}
+              >
+                {l.km}km
+              </text>
             </g>
-          );
-        })}
-      </svg>
+          ))}
 
-      {/* sequence chip dòng dưới */}
-      <div className="flex flex-wrap items-center gap-0.5 px-1 text-[10px] text-text-2">
-        <Factory className="h-2.5 w-2.5 text-warning shrink-0" />
-        <span className="font-mono font-semibold">{pts[0]?.loc.code.replace(/^NM-/, "") ?? "—"}</span>
+          {/* nodes */}
+          {pts.map((p, i) => {
+            const isFactory = i === 0;
+            const labelText = p.loc.code.replace(/^(NM|CN)-/, "");
+            const labelY = p.y + 26;
+            return (
+              <g key={`${p.loc.code}-${i}`}>
+                {isFactory ? (
+                  <>
+                    {/* ring */}
+                    <circle
+                      cx={p.x} cy={p.y} r="13"
+                      fill="hsl(var(--warning) / 0.15)"
+                    />
+                    <rect
+                      x={p.x - 9} y={p.y - 9}
+                      width="18" height="18" rx="3"
+                      fill="hsl(var(--warning))"
+                      stroke="hsl(var(--surface-1))"
+                      strokeWidth="2"
+                      filter={`url(#shadow-${uid})`}
+                    />
+                    <text
+                      x={p.x} y={p.y + 3.5}
+                      textAnchor="middle"
+                      fontSize="9"
+                      fill="white"
+                      fontWeight="800"
+                      letterSpacing="0.5"
+                    >NM</text>
+                  </>
+                ) : (
+                  <>
+                    <circle
+                      cx={p.x} cy={p.y} r="13"
+                      fill={isProjected ? "hsl(var(--primary) / 0.15)" : "hsl(var(--text-2) / 0.12)"}
+                    />
+                    <circle
+                      cx={p.x} cy={p.y} r="9"
+                      fill={isProjected ? "hsl(var(--primary))" : "hsl(var(--text-2))"}
+                      stroke="hsl(var(--surface-1))"
+                      strokeWidth="2"
+                      filter={`url(#shadow-${uid})`}
+                    />
+                    <text
+                      x={p.x} y={p.y + 3.5}
+                      textAnchor="middle"
+                      fontSize="10"
+                      fill={isProjected ? "hsl(var(--primary-foreground))" : "white"}
+                      fontWeight="800"
+                    >{i}</text>
+                  </>
+                )}
+                {/* label tách hẳn khỏi node + nền pill nhỏ để dễ đọc */}
+                <g>
+                  <rect
+                    x={p.x - labelText.length * 3.2 - 4}
+                    y={labelY - 8}
+                    width={labelText.length * 6.4 + 8}
+                    height="13"
+                    rx="3"
+                    fill="hsl(var(--surface-1))"
+                    fillOpacity="0.92"
+                  />
+                  <text
+                    x={p.x} y={labelY + 1}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fill="hsl(var(--text-1))"
+                    fontWeight="700"
+                    style={{ fontFamily: "var(--font-mono, ui-monospace)" }}
+                  >{labelText}</text>
+                </g>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* ── Sequence chip dưới ── */}
+      <div className="flex flex-wrap items-center gap-1 px-3 py-2 border-t border-surface-3 bg-surface-2/30 text-[11px]">
+        <span className="inline-flex items-center gap-1 font-mono font-bold text-warning">
+          <Factory className="h-3 w-3" />
+          {pts[0]?.loc.code.replace(/^NM-/, "") ?? "—"}
+        </span>
         {pts.slice(1).map((p, i) => (
-          <span key={`${p.loc.code}-${i}`} className="inline-flex items-center gap-0.5">
-            <ArrowRight className="h-2.5 w-2.5 text-text-3" />
-            <span className="font-mono font-semibold">{p.loc.code.replace(/^CN-/, "")}</span>
-            <span className="text-text-3">({legs[i]}km)</span>
+          <span key={`${p.loc.code}-${i}`} className="inline-flex items-center gap-1 text-text-2">
+            <ArrowRight className="h-3 w-3 text-text-3" />
+            <span className={cn(
+              "font-mono font-bold",
+              isProjected ? "text-primary" : "text-text-1",
+            )}>
+              {p.loc.code.replace(/^CN-/, "")}
+            </span>
+            <span className="text-text-3 tabular-nums">·{legs[i]}km</span>
           </span>
         ))}
       </div>
@@ -230,39 +323,35 @@ export function RouteMapPreview({
   currentCnCodes,
   showProjected = true,
 }: Props) {
-  // Đảm bảo cả 2 panel cùng bounding box → tính toán chung
   const allCodes = useMemo(
     () => Array.from(new Set([...baselineCnCodes, ...currentCnCodes])),
     [baselineCnCodes, currentCnCodes],
   );
 
-  const baselinePts = useMemo(
-    () => project(baselineCnCodes, factoryCode),
-    [baselineCnCodes, factoryCode],
-  );
-  const currentPts = useMemo(
-    () => project(currentCnCodes, factoryCode),
-    [currentCnCodes, factoryCode],
-  );
-
-  // chuẩn hoá theo CHUNG bbox: project cả union → lấy scale, rồi áp lại từng route
-  const unionPts = useMemo(
-    () => project(allCodes, factoryCode),
-    [allCodes, factoryCode],
-  );
-  // Map code → toạ độ chuẩn hoá theo bbox chung
+  // Toạ độ chung để 2 panel cùng tỉ lệ
   const sharedXY = useMemo(() => {
     const m = new Map<string, { x: number; y: number }>();
-    unionPts.forEach((p) => m.set(p.loc.code, { x: p.x, y: p.y }));
+    projectAll(allCodes, factoryCode).forEach((p) => m.set(p.loc.code, { x: p.x, y: p.y }));
     return m;
-  }, [unionPts]);
+  }, [allCodes, factoryCode]);
 
-  // Re-map từng panel để dùng toạ độ chung
-  const remap = (pts: Pt[]): Pt[] =>
-    pts.map((p) => ({ ...p, ...(sharedXY.get(p.loc.code) ?? { x: p.x, y: p.y }) }));
+  const buildPts = (codes: string[]): Pt[] => {
+    const out: Pt[] = [];
+    const f = getLocation(factoryCode);
+    if (f) {
+      const xy = sharedXY.get(f.code);
+      if (xy) out.push({ ...xy, loc: f });
+    }
+    codes.forEach((c) => {
+      const l = getLocation(c);
+      const xy = l && sharedXY.get(c);
+      if (l && xy) out.push({ ...xy, loc: l });
+    });
+    return out;
+  };
 
-  const baselineFinal = remap(baselinePts);
-  const currentFinal = remap(currentPts);
+  const baselineFinal = useMemo(() => buildPts(baselineCnCodes), [baselineCnCodes, sharedXY]);
+  const currentFinal = useMemo(() => buildPts(currentCnCodes), [currentCnCodes, sharedXY]);
 
   const baselineLegs = useMemo(
     () => legDistances([factoryCode, ...baselineCnCodes]),
@@ -284,42 +373,97 @@ export function RouteMapPreview({
 
   const delta = currentTotal - baselineTotal;
   const dirty = baselineCnCodes.join("|") !== currentCnCodes.join("|");
+  const deltaPct = baselineTotal > 0 ? Math.round((delta / baselineTotal) * 100) : 0;
 
   if (baselineFinal.length === 0) {
     return (
-      <div className="rounded-card border border-dashed border-surface-3 bg-surface-2/40 p-3 text-caption text-text-3 flex items-center gap-2">
-        <MapPin className="h-3.5 w-3.5" />
+      <div className="rounded-card border border-dashed border-surface-3 bg-surface-2/40 p-4 text-caption text-text-3 flex items-center gap-2">
+        <MapPin className="h-4 w-4" />
         Không có dữ liệu toạ độ để vẽ bản đồ.
       </div>
     );
   }
 
+  const DeltaIcon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
+
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-caption text-text-3 font-medium flex items-center gap-1.5">
-          <MapPin className="h-3.5 w-3.5" />
-          Bản đồ lộ trình {showProjected ? "— so sánh thứ tự giao" : ""}
+    <div className="space-y-3">
+      {/* ── Header chính ── */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center">
+            <MapPin className="h-3.5 w-3.5 text-primary" />
+          </div>
+          <div>
+            <div className="text-[13px] font-semibold text-text-1 leading-tight">
+              Bản đồ lộ trình
+            </div>
+            {showProjected && (
+              <div className="text-[10px] text-text-3 leading-tight">
+                So sánh thứ tự giao hàng
+              </div>
+            )}
+          </div>
         </div>
+
         {showProjected && dirty && (
-          <span className={cn(
-            "text-[10px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full",
-            delta > 0
-              ? "text-warning bg-warning-bg border border-warning/30"
-              : "text-success bg-success-bg border border-success/30",
-          )}>
-            {delta > 0 ? "+" : ""}{delta} km so với gốc
+          <div
+            className={cn(
+              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold tabular-nums border",
+              delta > 0
+                ? "text-warning bg-warning-bg border-warning/30"
+                : delta < 0
+                ? "text-success bg-success-bg border-success/30"
+                : "text-text-2 bg-surface-2 border-surface-3",
+            )}
+          >
+            <DeltaIcon className="h-3 w-3" />
+            <span>{delta > 0 ? "+" : ""}{delta} km</span>
+            {baselineTotal > 0 && (
+              <span className="opacity-70">({delta > 0 ? "+" : ""}{deltaPct}%)</span>
+            )}
+            <span className="opacity-60 font-normal">vs gốc</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Legend ── */}
+      <div className="flex items-center gap-3 flex-wrap text-[10px] text-text-3">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block w-2.5 h-2.5 rounded-sm bg-warning" />
+          Nhà máy
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block w-2.5 h-2.5 rounded-full bg-text-2" />
+          CN (gốc)
+        </span>
+        {showProjected && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-primary" />
+            CN (sau sửa)
+          </span>
+        )}
+        <span className="inline-flex items-center gap-1.5 ml-auto">
+          <span className="inline-block w-4 h-0 border-t-[2px] border-dashed border-text-2" />
+          Gốc
+        </span>
+        {showProjected && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block w-4 h-0 border-t-[2px] border-primary" />
+            Mới
           </span>
         )}
       </div>
 
+      {/* ── Panels ── */}
       <div className={cn(
-        "grid gap-2",
-        showProjected ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1",
+        "grid gap-3",
+        showProjected ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1",
       )}>
         <MapPanel
-          title="Hiện tại (thứ tự gốc)"
-          subtitle="Lộ trình tối ưu hệ thống đề xuất"
+          title="Thứ tự gốc"
+          badge="GỐC"
+          badgeTone="neutral"
           pts={baselineFinal}
           legs={baselineLegs}
           totalKm={baselineTotal}
@@ -327,8 +471,9 @@ export function RouteMapPreview({
         />
         {showProjected && (
           <MapPanel
-            title={dirty ? "Sau khi sửa" : "Sau khi sửa (chưa thay đổi)"}
-            subtitle={dirty ? "Thứ tự bạn vừa kéo-thả" : "Kéo-thả ở bảng dưới để xem khác biệt"}
+            title={dirty ? "Thứ tự sau khi sửa" : "Sau khi sửa (chưa đổi)"}
+            badge="MỚI"
+            badgeTone="primary"
             pts={currentFinal}
             legs={currentLegs}
             totalKm={currentTotal}
@@ -337,7 +482,7 @@ export function RouteMapPreview({
         )}
       </div>
 
-      <p className="text-[10px] text-text-3 px-1">
+      <p className="text-[10px] text-text-3 px-0.5 italic">
         * Khoảng cách ước tính theo đường chim bay (Haversine). Chỉ minh hoạ — km thực tế phụ thuộc tuyến đường bộ.
       </p>
     </div>
