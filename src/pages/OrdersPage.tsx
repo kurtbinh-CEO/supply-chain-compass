@@ -540,6 +540,7 @@ export default function OrdersPage() {
             render: (g) => <RowActionButton row={g.leader} onClick={() => setActionRow(g.leader)} onCancel={() => setCancelRow(g.leader)} />,
           },
         ] satisfies SmartTableColumn<PoGroup>[]}
+        drillDown={(g) => <GroupDrillDown group={g} onAction={(line) => setActionRow(line)} onCancel={(line) => setCancelRow(line)} />}
       />
       {/* ═══ DIALOG ROUTER ═══ */}
       {actionRow && (
