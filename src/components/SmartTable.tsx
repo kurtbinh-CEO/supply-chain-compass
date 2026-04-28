@@ -880,7 +880,13 @@ export function SmartTable<T = any>({
                   <tr
                     data-severity={sev}
                     onClick={() => {
-                      if (canExpand) toggleExpand(id);
+                      if (canExpand) {
+                        // Nếu đang mở và parent guard trả về false → chặn đóng
+                        if (isOpen && beforeCollapse && beforeCollapse(row) === false) {
+                          return;
+                        }
+                        toggleExpand(id);
+                      }
                       onRowClick?.(row);
                     }}
                     className={cn(
