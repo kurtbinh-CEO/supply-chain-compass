@@ -1482,6 +1482,9 @@ export default function DrpPage() {
         );
       })()}
 
+      {/* ═══ CONTAINER PLANNING — đóng container từ PO/TO ═══ */}
+      <ContainerPlanningSection />
+
       {/* ═══ SUMMARY PILLS ═══ */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <button
