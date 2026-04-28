@@ -527,7 +527,7 @@ export default function OrdersPage() {
       <Sheet open={!!panelGroup} onOpenChange={(o) => { if (!o) setPanelGroup(null); }}>
         <SheetContent
           side="right"
-          className="w-full sm:max-w-[480px] sm:w-[480px] p-0 overflow-y-auto"
+          className="w-full sm:max-w-[480px] sm:w-[480px] p-0 overflow-y-auto [&>button]:hidden"
         >
           {panelGroup && (() => {
             // Re-derive group from latest `groups` (so stage updates after mutations).
