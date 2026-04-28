@@ -842,11 +842,19 @@ function GapNmSkuDrill({ row }: { row: GapRow }) {
 
 function ScenarioCard({
   scenario,
+  impact,
   onChoose,
 }: {
   scenario: Scenario;
+  impact: ScenarioImpact;
   onChoose: (s: Scenario) => void;
 }) {
+  const tierLabel = (t: ScenarioImpact["tierAfter"]) =>
+    t === "tier1" ? "Tier 1 ✅"
+    : t === "tier2" ? "Tier 2 🟡"
+    : t === "tier3" ? "Tier 3 🔴"
+    : "Chờ đàm phán";
+
   return (
     <div
       className={cn(
@@ -902,7 +910,6 @@ function ScenarioCard({
           note={scenario.aiRationale ?? scenario.costFormula}
         />
         <p className="text-caption text-text-3 mt-0.5">{scenario.costFormula}</p>
-        {/* Phụ phí breakdown */}
         {scenario.priceInfo?.surchargeText && (scenario.key === "A" || scenario.key === "D") && (
           <p className="text-caption text-info mt-1.5 leading-relaxed">
             💡 Giá gốc: <span className="tabular-nums">{scenario.priceInfo.basePrice.toLocaleString("vi-VN")}₫</span>
@@ -911,7 +918,6 @@ function ScenarioCard({
         )}
       </div>
 
-      {/* AI rationale (M9 — explanation tiếng Việt) */}
       {scenario.recommended && scenario.aiRationale && (
         <div className="rounded-button bg-primary/5 border border-primary/20 px-3 py-2 text-caption text-text-1 leading-relaxed">
           {scenario.aiRationale}
@@ -937,6 +943,32 @@ function ScenarioCard({
             {scenario.cons.map((c) => (
               <li key={c}>• {c}</li>
             ))}
+          </ul>
+        </div>
+
+        {/* TÁC ĐỘNG SAU CHỌN — preview downstream */}
+        <div className="pt-2 border-t border-surface-3">
+          <p className="text-caption font-semibold text-primary uppercase tracking-wider mb-1.5">
+            Tác động sau chọn
+          </p>
+          <ul className="text-table-sm text-text-2 space-y-1">
+            {impact.actions.slice(0, 3).map((a, i) => (
+              <li key={i} className="flex gap-1.5 leading-snug">
+                <span>{a.icon}</span>
+                <span className="flex-1">{a.title}</span>
+              </li>
+            ))}
+            <li className="flex gap-1.5 leading-snug">
+              <span>💰</span>
+              <span className="flex-1">
+                Tier sau chọn: <strong className={cn(
+                  impact.tierAfter === "tier1" ? "text-success"
+                  : impact.tierAfter === "tier2" ? "text-warning"
+                  : impact.tierAfter === "tier3" ? "text-danger"
+                  : "text-text-2"
+                )}>{tierLabel(impact.tierAfter)}</strong>
+              </span>
+            </li>
           </ul>
         </div>
       </div>
