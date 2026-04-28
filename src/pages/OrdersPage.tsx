@@ -398,6 +398,7 @@ export default function OrdersPage() {
             : "Thử bỏ bớt bộ lọc hoặc bấm \"Tất cả\" để xem toàn bộ.",
         }}
         onRowClick={(g) => setPanelGroup(g)}
+        activeRowId={panelGroup?.groupId ?? null}
         columns={[
           {
             key: "poNumber", label: "Mã đơn", width: 180, sortable: true, hideable: false, priority: "high",
