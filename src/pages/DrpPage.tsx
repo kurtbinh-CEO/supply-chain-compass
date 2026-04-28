@@ -59,6 +59,9 @@ interface SkuException {
 interface SkuFull {
   item: string; variant: string; demand: number; allocated: number; fillPct: number; status: string;
   sources: AllocSources;
+  ssTarget?: number;
+  ssReserved?: number;
+  suggestedActions?: SuggestedAction[];
 }
 interface CnRow {
   cn: string; demand: number; available: number; fillRate: number; gap: number; exceptions: number;
@@ -208,6 +211,9 @@ function buildSkuRow(cnCode: string, baseCode: string): SkuFull | null {
       fillPct: exc.demand > 0 ? Math.round((exc.allocated / exc.demand) * 100) : 100,
       status: exc.type,
       sources: buildSourcesFromSeed(exc),
+      ssTarget: exc.ssTarget,
+      ssReserved: exc.ssReserved,
+      suggestedActions: buildSuggestedFromSeed(exc),
     };
   }
   const onHand = Math.min(drp.onHandM2, demand);

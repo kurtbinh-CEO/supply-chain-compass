@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Package, Truck, Factory, ArrowLeftRight, Repeat, AlertTriangle, Shield } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { SafetyStockBadge } from "@/components/SafetyStockBadge";
 
 export interface AllocSources {
   // Committed sources — sum vào allocated
@@ -303,6 +304,8 @@ interface SkuRow {
   status: string;
   sources: AllocSources;
   suggestedActions?: SuggestedAction[];
+  ssTarget?: number;
+  ssReserved?: number;
 }
 
 export function ExpandedSkuBreakdown({ title, skus }: { title: string; skus: SkuRow[] }) {
@@ -323,7 +326,7 @@ export function ExpandedSkuBreakdown({ title, skus }: { title: string; skus: Sku
         <table className="w-full">
           <thead>
             <tr className="bg-surface-1/40 border-b border-surface-3/50">
-              {["Item", "Variant", "Demand", "Allocated", "Fill%", "Status", "Nguồn phân bổ"].map((h, i) => (
+              {["Item", "Variant", "Demand", "Allocated", "Fill%", "Status", "SS", "Nguồn phân bổ"].map((h, i) => (
                 <th key={i} className="px-3 py-2 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -341,6 +344,13 @@ export function ExpandedSkuBreakdown({ title, skus }: { title: string; skus: Sku
                   <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
                     sk.status === "OK" ? "bg-success-bg text-success" : sk.status === "SHORTAGE" ? "bg-danger-bg text-danger" : "bg-warning-bg text-warning"
                   )}>{sk.status === "OK" ? "ĐẠT" : sk.status === "SHORTAGE" ? "THIẾU HÀNG" : "THEO DÕI"}</span>
+                </td>
+                <td className="px-3 py-2">
+                  {sk.ssTarget !== undefined && sk.ssReserved !== undefined && sk.ssTarget > 0 ? (
+                    <SafetyStockBadge ssTarget={sk.ssTarget} ssReserved={sk.ssReserved} allocated={sk.allocated} size="sm" />
+                  ) : (
+                    <span className="text-text-3 text-caption">—</span>
+                  )}
                 </td>
                 <td className="px-3 py-2"><AllocSourceBar sources={sk.sources} demand={sk.demand} allocated={sk.allocated} suggestedActions={sk.suggestedActions} /></td>
               </tr>
@@ -361,6 +371,8 @@ interface CnRow {
   status: string;
   sources: AllocSources;
   suggestedActions?: SuggestedAction[];
+  ssTarget?: number;
+  ssReserved?: number;
 }
 
 export function ExpandedCnBreakdown({ title, cnRows }: { title: string; cnRows: CnRow[] }) {
@@ -374,7 +386,7 @@ export function ExpandedCnBreakdown({ title, cnRows }: { title: string; cnRows: 
         <table className="w-full">
           <thead>
             <tr className="bg-surface-1/40 border-b border-surface-3/50">
-              {["CN", "Nhu cầu", "Phân bổ", "Lấp đầy %", "Thiếu", "Trạng thái", "Nguồn phân bổ"].map((h, i) => (
+              {["CN", "Nhu cầu", "Phân bổ", "Lấp đầy %", "Thiếu", "Trạng thái", "SS", "Nguồn phân bổ"].map((h, i) => (
                 <th key={i} className="px-3 py-2 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -396,6 +408,13 @@ export function ExpandedCnBreakdown({ title, cnRows }: { title: string; cnRows: 
                   <span className={cn("rounded-full px-2 py-0.5 text-caption font-medium",
                     cr.status === "OK" ? "bg-success-bg text-success" : cr.status === "SHORTAGE" ? "bg-danger-bg text-danger" : "bg-warning-bg text-warning"
                   )}>{cr.status === "OK" ? "ĐẠT" : cr.status === "SHORTAGE" ? "THIẾU HÀNG" : "THEO DÕI"}</span>
+                </td>
+                <td className="px-3 py-2">
+                  {cr.ssTarget !== undefined && cr.ssReserved !== undefined && cr.ssTarget > 0 ? (
+                    <SafetyStockBadge ssTarget={cr.ssTarget} ssReserved={cr.ssReserved} allocated={cr.allocated} size="sm" />
+                  ) : (
+                    <span className="text-text-3 text-caption">—</span>
+                  )}
                 </td>
                 <td className="px-3 py-2"><AllocSourceBar sources={cr.sources} demand={cr.demand} allocated={cr.allocated} suggestedActions={cr.suggestedActions} /></td>
               </tr>
