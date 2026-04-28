@@ -763,6 +763,19 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
     // Always remember what the user typed, even when blocked.
     setAttemptedQtys((m) => ({ ...m, [idx]: newQty }));
     setEditValidations((m) => ({ ...m, [idx]: validation }));
+    // Audit: every validation outcome (skip "ok" no-op when no change)
+    if (validation.severity !== "ok" || newQty !== orig) {
+      const sevMap = { ok: "success", warn: "warn", block: "block", require_reason: "warn" } as const;
+      emitTransportAudit({
+        category: "qty_edit",
+        severity: sevMap[validation.severity],
+        title: `Chỉnh PO ${lines[idx].poNumber} (${sku}): ${orig.toLocaleString()} → ${newQty.toLocaleString()}m² · ${validation.severity}`,
+        detail: validation.message,
+        containerId: container.id,
+        actorRole,
+        meta: { idx, sku, originalQty: orig, newQty, severity: validation.severity },
+      });
+    }
     // Nếu BLOCK → KHÔNG ghi vào lines (giữ "applied" cũ), nhưng input vẫn
     // hiển thị attempted để user thấy & sửa, không silently snap back.
     if (validation.severity === "block") {
@@ -776,6 +789,15 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
     setLines((arr) => arr.filter((_, i) => i !== idx));
     setEditValidations((m) => { const c = { ...m }; delete c[idx]; return c; });
     toast.info(`Đã gỡ ${removed.poNumber} (${removed.sku}) — chuyển sang "PO chưa xếp"`);
+    emitTransportAudit({
+      category: "drop",
+      severity: "info",
+      title: `Gỡ PO ${removed.poNumber} (${removed.sku}) khỏi chuyến`,
+      detail: `Chuyển ${removed.qtyM2.toLocaleString()}m² sang danh sách "PO chưa xếp"`,
+      containerId: container.id,
+      actorRole,
+      meta: { poNumber: removed.poNumber, sku: removed.sku, qtyM2: removed.qtyM2 },
+    });
   };
 
   // Drop eligibility cho "Thêm drop"
