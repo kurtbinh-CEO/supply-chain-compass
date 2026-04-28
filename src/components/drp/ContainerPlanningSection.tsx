@@ -206,6 +206,7 @@ function DropPointsEditor({
 
   const reset = () => {
     setOrder(container.drops);
+    setRemovedCnCodes(new Set());
     clearDraft(container.id);
     setDraftSavedAt(null);
     toast.info(`Đã hoàn tác — nháp ${container.id} bị xoá`);
@@ -216,10 +217,31 @@ function DropPointsEditor({
     clearDraft(container.id);
     setDraftSavedAt(null);
     if (!dirty) return;
+    const removedNote = removedCnCodes.size > 0
+      ? ` · gỡ ${Array.from(removedCnCodes).join(", ")}`
+      : "";
     toast.success(
-      `Đã lưu thứ tự mới cho ${container.id}: ${order.map((d) => d.cnCode).join(" → ")} ` +
-      `(+${calc.deltaKm}km · ${calc.deltaFreight >= 0 ? "+" : ""}${(calc.deltaFreight / 1_000_000).toFixed(1)}M₫)`,
+      `Đã lưu thay đổi cho ${container.id}: ${activeDrops.map((d) => d.cnCode).join(" → ")} ` +
+      `(+${calc.deltaKm}km · ${calc.deltaFreight >= 0 ? "+" : ""}${(calc.deltaFreight / 1_000_000).toFixed(1)}M₫${removedNote})`,
     );
+  };
+
+  const removeDrop = (cnCode: string) => {
+    setRemovedCnCodes((prev) => {
+      const next = new Set(prev);
+      next.add(cnCode);
+      return next;
+    });
+    if (!reorderMode) setReorderMode(true);
+    toast.info(`Đã gỡ ${cnCode} khỏi ${container.id} (chưa lưu)`);
+  };
+
+  const restoreDrop = (cnCode: string) => {
+    setRemovedCnCodes((prev) => {
+      const next = new Set(prev);
+      next.delete(cnCode);
+      return next;
+    });
   };
 
   const saveDraftManual = () => {
