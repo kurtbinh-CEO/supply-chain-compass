@@ -285,6 +285,7 @@ export function SmartTable<T = any>({
   autoExpandWhen,
   onRowClick,
   beforeCollapse,
+  collapseRowSignal,
   emptyMessage = "Không có dữ liệu",
   isLoading = false,
   emptyState,
