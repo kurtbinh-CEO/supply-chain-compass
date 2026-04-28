@@ -115,6 +115,34 @@ function DropPointsEditor({
   const canReorder = container.drops.length >= 2 &&
     (container.status === "draft" || container.status === "ready" || container.status === "hold");
 
+  // Báo dirty state lên parent (cho beforeCollapse guard ở SmartTable)
+  useEffect(() => {
+    onDirtyChange?.(container.id, dirty);
+    return () => onDirtyChange?.(container.id, false);
+  }, [dirty, container.id, onDirtyChange]);
+
+  // Cảnh báo trước khi rời trang/đóng tab khi có dirty changes
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = ""; // chrome cần returnValue truthy
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
+  // Parent yêu cầu đóng (user click row) — nếu dirty, hiện confirm
+  useEffect(() => {
+    if (closeRequestNonce === undefined) return;
+    if (dirty) {
+      setCloseConfirmOpen(true);
+    } else {
+      onCloseAllowed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closeRequestNonce]);
+
   // Mở/đổi container: reset state + check nháp đã lưu trước đó
   useEffect(() => {
     setOrder(container.drops);
