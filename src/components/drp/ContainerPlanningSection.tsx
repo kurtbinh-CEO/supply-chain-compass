@@ -1773,6 +1773,9 @@ function UnscheduledPosSection({ pos }: { pos: UnscheduledPo[] }) {
       {/* ─── ① Logic explainer (collapsed mặc định) ─── */}
       <LogicExplainer />
 
+      {/* ─── Audit log của 4 ma trận transport (collapsed mặc định) ─── */}
+      <TransportAuditPanel />
+
       {/* ─── Mini summary chips ─── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div className="rounded-card border border-surface-3 bg-surface-2 p-3">
