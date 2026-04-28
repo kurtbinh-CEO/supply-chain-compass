@@ -217,6 +217,9 @@ export function CommandPaletteProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/* Shortcuts shown in palette footer.
+   Mac-style templates are normalized at render time via formatShortcut() so
+   Windows/Linux users see "Ctrl+K" / "Ctrl+Shift+F" instead of ⌘ glyphs. */
 const SHORTCUTS: Array<{ key: string; label: string }> = [
   { key: "⌘K",   label: "Mở palette" },
   { key: "⌘E",   label: "Mở rộng" },
