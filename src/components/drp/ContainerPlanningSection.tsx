@@ -836,12 +836,31 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
     if (!pair) return;
     // Eligibility check là gate cứng — nhưng vẫn mở modal để giải thích lý do.
     setPendingDrop(pair);
+    emitTransportAudit({
+      category: "drop",
+      severity: pair.eligible ? "info" : "warn",
+      title: `Kiểm tra ghép drop ${pair.cn2} (${pair.eligible ? "đủ ĐK" : "không đủ ĐK"})`,
+      detail: pair.eligible
+        ? `Detour +${pair.detourKm}km · ${pair.direction ?? ""} · tiết kiệm ~${((pair.estSavingVnd ?? 0) / 1_000_000).toFixed(1)}M₫`
+        : `Lý do: ${pair.reason ?? "vi phạm ràng buộc"}`,
+      containerId: container.id,
+      actorRole,
+      meta: { cn2: pair.cn2, detourKm: pair.detourKm, eligible: pair.eligible },
+    });
   };
 
   const confirmAddDrop = () => {
     if (!pendingDrop) return;
     if (!pendingDrop.eligible) {
       toast.error(`Không thể ghép ${pendingDrop.cn2}: ${pendingDrop.reason ?? "không đủ điều kiện"}`);
+      emitTransportAudit({
+        category: "drop",
+        severity: "block",
+        title: `Chặn ghép ${pendingDrop.cn2} vào chuyến`,
+        detail: pendingDrop.reason ?? "Không đủ điều kiện ghép tuyến",
+        containerId: container.id,
+        actorRole,
+      });
       setPendingDrop(null);
       return;
     }
@@ -849,6 +868,15 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
       `Đã thêm ${pendingDrop.cn2} vào chuyến (detour +${pendingDrop.detourKm}km, ` +
       `tiết kiệm ~${((pendingDrop.estSavingVnd ?? 0) / 1_000_000).toFixed(1)}M₫)`,
     );
+    emitTransportAudit({
+      category: "drop",
+      severity: "success",
+      title: `Thêm drop ${pendingDrop.cn2} vào chuyến`,
+      detail: `Detour +${pendingDrop.detourKm}km · tiết kiệm ~${((pendingDrop.estSavingVnd ?? 0) / 1_000_000).toFixed(1)}M₫`,
+      containerId: container.id,
+      actorRole,
+      meta: { cn2: pendingDrop.cn2, detourKm: pendingDrop.detourKm, estSavingVnd: pendingDrop.estSavingVnd },
+    });
     setPendingDrop(null);
   };
 
