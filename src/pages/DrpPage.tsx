@@ -38,6 +38,8 @@ import { PillTabs, type PillTab } from "@/components/PillTabs";
 import { ContainerPlanningSection } from "@/components/drp/ContainerPlanningSection";
 import { CONTAINER_PLANS, getContainersForCn, summarizeContainers } from "@/data/container-plans";
 import { Truck as TruckIcon, Link2 as Link2Icon, Package as PackageIcon } from "lucide-react";
+import type { AllocSources, SuggestedAction } from "@/components/drp/AllocSourceBar";
+export type { AllocSources, SuggestedAction };
 
 const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7, "Mondelez": 1.35 };
 
@@ -46,9 +48,6 @@ const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7
    ═══════════════════════════════════════════════════════════════════════════ */
 
 interface AllocLayer { name: string; qty: number; pass: boolean; delta?: number; explain: string }
-interface AllocSources {
-  onHand: number; pipeline: number; hubPo: number; lcnbIn: number; internalTransfer: number;
-}
 interface SkuException {
   item: string; variant: string;
   demand: number; allocated: number; gap: number;
@@ -168,6 +167,33 @@ export const EXCEPTION_SEEDS: ExcSeed[] = [
     suggestion: "Seasonal spike +12% YoY. ETA 16/05.", lcnbCover: 0, hubCover: 0, ssDelta: -30, options: [],
   },
 ];
+
+/** Map an ExcSeed → AllocSources (committed-only). hubPo aliases nmAllocation. */
+export function buildSourcesFromSeed(e: ExcSeed): AllocSources {
+  return {
+    onHand: e.onHand,
+    pipeline: e.pipeline,
+    hubPo: e.nmAllocation,
+    lcnbIn: 0,
+    internalTransfer: 0,
+    ssReserved: e.ssReserved,
+    reservedHard: 0,
+    quarantine: 0,
+  };
+}
+
+/** Map an ExcSeed.options[] → SuggestedAction[] for AllocSourceBar suggestedActions prop. */
+export function buildSuggestedFromSeed(e: ExcSeed): SuggestedAction[] {
+  return e.options.map((o) => ({
+    label: o.label,
+    source: o.source,
+    qty: o.qty,
+    cost: o.cost,
+    time: o.time,
+    savingVsB: o.savingVsB,
+    recommended: o.recommended ?? false,
+  }));
+}
 
 function buildSkuRow(cnCode: string, baseCode: string): SkuFull | null {
   const drp = DRP_RESULTS.find((r) => r.cnCode === cnCode && r.skuBaseCode === baseCode);

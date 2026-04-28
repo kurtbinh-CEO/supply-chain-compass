@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { EXCEPTION_SEEDS } from '../DrpPage';
+import { EXCEPTION_SEEDS, buildSourcesFromSeed, buildSuggestedFromSeed } from '../DrpPage';
 
 describe('EXCEPTION_SEEDS data invariant', () => {
   it('every entry: allocated === onHand + pipeline + nmAllocation', () => {
@@ -19,6 +19,29 @@ describe('EXCEPTION_SEEDS data invariant', () => {
     EXCEPTION_SEEDS.forEach((e, i) => {
       expect(e.ssTarget, `Entry ${i}`).toBeGreaterThanOrEqual(0);
       expect(e.ssReserved, `Entry ${i}`).toBeGreaterThanOrEqual(0);
+    });
+  });
+});
+
+describe('ExcSeed → AllocSources mapping', () => {
+  it('hubPo === nmAllocation, sum committed === allocated', () => {
+    EXCEPTION_SEEDS.forEach((e, i) => {
+      const s = buildSourcesFromSeed(e);
+      expect(s.hubPo, `Entry ${i} (${e.cn}/${e.sku})`).toBe(e.nmAllocation);
+      expect(s.onHand + s.pipeline + s.hubPo + s.lcnbIn + s.internalTransfer,
+        `Entry ${i} sum committed`).toBe(e.allocated);
+      expect(s.ssReserved, `Entry ${i} ssReserved passthrough`).toBe(e.ssReserved);
+    });
+  });
+
+  it('buildSuggestedFromSeed length matches options', () => {
+    EXCEPTION_SEEDS.forEach((e, i) => {
+      const sug = buildSuggestedFromSeed(e);
+      expect(sug.length, `Entry ${i}`).toBe(e.options.length);
+      sug.forEach((s, j) => {
+        expect(s.label).toBe(e.options[j].label);
+        expect(s.qty).toBe(e.options[j].qty);
+      });
     });
   });
 });
