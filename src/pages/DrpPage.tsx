@@ -1502,45 +1502,41 @@ export default function DrpPage() {
         );
       })()}
 
-      {/* ═══ BƯỚC 3 — 2 SUB-TABS: Phân bổ vs Đóng container ═══ */}
+      {/* ═══ BƯỚC 3 — 2 SUB-TABS: Phân bổ vs Đóng container (Pattern A — PillTabs) ═══ */}
       {(() => {
         const cnCount = data.length;
         const shortCount = data.filter(r => r.fillRate < 80).length;
         const cSum = summarizeContainers(CONTAINER_PLANS);
+        const resultsTabs: PillTab[] = [
+          {
+            key: "allocation",
+            label: "Phân bổ",
+            icon: PackageIcon,
+            badge: `${cnCount} CN`,
+            ...(shortCount > 0
+              ? { subBadge: `${shortCount} thiếu`, subColor: "danger" as const }
+              : {}),
+          },
+          {
+            key: "container",
+            label: "Đóng container",
+            icon: TruckIcon,
+            badge: `${cSum.total} chuyến`,
+            ...(cSum.lowFill > 0
+              ? { subBadge: `${cSum.lowFill} fill thấp`, subColor: "warning" as const }
+              : cSum.consolidated > 0
+              ? { subBadge: `${cSum.consolidated} ghép`, subColor: "warning" as const }
+              : {}),
+          },
+        ];
         return (
-          <Tabs value={resultsTab} onValueChange={(v) => setResultsTab(v as "allocation" | "container")} className="mb-2">
-            <TabsList className="h-auto bg-surface-2 p-1 gap-1 overflow-x-auto max-w-full justify-start">
-              <TabsTrigger value="allocation" className="data-[state=active]:bg-background gap-2 px-3 py-2">
-                <PackageIcon className="h-4 w-4" />
-                <span>Phân bổ</span>
-                <span className="rounded-full bg-surface-3 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums">
-                  {cnCount} CN
-                </span>
-                {shortCount > 0 && (
-                  <span className="rounded-full bg-danger/15 text-danger px-1.5 py-0.5 text-[10px] font-semibold">
-                    {shortCount} thiếu
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="container" className="data-[state=active]:bg-background gap-2 px-3 py-2">
-                <TruckIcon className="h-4 w-4" />
-                <span>Đóng container</span>
-                <span className="rounded-full bg-surface-3 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums">
-                  {cSum.total} chuyến
-                </span>
-                {cSum.lowFill > 0 && (
-                  <span className="rounded-full bg-warning/15 text-warning px-1.5 py-0.5 text-[10px] font-semibold">
-                    {cSum.lowFill} fill thấp
-                  </span>
-                )}
-                {cSum.consolidated > 0 && (
-                  <span className="rounded-full bg-warning-bg text-warning px-1.5 py-0.5 text-[10px] font-semibold flex items-center gap-0.5">
-                    <Link2Icon className="h-2.5 w-2.5" /> {cSum.consolidated} ghép
-                  </span>
-                )}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="mb-3">
+            <PillTabs
+              tabs={resultsTabs}
+              active={resultsTab}
+              onChange={(k) => setResultsTab(k as "allocation" | "container")}
+            />
+          </div>
         );
       })()}
 
