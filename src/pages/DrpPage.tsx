@@ -34,7 +34,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
 import { drpCompare } from "@/lib/compare-metrics";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PillTabs, type PillTab } from "@/components/PillTabs";
 import { ContainerPlanningSection } from "@/components/drp/ContainerPlanningSection";
 import { CONTAINER_PLANS, getContainersForCn, summarizeContainers } from "@/data/container-plans";
 import { Truck as TruckIcon, Link2 as Link2Icon, Package as PackageIcon } from "lucide-react";
