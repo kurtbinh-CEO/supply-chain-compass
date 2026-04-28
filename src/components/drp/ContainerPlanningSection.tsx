@@ -209,6 +209,39 @@ function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
 
   return (
     <div className="space-y-2">
+      {/* Banner nháp đã lưu trước đó — chờ user quyết định */}
+      {pendingDraft && !reorderMode && (
+        <div className="rounded-card border border-info/40 bg-info-bg px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-table-sm text-info min-w-0">
+            <FileClock className="h-4 w-4 shrink-0" />
+            <span className="min-w-0">
+              <strong>Có nháp chưa lưu</strong> cho {container.id} —{" "}
+              <span className="font-mono">
+                {container.factoryCode.replace(/^NM-/, "")} → {pendingDraft.cnOrder.join(" → ")}
+              </span>
+              <span className="text-text-3 ml-1">({formatDraftAge(pendingDraft.savedAt)})</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={restoreDraft}
+              className="inline-flex items-center gap-1 rounded-button bg-info text-info-foreground px-2.5 py-1 text-[11px] font-semibold hover:bg-info/90"
+            >
+              <RotateCcw className="h-3 w-3" /> Tiếp tục chỉnh
+            </button>
+            <button
+              type="button"
+              onClick={discardDraft}
+              className="inline-flex items-center gap-1 rounded-button border border-info/30 bg-surface-1 px-2 py-1 text-[11px] font-medium text-text-2 hover:text-text-1"
+              title="Bỏ nháp"
+            >
+              <X className="h-3 w-3" /> Bỏ
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Bản đồ lộ trình — luôn hiện, panel "Sau khi sửa" chỉ bật khi reorderMode */}
       <RouteMapPreview
         factoryCode={container.factoryCode}
@@ -217,20 +250,36 @@ function DropPointsEditor({ container, onCnClick }: DropPointsEditorProps) {
         showProjected={reorderMode}
       />
 
-      <div className="flex items-center justify-between">
-        <div className="text-caption text-text-3 font-medium">
-          Điểm giao ({order.length})
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="text-caption text-text-3 font-medium flex items-center gap-2">
+          <span>Điểm giao ({order.length})</span>
+          {reorderMode && draftSavedAt && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-text-3">
+              <FileClock className="h-3 w-3" />
+              Nháp tự lưu · {formatDraftAge(draftSavedAt)}
+            </span>
+          )}
         </div>
         {canReorder && (
           <div className="flex items-center gap-1">
             {reorderMode && dirty && (
-              <button
-                type="button"
-                onClick={reset}
-                className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-1 px-2 py-1 text-[11px] font-medium text-text-2 hover:text-text-1"
-              >
-                <RotateCcw className="h-3 w-3" /> Hoàn tác
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="inline-flex items-center gap-1 rounded-button border border-surface-3 bg-surface-1 px-2 py-1 text-[11px] font-medium text-text-2 hover:text-text-1"
+                >
+                  <RotateCcw className="h-3 w-3" /> Hoàn tác
+                </button>
+                <button
+                  type="button"
+                  onClick={saveDraftManual}
+                  className="inline-flex items-center gap-1 rounded-button border border-info/40 bg-info-bg text-info px-2 py-1 text-[11px] font-medium hover:bg-info hover:text-info-foreground transition-colors"
+                  title="Lưu nháp để quay lại tiếp tục sau"
+                >
+                  <FileClock className="h-3 w-3" /> Lưu nháp
+                </button>
+              </>
             )}
             {reorderMode ? (
               <button
