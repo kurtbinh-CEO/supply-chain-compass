@@ -42,6 +42,17 @@ import {
   getTierStatus,
   type TierStatus,
 } from "@/data/price-tiers";
+import {
+  computeImpact,
+  setResolution,
+  clearResolution,
+  useResolutions,
+  type ChosenScenario,
+  type ScenarioImpact,
+} from "@/data/scenario-resolutions";
+import { ConfirmScenarioDialog } from "@/components/gap/ConfirmScenarioDialog";
+import { ResolutionBanner } from "@/components/gap/ResolutionBanner";
+import { useWorkspace } from "@/components/WorkspaceContext";
 
 // Map mỗi NM → SKU base chính (dùng để tra giá thực)
 const NM_TOP_SKU: Record<NmId, string> = {
