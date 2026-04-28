@@ -191,7 +191,7 @@ export default function OrdersPage() {
     toast.success("Đã hủy đơn", { description: reason });
   };
 
-  const noFilters = statusFilter.size === 0 && kindFilter.size === 0 && !overdueOnly;
+  const noFilters = statusFilter.size === 0 && kindFilter.size === 0 && !overdueOnly && dropFilter === null;
 
   return (
     <AppLayout>
