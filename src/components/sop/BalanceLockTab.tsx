@@ -1,12 +1,11 @@
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { Lock, CheckCircle, ChevronRight, ChevronLeft, AlertTriangle, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { Lock, CheckCircle, AlertTriangle } from "lucide-react";
 import { ViewPivotToggle, usePivotMode, WorstCnCell, CnGapBadge, LcnbBadge } from "@/components/ViewPivotToggle";
-import { SkuNmPanel } from "./SkuNmPanel";
 import { toast } from "sonner";
 import { FormulaBar } from "@/components/FormulaBar";
-import { DemandToOrderBridge, type BridgeStep } from "@/components/DemandToOrderBridge";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 import type { ConsensusRow } from "@/pages/SopPage";
 
 interface Props {
@@ -19,6 +18,20 @@ interface Props {
   unresolvedVariance?: number;
 }
 
+interface BalSkuPivot {
+  item: string;
+  variant: string;
+  demand: number;
+  stock: number;
+  pipeline: number;
+  netReq: number;
+  worstCn: string;
+  worstCover: number;
+  cnGapCount: number;
+  lcnb: string | null;
+  cnBreakdown: { cn: string; demand: number; stock: number; pipeline: number; cover: number; ssTarget: number; ssGap: number; netReq: number; status: string }[];
+}
+
 interface BalanceRow {
   cn: string;
   demand: number;
@@ -27,6 +40,8 @@ interface BalanceRow {
   ssTarget: number;
   skus: { item: string; variant: string; demand: number; stock: number; pipeline: number; pipelineSource: string; ss: number; netReq: number; nmSource: string; nmAtp: number; match: string }[];
 }
+
+type BalSkuRow = BalanceRow["skus"][number];
 
 const baseBalance: BalanceRow[] = [
   { cn: "CN-BD", demand: 2550, stock: 450, pipeline: 557, ssTarget: 900,
@@ -61,8 +76,6 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
   const navigate = useNavigate();
   const scale = tenant === "TTC Agris" ? 0.75 : tenant === "Mondelez" ? 1.2 : 1;
   const [pivotMode, setPivotMode] = usePivotMode("sop-balance");
-  const [expandedCns, setExpandedCns] = useState<Set<number>>(new Set());
-  const [expandedSkuKeys, setExpandedSkuKeys] = useState<Set<string>>(new Set());
   const [showLockModal, setShowLockModal] = useState(false);
 
   // Use consensus data for demand, scale balance data
@@ -115,18 +128,12 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
     setTimeout(() => navigate("/hub"), 1500);
   };
 
-  const [expandedSku, setExpandedSku] = useState<number | null>(null);
-  const [bridgeSku, setBridgeSku] = useState<number | null>(null);
+
+  /* SmartTable handles per-row expand internally; legacy state removed */
 
   /* ═══ SKU-first pivot ═══ */
-  interface BalSkuPivot {
-    item: string; variant: string; demand: number; stock: number; pipeline: number; netReq: number;
-    worstCn: string; worstCover: number; cnGapCount: number; lcnb: string | null;
-    cnBreakdown: { cn: string; demand: number; stock: number; pipeline: number; cover: number; ssTarget: number; ssGap: number; netReq: number; status: string }[];
-  }
 
   const skuPivotData: BalSkuPivot[] = (() => {
-    if (pivotMode !== "sku") return [];
     const map = new Map<string, BalSkuPivot>();
     balRows.forEach(row => {
       row.skus.forEach(sk => {
@@ -171,189 +178,25 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
       />
 
       {/* Pivot toggle */}
-      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); setExpandedCns(new Set()); setExpandedSkuKeys(new Set()); }} />
+      <ViewPivotToggle value={pivotMode} onChange={(m) => { setPivotMode(m); }} />
 
-      {/* Balance table */}
+      {/* Balance table — SmartTable parent + drillDown compact */}
       {pivotMode === "sku" ? (
-        /* ═══ SKU-FIRST Layer 1 ═══ */
-        <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-          <div className="px-5 py-3 border-b border-surface-3">
-            <h3 className="font-display text-section-header text-text-1">Per SKU — Tháng 5</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-table-sm">
-              <thead>
-                <tr className="border-b border-surface-3 bg-surface-1/50">
-                  {["SKU", "Mẫu", "Nhu cầu", "Tồn kho", "Đang về", "Nhu cầu ròng", "CN xấu nhất", "# CN thiếu", "LCNB", ""].map(h => (
-                    <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {skuPivotData.map((row, i) => {
-                  const skuKey = `${row.item}|${row.variant}`;
-                  const isExp = expandedSkuKeys.has(skuKey);
-                  return (<React.Fragment key={`sku-${i}`}>
-                    <tr className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors cursor-pointer", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
-                      onClick={() => setExpandedSkuKeys(prev => { const n = new Set(prev); n.has(skuKey) ? n.delete(skuKey) : n.add(skuKey); return n; })}>
-                      <td className="px-3 py-2.5 font-medium text-text-1">
-                        <span className="flex items-center gap-1">{isExp ? <ChevronDown className="h-3.5 w-3.5 text-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-text-3" />}{row.item}</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-text-2">{row.variant}</td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-1 font-medium">{row.demand.toLocaleString()}</td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-1">{row.stock.toLocaleString()}</td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-2">{row.pipeline.toLocaleString()}</td>
-                      <td className={cn("px-3 py-2.5 tabular-nums font-medium", row.netReq > 0 ? "text-danger" : "text-success")}>{row.netReq.toLocaleString()}</td>
-                      <td className="px-3 py-2.5"><WorstCnCell cnName={row.worstCn} hstk={row.worstCover} /></td>
-                      <td className="px-3 py-2.5"><CnGapBadge count={row.cnGapCount} /></td>
-                      <td className="px-3 py-2.5">{row.lcnb ? <LcnbBadge text={row.lcnb} /> : <span className="text-text-3">—</span>}</td>
-                      <td className="px-3 py-2.5">{isExp ? <ChevronDown className="h-3.5 w-3.5 text-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-text-3" />}</td>
-                    </tr>
-                    {isExp && row.cnBreakdown.map((cb, ci) => (
-                      <tr key={`cn-${ci}`} className="bg-surface-1/60 border-b border-surface-3/30 animate-fade-in">
-                        <td className="px-3 py-2 pl-8 text-text-3 text-caption">└</td>
-                        <td className="px-3 py-2 text-text-2 font-medium">{cb.cn}</td>
-                        <td className="px-3 py-2 tabular-nums text-text-2">{cb.demand.toLocaleString()}</td>
-                        <td className="px-3 py-2 tabular-nums text-text-2">{cb.stock.toLocaleString()}</td>
-                        <td className="px-3 py-2 tabular-nums text-text-3">{cb.pipeline.toLocaleString()}</td>
-                        <td className={cn("px-3 py-2 tabular-nums font-medium", cb.netReq > 0 ? "text-danger" : "text-success")}>{cb.netReq.toLocaleString()}</td>
-                        <td className="px-3 py-2 tabular-nums text-text-3">{cb.cover}d</td>
-                        <td className="px-3 py-2">
-                          <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
-                            cb.status === "CRITICAL" ? "bg-danger-bg text-danger" : cb.status === "EXCESS" ? "bg-info-bg text-info" : "bg-success-bg text-success"
-                          )}>{cb.status === "CRITICAL" ? "NGHIÊM TRỌNG" : cb.status === "EXCESS" ? "DƯ THỪA" : cb.status === "OK" ? "ĐẠT" : cb.status}</span>
-                        </td>
-                        <td colSpan={2} />
-                      </tr>
-                    ))}
-                  </React.Fragment>);
-                })}
-                <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
-                  <td className="px-3 py-2.5 text-text-1">TỔNG</td>
-                  <td />
-                  <td className="px-3 py-2.5 tabular-nums text-text-1">{totalDemand.toLocaleString()}</td>
-                  <td className="px-3 py-2.5 tabular-nums text-text-1">{totalStock.toLocaleString()}</td>
-                  <td className="px-3 py-2.5 tabular-nums text-text-1">{totalPipeline.toLocaleString()}</td>
-                  <td className="px-3 py-2.5 tabular-nums text-text-1">{netReq.toLocaleString()}</td>
-                  <td colSpan={4} />
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <BalanceSkuTable
+          rows={skuPivotData}
+          totals={{ demand: totalDemand, stock: totalStock, pipeline: totalPipeline, netReq }}
+        />
       ) : (
-      <div className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <div className="px-5 py-3 border-b border-surface-3 flex items-center justify-between">
-          <h3 className="font-display text-section-header text-text-1">Theo CN — Tháng 5</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-table-sm">
-            <thead>
-              <tr className="border-b border-surface-3 bg-surface-1/50">
-                {["CN", "Nhu cầu", "Tồn kho", "Đang về", "Sẵn dùng", "Số ngày phủ", "SS mục tiêu", "SS lệch", "Nhu cầu ròng", "Trạng thái", ""].map(h => (
-                  <th key={h} className="px-3 py-2 text-left text-table-header uppercase text-text-3 whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {balRows.map((row, i) => {
-                const avail = row.stock + row.pipeline;
-                const cover = row.demand > 0 ? +(row.stock / (row.demand / 30)).toFixed(1) : 0;
-                const ssGap = row.stock - row.ssTarget;
-                const rowNet = Math.max(0, row.demand - avail);
-                const isCrit = cover < 7;
-                const isExcess = cover > 12 && ssGap > 0;
-                const status = isCrit ? "CRITICAL" : isExcess ? "EXCESS" : "OK";
-                const coverPct = Math.min(100, (cover / 15) * 100);
-                const isExp = expandedCns.has(i);
-
-                return (
-                  <React.Fragment key={i}>
-                    <tr className={cn("border-b border-surface-3/50 hover:bg-primary/5 transition-colors cursor-pointer", i % 2 === 0 ? "bg-surface-0" : "bg-surface-2")}
-                      onClick={() => setExpandedCns(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; })}>
-                      <td className="px-3 py-2.5 font-medium text-text-1">
-                        <span className="flex items-center gap-1">{isExp ? <ChevronDown className="h-3.5 w-3.5 text-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-text-3" />}{row.cn}</span>
-                      </td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-1 font-medium">{row.demand.toLocaleString()}</td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-1">{row.stock.toLocaleString()}</td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-2">{row.pipeline.toLocaleString()}</td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-1">{avail.toLocaleString()}</td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-14 h-2 rounded-full bg-surface-3 overflow-hidden">
-                            <div className={cn("h-full rounded-full", cover < 5 ? "bg-danger" : cover < 10 ? "bg-warning" : "bg-success")}
-                              style={{ width: `${coverPct}%` }} />
-                          </div>
-                          <span className={cn("tabular-nums font-medium text-table-sm", isCrit ? "text-danger" : "text-success")}>
-                            {cover}d {isCrit ? "🔴" : "🟢"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2.5 tabular-nums text-text-1">{row.ssTarget.toLocaleString()}</td>
-                      <td className={cn("px-3 py-2.5 tabular-nums font-medium", ssGap < 0 ? "text-danger" : "text-success")}>
-                        {ssGap > 0 ? "+" : ""}{ssGap.toLocaleString()}
-                      </td>
-                      <td className="px-3 py-2.5 tabular-nums font-medium text-text-1">{rowNet.toLocaleString()}</td>
-                      <td className="px-3 py-2.5">
-                        <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
-                          status === "CRITICAL" ? "bg-danger-bg text-danger" : status === "EXCESS" ? "bg-info-bg text-info" : "bg-success-bg text-success"
-                        )}>{status === "CRITICAL" ? "NGHIÊM TRỌNG" : status === "EXCESS" ? "DƯ THỪA" : "ĐẠT"}</span>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        {isExp ? <ChevronDown className="h-3.5 w-3.5 text-primary" /> : <ChevronRight className="h-3.5 w-3.5 text-text-3" />}
-                      </td>
-                    </tr>
-                    {isExp && row.skus.map((sk, si) => {
-                      const skAvail = sk.stock + sk.pipeline;
-                      const skCover = sk.demand > 0 ? +(sk.stock / (sk.demand / 30)).toFixed(1) : 0;
-                      const skNet = Math.max(0, sk.demand - skAvail);
-                      return (
-                        <tr key={`sku-${si}`} className="bg-surface-1/60 border-b border-surface-3/30 animate-fade-in">
-                          <td className="px-3 py-2 pl-8 text-text-2 font-medium">└ {sk.item} {sk.variant}</td>
-                          <td className="px-3 py-2 tabular-nums text-text-2">{sk.demand.toLocaleString()}</td>
-                          <td className="px-3 py-2 tabular-nums text-text-2">{sk.stock.toLocaleString()}</td>
-                          <td className="px-3 py-2 tabular-nums text-text-3">{sk.pipeline.toLocaleString()} <span className="text-caption text-text-3">{sk.pipelineSource}</span></td>
-                          <td className="px-3 py-2 tabular-nums text-text-2">{skAvail.toLocaleString()}</td>
-                          <td className="px-3 py-2 tabular-nums text-text-3">{skCover}d</td>
-                          <td className="px-3 py-2 tabular-nums text-text-3">{sk.ss.toLocaleString()}</td>
-                          <td className={cn("px-3 py-2 tabular-nums font-medium", (sk.stock - sk.ss) < 0 ? "text-danger" : "text-success")}>
-                            {(sk.stock - sk.ss) > 0 ? "+" : ""}{(sk.stock - sk.ss).toLocaleString()}
-                          </td>
-                          <td className={cn("px-3 py-2 tabular-nums font-medium", skNet > 0 ? "text-danger" : "text-success")}>{skNet.toLocaleString()}</td>
-                          <td className="px-3 py-2">
-                            <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
-                              sk.match.includes("SHORT") ? "bg-danger-bg text-danger" : "bg-success-bg text-success"
-                            )}>{sk.match}</span>
-                          </td>
-                          <td />
-                        </tr>
-                      );
-                    })}
-                  </React.Fragment>
-                );
-              })}
-              {/* Total */}
-              <tr className="bg-surface-1 border-t-2 border-primary/20 font-bold">
-                <td className="px-3 py-2.5 text-text-1">TOTAL</td>
-                <td className="px-3 py-2.5 tabular-nums text-text-1">{totalDemand.toLocaleString()}</td>
-                <td className="px-3 py-2.5 tabular-nums text-text-1">{totalStock.toLocaleString()}</td>
-                <td className="px-3 py-2.5 tabular-nums text-text-1">{totalPipeline.toLocaleString()}</td>
-                <td className="px-3 py-2.5 tabular-nums text-text-1">{(totalStock + totalPipeline).toLocaleString()}</td>
-                <td className="px-3 py-2.5 tabular-nums text-text-2">
-                  {totalDemand > 0 ? (totalStock / (totalDemand / 30)).toFixed(1) : 0}d
-                </td>
-                <td className="px-3 py-2.5 tabular-nums text-text-1">{balRows.reduce((a, r) => a + r.ssTarget, 0).toLocaleString()}</td>
-                <td className={cn("px-3 py-2.5 tabular-nums font-medium", (totalStock - balRows.reduce((a, r) => a + r.ssTarget, 0)) >= 0 ? "text-success" : "text-danger")}>
-                  {(totalStock - balRows.reduce((a, r) => a + r.ssTarget, 0)) > 0 ? "+" : ""}
-                  {(totalStock - balRows.reduce((a, r) => a + r.ssTarget, 0)).toLocaleString()}
-                </td>
-                <td className="px-3 py-2.5 tabular-nums text-text-1">{netReq.toLocaleString()}</td>
-                <td colSpan={2} />
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+        <BalanceCnTable
+          rows={balRows}
+          totals={{
+            demand: totalDemand,
+            stock: totalStock,
+            pipeline: totalPipeline,
+            ssTarget: balRows.reduce((a, r) => a + r.ssTarget, 0),
+            netReq,
+          }}
+        />
       )}
 
       {/* Alert cards */}
@@ -363,9 +206,9 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
           <div>
             <p className="text-table font-semibold text-danger mb-1">CN-BD cover 2,5d CRITICAL</p>
             <p className="text-table-sm text-text-2 mb-2">Net requirement {balRows[0] ? Math.max(0, balRows[0].demand - balRows[0].stock - balRows[0].pipeline).toLocaleString() : 0}m²</p>
-            <button onClick={() => setExpandedCns(prev => { const n = new Set(prev); n.has(0) ? n.delete(0) : n.add(0); return n; })} className="text-danger text-table-sm font-medium hover:underline flex items-center gap-0.5">
-              Xem SKU <ChevronRight className="h-3.5 w-3.5" />
-            </button>
+            <span className="text-danger text-table-sm font-medium">
+              Mở dòng CN-BD trong bảng để xem SKU ▸
+            </span>
           </div>
         </div>
         <div className="rounded-card border border-info/30 bg-info-bg p-4 flex items-start gap-3">
@@ -509,6 +352,274 @@ export function BalanceLockTab({ data, totalV3, totalAop, locked, onLock, tenant
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Sub-tables — SmartTable parent + drillDown compact (CN-first / SKU-first)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+function statusChip(status: string) {
+  const tone =
+    status === "CRITICAL" ? "bg-danger-bg text-danger" :
+    status === "EXCESS" ? "bg-info-bg text-info" :
+    "bg-success-bg text-success";
+  const label =
+    status === "CRITICAL" ? "NGHIÊM TRỌNG" :
+    status === "EXCESS" ? "DƯ THỪA" :
+    status === "OK" ? "ĐẠT" : status;
+  return <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold", tone)}>{label}</span>;
+}
+
+/* ─── CN-first ─── */
+function BalanceCnTable({
+  rows,
+  totals,
+}: {
+  rows: BalanceRow[];
+  totals: { demand: number; stock: number; pipeline: number; ssTarget: number; netReq: number };
+}) {
+  const cols: SmartTableColumn<BalanceRow>[] = [
+    { key: "cn", label: "CN", width: 90, sortable: true, filter: "text",
+      render: (r) => <span className="font-medium text-text-1">{r.cn}</span> },
+    { key: "demand", label: "Nhu cầu", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.demand, render: (r) => <span className="font-medium text-text-1">{r.demand.toLocaleString()}</span> },
+    { key: "stock", label: "Tồn kho", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.stock, render: (r) => r.stock.toLocaleString() },
+    { key: "pipeline", label: "Đang về", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.pipeline, render: (r) => <span className="text-text-2">{r.pipeline.toLocaleString()}</span> },
+    { key: "avail", label: "Sẵn dùng", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.stock + r.pipeline, render: (r) => (r.stock + r.pipeline).toLocaleString() },
+    { key: "cover", label: "Số ngày phủ", width: 130, numeric: true, sortable: true, align: "left",
+      accessor: (r) => r.demand > 0 ? r.stock / (r.demand / 30) : 0,
+      render: (r) => {
+        const cover = r.demand > 0 ? +(r.stock / (r.demand / 30)).toFixed(1) : 0;
+        const isCrit = cover < 7;
+        const coverPct = Math.min(100, (cover / 15) * 100);
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-14 h-2 rounded-full bg-surface-3 overflow-hidden">
+              <div className={cn("h-full rounded-full", cover < 5 ? "bg-danger" : cover < 10 ? "bg-warning" : "bg-success")}
+                style={{ width: `${coverPct}%` }} />
+            </div>
+            <span className={cn("tabular-nums font-medium text-table-sm", isCrit ? "text-danger" : "text-success")}>
+              {cover}d {isCrit ? "🔴" : "🟢"}
+            </span>
+          </div>
+        );
+      },
+    },
+    { key: "ssTarget", label: "SS mục tiêu", width: 110, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.ssTarget, render: (r) => r.ssTarget.toLocaleString() },
+    { key: "ssGap", label: "SS lệch", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.stock - r.ssTarget,
+      render: (r) => {
+        const ssGap = r.stock - r.ssTarget;
+        return <span className={cn("tabular-nums font-medium", ssGap < 0 ? "text-danger" : "text-success")}>{ssGap > 0 ? "+" : ""}{ssGap.toLocaleString()}</span>;
+      },
+    },
+    { key: "netReq", label: "Nhu cầu ròng", width: 120, numeric: true, sortable: true, align: "right",
+      accessor: (r) => Math.max(0, r.demand - r.stock - r.pipeline),
+      render: (r) => <span className="font-medium text-text-1">{Math.max(0, r.demand - r.stock - r.pipeline).toLocaleString()}</span> },
+    { key: "status", label: "Trạng thái", width: 130, filter: "enum",
+      filterOptions: [
+        { value: "CRITICAL", label: "NGHIÊM TRỌNG" },
+        { value: "EXCESS", label: "DƯ THỪA" },
+        { value: "OK", label: "ĐẠT" },
+      ],
+      accessor: (r) => {
+        const cover = r.demand > 0 ? r.stock / (r.demand / 30) : 0;
+        const ssGap = r.stock - r.ssTarget;
+        return cover < 7 ? "CRITICAL" : (cover > 12 && ssGap > 0) ? "EXCESS" : "OK";
+      },
+      render: (r) => {
+        const cover = r.demand > 0 ? r.stock / (r.demand / 30) : 0;
+        const ssGap = r.stock - r.ssTarget;
+        const status = cover < 7 ? "CRITICAL" : (cover > 12 && ssGap > 0) ? "EXCESS" : "OK";
+        return statusChip(status);
+      },
+    },
+  ];
+
+  const summaryRow: Partial<Record<string, React.ReactNode>> = {
+    cn: <span className="font-bold text-text-1">TỔNG</span>,
+    demand: totals.demand.toLocaleString(),
+    stock: totals.stock.toLocaleString(),
+    pipeline: totals.pipeline.toLocaleString(),
+    avail: (totals.stock + totals.pipeline).toLocaleString(),
+    cover: totals.demand > 0 ? `${(totals.stock / (totals.demand / 30)).toFixed(1)}d` : "—",
+    ssTarget: totals.ssTarget.toLocaleString(),
+    ssGap: (
+      <span className={cn("tabular-nums font-medium", (totals.stock - totals.ssTarget) >= 0 ? "text-success" : "text-danger")}>
+        {(totals.stock - totals.ssTarget) > 0 ? "+" : ""}{(totals.stock - totals.ssTarget).toLocaleString()}
+      </span>
+    ),
+    netReq: totals.netReq.toLocaleString(),
+  };
+
+  return (
+    <SmartTable<BalanceRow>
+      screenId="sop-balance-cn"
+      title="Cân đối theo CN — Tháng 5"
+      columns={cols}
+      data={rows}
+      defaultDensity="compact"
+      getRowId={(r) => r.cn}
+      rowSeverity={(r) => {
+        const cover = r.demand > 0 ? r.stock / (r.demand / 30) : 0;
+        return cover < 7 ? "shortage" : "ok";
+      }}
+      autoExpandWhen={(r) => {
+        const cover = r.demand > 0 ? r.stock / (r.demand / 30) : 0;
+        return cover < 7;
+      }}
+      drillDown={(r) => <BalanceCnSkuChild row={r} />}
+      summaryRow={summaryRow}
+      exportFilename="balance-cn"
+    />
+  );
+}
+
+function BalanceCnSkuChild({ row }: { row: BalanceRow }) {
+  const cols: SmartTableColumn<BalSkuRow>[] = [
+    { key: "sku", label: "Mã hàng", width: 130,
+      render: (s) => <span className="font-medium text-text-1">{s.item} {s.variant}</span> },
+    { key: "demand", label: "Nhu cầu", width: 90, numeric: true, align: "right", accessor: (s) => s.demand,
+      render: (s) => s.demand.toLocaleString() },
+    { key: "stock", label: "Tồn", width: 80, numeric: true, align: "right", accessor: (s) => s.stock,
+      render: (s) => s.stock.toLocaleString() },
+    { key: "pipeline", label: "Đang về", width: 130, numeric: true, align: "right", accessor: (s) => s.pipeline,
+      render: (s) => (
+        <span>
+          {s.pipeline.toLocaleString()}
+          {s.pipelineSource && <span className="ml-1 text-caption text-text-3">{s.pipelineSource}</span>}
+        </span>
+      ),
+    },
+    { key: "avail", label: "Sẵn dùng", width: 90, numeric: true, align: "right",
+      accessor: (s) => s.stock + s.pipeline, render: (s) => (s.stock + s.pipeline).toLocaleString() },
+    { key: "cover", label: "Phủ", width: 70, numeric: true, align: "right",
+      accessor: (s) => s.demand > 0 ? s.stock / (s.demand / 30) : 0,
+      render: (s) => `${s.demand > 0 ? (s.stock / (s.demand / 30)).toFixed(1) : 0}d` },
+    { key: "ss", label: "SS", width: 70, numeric: true, align: "right", accessor: (s) => s.ss,
+      render: (s) => s.ss.toLocaleString() },
+    { key: "ssGap", label: "SS lệch", width: 90, numeric: true, align: "right",
+      accessor: (s) => s.stock - s.ss,
+      render: (s) => {
+        const g = s.stock - s.ss;
+        return <span className={cn("tabular-nums font-medium", g < 0 ? "text-danger" : "text-success")}>{g > 0 ? "+" : ""}{g.toLocaleString()}</span>;
+      },
+    },
+    { key: "netReq", label: "Net req", width: 90, numeric: true, align: "right",
+      accessor: (s) => Math.max(0, s.demand - (s.stock + s.pipeline)),
+      render: (s) => {
+        const n = Math.max(0, s.demand - (s.stock + s.pipeline));
+        return <span className={cn("tabular-nums font-medium", n > 0 ? "text-danger" : "text-success")}>{n.toLocaleString()}</span>;
+      },
+    },
+    { key: "match", label: "Khớp", width: 130,
+      render: (s) => (
+        <span className={cn("inline-flex rounded-full px-2 py-0.5 text-caption font-bold",
+          s.match.includes("SHORT") ? "bg-danger-bg text-danger" : "bg-success-bg text-success")}>
+          {s.match}
+        </span>
+      ),
+    },
+  ];
+
+  return (
+    <div className="px-3 py-2 bg-surface-1/40">
+      <SmartTable<BalSkuRow>
+        screenId={`sop-balance-cn-${row.cn}-skus`}
+        columns={cols}
+        data={row.skus}
+        defaultDensity="compact"
+        getRowId={(s) => `${s.item}-${s.variant}`}
+      />
+    </div>
+  );
+}
+
+/* ─── SKU-first ─── */
+function BalanceSkuTable({
+  rows,
+  totals,
+}: {
+  rows: BalSkuPivot[];
+  totals: { demand: number; stock: number; pipeline: number; netReq: number };
+}) {
+  const cols: SmartTableColumn<BalSkuPivot>[] = [
+    { key: "item", label: "SKU", width: 100, sortable: true, filter: "text",
+      render: (r) => <span className="font-medium text-text-1">{r.item}</span> },
+    { key: "variant", label: "Mẫu", width: 80, sortable: true, render: (r) => <span className="text-text-2">{r.variant}</span> },
+    { key: "demand", label: "Nhu cầu", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.demand, render: (r) => <span className="font-medium text-text-1">{r.demand.toLocaleString()}</span> },
+    { key: "stock", label: "Tồn kho", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.stock, render: (r) => r.stock.toLocaleString() },
+    { key: "pipeline", label: "Đang về", width: 100, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.pipeline, render: (r) => <span className="text-text-2">{r.pipeline.toLocaleString()}</span> },
+    { key: "netReq", label: "Nhu cầu ròng", width: 120, numeric: true, sortable: true, align: "right",
+      accessor: (r) => r.netReq,
+      render: (r) => <span className={cn("tabular-nums font-medium", r.netReq > 0 ? "text-danger" : "text-success")}>{r.netReq.toLocaleString()}</span> },
+    { key: "worstCn", label: "CN xấu nhất", width: 140,
+      render: (r) => <WorstCnCell cnName={r.worstCn} hstk={r.worstCover} /> },
+    { key: "cnGapCount", label: "# CN thiếu", width: 110, numeric: true, sortable: true, align: "left",
+      accessor: (r) => r.cnGapCount, render: (r) => <CnGapBadge count={r.cnGapCount} /> },
+    { key: "lcnb", label: "LCNB", width: 130,
+      render: (r) => r.lcnb ? <LcnbBadge text={r.lcnb} /> : <span className="text-text-3">—</span> },
+  ];
+
+  const summaryRow: Partial<Record<string, React.ReactNode>> = {
+    item: <span className="font-bold text-text-1">TỔNG</span>,
+    demand: totals.demand.toLocaleString(),
+    stock: totals.stock.toLocaleString(),
+    pipeline: totals.pipeline.toLocaleString(),
+    netReq: totals.netReq.toLocaleString(),
+  };
+
+  return (
+    <SmartTable<BalSkuPivot>
+      screenId="sop-balance-sku"
+      title="Cân đối theo SKU — Tháng 5"
+      columns={cols}
+      data={rows}
+      defaultDensity="compact"
+      getRowId={(r) => `${r.item}-${r.variant}`}
+      rowSeverity={(r) => r.netReq > 0 ? "shortage" : "ok"}
+      autoExpandWhen={(r) => r.netReq > 0}
+      drillDown={(r) => <BalanceSkuCnChild row={r} />}
+      summaryRow={summaryRow}
+      exportFilename="balance-sku"
+    />
+  );
+}
+
+function BalanceSkuCnChild({ row }: { row: BalSkuPivot }) {
+  type CnBreak = BalSkuPivot["cnBreakdown"][number];
+  const cols: SmartTableColumn<CnBreak>[] = [
+    { key: "cn", label: "CN", width: 90, render: (r) => <span className="font-medium text-text-1">{r.cn}</span> },
+    { key: "demand", label: "Nhu cầu", width: 100, numeric: true, align: "right", accessor: (r) => r.demand, render: (r) => r.demand.toLocaleString() },
+    { key: "stock", label: "Tồn", width: 80, numeric: true, align: "right", accessor: (r) => r.stock, render: (r) => r.stock.toLocaleString() },
+    { key: "pipeline", label: "Đang về", width: 100, numeric: true, align: "right", accessor: (r) => r.pipeline, render: (r) => r.pipeline.toLocaleString() },
+    { key: "cover", label: "Phủ", width: 70, numeric: true, align: "right", accessor: (r) => r.cover, render: (r) => `${r.cover}d` },
+    { key: "ssTarget", label: "SS", width: 80, numeric: true, align: "right", accessor: (r) => r.ssTarget, render: (r) => r.ssTarget.toLocaleString() },
+    { key: "ssGap", label: "SS lệch", width: 90, numeric: true, align: "right", accessor: (r) => r.ssGap,
+      render: (r) => <span className={cn("tabular-nums font-medium", r.ssGap < 0 ? "text-danger" : "text-success")}>{r.ssGap > 0 ? "+" : ""}{r.ssGap.toLocaleString()}</span> },
+    { key: "netReq", label: "Net req", width: 100, numeric: true, align: "right", accessor: (r) => r.netReq,
+      render: (r) => <span className={cn("tabular-nums font-medium", r.netReq > 0 ? "text-danger" : "text-success")}>{r.netReq.toLocaleString()}</span> },
+    { key: "status", label: "Trạng thái", width: 130, render: (r) => statusChip(r.status) },
+  ];
+
+  return (
+    <div className="px-3 py-2 bg-surface-1/40">
+      <SmartTable<CnBreak>
+        screenId={`sop-balance-sku-${row.item}-${row.variant}-cns`}
+        columns={cols}
+        data={row.cnBreakdown}
+        defaultDensity="compact"
+        getRowId={(r) => r.cn}
+      />
     </div>
   );
 }

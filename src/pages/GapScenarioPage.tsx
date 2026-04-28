@@ -33,6 +33,7 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { useNavigate } from "react-router-dom";
 import { SummaryCards } from "@/components/SummaryCards";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 
 // Map mỗi NM → SKU base chính (dùng để tra giá thực)
 const NM_TOP_SKU: Record<NmId, string> = {
@@ -353,102 +354,223 @@ function TrackingTab({
         </div>
       </div>
 
-      {/* Gap table */}
-      <div className="rounded-card border border-surface-3 bg-surface-0 overflow-hidden">
-        <table className="w-full text-table-sm">
-          <thead className="bg-surface-2 text-text-3 text-caption uppercase tracking-wider">
-            <tr>
-              <th className="text-left px-4 py-3 font-semibold">Nhà máy</th>
-              <th className="text-right px-4 py-3 font-semibold">Đã yêu cầu</th>
-              <th className="text-right px-4 py-3 font-semibold">Đã cam kết</th>
-              <th className="text-right px-4 py-3 font-semibold">
-                Khoảng cách
-              </th>
-              <th className="text-center px-4 py-3 font-semibold">Tốc độ</th>
-              <th className="text-center px-4 py-3 font-semibold">Ngày còn</th>
-              <th className="text-left px-4 py-3 font-semibold">Cảnh báo</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const meta = STATUS_META[r.status];
-              const Icon = meta.icon;
-              return (
-                <tr
-                  key={r.nmId}
-                  className="border-t border-surface-3 hover:bg-surface-1 transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className={cn("h-2 w-2 rounded-full", meta.dot)} />
-                      <span className="font-medium text-text-1">
-                        {r.nm.name}
-                      </span>
-                      {r.stale && (
-                        <span className="text-caption rounded-full bg-danger-bg text-danger px-2 py-0.5 border border-danger/30">
-                          Dữ liệu cũ
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-caption text-text-3 mt-0.5">
-                      {r.nm.code} · {r.nm.region}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-text-1">
-                    {fmtM2(r.totalRequestedM2)}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-text-1">
-                    {fmtM2(r.totalCommittedM2)}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 border text-table-sm font-semibold",
-                        meta.tone
-                      )}
-                    >
-                      <Icon className="h-3 w-3" />
-                      {r.gapPct}%
-                    </span>
-                    <p className="text-caption text-text-3 mt-1">
-                      Δ {fmtM2(r.gapM2)}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span
-                      className={cn(
-                        "text-table-sm",
-                        r.velocity === "Tăng"
-                          ? "text-danger"
-                          : r.velocity === "Giảm"
-                          ? "text-success"
-                          : "text-text-2"
-                      )}
-                    >
-                      {r.velocity === "Tăng" ? "↑ " : r.velocity === "Giảm" ? "↓ " : "→ "}
-                      {r.velocity}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center text-text-2">
-                    {r.daysLeft} ngày
-                  </td>
-                  <td className="px-4 py-3 text-text-2">{r.note}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Button
-                      size="sm"
-                      variant={r.status === "critical" ? "default" : "outline"}
-                      onClick={() => onSelect(r)}
-                    >
-                      Mô phỏng
-                    </Button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {/* Gap table — SmartTable + drill-down per NM × SKU gap */}
+      <GapTrackingTable rows={rows} onSelect={onSelect} />
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* Gap tracking table — SmartTable wrapper                                     */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+function GapTrackingTable({
+  rows,
+  onSelect,
+}: {
+  rows: GapRow[];
+  onSelect: (row: GapRow) => void;
+}) {
+  const columns: SmartTableColumn<GapRow>[] = [
+    {
+      key: "nm",
+      label: "Nhà máy",
+      width: 220,
+      sortable: true,
+      filter: "text",
+      accessor: (r) => r.nm.name,
+      render: (r) => {
+        const meta = STATUS_META[r.status];
+        return (
+          <div>
+            <div className="flex items-center gap-2">
+              <span className={cn("h-2 w-2 rounded-full", meta.dot)} />
+              <span className="font-medium text-text-1">{r.nm.name}</span>
+              {r.stale && (
+                <span className="text-caption rounded-full bg-danger-bg text-danger px-2 py-0.5 border border-danger/30">
+                  Dữ liệu cũ
+                </span>
+              )}
+            </div>
+            <p className="text-caption text-text-3 mt-0.5">
+              {r.nm.code} · {r.nm.region}
+            </p>
+          </div>
+        );
+      },
+    },
+    {
+      key: "requested",
+      label: "Đã yêu cầu",
+      width: 110,
+      numeric: true,
+      sortable: true,
+      align: "right",
+      accessor: (r) => r.totalRequestedM2,
+      render: (r) => fmtM2(r.totalRequestedM2),
+    },
+    {
+      key: "committed",
+      label: "Đã cam kết",
+      width: 110,
+      numeric: true,
+      sortable: true,
+      align: "right",
+      accessor: (r) => r.totalCommittedM2,
+      render: (r) => fmtM2(r.totalCommittedM2),
+    },
+    {
+      key: "gap",
+      label: "Khoảng cách",
+      width: 130,
+      numeric: true,
+      sortable: true,
+      align: "right",
+      accessor: (r) => r.gapPct,
+      render: (r) => {
+        const meta = STATUS_META[r.status];
+        const Icon = meta.icon;
+        return (
+          <div>
+            <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 border text-table-sm font-semibold", meta.tone)}>
+              <Icon className="h-3 w-3" />
+              {r.gapPct}%
+            </span>
+            <p className="text-caption text-text-3 mt-1">Δ {fmtM2(r.gapM2)}</p>
+          </div>
+        );
+      },
+    },
+    {
+      key: "velocity",
+      label: "Tốc độ",
+      width: 90,
+      align: "center",
+      filter: "enum",
+      filterOptions: [
+        { value: "Tăng", label: "Tăng" },
+        { value: "Ổn định", label: "Ổn định" },
+        { value: "Giảm", label: "Giảm" },
+      ],
+      accessor: (r) => r.velocity,
+      render: (r) => (
+        <span className={cn("text-table-sm",
+          r.velocity === "Tăng" ? "text-danger" : r.velocity === "Giảm" ? "text-success" : "text-text-2")}>
+          {r.velocity === "Tăng" ? "↑ " : r.velocity === "Giảm" ? "↓ " : "→ "}{r.velocity}
+        </span>
+      ),
+    },
+    {
+      key: "daysLeft",
+      label: "Ngày còn",
+      width: 80,
+      align: "center",
+      numeric: true,
+      sortable: true,
+      accessor: (r) => r.daysLeft,
+      render: (r) => `${r.daysLeft} ngày`,
+    },
+    {
+      key: "note",
+      label: "Cảnh báo",
+      width: 220,
+      filter: "text",
+      accessor: (r) => r.note ?? "",
+      render: (r) => <span className="text-text-2">{r.note}</span>,
+      priority: "low",
+    },
+    {
+      key: "action",
+      label: "",
+      width: 110,
+      align: "right",
+      render: (r) => (
+        <Button
+          size="sm"
+          variant={r.status === "critical" ? "default" : "outline"}
+          onClick={(e) => { e.stopPropagation(); onSelect(r); }}
+        >
+          Mô phỏng
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <SmartTable<GapRow>
+      screenId="gap-tracking"
+      title="Khoảng cách cam kết theo NM"
+      columns={columns}
+      data={rows}
+      defaultDensity="normal"
+      getRowId={(r) => r.nmId}
+      rowSeverity={(r) => r.status === "critical" ? "shortage" : r.status === "watch" ? "watch" : "ok"}
+      autoExpandWhen={(r) => r.status === "critical"}
+      drillDown={(r) => <GapNmSkuDrill row={r} />}
+      exportFilename="gap-tracking"
+    />
+  );
+}
+
+/**
+ * Drill-down per NM — hiện gap chi tiết per SKU base trong commitment.
+ * Tận dụng `commitments` field nếu có; fallback ra 1 dòng tổng.
+ */
+function GapNmSkuDrill({ row }: { row: GapRow }) {
+  // Build SKU breakdown from commitments if present, else single aggregate row
+  type SkuGap = { sku: string; requested: number; committed: number; gap: number; gapPct: number };
+  const skuRows: SkuGap[] = (() => {
+    const commits = (row as unknown as { commitments?: { skuBaseCode: string; requestedM2: number; committedM2: number }[] }).commitments;
+    if (commits && commits.length > 0) {
+      return commits.map((c) => {
+        const gap = c.requestedM2 - c.committedM2;
+        return {
+          sku: c.skuBaseCode,
+          requested: c.requestedM2,
+          committed: c.committedM2,
+          gap,
+          gapPct: c.requestedM2 > 0 ? Math.round((gap / c.requestedM2) * 1000) / 10 : 0,
+        };
+      });
+    }
+    return [{
+      sku: NM_TOP_SKU[row.nmId] ?? "—",
+      requested: row.totalRequestedM2,
+      committed: row.totalCommittedM2,
+      gap: row.gapM2,
+      gapPct: row.gapPct,
+    }];
+  })();
+
+  const childCols: SmartTableColumn<SkuGap>[] = [
+    { key: "sku", label: "Mã hàng", width: 110, render: (r) => <span className="font-mono text-text-1">{r.sku}</span> },
+    { key: "requested", label: "Yêu cầu", width: 110, numeric: true, align: "right", render: (r) => fmtM2(r.requested) },
+    { key: "committed", label: "Cam kết", width: 110, numeric: true, align: "right", render: (r) => fmtM2(r.committed) },
+    { key: "gap", label: "Gap", width: 110, numeric: true, align: "right",
+      render: (r) => (
+        <span className={cn("tabular-nums font-medium", r.gap > 0 ? "text-danger" : "text-success")}>
+          {r.gap > 0 ? "+" : ""}{fmtM2(r.gap)}
+        </span>
+      ),
+    },
+    { key: "gapPct", label: "% Gap", width: 80, numeric: true, align: "right",
+      render: (r) => (
+        <span className={cn("tabular-nums font-medium", r.gapPct > 15 ? "text-danger" : r.gapPct > 5 ? "text-warning" : "text-success")}>
+          {r.gapPct}%
+        </span>
+      ),
+    },
+  ];
+
+  return (
+    <div className="px-4 py-3 bg-surface-1/40">
+      <SmartTable<SkuGap>
+        screenId={`gap-tracking-${row.nmId}-skus`}
+        columns={childCols}
+        data={skuRows}
+        defaultDensity="compact"
+        getRowId={(r) => r.sku}
+      />
     </div>
   );
 }
