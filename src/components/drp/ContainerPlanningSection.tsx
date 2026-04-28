@@ -14,6 +14,7 @@ import {
 } from "@/data/container-plans";
 import { RouteMapPreview } from "./RouteMapPreview";
 import { KpiImpactGrid } from "./KpiImpactGrid";
+import { FillExceptionAlert } from "./FillExceptionAlert";
 import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -102,6 +103,8 @@ function DropPointsEditor({
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
   const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
+  // Drop bị gỡ tạm trong preview (qua nút Áp dụng từ FillExceptionAlert hoặc nút Gỡ)
+  const [removedCnCodes, setRemovedCnCodes] = useState<Set<string>>(new Set());
 
   // ── Draft state ──────────────────────────────────────────────────────────
   const [pendingDraft, setPendingDraft] = useState<ContainerEditDraft | null>(null);
@@ -109,9 +112,22 @@ function DropPointsEditor({
   const autoSaveTimer = useRef<number | null>(null);
 
   const calc = useMemo(() => recalcRoute(container, order), [container, order]);
+  const activeDrops = useMemo(
+    () => order.filter((d) => !removedCnCodes.has(d.cnCode)),
+    [order, removedCnCodes],
+  );
+  const currentFillM2 = useMemo(
+    () => activeDrops.reduce((s, d) => s + d.qtyM2, 0),
+    [activeDrops],
+  );
+  const currentFillPct = container.capacityM2 > 0
+    ? Math.round((currentFillM2 / container.capacityM2) * 100)
+    : container.fillPct;
   const dirty = useMemo(
-    () => order.some((d, i) => d.cnCode !== container.drops[i]?.cnCode),
-    [order, container.drops],
+    () =>
+      removedCnCodes.size > 0 ||
+      order.some((d, i) => d.cnCode !== container.drops[i]?.cnCode),
+    [order, container.drops, removedCnCodes],
   );
   const canReorder = container.drops.length >= 2 &&
     (container.status === "draft" || container.status === "ready" || container.status === "hold");
@@ -151,6 +167,7 @@ function DropPointsEditor({
     setReorderMode(false);
     setDraftSavedAt(null);
     setPendingDraft(null);
+    setRemovedCnCodes(new Set());
     const existing = getDraft(container.id);
     if (existing && container.drops.length >= 2) {
       const baseline = container.drops.map((d) => d.cnCode).join("|");
@@ -190,6 +207,7 @@ function DropPointsEditor({
 
   const reset = () => {
     setOrder(container.drops);
+    setRemovedCnCodes(new Set());
     clearDraft(container.id);
     setDraftSavedAt(null);
     toast.info(`Đã hoàn tác — nháp ${container.id} bị xoá`);
@@ -200,10 +218,31 @@ function DropPointsEditor({
     clearDraft(container.id);
     setDraftSavedAt(null);
     if (!dirty) return;
+    const removedNote = removedCnCodes.size > 0
+      ? ` · gỡ ${Array.from(removedCnCodes).join(", ")}`
+      : "";
     toast.success(
-      `Đã lưu thứ tự mới cho ${container.id}: ${order.map((d) => d.cnCode).join(" → ")} ` +
-      `(+${calc.deltaKm}km · ${calc.deltaFreight >= 0 ? "+" : ""}${(calc.deltaFreight / 1_000_000).toFixed(1)}M₫)`,
+      `Đã lưu thay đổi cho ${container.id}: ${activeDrops.map((d) => d.cnCode).join(" → ")} ` +
+      `(+${calc.deltaKm}km · ${calc.deltaFreight >= 0 ? "+" : ""}${(calc.deltaFreight / 1_000_000).toFixed(1)}M₫${removedNote})`,
     );
+  };
+
+  const removeDrop = (cnCode: string) => {
+    setRemovedCnCodes((prev) => {
+      const next = new Set(prev);
+      next.add(cnCode);
+      return next;
+    });
+    if (!reorderMode) setReorderMode(true);
+    toast.info(`Đã gỡ ${cnCode} khỏi ${container.id} (chưa lưu)`);
+  };
+
+  const restoreDrop = (cnCode: string) => {
+    setRemovedCnCodes((prev) => {
+      const next = new Set(prev);
+      next.delete(cnCode);
+      return next;
+    });
   };
 
   const saveDraftManual = () => {
@@ -242,6 +281,7 @@ function DropPointsEditor({
   };
   const handleConfirmDiscard = () => {
     setOrder(container.drops);
+    setRemovedCnCodes(new Set());
     clearDraft(container.id);
     setDraftSavedAt(null);
     setReorderMode(false);
@@ -361,12 +401,25 @@ function DropPointsEditor({
         )}
       </div>
 
-      {/* KPI Impact Grid — luôn hiện trong drill-down, flash khi value đổi */}
+      {/* Cảnh báo exception-first khi fill vượt ngưỡng — đặt TRÊN KPI grid */}
+      <FillExceptionAlert
+        container={container}
+        currentFillM2={currentFillM2}
+        currentCapacityM2={container.capacityM2}
+        currentVehicleCode={container.vehicle}
+        currentDrops={activeDrops}
+        onChangeVehicle={(v) =>
+          toast.info(`Gợi ý đổi xe sang ${v.label} — mở dialog "Sửa" để xác nhận`)
+        }
+        onRemoveDrop={removeDrop}
+      />
+
+      {/* KPI Impact Grid — luôn hiện, flash khi value đổi */}
       <KpiImpactGrid
         baseFillPct={container.fillPct}
         baseKm={container.distanceKm}
         baseFreightVnd={container.freightVnd}
-        newFillPct={container.fillPct /* fill không đổi vì cùng SKU/qty */}
+        newFillPct={currentFillPct}
         newKm={calc.newKm}
         newFreightVnd={calc.newFreight}
         editing={reorderMode}
@@ -410,12 +463,13 @@ function DropPointsEditor({
           {order.map((d, i) => {
             const isDragging = dragIdx === i;
             const isOver = overIdx === i && dragIdx !== null && dragIdx !== i;
+            const isRemoved = removedCnCodes.has(d.cnCode);
             return (
               <tr
                 key={d.cnCode}
-                draggable={reorderMode}
+                draggable={reorderMode && !isRemoved}
                 onDragStart={(e) => {
-                  if (!reorderMode) return;
+                  if (!reorderMode || isRemoved) return;
                   setDragIdx(i);
                   e.dataTransfer.effectAllowed = "move";
                 }}
@@ -436,19 +490,20 @@ function DropPointsEditor({
                 onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
                 className={cn(
                   "border-b border-surface-3/40 transition-colors",
-                  reorderMode && "cursor-move select-none",
+                  reorderMode && !isRemoved && "cursor-move select-none",
                   isDragging && "opacity-40",
                   isOver && "bg-primary/10 outline outline-2 outline-primary/60",
+                  isRemoved && "bg-danger-bg/30 line-through text-text-3 opacity-70",
                 )}
               >
                 {reorderMode && (
                   <td className="py-1.5 text-text-3">
-                    <GripVertical className="h-3.5 w-3.5" />
+                    {!isRemoved && <GripVertical className="h-3.5 w-3.5" />}
                   </td>
                 )}
                 <td className="py-1.5 text-text-3 tabular-nums">{i + 1}</td>
                 <td className="py-1.5">
-                  {reorderMode ? (
+                  {reorderMode || isRemoved ? (
                     <span className="font-medium text-text-1">{d.cnName}</span>
                   ) : (
                     <button
@@ -461,6 +516,11 @@ function DropPointsEditor({
                     </button>
                   )}
                   <span className="text-text-3 ml-1">({d.cnCode})</span>
+                  {isRemoved && (
+                    <span className="ml-2 inline-flex items-center gap-0.5 rounded-full border border-danger/40 bg-danger-bg px-1.5 py-0.5 text-[10px] font-semibold text-danger no-underline">
+                      Đã gỡ
+                    </span>
+                  )}
                 </td>
                 <td className="py-1.5 text-right tabular-nums text-text-1">
                   {d.qtyM2.toLocaleString()}
@@ -472,7 +532,15 @@ function DropPointsEditor({
                 )}
                 <td className="py-1.5 text-text-2 tabular-nums">{d.eta}</td>
                 <td className="py-1.5 text-right">
-                  {reorderMode ? (
+                  {isRemoved ? (
+                    <button
+                      type="button"
+                      onClick={() => restoreDrop(d.cnCode)}
+                      className="text-[11px] text-info hover:underline no-underline"
+                    >
+                      Khôi phục
+                    </button>
+                  ) : reorderMode ? (
                     <div className="inline-flex items-center gap-0.5">
                       <button
                         type="button"
@@ -492,11 +560,19 @@ function DropPointsEditor({
                       >
                         <ArrowDown className="h-3 w-3 text-text-2" />
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => removeDrop(d.cnCode)}
+                        className="p-1 rounded hover:bg-danger-bg text-danger ml-1"
+                        title="Gỡ drop khỏi chuyến (chưa lưu)"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                     </div>
                   ) : (
                     <button
                       type="button"
-                      onClick={() => toast.info(`Gỡ ${d.cnCode} khỏi ${container.id}`)}
+                      onClick={() => removeDrop(d.cnCode)}
                       className="text-[11px] text-danger hover:underline"
                     >
                       Gỡ
