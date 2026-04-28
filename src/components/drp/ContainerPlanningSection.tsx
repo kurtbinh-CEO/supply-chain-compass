@@ -1425,10 +1425,19 @@ function RoundUpSuggestion({ container }: { container: ContainerPlan }) {
       {/* Action bar — primary apply (scope-aware) + "Apply only this line" + alt + dismiss */}
       <div className="flex items-center gap-1.5 flex-wrap pt-1">
         <Button size="sm" className="h-7 px-2.5 text-[11px]"
-          onClick={() => toast.success(
-            `Áp dụng "${STRATEGY_LABELS[decision.strategy]}" cho toàn chuyến ${container.id}`,
-            { description: `Phạm vi: toàn chuyến · Strategy: ${decision.strategy}` },
-          )}>
+          onClick={() => {
+            toast.success(
+              `Áp dụng "${STRATEGY_LABELS[decision.strategy]}" cho toàn chuyến ${container.id}`,
+              { description: `Phạm vi: toàn chuyến · Strategy: ${decision.strategy}` },
+            );
+            emitTransportAudit({
+              category: "fillup", severity: "success",
+              title: `Áp dụng ${STRATEGY_LABELS[decision.strategy]} cho toàn chuyến`,
+              detail: `Phạm vi: toàn chuyến · Strategy: ${decision.strategy}`,
+              containerId: container.id, actorRole,
+              meta: { scope: "container", strategy: decision.strategy },
+            });
+          }}>
           <Check className="h-3 w-3 mr-1" /> Áp dụng toàn chuyến
         </Button>
 
@@ -1442,6 +1451,13 @@ function RoundUpSuggestion({ container }: { container: ContainerPlan }) {
               toast.success(`Chỉ áp dụng cho dòng: ${targetLabel}`, {
                 description: `Phạm vi: 1 dòng · Các dòng khác giữ nguyên · Strategy: ${decision.strategy}`,
               });
+              emitTransportAudit({
+                category: "fillup", severity: "success",
+                title: `Áp dụng ${STRATEGY_LABELS[decision.strategy]} cho 1 dòng`,
+                detail: `Mục tiêu: ${targetLabel} · Strategy: ${decision.strategy}`,
+                containerId: container.id, actorRole,
+                meta: { scope: "line", strategy: decision.strategy, target: targetLabel },
+              });
             }}>
             Chỉ áp dụng dòng này
           </Button>
@@ -1449,9 +1465,16 @@ function RoundUpSuggestion({ container }: { container: ContainerPlan }) {
 
         {decision.altActions.map((alt) => (
           <Button key={alt.strategy} size="sm" variant="outline" className="h-7 px-2.5 text-[11px]"
-            onClick={() => toast.info(`Chuyển sang: ${alt.label}`, {
-              description: `Strategy: ${alt.strategy}`,
-            })}>
+            onClick={() => {
+              toast.info(`Chuyển sang: ${alt.label}`, { description: `Strategy: ${alt.strategy}` });
+              emitTransportAudit({
+                category: "fillup", severity: "info",
+                title: `Chuyển sang chiến lược thay thế: ${alt.label}`,
+                detail: `Từ ${decision.strategy} → ${alt.strategy}`,
+                containerId: container.id, actorRole,
+                meta: { from: decision.strategy, to: alt.strategy },
+              });
+            }}>
             {alt.label}
           </Button>
         ))}
