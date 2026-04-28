@@ -132,9 +132,10 @@ function DropPointsEditor({
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
 
-  // Parent yêu cầu đóng (user click row) — nếu dirty, hiện confirm
+  // Parent yêu cầu đóng (user click row) — nếu dirty, hiện confirm.
+  // Bỏ qua nonce=0 (lần mount đầu, chưa có yêu cầu thực sự).
   useEffect(() => {
-    if (closeRequestNonce === undefined) return;
+    if (!closeRequestNonce) return;
     if (dirty) {
       setCloseConfirmOpen(true);
     } else {
