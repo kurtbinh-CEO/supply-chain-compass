@@ -46,9 +46,8 @@ const tenantScales: Record<string, number> = { "UNIS Group": 1, "TTC Agris": 0.7
    ═══════════════════════════════════════════════════════════════════════════ */
 
 interface AllocLayer { name: string; qty: number; pass: boolean; delta?: number; explain: string }
-interface AllocSources {
-  onHand: number; pipeline: number; hubPo: number; lcnbIn: number; internalTransfer: number;
-}
+import type { AllocSources, SuggestedAction } from "@/components/drp/AllocSourceBar";
+export type { AllocSources, SuggestedAction };
 interface SkuException {
   item: string; variant: string;
   demand: number; allocated: number; gap: number;
