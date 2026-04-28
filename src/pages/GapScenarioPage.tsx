@@ -33,6 +33,7 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { ClickableNumber } from "@/components/ClickableNumber";
 import { useNavigate } from "react-router-dom";
 import { SummaryCards } from "@/components/SummaryCards";
+import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
 
 // Map mỗi NM → SKU base chính (dùng để tra giá thực)
 const NM_TOP_SKU: Record<NmId, string> = {
