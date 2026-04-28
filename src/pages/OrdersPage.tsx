@@ -1355,95 +1355,123 @@ function PickupForm({ row, onSubmit }: { row: PoLifecycleRow; onSubmit: (p: Part
   const targetQty = row.qtyConfirmed ?? row.qty;
   const partial = actualQty < targetQty;
 
+  const minPickupPhotos = row.qty > 500 ? 2 : 0;
   return (
-    <>
-      <DialogHeader>
-        <DialogTitle>Xác nhận lấy hàng tại {row.fromName}</DialogTitle>
-        <DialogDescription>Nhập thông tin xe + tài xế. POD đầu NM bắt buộc nếu &gt; 500m².</DialogDescription>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-caption">Số xe *</Label>
-            <Input value={vehiclePlate} onChange={(e) => setVehiclePlate(e.target.value)} placeholder="51C-72184" />
-          </div>
-          <div>
-            <Label className="text-caption">Số container</Label>
-            <Input value={containerNo} onChange={(e) => setContainerNo(e.target.value)} placeholder="TCKU2200881" />
-          </div>
-          <div>
-            <Label className="text-caption">Tài xế *</Label>
-            <Input value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Lê Văn Hùng" />
-          </div>
-          <div>
-            <Label className="text-caption">SĐT tài xế *</Label>
-            <Input value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} placeholder="0903 555 222" inputMode="tel" />
-          </div>
+    <TransitionShell
+      row={row}
+      fromStage="pickup"
+      toStage="in_transit"
+      title={`Xác nhận lấy hàng tại ${row.fromName}`}
+      description={`Nhập thông tin xe + tài xế. POD đầu NM bắt buộc nếu > 500m².`}
+      config={{
+        commentRequired: true,
+        filesRequired: row.qty > 500,
+        filesMinCount: minPickupPhotos,
+        filesLabel: row.qty > 500
+          ? `Ảnh bốc hàng tại NM + Phiếu xuất kho (≥ ${minPickupPhotos} file)`
+          : "Ảnh bốc hàng tại NM (tuỳ chọn)",
+        commentPlaceholder: `Xe ${vehiclePlate || "—"} đã đến NM lúc 09:30. Bốc xong ${actualQty}m². Tài xế ${driverName || "—"} xuất phát.`,
+        submitLabel: "Xác nhận đã lấy hàng",
+        submitTone: "warning",
+      }}
+      fieldsValid={!!vehiclePlate && !!driverName && !!driverPhone && actualQty > 0}
+      onSubmit={({ comment, files }) =>
+        onSubmit({
+          stage: "in_transit", vehiclePlate, containerNo: containerNo || undefined,
+          driverName, driverPhone, qtyDelivered: actualQty,
+          etaRemainingH: 24,
+          deliveryEta: `${todayPlus(1).slice(8)}/${todayPlus(1).slice(5,7)} 14:00`,
+          evidence: [
+            ...row.evidence,
+            ...filesToEvidence(files, "photo"),
+          ],
+          timeline: [...row.timeline, {
+            stage: "in_transit", ts: nowTs(), actor: `Tài xế ${driverName}`,
+            note: `${vehiclePlate}${containerNo ? ` · ${containerNo}` : ""} · ${actualQty}m²${partial ? ` (thiếu ${targetQty - actualQty})` : ""}${comment ? ` — ${comment}` : ""}`,
+            evidence: filesToEvidence(files, "photo"),
+          }],
+        })
+      }
+    >
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label className="text-caption">Số xe *</Label>
+          <Input value={vehiclePlate} onChange={(e) => setVehiclePlate(e.target.value)} placeholder="51C-72184" className="h-11 text-base font-mono" />
         </div>
         <div>
-          <Label className="text-caption">SL thực tế bốc (m²)</Label>
-          <Input type="number" value={actualQty} onChange={(e) => setActualQty(Number(e.target.value))} />
-          {partial && (
-            <div className="text-[11px] text-danger mt-1 inline-flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" /> NM giao thiếu {targetQty - actualQty}m² so với cam kết.
-            </div>
-          )}
+          <Label className="text-caption">Số container</Label>
+          <Input value={containerNo} onChange={(e) => setContainerNo(e.target.value)} placeholder="TCKU2200881" className="h-11 text-base font-mono" />
         </div>
-        {row.qty > 500 && <FilePickerStub label="Ảnh bốc hàng tại NM (bắt buộc)" required />}
-        {row.qty > 500 && <FilePickerStub label="Phiếu xuất kho NM (bắt buộc)" required />}
-        <SlaInfo text="ETA tự động tính = ngày lấy + transit days. Sẽ nhắc nếu trễ ETA + 4h." />
+        <div>
+          <Label className="text-caption">Tài xế *</Label>
+          <Input value={driverName} onChange={(e) => setDriverName(e.target.value)} placeholder="Lê Văn Hùng" className="h-11 text-base" />
+        </div>
+        <div>
+          <Label className="text-caption">SĐT tài xế *</Label>
+          <Input value={driverPhone} onChange={(e) => setDriverPhone(e.target.value)} placeholder="0903 555 222" inputMode="tel" className="h-11 text-base" />
+        </div>
       </div>
-      <DialogFooter>
-        <Button
-          disabled={!vehiclePlate || !driverName || !driverPhone}
-          onClick={() => onSubmit({
-            stage: "in_transit", vehiclePlate, containerNo: containerNo || undefined,
-            driverName, driverPhone, qtyDelivered: actualQty,
-            etaRemainingH: 24,
-            deliveryEta: `${todayPlus(1).slice(8)}/${todayPlus(1).slice(5,7)} 14:00`,
-            evidence: [
-              ...row.evidence,
-              { label: "Ảnh bốc hàng NM", kind: "photo", count: 2 },
-              ...(row.qty > 500 ? [{ label: "Phiếu xuất NM", kind: "doc" } satisfies PoEvidence] : []),
-            ],
-            timeline: [...row.timeline, { stage: "in_transit", ts: nowTs(), actor: `Tài xế ${driverName}`, note: `${vehiclePlate}${containerNo ? ` · ${containerNo}` : ""} · ${actualQty}m²${partial ? ` (thiếu ${targetQty - actualQty})` : ""}` }],
-          })}
-        >Xác nhận đã lấy hàng</Button>
-      </DialogFooter>
-    </>
+      <div>
+        <Label className="text-caption">SL thực tế bốc (m²) *</Label>
+        <Input type="number" value={actualQty} onChange={(e) => setActualQty(Number(e.target.value))} className="h-11 text-base" />
+        {partial && (
+          <div className="text-[11px] text-danger mt-1 inline-flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" /> NM giao thiếu {targetQty - actualQty}m² so với cam kết.
+          </div>
+        )}
+      </div>
+    </TransitionShell>
   );
 }
 
 /* ── BƯỚC 5: Xe đã đến CN ── */
 function ArrivalForm({ row, onSubmit }: { row: PoLifecycleRow; onSubmit: (p: Partial<PoLifecycleRow>) => void }) {
   const [condition, setCondition] = useState<"intact" | "damaged" | "missing">("intact");
+  const condLabel = condition === "intact" ? "Nguyên vẹn" : condition === "damaged" ? "Có hư hỏng" : "Thiếu hàng";
   return (
-    <>
-      <DialogHeader>
-        <DialogTitle>Xác nhận xe đến {row.toName}</DialogTitle>
-        <DialogDescription>Xe {row.vehiclePlate} · {row.driverName} đã đến cổng. Kiểm sơ trước khi dỡ hàng.</DialogDescription>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div>
-          <Label className="text-caption">Trạng thái hàng</Label>
-          <Select value={condition} onValueChange={(v) => setCondition(v as "intact" | "damaged" | "missing")}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="intact">Nguyên vẹn</SelectItem>
-              <SelectItem value="damaged">Hư hỏng</SelectItem>
-              <SelectItem value="missing">Thiếu</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <SlaInfo text={`POD phải upload trong ${REMINDER_CONFIG.podDeadlineHours} giờ kể từ khi đến CN.`} />
-      </div>
-      <DialogFooter>
-        <Button onClick={() => onSubmit({
+    <TransitionShell
+      row={row}
+      fromStage="in_transit"
+      toStage="delivering"
+      title={`Xác nhận xe đến ${row.toName}`}
+      description={`Xe ${row.vehiclePlate ?? "—"} · ${row.driverName ?? "—"} đã đến cổng. Kiểm sơ trước khi dỡ hàng.`}
+      config={{
+        commentRequired: true,
+        filesRequired: condition !== "intact",
+        filesMinCount: condition !== "intact" ? 2 : 0,
+        filesLabel: condition === "intact"
+          ? "Ảnh xe tại cổng (tuỳ chọn)"
+          : `Ảnh hiện trường ${condLabel} (≥ 2 ảnh)`,
+        commentPlaceholder: condition === "intact"
+          ? "Xe đến đúng giờ. Niêm phong nguyên vẹn. Bắt đầu dỡ hàng."
+          : `Phát hiện ${condLabel.toLowerCase()} khi mở container. Đã chụp ảnh, gọi NVT lập biên bản.`,
+        submitLabel: "Xe đã đến CN",
+        submitTone: "primary",
+      }}
+      onSubmit={({ comment, files }) =>
+        onSubmit({
           stage: "delivering", etaRemainingH: undefined,
-          timeline: [...row.timeline, { stage: "delivering", ts: nowTs(), actor: row.toName, note: `Xe đến · ${condition === "intact" ? "Nguyên vẹn" : condition === "damaged" ? "Có hư hỏng" : "Thiếu hàng"}` }],
-        })}>Xe đã đến CN</Button>
-      </DialogFooter>
-    </>
+          evidence: [...row.evidence, ...filesToEvidence(files, "photo")],
+          timeline: [...row.timeline, {
+            stage: "delivering", ts: nowTs(), actor: row.toName,
+            note: `Xe đến · ${condLabel}${comment ? ` — ${comment}` : ""}`,
+            evidence: filesToEvidence(files, "photo"),
+          }],
+        })
+      }
+    >
+      <div>
+        <Label className="text-caption">Trạng thái hàng *</Label>
+        <Select value={condition} onValueChange={(v) => setCondition(v as "intact" | "damaged" | "missing")}>
+          <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="intact">Nguyên vẹn</SelectItem>
+            <SelectItem value="damaged">Hư hỏng</SelectItem>
+            <SelectItem value="missing">Thiếu</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </TransitionShell>
   );
 }
 
@@ -1455,106 +1483,113 @@ function PodForm({ row, onSubmit }: { row: PoLifecycleRow; onSubmit: (p: Partial
   const [receiverName, setReceiverName] = useState("");
   const [receiverRole, setReceiverRole] = useState("Thủ kho");
   const partial = receivedQty < targetQty;
+  const minPodPhotos = quality === "intact"
+    ? REMINDER_CONFIG.podMinPhotos
+    : REMINDER_CONFIG.podMinPhotos + 3; // damage cần thêm 3 ảnh hư hỏng
 
   return (
-    <>
-      <DialogHeader>
-        <DialogTitle>Kiểm đếm & POD — {row.poNumber}</DialogTitle>
-        <DialogDescription>{row.skuLabel} · cam kết {targetQty.toLocaleString()}m²</DialogDescription>
-      </DialogHeader>
-      <div className="space-y-3">
-        {/* QTY */}
-        <div className="rounded-card border border-surface-3 bg-surface-1 p-3 space-y-2">
-          <div className="text-caption uppercase font-semibold text-text-3">Số lượng nhận</div>
-          <Input type="number" value={receivedQty} onChange={(e) => setReceivedQty(Number(e.target.value))} className="text-base h-11" />
-          {partial && (
-            <div className="text-[11px] text-warning inline-flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" /> Thiếu {targetQty - receivedQty}m². Sẽ tạo backorder.
-            </div>
-          )}
-        </div>
+    <TransitionShell
+      row={row}
+      fromStage="delivering"
+      toStage="completed"
+      title={`Kiểm đếm & POD — ${row.poNumber}`}
+      description={`${row.skuLabel} · cam kết ${targetQty.toLocaleString()}m²`}
+      config={{
+        commentRequired: true,
+        filesRequired: true,
+        filesMinCount: minPodPhotos,
+        filesLabel: quality === "intact"
+          ? `Ảnh hàng nhận + biên nhận (≥ ${minPodPhotos} file)`
+          : `Ảnh hàng + biên nhận + ảnh hư hỏng (≥ ${minPodPhotos} file)`,
+        commentPlaceholder: quality !== "intact"
+          ? `Nhận ${receivedQty}/${targetQty}m². ${quality === "partial" ? "Một số kiện rách bao bì" : "Pallet hư nặng"}. Đã lập biên bản với tài xế.`
+          : `Nhận đủ ${receivedQty}m². Hàng nguyên vẹn. ${receiverName || "Người nhận"} ký xác nhận.`,
+        submitLabel: "Hoàn tất nhận hàng",
+        submitTone: "success",
+      }}
+      fieldsValid={!!receiverName && receivedQty > 0}
+      onSubmit={({ comment, files }) =>
+        onSubmit({
+          stage: "completed", qtyDelivered: receivedQty,
+          evidence: [
+            ...row.evidence,
+            ...filesToEvidence(files, "photo"),
+            { label: `Chữ ký ${receiverName} (${receiverRole})`, kind: "signature" },
+          ],
+          timeline: [...row.timeline, {
+            stage: "completed", ts: nowTs(),
+            actor: `${receiverName} (${receiverRole})`,
+            note: `${partial ? `Nhận ${receivedQty}/${targetQty}m²` : `Nhận đủ ${receivedQty}m²`}. ${quality === "intact" ? "Nguyên vẹn" : quality === "partial" ? "Hỏng phần" : "Hỏng nặng"}${comment ? ` — ${comment}` : ""}`,
+            evidence: filesToEvidence(files, "photo"),
+          }],
+        })
+      }
+    >
+      {/* QTY */}
+      <div className="rounded-card border border-surface-3 bg-surface-1 p-3 space-y-2">
+        <div className="text-caption uppercase font-semibold text-text-3">Số lượng nhận *</div>
+        <Input type="number" value={receivedQty} onChange={(e) => setReceivedQty(Number(e.target.value))} className="text-base h-11" />
+        {partial && (
+          <div className="text-[11px] text-warning inline-flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" /> Thiếu {targetQty - receivedQty}m². Sẽ tạo backorder.
+          </div>
+        )}
+      </div>
 
-        {/* QUALITY */}
+      {/* QUALITY */}
+      <div>
+        <Label className="text-caption mb-1.5 block">Chất lượng *</Label>
+        <div className="grid grid-cols-3 gap-1.5">
+          {([
+            { v: "intact",  l: "✅ Nguyên vẹn" },
+            { v: "partial", l: "⚠️ Hỏng phần" },
+            { v: "damaged", l: "❌ Hỏng nặng" },
+          ] as const).map(opt => (
+            <button key={opt.v} type="button"
+              onClick={() => setQuality(opt.v)}
+              className={cn(
+                "py-2.5 px-2 text-[11px] font-medium rounded-button border transition-colors min-h-11",
+                quality === opt.v
+                  ? opt.v === "intact" ? "bg-success-bg border-success text-success"
+                    : opt.v === "partial" ? "bg-warning-bg border-warning text-warning"
+                    : "bg-danger-bg border-danger text-danger"
+                  : "border-surface-3 text-text-3 hover:bg-surface-1",
+              )}
+            >{opt.l}</button>
+          ))}
+        </div>
+        {quality !== "intact" && (
+          <div className="mt-2 rounded-card border border-danger/30 bg-danger-bg/30 p-2 text-[11px] text-danger inline-flex items-center gap-1">
+            <ShieldAlert className="h-3 w-3" /> Damage claim — phần "Đính kèm" cần ≥ {minPodPhotos} file (gồm 3 ảnh hư hỏng).
+          </div>
+        )}
+      </div>
+
+      {/* Receiver */}
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <Label className="text-caption mb-1.5 block">Chất lượng</Label>
-          <div className="grid grid-cols-3 gap-1.5">
-            {([
-              { v: "intact",  l: "✅ Nguyên vẹn" },
-              { v: "partial", l: "⚠️ Hỏng phần" },
-              { v: "damaged", l: "❌ Hỏng nặng" },
-            ] as const).map(opt => (
-              <button key={opt.v} type="button"
-                onClick={() => setQuality(opt.v)}
-                className={cn(
-                  "py-2 px-2 text-[11px] font-medium rounded-button border transition-colors",
-                  quality === opt.v
-                    ? opt.v === "intact" ? "bg-success-bg border-success text-success"
-                      : opt.v === "partial" ? "bg-warning-bg border-warning text-warning"
-                      : "bg-danger-bg border-danger text-danger"
-                    : "border-surface-3 text-text-3 hover:bg-surface-1",
-                )}
-              >{opt.l}</button>
-            ))}
-          </div>
-          {quality !== "intact" && (
-            <div className="mt-2 space-y-2 rounded-card border border-danger/30 bg-danger-bg/30 p-2">
-              <div className="text-[11px] text-danger inline-flex items-center gap-1">
-                <ShieldAlert className="h-3 w-3" /> Damage claim — bắt buộc 3+ ảnh + mô tả
-              </div>
-              <FilePickerStub label="Ảnh hư hỏng (≥ 3 ảnh)" required />
-              <Textarea placeholder="Mô tả hư hỏng..." rows={2} />
-            </div>
-          )}
+          <Label className="text-caption">Tên người nhận *</Label>
+          <Input value={receiverName} onChange={(e) => setReceiverName(e.target.value)} className="h-11 text-base" />
         </div>
-
-        {/* POD docs */}
-        <div className="space-y-2">
-          <FilePickerStub label={`Ảnh hàng nhận (≥ ${REMINDER_CONFIG.podMinPhotos} ảnh) *`} required />
-          <FilePickerStub label="Biên nhận giao hàng *" required />
-        </div>
-
-        {/* Receiver */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label className="text-caption">Tên người nhận *</Label>
-            <Input value={receiverName} onChange={(e) => setReceiverName(e.target.value)} className="h-11 text-base" />
-          </div>
-          <div>
-            <Label className="text-caption">Chức vụ</Label>
-            <Select value={receiverRole} onValueChange={setReceiverRole}>
-              <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Thủ kho">Thủ kho</SelectItem>
-                <SelectItem value="CN Manager">CN Manager</SelectItem>
-                <SelectItem value="Khác">Khác</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Signature stub */}
-        <div className="rounded-card border-2 border-dashed border-surface-3 bg-surface-1 p-4 text-center text-text-3 text-table-sm">
-          <PenLine className="h-5 w-5 mx-auto mb-1" />
-          Ký tên (vẽ tay trên màn hình)
+        <div>
+          <Label className="text-caption">Chức vụ</Label>
+          <Select value={receiverRole} onValueChange={setReceiverRole}>
+            <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Thủ kho">Thủ kho</SelectItem>
+              <SelectItem value="CN Manager">CN Manager</SelectItem>
+              <SelectItem value="Khác">Khác</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
-      <DialogFooter>
-        <Button
-          disabled={!receiverName}
-          onClick={() => onSubmit({
-            stage: "completed", qtyDelivered: receivedQty,
-            evidence: [
-              ...row.evidence,
-              { label: "Ảnh nhận hàng CN", kind: "photo", count: REMINDER_CONFIG.podMinPhotos },
-              { label: "Biên nhận giao hàng", kind: "doc" },
-              { label: `Chữ ký ${receiverName} (${receiverRole})`, kind: "signature" },
-              ...(quality !== "intact" ? [{ label: "Ảnh hư hỏng", kind: "photo" as const, count: 3 }] : []),
-            ],
-            timeline: [...row.timeline, { stage: "completed", ts: nowTs(), actor: `${receiverName} (${receiverRole})`, note: partial ? `Nhận ${receivedQty}/${targetQty}m². ${quality === "intact" ? "Nguyên vẹn" : "Có hư hỏng"}` : `Nhận đủ ${receivedQty}m². ${quality === "intact" ? "Nguyên vẹn" : "Có hư hỏng"}` }],
-          })}
-        >Hoàn tất nhận hàng</Button>
-      </DialogFooter>
-    </>
+
+      {/* Signature stub */}
+      <div className="rounded-card border-2 border-dashed border-surface-3 bg-surface-1 p-4 text-center text-text-3 text-table-sm min-h-[120px] flex flex-col items-center justify-center">
+        <PenLine className="h-5 w-5 mb-1" />
+        Ký tên (vẽ tay trên màn hình)
+      </div>
+    </TransitionShell>
   );
 }
 
