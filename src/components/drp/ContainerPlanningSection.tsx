@@ -27,6 +27,9 @@ import {
 } from "@/lib/container-edit-drafts";
 import { ContainerEditPreview } from "@/components/drp/ContainerEditPreview";
 import { validateQtyEdit, DECREASE_REASONS, type QtyEditValidation } from "@/data/edit-thresholds";
+import { emitTransportAudit } from "@/lib/transport-audit";
+import { useAuth } from "@/components/AuthContext";
+import { TransportAuditPanel } from "@/components/drp/TransportAuditPanel";
 import { decideFillUp, STRATEGY_LABELS } from "@/data/fill-up-decision";
 import { getCandidateDropCns } from "@/data/drop-eligibility";
 import {
