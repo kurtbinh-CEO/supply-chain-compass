@@ -903,34 +903,71 @@ export function SmartTable<T = any>({
               const childContent = drillDown ? drillDown(row) : null;
               const canExpand = !!drillDown && childContent !== null;
 
+              // Split-intent: nếu cả drillDown + onRowClick có sẵn, tách rõ:
+              //  - chevron td → toggle expand
+              //  - body row → onRowClick (mở panel)
+              const useSplit = splitIntent && canExpand && !!onRowClick;
+              const isActive = activeRowId != null && id === activeRowId;
+
+              const handleExpand = () => {
+                if (!canExpand) return;
+                if (isOpen && beforeCollapse && beforeCollapse(row) === false) return;
+                toggleExpand(id);
+              };
+
+              const handleRowClick = () => {
+                if (useSplit) {
+                  // Body row chỉ mở panel
+                  onRowClick?.(row);
+                  return;
+                }
+                // Legacy: trigger cả 2
+                if (canExpand) {
+                  if (isOpen && beforeCollapse && beforeCollapse(row) === false) return;
+                  toggleExpand(id);
+                }
+                onRowClick?.(row);
+              };
+
               return (
                 <React.Fragment key={id}>
                   <tr
                     data-severity={sev}
-                    onClick={() => {
-                      if (canExpand) {
-                        // Nếu đang mở và parent guard trả về false → chặn đóng
-                        if (isOpen && beforeCollapse && beforeCollapse(row) === false) {
-                          return;
-                        }
-                        toggleExpand(id);
-                      }
-                      onRowClick?.(row);
-                    }}
+                    data-active={isActive ? "true" : undefined}
+                    onClick={handleRowClick}
                     className={cn(
                       "border-b border-border/60 transition-colors",
                       ds.rowH,
                       (canExpand || onRowClick) && "cursor-pointer hover:bg-muted/40",
+                      isActive && "bg-primary/5 shadow-[inset_2px_0_0_0_hsl(var(--primary))]",
+                      isOpen && useSplit && "bg-muted/30",
                     )}
                   >
                     {drillDown && (
-                      <td className={cn("w-7 align-middle", ds.cellPad)}>
+                      <td
+                        className={cn("w-7 align-middle", ds.cellPad)}
+                        onClick={(e) => {
+                          if (useSplit) {
+                            e.stopPropagation();
+                            handleExpand();
+                          }
+                        }}
+                        title={useSplit ? (isOpen ? "Thu gọn chi tiết" : "Xem chi tiết hàng") : undefined}
+                      >
                         {canExpand ? (
-                          isOpen ? (
-                            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                          ) : (
-                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                          )
+                          <span
+                            className={cn(
+                              "inline-flex h-5 w-5 items-center justify-center rounded transition-colors",
+                              useSplit && "hover:bg-primary/15 hover:text-primary",
+                              isOpen && "text-primary",
+                            )}
+                          >
+                            {isOpen ? (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                            )}
+                          </span>
                         ) : null}
                       </td>
                     )}
