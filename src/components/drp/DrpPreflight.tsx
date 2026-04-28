@@ -12,7 +12,8 @@
  * Mọi text tiếng Việt.
  */
 import { useMemo, useState } from "react";
-import { CheckCircle2, AlertTriangle, AlertOctagon, ArrowRight, Play, ShieldAlert } from "lucide-react";
+import { CheckCircle2, AlertTriangle, AlertOctagon, ArrowRight, Play, ShieldAlert, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
