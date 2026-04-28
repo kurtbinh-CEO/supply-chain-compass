@@ -133,23 +133,23 @@ export const CONTAINER_PLANS: ContainerPlan[] = [
     poIds: ["PO-HCM-W20-001"],
   },
 
-  /* ──── 4: Ghép HN → HP → QN, fill 78% ──── */
+  /* ──── 4: VƯỢT TẢI 48,4T — đòi hỏi tách xe (demo trọng tải) ──── */
   {
     id: "TP-004", vehicle: "40ft", capacityM2: 2400,
-    factoryCode: "NM-VGR", factoryName: "Viglacera",
-    fillPct: 78, fillM2: 1872,
-    freightVnd: 19_400_000, savingVnd: 5_100_000,
-    routeLabel: "VGR → CN-HN → CN-HP → CN-QN", distanceKm: 320,
-    status: "ready", consolidated: true,
+    factoryCode: "NM-DT", factoryName: "Đồng Tâm",
+    fillPct: 92, fillM2: 2200,
+    freightVnd: 19_400_000, savingVnd: 0,
+    routeLabel: "ĐT → CN-HN → CN-HP", distanceKm: 320,
+    status: "draft", consolidated: true,
+    suggestion: "tach_xe",
+    suggestionLabel: "Vượt 28T (đang 48,4T) — bắt buộc tách 2 chuyến",
     drops: [
-      { order: 1, cnCode: "CN-HN", cnName: "CN Hà Nội", qtyM2: 900, eta: "21/05",
-        skuLines: [{ sku: "GR60-IV-A", qty: 600 }, { sku: "GR80-WH-B", qty: 300 }] },
-      { order: 2, cnCode: "CN-HP", cnName: "CN Hải Phòng", qtyM2: 600, eta: "21/05",
-        skuLines: [{ sku: "GR60-BG-A", qty: 600 }] },
-      { order: 3, cnCode: "CN-QN", cnName: "CN Quảng Ninh", qtyM2: 372, eta: "22/05",
-        skuLines: [{ sku: "GR60-IV-A", qty: 372 }] },
+      { order: 1, cnCode: "CN-HN", cnName: "CN Hà Nội", qtyM2: 1270, eta: "21/05",
+        skuLines: [{ sku: "GA-600", qty: 1270 }] },
+      { order: 2, cnCode: "CN-HP", cnName: "CN Hải Phòng", qtyM2: 930, eta: "21/05",
+        skuLines: [{ sku: "GA-600", qty: 930 }] },
     ],
-    poIds: ["PO-HN-W20-002", "PO-HP-W20-001", "PO-QN-W20-001"],
+    poIds: ["PO-HN-W20-002", "PO-HP-W20-001"],
   },
 
   /* ──── 5: ĐT → CT, single, fill 95% ──── */
