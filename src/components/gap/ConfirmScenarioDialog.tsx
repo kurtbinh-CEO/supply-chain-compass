@@ -62,10 +62,14 @@ function ActionItem({ a }: { a: DownstreamAction }) {
         </div>
         <p className="text-caption text-text-3 mt-0.5 leading-relaxed">{a.description}</p>
         {a.link && (
-          <p className="text-caption text-primary mt-1 inline-flex items-center gap-1">
+          <Link
+            to={`${a.link.href}?from=gap-preview`}
+            className="text-caption text-primary mt-1 inline-flex items-center gap-1 hover:underline"
+            title={`Mở ${a.link.label}`}
+          >
             → Xem trong <strong>{a.link.label}</strong>
             <ArrowRight className="h-3 w-3" />
-          </p>
+          </Link>
         )}
       </div>
     </div>
