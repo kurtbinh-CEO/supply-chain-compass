@@ -26,6 +26,7 @@ import { VersionCompareInline } from "@/components/VersionCompareInline";
 import { VersionLockDialog, ViewingVersionBanner } from "@/components/VersionLockDialog";
 import { DrpStepIndicator, type DrpStep } from "@/components/drp/DrpStepIndicator";
 import { DrpPreflight, type PreflightItem } from "@/components/drp/DrpPreflight";
+import { computePreflightAudit } from "@/lib/drp-preflight";
 import { DrpProgress, type ProgressStep } from "@/components/drp/DrpProgress";
 import { DrpCalcSummaryLine, type CalcToken } from "@/components/drp/DrpCalcSummaryLine";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -824,91 +825,18 @@ export default function DrpPage() {
   const [progressCanCancel, setProgressCanCancel] = useState(true);
   const [approveExceptionDialog, setApproveExceptionDialog] = useState(false);
 
-  // Preflight items — TÍNH TỪ DATA THỰC, level "block" sẽ disable nút Chạy DRP
+  // Preflight items — TÍNH TỪ DATA THỰC qua evaluator dùng chung với /drp/preflight-audit
   const { sopLock } = useWorkspace();
   const preflightItems: PreflightItem[] = useMemo(() => {
-    const nms = getNMSummaries(tenant);
-    // Map updatedAgo → giờ stale ước lượng
-    const staleHours = (ago: "today" | "yesterday" | "stale") =>
-      ago === "today" ? 12 : ago === "yesterday" ? 26 : 72;
-    const staleNMs = nms.filter((n) => staleHours(n.updatedAgo) > 48);
-    const warnNMs = nms.filter((n) => {
-      const h = staleHours(n.updatedAgo);
-      return h > 24 && h <= 48;
-    });
-
-    // S&OP lock: ưu tiên sopLock từ workspace, fallback planning cycle
-    const sopLocked = sopLock.locked || planCycle.stepsCompleted.includes("sop");
-
-    // NM commit %: dùng dữ liệu mock 60% (đồng bộ với UI hiện tại)
-    const nmCommitPct = 60;
-
-    return [
-      {
-        key: "nm-stock",
-        label: "Tồn kho NM",
-        ...(staleNMs.length > 0
-          ? {
-              level: "block" as const,
-              result: `${staleNMs.map((n) => n.nm).join(", ")} cũ >48h`,
-              detail: "Cần cập nhật tồn NM trong vòng 48h trước khi chạy DRP.",
-              fixHref: "/supply",
-              fixLabel: "Mở NM Supply",
-              staleHours: Math.max(...staleNMs.map((n) => staleHours(n.updatedAgo))),
-              staleNmName: staleNMs.map((n) => n.nm).join(", "),
-            }
-          : warnNMs.length > 0
-            ? {
-                level: "warn" as const,
-                result: `${warnNMs.length} NM >24h`,
-                detail: "DRP vẫn chạy được nhưng kết quả có thể thiếu chính xác.",
-                fixHref: "/supply",
-                fixLabel: "Cập nhật NM",
-              }
-            : { level: "ok" as const, result: `${nms.length}/${nms.length} NM mới (<24h)` }),
-      },
-      { key: "cn-stock", label: "Tồn kho CN", result: "12/12 CN sync 06:00", level: "ok" as const },
-      { key: "cn-adj", label: "CN điều chỉnh", result: "4/12 CN adjust · Đã duyệt", level: "ok" as const },
-      sopLocked
-        ? {
-            key: "sop",
-            label: "S&OP đã khoá",
-            result: `v${planCycle.version} · ${planCycle.label} · Locked`,
-            level: "ok" as const,
-          }
-        : {
-            key: "sop",
-            label: "S&OP đã khoá",
-            result: "S&OP CHƯA KHOÁ",
-            detail: "Phải khoá S&OP trước khi chạy DRP để có demand baseline.",
-            level: "block" as const,
-            fixHref: "/sop",
-            fixLabel: "Mở S&OP",
-          },
-      nmCommitPct < 50
-        ? {
-            key: "nm-commit",
-            label: "NM cam kết",
-            result: `${nmCommitPct}% — quá thấp`,
-            detail: "Cần ≥50% NM cam kết để DRP có nguồn cung tin cậy.",
-            level: "block" as const,
-            fixHref: "/hub",
-            fixLabel: "Mở Hub & Cam kết",
-          }
-        : nmCommitPct < 80
-          ? {
-              key: "nm-commit",
-              label: "NM cam kết",
-              result: `${nmCommitPct}% — chưa đủ 80%`,
-              detail: "DRP vẫn chạy nhưng kết quả có thể thiếu chính xác cho NM chưa cam kết.",
-              level: "warn" as const,
-              fixHref: "/hub",
-              fixLabel: "Mở Hub & Cam kết",
-            }
-          : { key: "nm-commit", label: "NM cam kết", result: `${nmCommitPct}% ✅`, level: "ok" as const },
-      { key: "pricelist", label: "Bảng giá NM", result: "5/5 NM hiệu lực", level: "ok" as const },
-    ];
-  }, [tenant, sopLock.locked, planCycle.stepsCompleted, planCycle.version, planCycle.label]);
+    // Dùng chung computePreflightAudit để 2 màn hình luôn khớp 1:1
+    // (xem src/lib/drp-preflight.ts).
+    // Bỏ field audit-only để khớp PreflightItem.
+    return computePreflightAudit({
+      tenant,
+      planCycle,
+      sopLockedFromWorkspace: sopLock.locked,
+    }).map(({ thresholdText: _t, evidence: _e, ruleText: _r, blocksRun: _b, ...item }) => item);
+  }, [tenant, sopLock.locked, planCycle]);
 
   // 10 progress steps cho Bước 2
   const progressSteps: ProgressStep[] = useMemo(() => [
@@ -1256,11 +1184,22 @@ export default function DrpPage() {
 
       {/* ══ BƯỚC 1 — PREFLIGHT ══ */}
       {wizardStep === 1 && (
-        <DrpPreflight
-          items={preflightItems}
-          onRun={handleRunDrp}
-          onBack={undefined}
-        />
+        <div className="space-y-2">
+          <div className="flex justify-end">
+            <button
+              onClick={() => navigate("/drp/preflight-audit")}
+              className="inline-flex items-center gap-1.5 rounded-button border border-surface-3 bg-surface-2 px-3 py-1.5 text-table-sm text-text-2 hover:text-text-1"
+              title="Xem lý do pass/block chi tiết cho từng điều kiện"
+            >
+              <Info className="h-3.5 w-3.5" /> Mở Audit chi tiết →
+            </button>
+          </div>
+          <DrpPreflight
+            items={preflightItems}
+            onRun={handleRunDrp}
+            onBack={undefined}
+          />
+        </div>
       )}
 
       {/* ══ BƯỚC 2 — PROGRESS ══ */}

@@ -42,6 +42,7 @@ import ComparePage from "./pages/ComparePage";
 import InventoryPage from "./pages/InventoryPage";
 import DemandWeeklyPage from "./pages/DemandWeeklyPage";
 import DrpPage from "./pages/DrpPage";
+import DrpPreflightAuditPage from "./pages/DrpPreflightAuditPage";
 import OrdersPage from "./pages/OrdersPage";
 import SyncPage from "./pages/SyncPage";
 // M1 — /allocation, /supplier-portal, /transport đã gộp vào module khác
@@ -126,6 +127,7 @@ function ProtectedRoutes() {
           <Route path="/supply" element={<Navigate to="/inventory" replace />} />
           <Route path="/demand-weekly" element={<RouteGuard><DemandWeeklyPage /></RouteGuard>} />
           <Route path="/drp" element={<RouteGuard><DrpPage /></RouteGuard>} />
+          <Route path="/drp/preflight-audit" element={<RouteGuard><DrpPreflightAuditPage /></RouteGuard>} />
           <Route path="/allocation" element={<Navigate to="/drp" replace />} />
           <Route path="/orders" element={<RouteGuard><OrdersPage /></RouteGuard>} />
           <Route path="/sync" element={<RouteGuard><SyncPage /></RouteGuard>} />
