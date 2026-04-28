@@ -1053,6 +1053,121 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
           </span>
         )}
       </div>
+
+      {/* ── Drop eligibility confirmation modal ─────────────────────────────
+          Hiện sau khi user pick CN từ "Thêm drop":
+          • Tóm tắt km detour, tiết kiệm dự kiến
+          • Doanh thu/chi phí ở rủi ro (heuristic)
+          • Block nếu eligibility = false (kèm lý do)
+      */}
+      <Dialog open={!!pendingDrop} onOpenChange={(o) => !o && setPendingDrop(null)}>
+        <DialogContent className="max-w-md">
+          {pendingDrop && (() => {
+            const r = riskOf(pendingDrop);
+            const ok = pendingDrop.eligible;
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-base">
+                    {ok ? (
+                      <Check className="h-4 w-4 text-success" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-danger" />
+                    )}
+                    {ok ? "Xác nhận ghép drop" : "Không thể ghép drop"}
+                    <span className="font-mono text-primary">{pendingDrop.cn2}</span>
+                  </DialogTitle>
+                </DialogHeader>
+
+                {/* Eligibility verdict */}
+                <div className={cn(
+                  "rounded-card border px-3 py-2 text-table-sm",
+                  ok ? "border-success/40 bg-success-bg text-success"
+                     : "border-danger/40 bg-danger-bg text-danger",
+                )}>
+                  <div className="font-semibold mb-0.5">
+                    {ok ? "✓ Đủ điều kiện ghép" : "✗ Không đủ điều kiện"}
+                  </div>
+                  <div className="text-[11px] opacity-90">
+                    {ok
+                      ? `${pendingDrop.direction ?? "Cùng tuyến"} · detour +${pendingDrop.detourKm}km`
+                      : (pendingDrop.reason ?? "Vi phạm ràng buộc tuyến/khoảng cách")}
+                  </div>
+                </div>
+
+                {/* Detour & savings summary */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-card border border-surface-3 bg-surface-2 px-3 py-2">
+                    <div className="text-[10px] uppercase text-text-3 font-semibold">Detour</div>
+                    <div className="text-base font-bold tabular-nums text-text-1 mt-0.5">
+                      +{pendingDrop.detourKm} km
+                    </div>
+                    <div className="text-[10px] text-text-3 mt-0.5">
+                      Chi phí phát sinh ~{(r.extraCostVnd / 1_000_000).toFixed(1)}M₫
+                    </div>
+                  </div>
+                  <div className="rounded-card border border-surface-3 bg-surface-2 px-3 py-2">
+                    <div className="text-[10px] uppercase text-text-3 font-semibold">Tiết kiệm dự kiến</div>
+                    <div className={cn(
+                      "text-base font-bold tabular-nums mt-0.5",
+                      (pendingDrop.estSavingVnd ?? 0) > 0 ? "text-success" : "text-text-2",
+                    )}>
+                      ~{((pendingDrop.estSavingVnd ?? 0) / 1_000_000).toFixed(1)}M₫
+                    </div>
+                    <div className={cn(
+                      "text-[10px] mt-0.5 font-medium",
+                      r.netVnd > 0 ? "text-success" : "text-warning",
+                    )}>
+                      Net: {r.netVnd > 0 ? "+" : ""}{(r.netVnd / 1_000_000).toFixed(1)}M₫
+                    </div>
+                  </div>
+                </div>
+
+                {/* Revenue / cost at risk */}
+                <div className="rounded-card border border-warning/30 bg-warning-bg/40 px-3 py-2 text-[11px] space-y-1">
+                  <div className="font-semibold text-warning flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" /> Rủi ro phải cân nhắc
+                  </div>
+                  <div className="flex items-center justify-between text-text-2">
+                    <span>Doanh thu chuyến hiện tại (ước tính)</span>
+                    <span className="tabular-nums font-mono">
+                      {(r.containerRevenueVnd / 1_000_000).toFixed(1)}M₫
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-text-2">
+                    <span>SLA delay risk ({r.slaRiskPct}%) → doanh thu ở rủi ro</span>
+                    <span className="tabular-nums font-mono text-warning font-semibold">
+                      {(r.revenueAtRiskVnd / 1_000_000).toFixed(1)}M₫
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-text-2">
+                    <span>Chi phí phát sinh (detour × cước/km)</span>
+                    <span className="tabular-nums font-mono text-danger font-semibold">
+                      +{(r.extraCostVnd / 1_000_000).toFixed(1)}M₫
+                    </span>
+                  </div>
+                </div>
+
+                <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setPendingDrop(null)}>
+                    Huỷ
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={!ok}
+                    onClick={confirmAddDrop}
+                    className={cn(
+                      ok ? "bg-success hover:bg-success/90 text-success-foreground" : "",
+                    )}
+                  >
+                    {ok ? `Xác nhận ghép ${pendingDrop.cn2}` : "Không thể ghép"}
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
