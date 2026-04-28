@@ -612,13 +612,20 @@ export default function OrdersPage() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   GroupDrillDown — child table cho 1 PO group:
-     1. Bảng SKU compact (Mã hàng · SL · Đơn giá · Thành tiền)
-     2. Lifecycle inline icons (1 dòng nhỏ, không heading)
-     3. Per-line action (cho phép thao tác từng SKU nếu cần)
-     4. Vận chuyển + Minh chứng (gộp từ leader)
-     5. Lịch sử timeline
+   GroupDrillDown — 2-CẤP cho 1 PO group:
+     - Header: tuyến + container + tiết kiệm (nếu ghép tuyến)
+     - Cấp 1: bảng Drop Points (CN, qty, ETA, status, expand SKU)
+     - Cấp 2 (per drop): bảng SKU (mã hàng, SL, đơn giá, thành tiền)
+     - Footer: cam kết gốc back-link
+
+   Side panel xử lý: action + comment + upload + history.
    ═══════════════════════════════════════════════════════════════════════════ */
+function unitPriceOf(skuLabel: string) {
+  if (skuLabel.startsWith("GA-600")) return 185_000;
+  if (skuLabel.startsWith("GA-300")) return 145_000;
+  return 160_000;
+}
+
 function GroupDrillDown({
   group, onAction, onCancel,
 }: {
@@ -627,39 +634,27 @@ function GroupDrillDown({
   onCancel: (line: PoLifecycleRow) => void;
 }) {
   const navigate = useNavigate();
-  // Mock cam kết gốc (commitment): suy ra từ NM/SKU base + tháng plan
+  const [openDrops, setOpenDrops] = useState<Set<number>>(() =>
+    // Auto-expand drop đầu tiên nếu chỉ có 1 drop
+    new Set(group.drops.length === 1 ? [1] : [])
+  );
+  const toggleDrop = (n: number) => setOpenDrops(prev => {
+    const s = new Set(prev);
+    if (s.has(n)) s.delete(n); else s.add(n);
+    return s;
+  });
+
+  const totalValue = group.lines.reduce((s, l) => s + l.qty * unitPriceOf(l.skuLabel), 0);
   const commitment = useMemo(() => {
     const skuBase = (group.lines[0]?.skuLabel ?? "GA-600").split(" ")[0];
     const nmName = group.kind === "RPO" ? group.fromName : "—";
-    const committed = Math.max(group.totalQty * 5, 4200); // mock cam kết tháng
-    const releaseNumber = 1;
-    const releasedPct = Math.min(100, Math.round((group.totalQty / committed) * 100));
-    return { skuBase, nmName, committed, releaseNumber, releasedPct };
+    const committed = Math.max(group.totalQty * 5, 4200);
+    return { skuBase, nmName, committed, releaseNumber: 1, releasedPct: Math.min(100, Math.round((group.totalQty / committed) * 100)) };
   }, [group]);
-  // Đơn giá ước tính theo SKU (mock — KHÔNG ảnh hưởng business logic)
-  const unitPrice = (skuLabel: string) => {
-    if (skuLabel.startsWith("GA-600")) return 185_000;
-    if (skuLabel.startsWith("GA-300")) return 145_000;
-    return 160_000;
-  };
-  const totalValue = group.lines.reduce((s, l) => s + l.qty * unitPrice(l.skuLabel), 0);
-
-  // Gộp evidence từ tất cả lines (dedupe theo label)
-  const allEvidence = useMemo(() => {
-    const seen = new Set<string>();
-    const out: PoEvidence[] = [];
-    group.lines.forEach(l => l.evidence.forEach(e => {
-      if (!seen.has(e.label)) { seen.add(e.label); out.push(e); }
-    }));
-    return out;
-  }, [group]);
-
-  // Timeline: dùng leader (đại diện)
-  const leader = group.leader;
 
   return (
     <div className="bg-surface-1 border-t border-surface-3 p-4 space-y-3">
-      {/* ── Edge case banners (P3) ── */}
+      {/* ── Edge case banners ── */}
       <SplitShipmentBanner group={group} />
       <HoldShipCountdown group={group} />
       <PartialDeliveryBanner group={group} />
@@ -667,180 +662,169 @@ function GroupDrillDown({
         <DamageClaimPanel row={group.lines[0]} />
       )}
 
-      {/* ── Bảng SKU compact ── */}
-      <SmartTable<PoLifecycleRow>
-        data={group.lines}
-        getRowId={(r) => r.id}
-        screenId={`order-${group.groupId}-lines`}
-        defaultDensity="compact"
-        columns={[
-          {
-            key: "skuLabel", label: "Mã hàng", width: 140,
-            render: (r) => <span className="font-mono text-table-sm text-text-1">{r.skuLabel}</span>,
-          },
-          {
-            key: "qty", label: "Số lượng", numeric: true, align: "right", width: 110,
-            render: (r) => <span className="tabular-nums text-table-sm">{r.qty.toLocaleString()} m²</span>,
-          },
-          {
-            key: "unitPrice", label: "Đơn giá", numeric: true, align: "right", width: 130,
-            render: (r) => <span className="tabular-nums text-table-sm text-text-2">{unitPrice(r.skuLabel).toLocaleString()} ₫/m²</span>,
-          },
-          {
-            key: "totalPrice", label: "Thành tiền", numeric: true, align: "right", width: 130,
-            render: (r) => {
-              const v = r.qty * unitPrice(r.skuLabel);
-              return <span className="tabular-nums text-table-sm font-medium">{(v / 1e6).toFixed(1)} triệu</span>;
-            },
-          },
-          {
-            key: "stage", label: "Trạng thái", align: "center", width: 130,
-            render: (r) => (
-              <Badge variant="outline" className={cn("text-[10px]", STAGE_META[r.stage].tone)}>
-                {STAGE_META[r.stage].short}
-              </Badge>
-            ),
-          },
-          {
-            key: "lineAction", label: "", width: 90, align: "center",
-            render: (r) => {
-              if (r.stage === "completed" || r.stage === "cancelled") return null;
-              return (
-                <Button
-                  size="sm" variant="ghost"
-                  onClick={(e) => { e.stopPropagation(); onAction(r); }}
-                  className="h-6 px-2 text-[10px]"
-                >Cập nhật</Button>
-              );
-            },
-          },
-        ] satisfies SmartTableColumn<PoLifecycleRow>[]}
-      />
+      {/* ── Header: tuyến + container + savings ── */}
+      <div className="rounded-card border border-surface-3 bg-surface-0 p-3 space-y-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-table-sm">
+          <span className="text-text-3">Tuyến:</span>
+          <span className="font-medium text-text-1">{group.fromName}</span>
+          {group.drops.map((d, i) => (
+            <span key={d.cn} className="inline-flex items-center gap-1.5">
+              <span className="text-text-3">→</span>
+              <span className="font-medium text-text-1">{d.cn}</span>
+              {group.isConsolidated && (
+                <span className="text-[10px] text-text-3 tabular-nums">(drop {d.dropOrder})</span>
+              )}
+            </span>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-table-sm pt-2 border-t border-surface-3">
+          <span className="text-text-3">Xe:</span>
+          <span className="font-mono text-text-1">{group.containerFill.type}</span>
+          <span className={cn(
+            "text-[11px] font-semibold",
+            group.containerFill.pct >= 85 ? "text-success" : group.containerFill.pct >= 60 ? "text-warning" : "text-text-3",
+          )}>fill {group.containerFill.pct}%</span>
+          {group.leader.carrierName && (
+            <>
+              <span className="text-text-3">·</span>
+              <span className="text-text-2">NVT: <b className="text-text-1">{group.leader.carrierName}</b></span>
+            </>
+          )}
+          {group.isConsolidated && group.savingAmount && (
+            <>
+              <span className="text-text-3">·</span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-bg text-success border border-success/30 text-[11px] font-semibold">
+                🔗 Ghép {group.drops.length} CN — tiết kiệm {(group.savingAmount / 1e6).toFixed(1)}M₫
+              </span>
+            </>
+          )}
+        </div>
+      </div>
 
-      {/* ── Cam kết gốc back-link (chỉ hiện cho RPO — TO không có cam kết NM) ── */}
+      {/* ── Cấp 1: Drop Points table ── */}
+      <div className="rounded-card border border-surface-3 bg-surface-0 overflow-hidden">
+        <div className="px-3 py-1.5 border-b border-surface-3 bg-surface-1 flex items-center justify-between">
+          <span className="text-caption uppercase tracking-wide text-text-3 font-semibold">
+            Điểm giao <span className="text-text-1 normal-case font-bold">({group.drops.length})</span>
+          </span>
+          <span className="text-[10px] text-text-3">Bấm ▸ để xem mã hàng</span>
+        </div>
+        <table className="w-full text-table-sm">
+          <thead className="text-[10px] uppercase text-text-3 bg-surface-1/50">
+            <tr>
+              <th className="w-7"></th>
+              <th className="text-left py-1.5 px-2 font-semibold">#</th>
+              <th className="text-left py-1.5 px-2 font-semibold">CN</th>
+              <th className="text-right py-1.5 px-2 font-semibold">Số lượng</th>
+              <th className="text-left py-1.5 px-2 font-semibold">ETA</th>
+              <th className="text-center py-1.5 px-2 font-semibold">Trạng thái</th>
+              <th className="text-right py-1.5 px-2 font-semibold">SKU</th>
+            </tr>
+          </thead>
+          <tbody>
+            {group.drops.map((d) => {
+              const isOpen = openDrops.has(d.dropOrder);
+              const dropValue = d.lines.reduce((s, l) => s + l.qty * unitPriceOf(l.skuLabel), 0);
+              return (
+                <>
+                  <tr
+                    key={d.cn}
+                    className="border-t border-surface-3/50 hover:bg-surface-1 cursor-pointer"
+                    onClick={() => toggleDrop(d.dropOrder)}
+                  >
+                    <td className="text-center py-1.5">
+                      <span className={cn(
+                        "inline-block transition-transform text-text-3",
+                        isOpen && "rotate-90",
+                      )}>▸</span>
+                    </td>
+                    <td className="py-1.5 px-2 tabular-nums text-text-2">{d.dropOrder}</td>
+                    <td className="py-1.5 px-2 font-medium text-text-1">{d.cn}</td>
+                    <td className="py-1.5 px-2 text-right tabular-nums font-medium">{d.qty.toLocaleString()} m²</td>
+                    <td className="py-1.5 px-2 tabular-nums text-text-2">{d.eta ?? "—"}</td>
+                    <td className="py-1.5 px-2 text-center">
+                      <Badge variant="outline" className={cn("text-[10px]", STAGE_META[d.stage].tone)}>
+                        {STAGE_META[d.stage].short}
+                      </Badge>
+                    </td>
+                    <td className="py-1.5 px-2 text-right text-[11px] text-text-3">{d.lines.length} mã</td>
+                  </tr>
+                  {isOpen && (
+                    <tr key={`${d.cn}-detail`} className="bg-surface-1/40">
+                      <td></td>
+                      <td colSpan={6} className="py-2 pr-2">
+                        <table className="w-full text-table-sm">
+                          <thead className="text-[10px] uppercase text-text-3">
+                            <tr>
+                              <th className="text-left py-1 font-semibold">Mã hàng</th>
+                              <th className="text-right py-1 font-semibold">Số lượng</th>
+                              <th className="text-right py-1 font-semibold">Đơn giá</th>
+                              <th className="text-right py-1 font-semibold">Thành tiền</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {d.lines.map((l) => (
+                              <tr key={l.id} className="border-t border-surface-3/40">
+                                <td className="py-1 font-mono text-text-1">{l.skuLabel}</td>
+                                <td className="py-1 text-right tabular-nums">{l.qty.toLocaleString()} m²</td>
+                                <td className="py-1 text-right tabular-nums text-text-2 text-[11px]">
+                                  {unitPriceOf(l.skuLabel).toLocaleString()} ₫
+                                </td>
+                                <td className="py-1 text-right tabular-nums font-medium">
+                                  {(l.qty * unitPriceOf(l.skuLabel) / 1e6).toFixed(1)}tr
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="border-t-2 border-surface-3">
+                            <tr className="font-semibold">
+                              <td className="py-1 text-text-1">Tổng drop {d.dropOrder}</td>
+                              <td className="py-1 text-right tabular-nums">{d.qty.toLocaleString()} m²</td>
+                              <td></td>
+                              <td className="py-1 text-right tabular-nums">{(dropValue / 1e6).toFixed(1)}tr</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              );
+            })}
+          </tbody>
+          <tfoot className="border-t-2 border-surface-3 bg-surface-1/50">
+            <tr className="font-semibold text-table-sm">
+              <td></td>
+              <td colSpan={2} className="py-1.5 px-2 text-text-1">Tổng</td>
+              <td className="py-1.5 px-2 text-right tabular-nums text-text-1">{group.totalQty.toLocaleString()} m²</td>
+              <td colSpan={2} className="py-1.5 px-2 text-right text-text-1 tabular-nums">{(totalValue / 1e6).toFixed(1)}tr ₫</td>
+              <td className="py-1.5 px-2 text-right text-[11px] text-text-3">{group.lineCount} mã</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      {/* ── Cam kết gốc back-link (chỉ hiện cho RPO) ── */}
       {group.kind === "RPO" && commitment.nmName !== "—" && (
         <div className="rounded-card border border-info/30 bg-info-bg/30 px-3 py-2 text-table-sm flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-text-3">Cam kết gốc:</span>
           <button
             type="button"
             onClick={() =>
-              navigate(
-                `/hub?step=commitment&nm=${encodeURIComponent(commitment.nmName)}&sku=${encodeURIComponent(commitment.skuBase)}`,
-              )
+              navigate(`/hub?step=commitment&nm=${encodeURIComponent(commitment.nmName)}&sku=${encodeURIComponent(commitment.skuBase)}`)
             }
             className="text-primary font-medium underline-offset-2 hover:underline"
           >
-            {commitment.nmName} · {commitment.skuBase}
-            {" — "}
-            <span className="tabular-nums">{commitment.committed.toLocaleString()} m²</span>
+            {commitment.nmName} · {commitment.skuBase} — <span className="tabular-nums">{commitment.committed.toLocaleString()} m²</span>
           </button>
-          <span className="text-text-3">·</span>
-          <span className="text-text-2">Release #{commitment.releaseNumber}</span>
-          <span className="text-text-3">·</span>
+          <span className="text-text-3">· Release #{commitment.releaseNumber} ·</span>
           <span className="tabular-nums font-semibold text-text-1">{commitment.releasedPct}% đã release</span>
-          <span className="ml-1 inline-flex items-center gap-1.5">
-            <span className="inline-block h-1.5 w-24 rounded-full bg-surface-3 overflow-hidden">
-              <span
-                className="block h-full rounded-full bg-primary"
-                style={{ width: `${commitment.releasedPct}%` }}
-              />
-            </span>
-          </span>
         </div>
       )}
 
-      {/* ── Tổng + lifecycle inline (KHÔNG heading) ── */}
-      <div className="flex items-center justify-between gap-3 px-1 text-table-sm">
-        <div className="text-text-3">
-          Tổng: <span className="text-text-1 font-semibold tabular-nums">{group.totalQty.toLocaleString()} m²</span>
-          <span className="mx-2">·</span>
-          <span className="text-text-1 font-semibold tabular-nums">{(totalValue / 1e6).toFixed(1)} triệu ₫</span>
-        </div>
-        {/* Lifecycle inline dots */}
-        <div className="flex items-center gap-1 text-[11px] overflow-x-auto">
-          {STAGE_ORDER.map((s, i) => {
-            const rank = STAGE_ORDER.indexOf(group.stage);
-            const myRank = i;
-            const isCurrent = s === group.stage;
-            const reached = myRank < rank;
-            return (
-              <span key={s} className="inline-flex items-center gap-0.5 shrink-0">
-                <span className={cn(
-                  isCurrent && "text-primary font-semibold",
-                  reached && "text-success",
-                  !isCurrent && !reached && "text-text-3",
-                )}>
-                  {reached ? "✅" : isCurrent ? "●" : "○"} {STAGE_META[s].short}
-                </span>
-                {i < STAGE_ORDER.length - 1 && <span className="text-text-3/50">→</span>}
-              </span>
-            );
-          })}
-        </div>
+      <div className="text-[11px] text-text-3 italic px-1">
+        💡 Bấm vào dòng PO ở bảng trên để mở Side Panel — chỉnh trạng thái, comment, upload minh chứng.
       </div>
-
-      {/* ── Vận chuyển + Minh chứng (2 cột) ── */}
-      <div className="grid md:grid-cols-2 gap-3">
-        {leader.carrierName && (
-          <div className="rounded-card border border-surface-3 bg-surface-0 p-3 space-y-1.5">
-            <div className="text-caption uppercase tracking-wide text-text-3 font-semibold mb-1">Vận chuyển</div>
-            <div className="text-table-sm"><span className="text-text-3">NVT:</span> <span className="font-medium text-text-1">{leader.carrierName}</span></div>
-            {leader.vehiclePlate && <div className="text-table-sm font-mono"><span className="text-text-3 font-sans">Xe:</span> {leader.vehiclePlate}</div>}
-            {leader.containerNo && <div className="text-table-sm font-mono"><span className="text-text-3 font-sans">Cont:</span> {leader.containerNo}</div>}
-            {leader.driverName && (
-              <div className="text-table-sm flex items-center gap-2">
-                <span className="text-text-3">Tài xế:</span>
-                <span className="text-text-1 font-medium">{leader.driverName}</span>
-                {leader.driverPhone && (
-                  <a href={`tel:${leader.driverPhone.replace(/\s/g, "")}`}
-                    className="inline-flex items-center gap-1 text-primary hover:underline text-[11px]">
-                    <Phone className="h-3 w-3" /> {leader.driverPhone}
-                  </a>
-                )}
-              </div>
-            )}
-            {leader.deliveryEta && (
-              <div className="text-table-sm flex items-center gap-2 mt-1.5 pt-1.5 border-t border-surface-3">
-                <span className="text-text-3">ETA:</span>
-                <span className="font-medium text-text-1">{leader.deliveryEta}</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="rounded-card border border-surface-3 bg-surface-0 p-3">
-          <div className="text-caption uppercase tracking-wide text-text-3 font-semibold mb-2">Minh chứng</div>
-          {allEvidence.length === 0
-            ? <div className="text-table-sm text-text-3 italic">Chưa có minh chứng</div>
-            : (
-              <div className="space-y-1">
-                {allEvidence.map((e, i) => <EvidenceBadge key={i} ev={e} />)}
-              </div>
-            )
-          }
-        </div>
-      </div>
-
-      {/* ── Lịch sử (timeline gộp leader) ── */}
-      {leader.timeline.length > 0 && (
-        <div className="rounded-card border border-surface-3 bg-surface-0 p-3">
-          <div className="text-caption uppercase tracking-wide text-text-3 font-semibold mb-2">Lịch sử</div>
-          <div className="space-y-1.5">
-            {leader.timeline.map((e, i) => (
-              <div key={i} className="flex items-start gap-2 text-table-sm">
-                <div className="text-text-3 tabular-nums w-20 shrink-0">{e.ts}</div>
-                <Badge variant="outline" className={cn("text-[10px] shrink-0", STAGE_META[e.stage].tone)}>
-                  {STAGE_META[e.stage].short}
-                </Badge>
-                <div className="flex-1">
-                  <div className="text-text-1">{e.actor}</div>
-                  {e.note && <div className="text-[11px] text-text-3">{e.note}</div>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
