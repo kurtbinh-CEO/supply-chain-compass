@@ -922,7 +922,7 @@ function PoLinesEditor({ container }: { container: ContainerPlan }) {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             );
           })}
         </tbody>
