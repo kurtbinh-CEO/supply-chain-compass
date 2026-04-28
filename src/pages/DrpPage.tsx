@@ -1624,249 +1624,217 @@ export default function DrpPage() {
           onNavigateOrders={() => navigate("/orders?tab=approval&filter=TO")}
         />
       ) : (
-      <div data-tour-id="drp-table" className="rounded-card border border-surface-3 bg-surface-2 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-surface-1/60 border-b border-surface-3">
-                <th className="w-8"></th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Chi nhánh</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Nhu cầu</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Có sẵn</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">
-                  <TermTooltip term="FillRate">Lấp đầy</TermTooltip>
-                </th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Nguồn hàng</th>
-                <th className="px-3 py-2.5 text-left text-table-header uppercase text-text-3">Container</th>
-                <th className="px-3 py-2.5 text-right text-table-header uppercase text-text-3">Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.length === 0 && (
-                <tr><td colSpan={8} className="text-center py-8 text-text-3 text-table-sm">
-                  Không có CN nào khớp bộ lọc.
-                </td></tr>
-              )}
-              {filteredRows.map(r => {
+      <div data-tour-id="drp-table">
+        <SmartTable<CnRow>
+          screenId="drp-cn-allocation"
+          defaultDensity="compact"
+          data={filteredRows}
+          getRowId={(r) => `cn-${r.cn}`}
+          rowSeverity={(r) => {
+            const sev = severityOf(r.fillRate);
+            return sev === "short" ? "shortage" : sev === "watch" ? "watch" : undefined;
+          }}
+          autoExpandWhen={(r) => severityOf(r.fillRate) === "short"}
+          emptyState={{ title: "Không có CN nào khớp bộ lọc.", description: "Thử bỏ bớt filter để xem tất cả chi nhánh." }}
+          columns={[
+            { key: "cn", label: "Chi nhánh", width: 160, sortable: true,
+              accessor: (r) => r.cn,
+              render: (r) => {
                 const sev = severityOf(r.fillRate);
-                const rowKey = `cn-${r.cn}`;
-                const isOpen = expanded.has(rowKey) || sev === "short";
+                return (
+                  <div>
+                    <div className="font-medium text-text-1">{r.cn}</div>
+                    <div className="text-caption text-text-3">
+                      {sev === "ok" && "Đủ hàng"}
+                      {sev === "watch" && "Theo dõi"}
+                      {sev === "short" && `Thiếu ${r.gap.toLocaleString()}m²`}
+                    </div>
+                  </div>
+                );
+              } },
+            { key: "demand", label: "Nhu cầu", align: "right", numeric: true, width: 110, sortable: true,
+              accessor: (r) => r.demand,
+              render: (r) => <span className="tabular-nums text-text-1">{r.demand.toLocaleString()}</span> },
+            { key: "available", label: "Có sẵn", align: "right", numeric: true, width: 110, sortable: true,
+              accessor: (r) => r.available,
+              render: (r) => <span className="tabular-nums text-text-2">{r.available.toLocaleString()}</span> },
+            { key: "fillRate", label: "Lấp đầy", align: "right", width: 96, sortable: true,
+              accessor: (r) => r.fillRate,
+              render: (r) => {
+                const sev = severityOf(r.fillRate);
+                return (
+                  <span className={cn("tabular-nums font-semibold",
+                    sev === "ok" && "text-success",
+                    sev === "watch" && "text-warning",
+                    sev === "short" && "text-danger")}>
+                    {r.fillRate}%
+                  </span>
+                );
+              } },
+            { key: "sources", label: "Nguồn hàng",
+              render: (r) => {
                 const cnTotals = r.allSkus.reduce((acc, sk) => ({
                   onHand: acc.onHand + sk.sources.onHand,
                   pipeline: acc.pipeline + sk.sources.pipeline,
                   hubPo: acc.hubPo + sk.sources.hubPo,
                   lcnb: acc.lcnb + sk.sources.lcnbIn + Math.abs(sk.sources.internalTransfer),
                 }), { onHand: 0, pipeline: 0, hubPo: 0, lcnb: 0 });
-
                 return (
-                  <Fragment key={rowKey}>
-                    <tr id={`alloc-row-${r.cn}`} className={cn(
-                      "border-b border-surface-3 transition-all cursor-pointer",
-                      sev === "short" && "bg-danger-bg/20 border-l-2 border-l-danger",
-                      sev === "watch" && "bg-warning-bg/15 border-l-2 border-l-warning",
-                      sev === "ok" && "hover:bg-surface-1/40",
-                    )} onClick={() => toggleRow(rowKey)}>
-                      <td className="px-2 py-2.5 text-center">
-                        {isOpen ? <ChevronDown className="h-4 w-4 text-text-3 inline" /> : <ChevronRight className="h-4 w-4 text-text-3 inline" />}
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <div className="font-medium text-text-1">{r.cn}</div>
-                        <div className="text-caption text-text-3">
-                          {sev === "ok" && "Đủ hàng"}
-                          {sev === "watch" && "Theo dõi"}
-                          {sev === "short" && `Thiếu ${r.gap.toLocaleString()}m²`}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-text-1">{r.demand.toLocaleString()}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-text-2">{r.available.toLocaleString()}</td>
-                      <td className="px-3 py-2.5 text-right">
-                        <span className={cn("inline-block tabular-nums font-semibold",
-                          sev === "ok" && "text-success",
-                          sev === "watch" && "text-warning",
-                          sev === "short" && "text-danger")}>
-                          {r.fillRate}%
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <div className="text-table-sm text-text-2 leading-relaxed">
-                          {cnTotals.onHand > 0 && <span className="tabular-nums">Tồn <span className="text-text-1 font-medium">{cnTotals.onHand.toLocaleString()}</span></span>}
-                          {cnTotals.pipeline > 0 && <span className="tabular-nums"><span className="text-text-3 mx-1">·</span>Về <span className="text-text-1 font-medium">{cnTotals.pipeline.toLocaleString()}</span></span>}
-                          {cnTotals.hubPo > 0 && <span className="tabular-nums"><span className="text-text-3 mx-1">·</span>NM <span className="text-text-1 font-medium">{cnTotals.hubPo.toLocaleString()}</span></span>}
-                          {cnTotals.lcnb > 0 && (() => {
-                            const match = findToByDestCn(r.cn);
-                            const fromShort = match ? match.fromCn.replace(/^CN-/, "") : "";
-                            const fromLabel = match ? `TO-${fromShort}` : "TO";
-                            return (
-                              <>
-                                <span className="text-text-3 mx-1">·</span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); setLcnbToDetail(match ?? null); }}
-                                  title={match ? `${match.code}: ${match.fromCn} → ${match.toCn} · Nháp · click để xem chi tiết TO` : "Chuyển ngang LCNB"}
-                                  className="inline-flex items-center gap-0.5 rounded-full border border-warning/30 bg-warning-bg px-1.5 py-0.5 text-[11px] font-semibold text-warning tabular-nums hover:bg-warning hover:text-warning-foreground transition-colors"
-                                >
-                                  {fromLabel} {cnTotals.lcnb.toLocaleString()}
-                                </button>
-                              </>
-                            );
-                          })()}
-                          {r.gap > 0 && (
-                            <span className="ml-2 inline-flex items-center gap-0.5 rounded-full border border-danger/30 bg-danger-bg px-1.5 py-0.5 text-[11px] font-semibold text-danger tabular-nums align-middle">
-                              ⚠️ {r.gap.toLocaleString()}
+                  <div className="text-table-sm text-text-2 leading-relaxed">
+                    {cnTotals.onHand > 0 && <span className="tabular-nums">Tồn <span className="text-text-1 font-medium">{cnTotals.onHand.toLocaleString()}</span></span>}
+                    {cnTotals.pipeline > 0 && <span className="tabular-nums"><span className="text-text-3 mx-1">·</span>Về <span className="text-text-1 font-medium">{cnTotals.pipeline.toLocaleString()}</span></span>}
+                    {cnTotals.hubPo > 0 && <span className="tabular-nums"><span className="text-text-3 mx-1">·</span>NM <span className="text-text-1 font-medium">{cnTotals.hubPo.toLocaleString()}</span></span>}
+                    {cnTotals.lcnb > 0 && (() => {
+                      const match = findToByDestCn(r.cn);
+                      const fromShort = match ? match.fromCn.replace(/^CN-/, "") : "";
+                      const fromLabel = match ? `TO-${fromShort}` : "TO";
+                      return (
+                        <>
+                          <span className="text-text-3 mx-1">·</span>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setLcnbToDetail(match ?? null); }}
+                            title={match ? `${match.code}: ${match.fromCn} → ${match.toCn} · Nháp · click để xem chi tiết TO` : "Chuyển ngang LCNB"}
+                            className="inline-flex items-center gap-0.5 rounded-full border border-warning/30 bg-warning-bg px-1.5 py-0.5 text-[11px] font-semibold text-warning tabular-nums hover:bg-warning hover:text-warning-foreground transition-colors"
+                          >
+                            {fromLabel} {cnTotals.lcnb.toLocaleString()}
+                          </button>
+                        </>
+                      );
+                    })()}
+                    {r.gap > 0 && (
+                      <span className="ml-2 inline-flex items-center gap-0.5 rounded-full border border-danger/30 bg-danger-bg px-1.5 py-0.5 text-[11px] font-semibold text-danger tabular-nums align-middle">
+                        ⚠️ {r.gap.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                );
+              } },
+            { key: "container", label: "Container", width: 200,
+              render: (r) => {
+                const cs = getContainersForCn(r.cn);
+                if (cs.length === 0) return <span className="text-text-3 text-[11px]">—</span>;
+                return (
+                  <div className="flex flex-wrap gap-1">
+                    {cs.slice(0, 2).map((c) => {
+                      const low = c.fillPct < 70;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); crossLink("container", c.id); }}
+                          title={`${c.id} ${c.vehicle} ${c.fillPct}% — click để xem chi tiết chuyến`}
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] font-semibold transition-colors",
+                            low
+                              ? "border-warning/40 bg-warning-bg text-warning hover:bg-warning hover:text-warning-foreground"
+                              : "border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground",
+                          )}
+                        >
+                          <span className="font-mono">{c.id}</span>
+                          <span className="opacity-70">{c.vehicle}</span>
+                          <span className="tabular-nums">{c.fillPct}%</span>
+                          {c.consolidated && (
+                            <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/20 px-1 text-[9px]">
+                              <Link2Icon className="h-2 w-2" />GHÉP
                             </span>
                           )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        {(() => {
-                          const cs = getContainersForCn(r.cn);
-                          if (cs.length === 0) return <span className="text-text-3 text-[11px]">—</span>;
-                          return (
-                            <div className="flex flex-wrap gap-1">
-                              {cs.slice(0, 2).map((c) => {
-                                const low = c.fillPct < 70;
-                                return (
-                                  <button
-                                    key={c.id}
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); crossLink("container", c.id); }}
-                                    title={`${c.id} ${c.vehicle} ${c.fillPct}% — click để xem chi tiết chuyến`}
-                                    className={cn(
-                                      "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] font-semibold transition-colors",
-                                      low
-                                        ? "border-warning/40 bg-warning-bg text-warning hover:bg-warning hover:text-warning-foreground"
-                                        : "border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground",
-                                    )}
-                                  >
-                                    <span className="font-mono">{c.id}</span>
-                                    <span className="opacity-70">{c.vehicle}</span>
-                                    <span className="tabular-nums">{c.fillPct}%</span>
-                                    {c.consolidated && (
-                                      <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/20 px-1 text-[9px]">
-                                        <Link2Icon className="h-2 w-2" />GHÉP
-                                      </span>
-                                    )}
-                                    {low && <AlertTriangle className="h-2.5 w-2.5" />}
-                                  </button>
-                                );
-                              })}
-                              {cs.length > 2 && (
-                                <span className="text-[11px] text-text-3 self-center">+{cs.length - 2}</span>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-3 py-2.5 text-right">
-                        {sev === "short" && (
-                          <button onClick={(e) => { e.stopPropagation(); toggleRow(rowKey); }}
-                            className="rounded-button bg-gradient-primary text-primary-foreground px-3 py-1 text-caption font-semibold inline-flex items-center gap-1">
-                            Xử lý <ArrowRight className="h-3 w-3" />
-                          </button>
-                        )}
-                        {sev === "watch" && (
-                          <button onClick={(e) => { e.stopPropagation(); toggleRow(rowKey); }}
-                            className="rounded-button border border-surface-3 px-3 py-1 text-caption font-medium text-text-2 hover:text-text-1 inline-flex items-center gap-1">
-                            Chi tiết <ArrowRight className="h-3 w-3" />
-                          </button>
-                        )}
-                        {sev === "ok" && <span className="text-text-3 text-caption">—</span>}
-                      </td>
-                    </tr>
-
-                    {/* Expanded SKU breakdown */}
-                    {isOpen && (
-                      <tr>
-                        <td colSpan={8} className="bg-surface-1/40 px-4 py-3 border-b border-surface-3">
-                          <div className="text-caption text-text-3 mb-2">
-                            Chi tiết {r.cn} — {r.allSkus.length} mã hàng
-                          </div>
-                          <table className="w-full text-table-sm">
-                            <thead>
-                              <tr className="text-text-3 text-caption">
-                                <th className="text-left py-1 font-medium">Mã hàng</th>
-                                <th className="text-right py-1 font-medium">Nhu cầu</th>
-                                <th className="text-right py-1 font-medium">Phân bổ</th>
-                                <th className="text-right py-1 font-medium">Lấp đầy</th>
-                                <th className="text-left py-1 font-medium pl-3">Nguồn</th>
-                                <th className="text-left py-1 font-medium">Trạng thái</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {r.allSkus.map((sk, i) => {
-                                const skuFill = sk.fillPct;
-                                const skuShort = sk.demand - sk.allocated;
-                                const skuSev = severityOf(skuFill);
-                                return (
-                                  <Fragment key={i}>
-                                    <tr className="border-t border-surface-3/40">
-                                      <td className="py-1.5 text-text-1 font-medium">{sk.item} <span className="text-text-3 font-normal">(tổng)</span></td>
-                                      <td className="py-1.5 text-right tabular-nums">{sk.demand.toLocaleString()}</td>
-                                      <td className="py-1.5 text-right tabular-nums">{sk.allocated.toLocaleString()}</td>
-                                      <td className={cn("py-1.5 text-right tabular-nums font-semibold",
-                                        skuSev === "ok" && "text-success",
-                                        skuSev === "watch" && "text-warning",
-                                        skuSev === "short" && "text-danger")}>
-                                        {skuFill}% {skuSev === "ok" && "✅"} {skuSev === "short" && "🔴"}
-                                      </td>
-                                      <td className="py-1.5 pl-3">
-                                        <div className="flex flex-wrap gap-1">
-                                          {sk.sources.onHand > 0 && <SourceBadge kind="onHand" qty={sk.sources.onHand} />}
-                                          {sk.sources.pipeline > 0 && <SourceBadge kind="pipeline" qty={sk.sources.pipeline} />}
-                                          {sk.sources.hubPo > 0 && <SourceBadge kind="hubPo" qty={sk.sources.hubPo} />}
-                                          {sk.sources.lcnbIn > 0 && <SourceBadge kind="lcnb" qty={sk.sources.lcnbIn} />}
-                                        </div>
-                                      </td>
-                                      <td className="py-1.5">
-                                        {skuSev === "ok" && <span className="text-success text-caption">Đủ hàng</span>}
-                                        {skuSev === "watch" && <span className="text-warning text-caption">Theo dõi</span>}
-                                        {skuSev === "short" && <span className="text-danger text-caption">Thiếu {skuShort.toLocaleString()}</span>}
-                                      </td>
-                                    </tr>
-
-                                    {/* Inline action box for shortages */}
-                                    {skuSev === "short" && (
-                                      <tr>
-                                        <td colSpan={6} className="pb-3 pt-1 px-2">
-                                          <div className="rounded border border-danger/30 bg-danger-bg/20 p-3">
-                                            <div className="text-table-sm font-medium text-text-1 mb-2">
-                                              Gợi ý cho {sk.item} thiếu {skuShort.toLocaleString()}m²:
-                                            </div>
-                                            <div className="flex flex-wrap gap-2">
-                                              <button
-                                                onClick={() => toast.success(`Đã tạo TO chuyển ngang → ${r.cn} ${skuShort}m² ${sk.item}`)}
-                                                className="rounded-button border border-success/40 bg-success-bg/40 px-3 py-1.5 text-caption font-medium text-success hover:bg-success-bg">
-                                                ✅ Chuyển ngang từ CN sibling (1 ngày, ~3,2 triệu ₫)
-                                              </button>
-                                              <button
-                                                onClick={() => toast.success(`Đã tạo PO mới NM cho ${sk.item}`)}
-                                                className="rounded-button border border-info/40 bg-info-bg/40 px-3 py-1.5 text-caption font-medium text-info hover:bg-info-bg">
-                                                📦 Đặt PO mới NM (14 ngày, ~11 triệu ₫)
-                                              </button>
-                                              <button
-                                                onClick={() => toast.info("Đã đánh dấu chờ tuần sau")}
-                                                className="rounded-button border border-surface-3 bg-surface-1 px-3 py-1.5 text-caption font-medium text-text-2 hover:text-text-1">
-                                                ⏸️ Chờ tuần sau (HSTK còn 4 ngày)
-                                              </button>
-                                            </div>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    )}
-                                  </Fragment>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </td>
-                      </tr>
+                          {low && <AlertTriangle className="h-2.5 w-2.5" />}
+                        </button>
+                      );
+                    })}
+                    {cs.length > 2 && (
+                      <span className="text-[11px] text-text-3 self-center">+{cs.length - 2}</span>
                     )}
-                  </Fragment>
+                  </div>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
+              } },
+          ]}
+          drillDown={(r) => (
+            <div className="px-3 py-2 bg-surface-1/40">
+              <div className="text-caption text-text-3 mb-2">
+                Chi tiết {r.cn} — {r.allSkus.length} mã hàng
+              </div>
+              <table className="w-full text-table-sm">
+                <thead>
+                  <tr className="text-text-3 text-caption">
+                    <th className="text-left py-1 font-medium">Mã hàng</th>
+                    <th className="text-right py-1 font-medium">Nhu cầu</th>
+                    <th className="text-right py-1 font-medium">Phân bổ</th>
+                    <th className="text-right py-1 font-medium">Lấp đầy</th>
+                    <th className="text-left py-1 font-medium pl-3">Nguồn</th>
+                    <th className="text-left py-1 font-medium">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {r.allSkus.map((sk, i) => {
+                    const skuFill = sk.fillPct;
+                    const skuShort = sk.demand - sk.allocated;
+                    const skuSev = severityOf(skuFill);
+                    return (
+                      <Fragment key={i}>
+                        <tr className="border-t border-surface-3/40">
+                          <td className="py-1.5 text-text-1 font-medium">{sk.item} <span className="text-text-3 font-normal">(tổng)</span></td>
+                          <td className="py-1.5 text-right tabular-nums">{sk.demand.toLocaleString()}</td>
+                          <td className="py-1.5 text-right tabular-nums">{sk.allocated.toLocaleString()}</td>
+                          <td className={cn("py-1.5 text-right tabular-nums font-semibold",
+                            skuSev === "ok" && "text-success",
+                            skuSev === "watch" && "text-warning",
+                            skuSev === "short" && "text-danger")}>
+                            {skuFill}% {skuSev === "ok" && "✅"} {skuSev === "short" && "🔴"}
+                          </td>
+                          <td className="py-1.5 pl-3">
+                            <div className="flex flex-wrap gap-1">
+                              {sk.sources.onHand > 0 && <SourceBadge kind="onHand" qty={sk.sources.onHand} />}
+                              {sk.sources.pipeline > 0 && <SourceBadge kind="pipeline" qty={sk.sources.pipeline} />}
+                              {sk.sources.hubPo > 0 && <SourceBadge kind="hubPo" qty={sk.sources.hubPo} />}
+                              {sk.sources.lcnbIn > 0 && <SourceBadge kind="lcnb" qty={sk.sources.lcnbIn} />}
+                            </div>
+                          </td>
+                          <td className="py-1.5">
+                            {skuSev === "ok" && <span className="text-success text-caption">Đủ hàng</span>}
+                            {skuSev === "watch" && <span className="text-warning text-caption">Theo dõi</span>}
+                            {skuSev === "short" && <span className="text-danger text-caption">Thiếu {skuShort.toLocaleString()}</span>}
+                          </td>
+                        </tr>
+
+                        {/* Inline action box for shortages */}
+                        {skuSev === "short" && (
+                          <tr>
+                            <td colSpan={6} className="pb-3 pt-1 px-2">
+                              <div className="rounded border border-danger/30 bg-danger-bg/20 p-3">
+                                <div className="text-table-sm font-medium text-text-1 mb-2">
+                                  Gợi ý cho {sk.item} thiếu {skuShort.toLocaleString()}m²:
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); toast.success(`Đã tạo TO chuyển ngang → ${r.cn} ${skuShort}m² ${sk.item}`); }}
+                                    className="rounded-button border border-success/40 bg-success-bg/40 px-3 py-1.5 text-caption font-medium text-success hover:bg-success-bg">
+                                    ✅ Chuyển ngang từ CN sibling (1 ngày, ~3,2 triệu ₫)
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); toast.success(`Đã tạo PO mới NM cho ${sk.item}`); }}
+                                    className="rounded-button border border-info/40 bg-info-bg/40 px-3 py-1.5 text-caption font-medium text-info hover:bg-info-bg">
+                                    📦 Đặt PO mới NM (14 ngày, ~11 triệu ₫)
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); toast.info("Đã đánh dấu chờ tuần sau"); }}
+                                    className="rounded-button border border-surface-3 bg-surface-1 px-3 py-1.5 text-caption font-medium text-text-2 hover:text-text-1">
+                                    ⏸️ Chờ tuần sau (HSTK còn 4 ngày)
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        />
       </div>
       )}
       </>
