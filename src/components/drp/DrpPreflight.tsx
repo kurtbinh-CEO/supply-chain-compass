@@ -281,6 +281,41 @@ export function DrpPreflight({ items, onRun, onBack, autoRunFailed }: Props) {
         {summaryText}
       </div>
 
+      {/* ── BLOCKING BANNER — danh sách điều kiện chặn + nút điều hướng trực tiếp ── */}
+      {blocking.length > 0 && (
+        <div className="rounded-md border border-danger/40 bg-danger-bg/30 p-3 space-y-2">
+          <div className="flex items-center gap-2 text-table-sm font-semibold text-danger">
+            <AlertOctagon className="h-4 w-4" />
+            Không thể chạy DRP — {blocking.length} điều kiện đang chặn
+          </div>
+          <ul className="space-y-1.5">
+            {blocking.map((b) => (
+              <li
+                key={b.key}
+                className="flex flex-wrap items-center justify-between gap-2 rounded border border-danger/20 bg-surface-1/60 px-2.5 py-1.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="text-table-sm font-medium text-text-1">{b.label}</div>
+                  <div className="text-table-xs text-text-2 truncate">{b.result}</div>
+                </div>
+                {b.fixHref ? (
+                  <Link
+                    to={b.fixHref}
+                    title={`Đi tới ${b.fixHref} để xử lý "${b.label}"`}
+                    className="inline-flex items-center gap-1 rounded-button border border-danger/40 bg-danger text-primary-foreground px-2.5 py-1 text-table-xs font-semibold hover:opacity-90 shrink-0"
+                  >
+                    {b.fixLabel ?? "Mở trang xử lý"}
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                ) : (
+                  <span className="text-table-xs text-text-3 italic shrink-0">Chưa có link xử lý</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-end gap-2">
         {onBack && (
           <button
