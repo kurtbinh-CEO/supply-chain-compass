@@ -532,7 +532,7 @@ export function AppSidebar() {
                   Hướng dẫn
                 </div>
                 <button
-                  onClick={() => startTour(tourForRoute)}
+                  onClick={() => startTour(tourForRoute, { manual: true })}
                   className="flex w-full items-center gap-2 rounded-button border border-dashed border-surface-3 px-3 py-2 text-body text-text-2 font-medium hover:bg-surface-2 hover:text-text-1 hover:border-surface-3 transition-colors"
                   title="Bắt đầu hướng dẫn cho màn hình này"
                 >
