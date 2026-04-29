@@ -194,9 +194,15 @@ function OnboardingAutoStart() {
   const location = useLocation();
   const { isTourCompleted, startTour, activeTour } = useOnboarding();
 
+  // DRP-FIX-L4.6 — Force-overwrite stale localStorage flag from prior sessions.
+  // Demo build: auto-tour permanently disabled across ALL routes.
   useEffect(() => {
-    // DEMO MODE — auto-tour DISABLED globally
-    // User can still manually start tour via sidebar "Hướng dẫn màn này" button
+    try { localStorage.setItem("scp:onboarding:enabled", "false"); } catch {}
+  }, []);
+
+  useEffect(() => {
+    // DEMO MODE — auto-tour DISABLED globally for every route.
+    // Manual start via sidebar "Hướng dẫn màn này" still works.
     return;
   }, [location.pathname]);
 
