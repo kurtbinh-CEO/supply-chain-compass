@@ -1299,27 +1299,39 @@ export type Database = {
       }
       tenants: {
         Row: {
-          code: string
           created_at: string
+          currency: string
+          cutoff_time: string
           id: string
-          name: string
+          locale: string
           status: string
+          tenant_code: string
+          tenant_name: string
+          timezone: string
           updated_at: string
         }
         Insert: {
-          code: string
           created_at?: string
+          currency?: string
+          cutoff_time?: string
           id?: string
-          name: string
+          locale?: string
           status?: string
+          tenant_code: string
+          tenant_name: string
+          timezone?: string
           updated_at?: string
         }
         Update: {
-          code?: string
           created_at?: string
+          currency?: string
+          cutoff_time?: string
           id?: string
-          name?: string
+          locale?: string
           status?: string
+          tenant_code?: string
+          tenant_name?: string
+          timezone?: string
           updated_at?: string
         }
         Relationships: []
