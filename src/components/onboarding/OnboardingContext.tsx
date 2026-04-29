@@ -124,27 +124,12 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** Hook để auto-start tour khi mở route lần đầu (nếu user chưa tắt onboarding) */
-export function useAutoStartTour(tour: OnboardingTour) {
-  const { isTourCompleted, startTour, activeTour } = useOnboarding();
-
-  useEffect(() => {
-    if (activeTour) return; // không chạy đè
-    if (isTourCompleted(tour.id)) return;
-
-    // check global enable flag (default ON)
-    let enabled = true;
-    try {
-      const raw = localStorage.getItem(ENABLED_KEY);
-      if (raw === "false") enabled = false;
-    } catch {}
-    if (!enabled) return;
-
-    // delay nhẹ để DOM render xong
-    const timer = setTimeout(() => startTour(tour), 600);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tour.id]);
+/** Hook để auto-start tour khi mở route lần đầu.
+ *  DRP-FIX-L4.6 — GLOBAL DEMO MODE: auto-tour DISABLED for ALL routes.
+ *  Manual tour vẫn start được qua sidebar "Hướng dẫn màn này" button. */
+export function useAutoStartTour(_tour: OnboardingTour) {
+  // No-op: auto-start permanently disabled for demo build.
+  // To re-enable, restore the original effect from git history.
 }
 
 export function setOnboardingEnabled(enabled: boolean) {
