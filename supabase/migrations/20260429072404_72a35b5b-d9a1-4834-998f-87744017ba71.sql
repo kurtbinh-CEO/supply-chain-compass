@@ -1,0 +1,1 @@
+TRUNCATE TABLE public.drp_runs CASCADE;
