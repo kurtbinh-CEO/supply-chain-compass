@@ -37,7 +37,7 @@ export interface OnboardingTour {
 interface OnboardingContextType {
   activeTour: OnboardingTour | null;
   currentStep: number;
-  startTour: (tour: OnboardingTour) => void;
+  startTour: (tour: OnboardingTour, options?: { manual?: boolean }) => void;
   nextStep: () => void;
   prevStep: () => void;
   finishTour: () => void;
@@ -73,7 +73,15 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, []);
 
-  const startTour = useCallback((tour: OnboardingTour) => {
+  const startTour = useCallback((tour: OnboardingTour, options?: { manual?: boolean }) => {
+    // L4.7 HARD KILL: Block ALL auto-trigger calls.
+    // Only explicit manual triggers from sidebar are allowed.
+    const DEMO_MODE_DISABLE_AUTO_TOUR = true;
+    if (DEMO_MODE_DISABLE_AUTO_TOUR && !options?.manual) {
+      console.log("[L4.7] Auto-tour blocked:", tour?.id);
+      return;
+    }
+
     setActiveTour(tour);
     setCurrentStep(0);
   }, []);

@@ -201,10 +201,12 @@ function OnboardingAutoStart() {
   }, []);
 
   useEffect(() => {
-    // DEMO MODE — auto-tour DISABLED globally for every route.
-    // Manual start via sidebar "Hướng dẫn màn này" still works.
-    return;
-  }, [location.pathname]);
+    // L4.7 — route auto-attempt still goes through startTour guard,
+    // so blocked attempts are visible in console without opening overlay.
+    const tour = getTourForRoute(location.pathname);
+    if (!tour || activeTour || isTourCompleted(tour.id)) return;
+    startTour(tour);
+  }, [location.pathname, activeTour, isTourCompleted, startTour]);
 
   return null;
 }
