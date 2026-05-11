@@ -15,6 +15,7 @@ import { TermTooltip } from "@/components/TermTooltip";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { DrpReleaseBar, type DrpBatch, type DrpBatchStatus } from "@/components/drp/DrpReleaseBar";
 import { DrpEnginePanel } from "@/components/drp/DrpEnginePanel";
+import { DrpResultsPanel } from "@/components/drp/DrpResultsPanel";
 import { useRbac } from "@/components/RbacContext";
 import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -1258,6 +1259,7 @@ export default function DrpPage() {
       />
 
       <DrpEnginePanel />
+      <DrpResultsPanel />
 
       {/* ── HEADER ── (step-aware title) */}
       <div className="flex items-center justify-between mb-2">
