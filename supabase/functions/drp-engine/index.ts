@@ -308,6 +308,28 @@ Deno.serve(async (req) => {
     if (error) console.error("drp_exceptions insert error:", error);
   }
 
+  // Auto-generate TO Plan DRAFT rows from allocated results (INTERNAL_TO/LCNB/HUB_PO/PIPELINE)
+  const toPlanRows = results
+    .filter((r: any) => r.allocated_qty > 0 && ["INTERNAL_TO", "LCNB", "HUB_PO", "PIPELINE"].includes(r.source_type))
+    .map((r: any) => ({
+      tenant_id,
+      plan_run_id: planRunId,
+      to_code: "", // trigger will assign
+      source_nm: r.source_location ?? null,
+      dest_cn: r.cn_code,
+      sku_code: r.sku_code,
+      planned_qty: r.allocated_qty,
+      dispatch_date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
+      status: "DRAFT",
+    }));
+  if (toPlanRows.length > 0) {
+    const CHUNK = 200;
+    for (let i = 0; i < toPlanRows.length; i += CHUNK) {
+      const { error } = await supabase.from("to_plans").insert(toPlanRows.slice(i, i + CHUNK));
+      if (error) console.error("to_plans auto-insert error:", error);
+    }
+  }
+
   const fillRate = totalDemand > 0 ? totalAllocated / totalDemand : 0;
   const lostSales = Math.max(totalDemand - totalAllocated, 0);
 
