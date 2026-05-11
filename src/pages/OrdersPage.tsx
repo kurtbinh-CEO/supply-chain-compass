@@ -220,8 +220,52 @@ export default function OrdersPage() {
 
   const noFilters = statusFilter.size === 0 && kindFilter.size === 0 && !overdueOnly && dropFilter === null;
 
+  const [activeTab, setActiveTab] = useState<"orders" | "to_plan" | "to_con">(
+    () => (searchParams.get("tab") as any) || "orders"
+  );
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    if (activeTab === "orders") next.delete("tab"); else next.set("tab", activeTab);
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const TabBar = (
+    <div className="mb-4 flex items-center gap-1 border-b border-surface-3">
+      {([
+        ["orders", "Đơn hàng"],
+        ["to_plan", "TO Plan"],
+        ["to_con", "TO Con"],
+      ] as const).map(([k, label]) => (
+        <button
+          key={k}
+          type="button"
+          onClick={() => setActiveTab(k)}
+          className={cn(
+            "px-3 py-2 text-table-sm font-medium transition-colors border-b-2 -mb-px",
+            activeTab === k
+              ? "border-primary text-text-1"
+              : "border-transparent text-text-3 hover:text-text-1"
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (activeTab !== "orders") {
+    return (
+      <AppLayout>
+        {TabBar}
+        {activeTab === "to_plan" ? <ToPlanTab /> : <ToConTab />}
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
+      {TabBar}
       {/* ═══ HEADER ═══ */}
       <div className="mb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
