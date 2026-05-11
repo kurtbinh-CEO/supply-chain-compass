@@ -84,19 +84,29 @@ type TabKey =
   | "distances"
   | "containers"
   | "aop"
-  | "quality";
+  | "quality"
+  | "cnskupricing"
+  | "skuuom"
+  | "nmskuconstraint"
+  | "substitutions"
+  | "stockpolicies";
 
 const tabDefs: { key: TabKey; label: string }[] = [
-  { key: "items",      label: "Mã hàng" },
-  { key: "suppliers",  label: "NM" },
-  { key: "pricelists", label: "Bảng giá" },
-  { key: "branches",   label: "CN" },
-  { key: "routes",     label: "Tuyến" },
-  { key: "carriers",   label: "Nhà xe" },
-  { key: "distances",  label: "Khoảng cách" },
-  { key: "containers", label: "Container" },
-  { key: "aop",        label: "Kế hoạch năm" },
-  { key: "quality",    label: "Chất lượng dữ liệu" },
+  { key: "items",            label: "Mã hàng" },
+  { key: "suppliers",        label: "NM" },
+  { key: "pricelists",       label: "Bảng giá" },
+  { key: "cnskupricing",     label: "Giá CN×SKU" },
+  { key: "skuuom",           label: "Quy đổi ĐV" },
+  { key: "nmskuconstraint",  label: "NM×SKU" },
+  { key: "substitutions",    label: "Thay thế SKU" },
+  { key: "stockpolicies",    label: "Chính sách tồn" },
+  { key: "branches",         label: "CN" },
+  { key: "routes",           label: "Tuyến" },
+  { key: "carriers",         label: "Nhà xe" },
+  { key: "distances",        label: "Khoảng cách" },
+  { key: "containers",       label: "Container" },
+  { key: "aop",              label: "Kế hoạch năm" },
+  { key: "quality",          label: "Chất lượng dữ liệu" },
 ];
 
 /* ────────────────────────────────────────────────────────────────────────── */
