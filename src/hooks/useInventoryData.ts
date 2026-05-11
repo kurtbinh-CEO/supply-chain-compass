@@ -17,9 +17,33 @@ const tenantMap: Record<string, string> = {
   "Mondelez": "MDLZ",
 };
 
+export interface InventoryBucketRow {
+  id: string;
+  warehouse_code: string;
+  cn_code: string;
+  sku: string;
+  unit: string;
+  quantity: number;        // Physical on-hand
+  reserved_hard: number;
+  quarantine: number;
+  soft_reserved: number;
+  available: number;       // Derived: quantity − reserved_hard − quarantine − soft_reserved
+  safety_stock: number;
+  updated_at: string;
+}
+
+export interface InventoryBucketTotals {
+  quantity: number;
+  reserved_hard: number;
+  quarantine: number;
+  soft_reserved: number;
+  available: number;
+}
+
 export function useInventoryData() {
   const { tenant } = useTenant();
   const [data, setData] = useState<NMSummary[]>([]);
+  const [bucketRows, setBucketRows] = useState<InventoryBucketRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,15 +59,39 @@ export function useInventoryData() {
     if (err) {
       setError(err.message);
       setData([]);
+      setBucketRows([]);
       setLoading(false);
       return;
     }
 
     if (!rows || rows.length === 0) {
       setData([]);
+      setBucketRows([]);
       setLoading(false);
       return;
     }
+
+    // Bucket rows for the new "Inventory buckets" view (5-column breakdown).
+    const buckets: InventoryBucketRow[] = rows.map((r) => {
+      const qty = Number(r.quantity ?? 0);
+      const rh = Number((r as { reserved_hard?: number }).reserved_hard ?? 0);
+      const qa = Number((r as { quarantine?: number }).quarantine ?? 0);
+      const sr = Number((r as { soft_reserved?: number }).soft_reserved ?? 0);
+      return {
+        id: r.id,
+        warehouse_code: r.warehouse_code,
+        cn_code: r.cn_code,
+        sku: r.sku,
+        unit: r.unit,
+        quantity: qty,
+        reserved_hard: rh,
+        quarantine: qa,
+        soft_reserved: sr,
+        available: qty - rh - qa - sr,
+        safety_stock: Number(r.safety_stock ?? 0),
+        updated_at: r.updated_at,
+      };
+    });
 
     const grouped: Record<string, typeof rows> = {};
     rows.forEach((r) => {
@@ -83,6 +131,7 @@ export function useInventoryData() {
     });
 
     setData(summaries);
+    setBucketRows(buckets);
     setLoading(false);
   }, [tenantCode]);
 
@@ -98,5 +147,16 @@ export function useInventoryData() {
     return () => { supabase.removeChannel(channel); };
   }, [tenantCode, fetchData]);
 
-  return { data, loading, error };
+  const bucketTotals: InventoryBucketTotals = bucketRows.reduce(
+    (acc, r) => ({
+      quantity: acc.quantity + r.quantity,
+      reserved_hard: acc.reserved_hard + r.reserved_hard,
+      quarantine: acc.quarantine + r.quarantine,
+      soft_reserved: acc.soft_reserved + r.soft_reserved,
+      available: acc.available + r.available,
+    }),
+    { quantity: 0, reserved_hard: 0, quarantine: 0, soft_reserved: 0, available: 0 },
+  );
+
+  return { data, bucketRows, bucketTotals, loading, error };
 }
