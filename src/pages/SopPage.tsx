@@ -149,6 +149,7 @@ export default function SopPage() {
 
   const [locked, setLocked] = useState(false);
   const [showPreLock, setShowPreLock] = useState(false);
+  const [showCountdown, setShowCountdown] = useState(false);
   const [lockBlockedDialog, setLockBlockedDialog] = useState<{ count: number } | null>(null);
 
   // Mock current S&OP day-of-cycle (Ngày 5/30 — Cân đối phase)
