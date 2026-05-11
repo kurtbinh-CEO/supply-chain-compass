@@ -9,6 +9,14 @@ import { toast } from "sonner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PriceListsTab } from "@/components/master/PriceListsTab";
 import { CarriersTab } from "@/components/master/CarriersTab";
+import {
+  CnSkuPricingTab,
+  SkuUnitConversionTab,
+  NmSkuConstraintTab,
+  SubstitutionListsTab,
+  StockPoliciesTab,
+} from "@/components/master/TemplateTabs";
+import { LeadTimesLanesView } from "@/components/master/LeadTimesLanesView";
 import { AopSummaryPanel } from "@/components/AopSummaryPanel";
 import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
 import {
