@@ -14,6 +14,8 @@ import { LogicLink } from "@/components/LogicLink";
 import { getExpiringPriceLists, getNmWithoutActivePriceList } from "@/data/unis-enterprise-dataset";
 import { WORKSPACE_CONTEXTS } from "@/lib/workspace-context-data";
 import { WorkspaceItemDetail } from "@/components/workspace/WorkspaceItemDetail";
+import { NextStepBanner } from "@/components/NextStepBanner";
+import { useNextStep } from "@/components/NextStepContext";
 
 type ItemType = "approve" | "exception" | "notify";
 type Priority = "danger" | "warning" | "info";
