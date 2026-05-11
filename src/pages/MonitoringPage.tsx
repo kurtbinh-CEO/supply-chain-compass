@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useFcAccuracy, useNmPerformance } from "@/hooks/useMonitoringData";
+import { useKpiData } from "@/hooks/useKpiData";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
