@@ -584,6 +584,7 @@ function SuppliersTab() {
           { key: "honoringPct", label: "Honoring", width: 100, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.honoringPct}%</span> },
           { key: "priceTier1", label: "Giá tier 1", width: 110, numeric: true, align: "right", sortable: true, priority: "low", render: (r) => <span className="tabular-nums text-text-2">{fmtVnd(r.priceTier1)}</span> },
           { key: "priceTier2", label: "Giá tier 2", width: 110, numeric: true, align: "right", sortable: true, priority: "low", render: (r) => <span className="tabular-nums text-text-2">{fmtVnd(r.priceTier2)}</span> },
+          { key: "bravoCode", label: "Mã Bravo", width: 110, render: (r) => <span className="font-mono text-table-sm text-text-3">{r.bravoCode || "—"}</span> },
           {
             key: "actions", label: "Thao tác", width: 100, align: "right", hideable: false,
             render: (r) => (
