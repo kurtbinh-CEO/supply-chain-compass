@@ -165,6 +165,7 @@ const ITEM_FIELDS: FormField[] = [
   { key: "category",  label: "Loại", type: "text", placeholder: "Granite / Ceramic", span: 1 },
   { key: "unit",      label: "Đơn vị", type: "text", placeholder: "m²", span: 1 },
   { key: "unitPrice", label: "Đơn giá (VND/m²)", type: "number", placeholder: "180000", span: 1 },
+  { key: "bravoCode", label: "Mã Bravo", type: "text", mono: true, placeholder: "BR-…", span: 1 },
 ];
 
 const ITEM_IMPORT_FIELDS: ImportField[] = [
