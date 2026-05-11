@@ -105,6 +105,59 @@ export type Database = {
           },
         ]
       }
+      cn_sku_pricing: {
+        Row: {
+          cn_code: string
+          created_at: string
+          currency: string
+          discount_max_pct: number | null
+          effective_from: string
+          effective_to: string | null
+          id: string
+          price_list: number
+          price_promo: number | null
+          sku_code: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          cn_code: string
+          created_at?: string
+          currency?: string
+          discount_max_pct?: number | null
+          effective_from: string
+          effective_to?: string | null
+          id?: string
+          price_list: number
+          price_promo?: number | null
+          sku_code: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          cn_code?: string
+          created_at?: string
+          currency?: string
+          discount_max_pct?: number | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          price_list?: number
+          price_promo?: number | null
+          sku_code?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cn_sku_pricing_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_master: {
         Row: {
           channel: string | null
@@ -705,6 +758,7 @@ export type Database = {
       }
       master_branches: {
         Row: {
+          bravo_code: string | null
           code: string
           created_at: string
           created_by: string | null
@@ -720,6 +774,7 @@ export type Database = {
           z_factor: number
         }
         Insert: {
+          bravo_code?: string | null
           code: string
           created_at?: string
           created_by?: string | null
@@ -735,6 +790,7 @@ export type Database = {
           z_factor?: number
         }
         Update: {
+          bravo_code?: string | null
           code?: string
           created_at?: string
           created_by?: string | null
@@ -843,6 +899,7 @@ export type Database = {
       }
       master_factories: {
         Row: {
+          bravo_code: string | null
           capacity_m2_month: number
           code: string
           created_at: string
@@ -862,6 +919,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bravo_code?: string | null
           capacity_m2_month?: number
           code: string
           created_at?: string
@@ -881,6 +939,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bravo_code?: string | null
           capacity_m2_month?: number
           code?: string
           created_at?: string
@@ -903,6 +962,7 @@ export type Database = {
       }
       master_items: {
         Row: {
+          bravo_code: string | null
           category: string | null
           code: string
           created_at: string
@@ -917,6 +977,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bravo_code?: string | null
           category?: string | null
           code: string
           created_at?: string
@@ -931,6 +992,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bravo_code?: string | null
           category?: string | null
           code?: string
           created_at?: string
@@ -990,6 +1052,68 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      nm_sku_constraint: {
+        Row: {
+          can_produce: boolean
+          created_at: string
+          id: string
+          moq_base_uom: number
+          moq_uom: string
+          nm_code: string
+          notes: string | null
+          price_tier1: number | null
+          price_tier1_min_qty: number | null
+          price_tier2: number | null
+          price_tier2_min_qty: number | null
+          production_lot_size: number | null
+          sku_code: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          can_produce?: boolean
+          created_at?: string
+          id?: string
+          moq_base_uom: number
+          moq_uom?: string
+          nm_code: string
+          notes?: string | null
+          price_tier1?: number | null
+          price_tier1_min_qty?: number | null
+          price_tier2?: number | null
+          price_tier2_min_qty?: number | null
+          production_lot_size?: number | null
+          sku_code: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          can_produce?: boolean
+          created_at?: string
+          id?: string
+          moq_base_uom?: number
+          moq_uom?: string
+          nm_code?: string
+          notes?: string | null
+          price_tier1?: number | null
+          price_tier1_min_qty?: number | null
+          price_tier2?: number | null
+          price_tier2_min_qty?: number | null
+          production_lot_size?: number | null
+          sku_code?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nm_sku_constraint_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_lifecycle_events: {
         Row: {
@@ -1393,6 +1517,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "safety_stock_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sku_unit_conversion: {
+        Row: {
+          boxes_per_pallet: number | null
+          conversion_factor: number
+          created_at: string
+          from_uom: string
+          id: string
+          pcs_per_box: number | null
+          sku_code: string
+          tenant_id: string
+          to_uom: string
+        }
+        Insert: {
+          boxes_per_pallet?: number | null
+          conversion_factor: number
+          created_at?: string
+          from_uom: string
+          id?: string
+          pcs_per_box?: number | null
+          sku_code: string
+          tenant_id: string
+          to_uom: string
+        }
+        Update: {
+          boxes_per_pallet?: number | null
+          conversion_factor?: number
+          created_at?: string
+          from_uom?: string
+          id?: string
+          pcs_per_box?: number | null
+          sku_code?: string
+          tenant_id?: string
+          to_uom?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sku_unit_conversion_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
