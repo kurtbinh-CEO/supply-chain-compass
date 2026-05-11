@@ -20,6 +20,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
 import { VersionHistoryButton } from "@/components/VersionHistoryButton";
+import { DemandVersionSelector } from "@/components/demand/DemandVersionSelector";
+import type { DemandVersion } from "@/hooks/useDemandVersions";
 
 const tabs = [
   { key: "total", label: "Demand tổng" },
