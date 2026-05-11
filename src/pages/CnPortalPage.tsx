@@ -624,10 +624,23 @@ export default function CnPortalPage() {
                 {auditEntries.length}
               </span>
             )}
+            {tab.key === "po_approval" && poSummary.pending.length > 0 && (
+              <span className={cn(
+                "ml-1.5 rounded-full text-[10px] font-bold px-1.5 py-0.5",
+                poSummary.overdue.length > 0 ? "bg-danger/15 text-danger" : "bg-warning/15 text-warning"
+              )}>
+                {poSummary.pending.length}
+              </span>
+            )}
             {activeTab === tab.key && <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t" />}
           </button>
         ))}
       </div>
+
+      {/* ═══ TAB: Duyệt PO ═══ */}
+      {activeTab === "po_approval" && (
+        <CnPoApprovalTab cnScope={poScopeCn} canApprove={canApprove || user.role === "CN_MANAGER"} />
+      )}
 
       {/* ═══ TAB 1: Điều chỉnh demand ═══ */}
       {activeTab === "adjust" && (
