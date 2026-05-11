@@ -2000,6 +2000,30 @@ export type Database = {
           },
         ]
       }
+      user_cn_scope: {
+        Row: {
+          cn_code: string
+          created_at: string
+          id: string
+          tenant_id: string | null
+          user_id: string
+        }
+        Insert: {
+          cn_code: string
+          created_at?: string
+          id?: string
+          tenant_id?: string | null
+          user_id: string
+        }
+        Update: {
+          cn_code?: string
+          created_at?: string
+          id?: string
+          tenant_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -2102,11 +2126,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      user_has_cn: {
+        Args: { _cn_code: string; _user_id: string }
         Returns: boolean
       }
       user_has_tenant: {
