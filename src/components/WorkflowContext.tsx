@@ -194,6 +194,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   }, [hydrated, tenantId, userId, workflowType, currentStepIndex, completedSteps]);
 
   const startWorkflow = useCallback((type: "daily" | "monthly") => {
+    planningPeriodRef.current = periodFor(type);
     setWorkflowType(type);
     setCurrentStepIndex(0);
     setCompleted(false);
