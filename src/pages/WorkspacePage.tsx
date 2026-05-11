@@ -14,6 +14,8 @@ import { LogicLink } from "@/components/LogicLink";
 import { getExpiringPriceLists, getNmWithoutActivePriceList } from "@/data/unis-enterprise-dataset";
 import { WORKSPACE_CONTEXTS } from "@/lib/workspace-context-data";
 import { WorkspaceItemDetail } from "@/components/workspace/WorkspaceItemDetail";
+import { NextStepBanner } from "@/components/NextStepBanner";
+import { useNextStep } from "@/components/NextStepContext";
 
 type ItemType = "approve" | "exception" | "notify";
 type Priority = "danger" | "warning" | "info";
@@ -298,6 +300,9 @@ export default function WorkspacePage() {
       </div>
 
       <div className="space-y-5">
+        {/* ─── Chuỗi bước tiếp theo: S&OP → DRP → Đơn hàng ─── */}
+        <NextStepChain />
+
         {/* ─── KPI HERO CARDS ─── */}
         <div className="grid grid-cols-4 gap-4" data-tour="workspace-kpi">
           {kpiCards.map((kpi) => (
@@ -508,5 +513,22 @@ export default function WorkspacePage() {
       </div>
       <ScreenFooter actionCount={12} />
     </AppLayout>
+  );
+}
+
+/** Chuỗi bước tiếp theo: hiển thị banner kế tiếp dựa vào step nào đã hoàn thành.
+ *  S&OP locked → CTA mở DRP. DRP viewed → CTA mở Đơn hàng. */
+function NextStepChain() {
+  const { isDone } = useNextStep();
+  const sopDone = isDone("sop.locked");
+  const drpDone = isDone("drp.viewed");
+  const ordersDone = isDone("orders.confirmed");
+  if (!sopDone && !drpDone && !ordersDone) return null;
+  return (
+    <div className="space-y-2">
+      {sopDone && !drpDone && <NextStepBanner step="sop.locked" />}
+      {drpDone && !ordersDone && <NextStepBanner step="drp.viewed" />}
+      {ordersDone && <NextStepBanner step="orders.confirmed" />}
+    </div>
   );
 }

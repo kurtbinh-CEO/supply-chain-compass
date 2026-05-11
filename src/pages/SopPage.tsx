@@ -25,6 +25,8 @@ import { PlanningPeriodSelector } from "@/components/PlanningPeriodSelector";
 import { useCellPresence } from "@/components/CellPresence";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PreLockDialog } from "@/components/BatchLockBanner";
+import { LockCountdownDialog } from "@/components/sop/LockCountdownDialog";
+import { supabase } from "@/integrations/supabase/client";
 import { useSopConsensus } from "@/hooks/useSopConsensus";
 import { BRANCHES, DEMAND_FC, SKU_BASES, SKU_VARIANTS, AOP_PLAN, getAopMonth } from "@/data/unis-enterprise-dataset";
 import { ChangeLogPanel } from "@/components/ChangeLogPanel";
@@ -147,6 +149,7 @@ export default function SopPage() {
 
   const [locked, setLocked] = useState(false);
   const [showPreLock, setShowPreLock] = useState(false);
+  const [showCountdown, setShowCountdown] = useState(false);
   const [lockBlockedDialog, setLockBlockedDialog] = useState<{ count: number } | null>(null);
 
   // Mock current S&OP day-of-cycle (Ngày 5/30 — Cân đối phase)
@@ -216,13 +219,29 @@ export default function SopPage() {
   }, [consensusData, varianceExplanations]);
 
   // Trigger chain khi khóa (đã pass tất cả check)
-  const lockAndMark = useCallback(() => {
+  const lockAndMark = useCallback(async () => {
     setLocked(true);
     markDone("sop.locked");
     // 1. Cập nhật state machine kỳ kế hoạch
     markStepCompleted("sop");
     // 2. Cập nhật badge sidebar / Workspace
     setSopLock({ locked: true, lockedAt: Date.now() });
+    // 2b. Persist a LOCKED demand_versions row → DRP DQ Gate G2 sẽ PASS.
+    try {
+      const { data: tenants } = await supabase
+        .from("tenants").select("id").eq("tenant_code", "UNIS").maybeSingle();
+      if (tenants?.id) {
+        await supabase.from("demand_versions").insert({
+          tenant_id: tenants.id,
+          name: `S&OP ${planCycle.label}`,
+          version_type: "SOP",
+          status: "LOCKED",
+          locked_at: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      console.error("demand_versions insert failed:", err);
+    }
     // 3. Notification cho Workspace inbox
     addNotification({
       id: `NTF-SOP-LOCK-${Date.now()}`,
@@ -260,18 +279,15 @@ export default function SopPage() {
     });
   }, [markDone, markStepCompleted, setSopLock, addNotification, planCycle.label, consensusData.length, totalV3]);
 
-  /** Gate trước khi gọi lockAndMark — chặn nếu còn variance chưa giải trình. */
+  /** Gate trước khi gọi lockAndMark — chặn nếu còn variance chưa giải trình.
+   *  Sau khi qua gate: mở countdown 5 phút (grace) thay vì khóa ngay. */
   const attemptLock = useCallback(() => {
     if (unresolvedVariance > 0) {
       setLockBlockedDialog({ count: unresolvedVariance });
       return;
     }
-    if (cellPresence.onlineUsers.length > 1) {
-      setShowPreLock(true);
-    } else {
-      lockAndMark();
-    }
-  }, [unresolvedVariance, cellPresence.onlineUsers.length, lockAndMark]);
+    setShowCountdown(true);
+  }, [unresolvedVariance]);
 
   // CN cần xem = số CN có |Δ vs AOP| > 10%
   const cnNeedReview = useMemo(() => {
@@ -491,6 +507,20 @@ export default function SopPage() {
           />
         </>
       )}
+
+      {/* 5-phút grace countdown trước khi khóa cứng */}
+      <LockCountdownDialog
+        open={showCountdown}
+        durationSec={300}
+        otherEditors={cellPresence.onlineUsers
+          .filter((u: any) => u.id !== "u-me")
+          .map((u: any) => ({ name: u.name, role: u.role }))}
+        onCancel={() => setShowCountdown(false)}
+        onComplete={() => {
+          setShowCountdown(false);
+          lockAndMark();
+        }}
+      />
 
       {/* Concurrency: Pre-Lock Dialog */}
       {showPreLock && (
