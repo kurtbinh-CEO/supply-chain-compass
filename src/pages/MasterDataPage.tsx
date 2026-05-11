@@ -630,7 +630,8 @@ function SuppliersTab() {
             honoring_pct: Number(v.honoringPct || 80),
             price_tier1: Number(v.priceTier1 || 0),
             price_tier2: Number(v.priceTier2 || 0),
-          });
+            bravo_code: v.bravoCode || null,
+          } as never);
           toast.success(`Đã tạo NM ${v.name}`);
           setAdding(false);
         }}
@@ -646,6 +647,7 @@ function SuppliersTab() {
           moqM2: editing.moqM2, capacityM2Month: editing.capacityM2Month,
           honoringPct: editing.honoringPct,
           priceTier1: editing.priceTier1, priceTier2: editing.priceTier2,
+          bravoCode: editing.bravoCode,
         } : undefined}
         onClose={() => setEditing(null)}
         onSave={async (v) => {
@@ -658,11 +660,12 @@ function SuppliersTab() {
             honoring_pct: Number(v.honoringPct || 80),
             price_tier1: Number(v.priceTier1 || 0),
             price_tier2: Number(v.priceTier2 || 0),
+            bravo_code: v.bravoCode || null,
           };
           if (editing?.source === "cloud" && editing.id) {
-            await updateFactory.mutateAsync({ id: editing.id, ...payload });
+            await updateFactory.mutateAsync({ id: editing.id, ...payload } as never);
           } else {
-            await createFactory.mutateAsync({ code: v.code, ...payload });
+            await createFactory.mutateAsync({ code: v.code, ...payload } as never);
           }
           toast.success(`Đã cập nhật NM ${v.name}`);
           setEditing(null);
