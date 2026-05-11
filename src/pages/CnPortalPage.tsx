@@ -498,8 +498,12 @@ export default function CnPortalPage() {
   // Edited count for mobile submit
   const editedCount = rows.filter((r) => r.adjust !== null && r.adjust !== r.forecast).length;
 
+  const poScopeCn = user.role === "CN_MANAGER" ? user.cn_id! : activeCn;
+  const { summary: poSummary } = usePoApprovals(poScopeCn);
+
   const tabs = [
     { key: "adjust", label: "Điều chỉnh demand" },
+    { key: "po_approval", label: "Duyệt PO" },
     { key: "inv", label: "Tồn kho CN" },
     { key: "chat", label: "Trao đổi" },
     { key: "history", label: "Lịch sử" },
