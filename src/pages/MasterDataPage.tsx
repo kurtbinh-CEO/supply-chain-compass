@@ -826,6 +826,7 @@ function BranchesTab() {
           { key: "zFactor", label: "z-factor", width: 90, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.zFactor.toFixed(2)}</span> },
           { key: "sl", label: "Mức phục vụ", width: 110, accessor: (r) => r.zFactor, render: (r) => <span className="text-text-2">{serviceLevel(r.zFactor)}</span> },
           { key: "manager", label: "Quản lý", width: 140, render: (r) => <span className="text-text-2">{r.manager}</span> },
+          { key: "bravoCode", label: "Mã Bravo", width: 110, render: (r) => <span className="font-mono text-table-sm text-text-3">{r.bravoCode || "—"}</span> },
           {
             key: "actions", label: "Thao tác", width: 100, align: "right", hideable: false,
             render: (r) => (
