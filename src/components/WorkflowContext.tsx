@@ -179,6 +179,20 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
 
   const isBarVisible = workflowType !== null;
 
+  // Persist on every workflow state change (after hydration)
+  useEffect(() => {
+    if (!hydrated || !tenantId || !userId || !workflowType) return;
+    const period = planningPeriodRef.current ?? periodFor(workflowType);
+    planningPeriodRef.current = period;
+    void supabase.from("workflow_sessions").upsert({
+      tenant_id: tenantId,
+      user_id: userId,
+      planning_period: period,
+      current_step: String(currentStepIndex),
+      steps_completed: completedSteps.map(String),
+    }, { onConflict: "tenant_id,user_id,planning_period" });
+  }, [hydrated, tenantId, userId, workflowType, currentStepIndex, completedSteps]);
+
   const startWorkflow = useCallback((type: "daily" | "monthly") => {
     setWorkflowType(type);
     setCurrentStepIndex(0);
