@@ -3,10 +3,23 @@ import { cn } from "@/lib/utils";
 import { StatusChip } from "@/components/StatusChip";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { Pencil, Shield, History } from "lucide-react";
+import { Pencil, Shield, History, Calculator, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { TermTooltip } from "@/components/TermTooltip";
 import { SmartTable, type SmartTableColumn } from "@/components/SmartTable";
+import { supabase } from "@/integrations/supabase/client";
+import { useUserTenantId } from "@/hooks/useUserTenantId";
+
+interface RecomputeRow {
+  cn_code: string;
+  sku_code: string;
+  old_ss: number;
+  new_ss: number;
+  delta: number;
+  delta_pct: number;
+  needs_confirm: boolean;
+  lcnb_applied?: boolean;
+}
 
 type SsStatus = "Tối ưu" | "Thiếu hàng" | "Thủ công";
 type SsTargetRow = {
@@ -63,6 +76,10 @@ export function SafetyStockTab() {
   const [simParam, setSimParam] = useState(simParams[0]);
   const [simValue, setSimValue] = useState(98);
   const [ssAlertStatus, setSsAlertStatus] = useState<"pending" | "confirmed" | "kept">("pending");
+  const { data: tenantId } = useUserTenantId();
+  const [recomputing, setRecomputing] = useState(false);
+  const [recomputeRows, setRecomputeRows] = useState<RecomputeRow[]>([]);
+  const [lcnbApplied, setLcnbApplied] = useState(false);
 
   const beforeSS = 12402;
   const afterSS = Math.round(beforeSS * (simValue / 95));
@@ -82,6 +99,45 @@ export function SafetyStockTab() {
     setSsAlertStatus("kept");
     toast.info("Giữ SS cũ", { description: `${ssAlert.sku}: vẫn ${ssAlert.oldSs.toLocaleString()} m². Đã ghi log.` });
   };
+
+  const handleRecompute = async () => {
+    if (!tenantId) {
+      toast.error("Chưa xác định được tenant");
+      return;
+    }
+    setRecomputing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("compute-ss", {
+        body: { tenant_id: tenantId, z_factor: 1.65 },
+      });
+      if (error) throw error;
+      const rows = (data?.rows ?? []) as RecomputeRow[];
+      setRecomputeRows(rows);
+      setLcnbApplied(Boolean(data?.lcnb_enabled));
+      const auto = rows.filter((r) => !r.needs_confirm).length;
+      const confirm = rows.filter((r) => r.needs_confirm).length;
+      toast.success(`Tính lại SS xong (${rows.length} CN×SKU)`, {
+        description: `${auto} auto-apply · ${confirm} cần xác nhận · LCNB ${data?.lcnb_enabled ? "ON (-25%)" : "OFF"}`,
+      });
+    } catch (e) {
+      toast.error("Tính SS thất bại", { description: (e as Error).message });
+    } finally {
+      setRecomputing(false);
+    }
+  };
+
+  const recomputeColumns: SmartTableColumn<RecomputeRow>[] = [
+    { key: "cn_code", label: "CN", width: 110, render: (r) => <span className="font-mono text-table-sm">{r.cn_code}</span> },
+    { key: "sku_code", label: "SKU", width: 160, render: (r) => <span className="text-table-sm">{r.sku_code}</span> },
+    { key: "old_ss", label: "SS cũ", numeric: true, align: "right", width: 100, render: (r) => <span className="tabular-nums text-text-2">{r.old_ss.toLocaleString()}</span> },
+    { key: "new_ss", label: "SS mới", numeric: true, align: "right", width: 100, render: (r) => <span className="tabular-nums font-semibold">{r.new_ss.toLocaleString()}</span> },
+    { key: "delta", label: "Δ", numeric: true, align: "right", width: 90, render: (r) => <span className={cn("tabular-nums", r.delta < 0 ? "text-success" : r.delta > 0 ? "text-danger" : "text-text-3")}>{r.delta > 0 ? "+" : ""}{r.delta.toLocaleString()}</span> },
+    { key: "delta_pct", label: "Δ%", numeric: true, align: "right", width: 90, render: (r) => <span className={cn("tabular-nums font-medium", Math.abs(r.delta_pct) >= 10 ? "text-warning" : "text-text-2")}>{r.delta_pct > 0 ? "+" : ""}{r.delta_pct.toFixed(1)}%</span> },
+    { key: "status", label: "Hành động", width: 150, render: (r) => r.needs_confirm
+        ? <StatusChip status="warning" label="Cần xác nhận" />
+        : <StatusChip status="success" label="Auto-apply" /> },
+  ];
+
 
   // ============================ SmartTable cấu hình ============================
   const ssColumns: SmartTableColumn<SsTargetRow>[] = [
@@ -174,6 +230,38 @@ export function SafetyStockTab() {
 
   return (
     <div className="space-y-6">
+      {/* Tính lại SS từ DB (Edge Function compute-ss) */}
+      <div className="rounded-card border border-surface-3 bg-surface-1 p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="font-display font-semibold text-text-1 flex items-center gap-2">
+              <Calculator className="h-4 w-4 text-info" />
+              Safety Stock 2-Tier UNIS (live)
+            </h3>
+            <p className="text-caption text-text-3 mt-0.5">
+              SS = z·√(LT·σ²<sub>fc</sub> + ADU²·σ²<sub>LT</sub>) · floor 0.6·ADU·LT · LCNB ×0.75 nếu bật
+              {lcnbApplied && <span className="ml-2 inline-flex items-center rounded-full bg-info-bg text-info px-2 py-0.5 text-[10px] font-bold">LCNB ON · −25%</span>}
+            </p>
+          </div>
+          <Button size="sm" onClick={handleRecompute} disabled={recomputing} className="h-8 gap-1.5">
+            {recomputing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Calculator className="h-3.5 w-3.5" />}
+            Tính lại SS
+          </Button>
+        </div>
+        {recomputeRows.length > 0 && (
+          <SmartTable<RecomputeRow>
+            screenId="ss-recompute-result"
+            title="Kết quả tính lại"
+            exportFilename="ss-recompute"
+            columns={recomputeColumns}
+            data={recomputeRows}
+            defaultDensity="compact"
+            getRowId={(r) => `${r.cn_code}-${r.sku_code}`}
+            rowSeverity={(r) => r.needs_confirm ? "watch" : "ok"}
+          />
+        )}
+      </div>
+
       {/* Card cảnh báo SS — đầu tab */}
       {ssAlertStatus === "pending" && (
         <div className={cn(
