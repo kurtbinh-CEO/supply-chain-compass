@@ -1151,6 +1151,9 @@ export default function InventoryPage() {
         )}
       </div>
 
+      {/* Inventory buckets — DB live (Physical / Reserved / Quarantine / Soft / Available) */}
+      <InventoryBucketsCard />
+
       {/* Tab content */}
       <div className="mb-6">
         {tab === "nm" ? (
