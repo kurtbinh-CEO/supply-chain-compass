@@ -129,6 +129,9 @@ export default function DemandPage() {
   const [actualOpen, setActualOpen] = useState(false);
   const [aopOpen, setAopOpen] = useState(false);
   const [aopPlan, setAopPlan] = useState<AopPlan>(AOP_PLAN);
+  const [activeVersion, setActiveVersion] = useState<DemandVersion | null>(null);
+  const versionLocked = activeVersion?.status !== "DRAFT";
+  const editDisabled = planLocked || versionLocked;
 
   const handleSourceSelect = (key: string) => {
     setImporterOpen(false);
