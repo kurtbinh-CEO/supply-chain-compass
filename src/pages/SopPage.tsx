@@ -279,18 +279,15 @@ export default function SopPage() {
     });
   }, [markDone, markStepCompleted, setSopLock, addNotification, planCycle.label, consensusData.length, totalV3]);
 
-  /** Gate trước khi gọi lockAndMark — chặn nếu còn variance chưa giải trình. */
+  /** Gate trước khi gọi lockAndMark — chặn nếu còn variance chưa giải trình.
+   *  Sau khi qua gate: mở countdown 5 phút (grace) thay vì khóa ngay. */
   const attemptLock = useCallback(() => {
     if (unresolvedVariance > 0) {
       setLockBlockedDialog({ count: unresolvedVariance });
       return;
     }
-    if (cellPresence.onlineUsers.length > 1) {
-      setShowPreLock(true);
-    } else {
-      lockAndMark();
-    }
-  }, [unresolvedVariance, cellPresence.onlineUsers.length, lockAndMark]);
+    setShowCountdown(true);
+  }, [unresolvedVariance]);
 
   // CN cần xem = số CN có |Δ vs AOP| > 10%
   const cnNeedReview = useMemo(() => {
