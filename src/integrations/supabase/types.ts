@@ -721,8 +721,11 @@ export type Database = {
           created_at: string
           id: string
           quantity: number
+          quarantine: number
+          reserved_hard: number
           safety_stock: number
           sku: string
+          soft_reserved: number
           tenant: string
           tenant_id: string | null
           unit: string
@@ -736,8 +739,11 @@ export type Database = {
           created_at?: string
           id?: string
           quantity?: number
+          quarantine?: number
+          reserved_hard?: number
           safety_stock?: number
           sku: string
+          soft_reserved?: number
           tenant?: string
           tenant_id?: string | null
           unit?: string
@@ -751,8 +757,11 @@ export type Database = {
           created_at?: string
           id?: string
           quantity?: number
+          quarantine?: number
+          reserved_hard?: number
           safety_stock?: number
           sku?: string
+          soft_reserved?: number
           tenant?: string
           tenant_id?: string | null
           unit?: string
