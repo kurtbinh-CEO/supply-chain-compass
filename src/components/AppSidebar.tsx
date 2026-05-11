@@ -20,6 +20,7 @@ import { useI18n } from "@/components/i18n/I18nContext";
 import { useOnboarding } from "@/components/onboarding/OnboardingContext";
 import { getTourForRoute } from "@/components/onboarding/tours";
 import smartlogIcon from "@/assets/smartlog-icon.png";
+import { usePoApprovalCount } from "@/hooks/usePoApprovals";
 
 /* M1 — Sidebar restructure
  *  - Daily ops: 4 items split bởi 3 phase labels (Chuẩn bị / Kết quả / Thực thi)
@@ -209,6 +210,9 @@ const BADGE_TICK_MS = 30_000;
 
 function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
   const { exceptions, approvals, sopLock, hubCommit, badgeRevision } = useWorkspace();
+  const { user } = useRbac();
+  const cnScope = user.role === "CN_MANAGER" ? user.cn_id! : null;
+  const poApprovalPending = usePoApprovalCount(cnScope);
 
   // ── Tick định kỳ: tăng nonce mỗi BADGE_TICK_MS để hook re-render
   //    ngay cả khi state context không đổi (vd: PO aging warning theo thời gian). ──
@@ -270,7 +274,9 @@ function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
     executive_risk:    { text: "3 rủi ro", tone: "warning" },
 
     // ── Partners ──
-    cn_portal_pending: { text: "4", tone: "warning" },
+    cn_portal_pending: poApprovalPending > 0
+      ? { text: String(poApprovalPending), tone: poApprovalPending > 5 ? "danger" : "warning" }
+      : { text: "✓", tone: "success" },
   };
 }
 
