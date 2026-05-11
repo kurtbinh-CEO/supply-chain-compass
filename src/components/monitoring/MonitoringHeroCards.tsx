@@ -69,7 +69,26 @@ const FC_PER_SKU = [
 ];
 
 /* ─── Component ───────────────────────────────────────────────────────── */
-export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: string) => void }) {
+import type { KpiData, KpiMetric } from "@/hooks/useKpiData";
+
+function fmtPct(v: number | null, digits = 1) {
+  if (v == null) return "—";
+  return v.toFixed(digits);
+}
+function fmtTrend(m: KpiMetric, unit: "pct" | "qty", inverse = false): KpiTrend | undefined {
+  if (m.delta == null || m.value == null) return undefined;
+  const sign = m.delta > 0 ? "+" : "";
+  const value = unit === "pct" ? `${sign}${(m.delta * (m.value <= 1 ? 100 : 1)).toFixed(1)}pp` : `${sign}${Math.round(m.delta)}`;
+  return { value, direction: m.direction, isGood: inverse ? !m.isGood : m.isGood, vs: "kỳ trước" };
+}
+
+export function MonitoringHeroCards({
+  onTabChange,
+  kpis,
+}: {
+  onTabChange?: (key: string) => void;
+  kpis?: KpiData;
+}) {
   const [open, setOpen] = useState<CardKey | null>(null);
   const navigate = useNavigate();
   const { enabled: farmer } = useFarmerMode();
@@ -78,6 +97,13 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
   const goto = (path: string) => { close(); navigate(path); };
   const goTab = (key: string) => { close(); onTabChange?.(key); };
 
+  // Resolve from real KPI data (fallback to mock when unavailable)
+  const fillRatePct = kpis?.fillRate.value != null ? kpis.fillRate.value * 100 : 95.5;
+  const lostSales = kpis?.lostSales.value != null ? Math.round(kpis.lostSales.value) : 0;
+  const ssBreaches = kpis?.ssBreaches.value ?? 0;
+  const fcMape = kpis?.fcMape.value ?? 18;
+  const nmReliab = kpis?.nmReliability.value ?? 80;
+
   return (
     <>
       <div className={cn(
@@ -85,45 +111,47 @@ export function MonitoringHeroCards({ onTabChange }: { onTabChange?: (key: strin
         farmer ? "gap-4 sm:gap-2.5" : "gap-3 sm:gap-2.5",
       )}>
         <HeroCard
-          onClick={() => setOpen("nm-risk")}
-          icon={<ShieldAlert className="h-4 w-4" />}
-          tone="danger"
-          label="Rủi ro NM"
-          valueNum={5} valueUnit="qty" qtyLabel="nhà máy"
-          sub="1 rủi ro cao"
-        />
-        <HeroCard
           onClick={() => setOpen("roi")}
           icon={<Repeat className="h-4 w-4" />}
-          tone="primary"
-          label="ROI Bánh đà"
-          valueNum={340_000_000} valueUnit="vnd"
-          sub="Tiết kiệm tháng này"
+          tone={fillRatePct >= 95 ? "primary" : "warning"}
+          label="Fill Rate"
+          value={fmtPct(fillRatePct, 1)} unit="%"
+          sub={kpis?.planRun ? `Run: ${kpis.planRun.run_name}` : "Chưa có DRP run"}
+          trend={kpis ? fmtTrend(kpis.fillRate, "pct") : undefined}
+        />
+        <HeroCard
+          onClick={() => setOpen("ss-alert")}
+          icon={<ShieldAlert className="h-4 w-4" />}
+          tone={lostSales > 0 ? "danger" : "primary"}
+          label="Lost Sales"
+          valueNum={lostSales} valueUnit="qty" qtyLabel="m²"
+          sub={lostSales > 0 ? "Cần xem GAP" : "Không thiếu hàng"}
+          trend={kpis ? fmtTrend(kpis.lostSales, "qty") : undefined}
         />
         <HeroCard
           onClick={() => setOpen("ss-alert")}
           icon={<ShieldCheck className="h-4 w-4" />}
-          tone="warning"
-          label="Tồn kho an toàn"
-          valueNum={2} valueUnit="qty" qtyLabel="thay đổi"
-          sub="Vốn +128 triệu ₫"
-        />
-        <HeroCard
-          onClick={() => setOpen("bpo-pace")}
-          icon={<Truck className="h-4 w-4" />}
-          tone="warning"
-          label="Tiến độ đặt hàng"
-          valueNum={72} valueUnit="pct"
-          sub="Pace chậm nhẹ"
+          tone={ssBreaches > 0 ? "warning" : "primary"}
+          label="SS Breaches"
+          valueNum={Number(ssBreaches)} valueUnit="qty" qtyLabel="SKU×CN"
+          sub={ssBreaches > 0 ? "Dưới ngưỡng tồn an toàn" : "Đủ tồn an toàn"}
         />
         <HeroCard
           onClick={() => setOpen("fc-accuracy")}
           icon={<LineIcon className="h-4 w-4" />}
-          tone="info"
-          label="Độ chính xác dự báo"
-          valueNum={18} valueUnit="pct"
-          sub="MAPE — tăng 3 tuần"
-          trend={{ value: "+3", direction: "up", isGood: false, vs: "tuần trước" }}
+          tone={fcMape > 20 ? "danger" : fcMape > 15 ? "warning" : "info"}
+          label="FC MAPE"
+          value={fmtPct(fcMape, 1)} unit="%"
+          sub="Độ chính xác dự báo"
+          trend={kpis ? fmtTrend(kpis.fcMape, "pct", true) : undefined}
+        />
+        <HeroCard
+          onClick={() => setOpen("nm-risk")}
+          icon={<Truck className="h-4 w-4" />}
+          tone={nmReliab >= 85 ? "primary" : nmReliab >= 70 ? "warning" : "danger"}
+          label="NM Reliability"
+          value={fmtPct(nmReliab, 0)} unit="%"
+          sub="Honoring trung bình"
         />
       </div>
 
