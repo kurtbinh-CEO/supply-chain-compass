@@ -14,6 +14,7 @@ import { ClickableNumber } from "@/components/ClickableNumber";
 import { TermTooltip } from "@/components/TermTooltip";
 import { BatchLockBanner, useBatchLock } from "@/components/BatchLockBanner";
 import { DrpReleaseBar, type DrpBatch, type DrpBatchStatus } from "@/components/drp/DrpReleaseBar";
+import { DrpEnginePanel } from "@/components/drp/DrpEnginePanel";
 import { useRbac } from "@/components/RbacContext";
 import { usePlanningPeriod } from "@/components/PlanningPeriodContext";
 import { supabase } from "@/integrations/supabase/client";
