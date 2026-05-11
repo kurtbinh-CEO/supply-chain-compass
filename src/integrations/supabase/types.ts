@@ -756,6 +756,59 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_times: {
+        Row: {
+          created_at: string
+          dest_code: string
+          effective_from: string | null
+          effective_to: string | null
+          id: string
+          leadtime_days: number
+          mode: string
+          priority: number
+          source_code: string
+          tenant_id: string
+          transport_cost: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dest_code: string
+          effective_from?: string | null
+          effective_to?: string | null
+          id?: string
+          leadtime_days: number
+          mode?: string
+          priority?: number
+          source_code: string
+          tenant_id: string
+          transport_cost?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dest_code?: string
+          effective_from?: string | null
+          effective_to?: string | null
+          id?: string
+          leadtime_days?: number
+          mode?: string
+          priority?: number
+          source_code?: string
+          tenant_id?: string
+          transport_cost?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_times_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       master_branches: {
         Row: {
           bravo_code: string | null
@@ -1668,6 +1721,91 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "sop_versions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_policies: {
+        Row: {
+          created_at: string
+          id: string
+          location_code: string
+          sku_code: string
+          stock_days_max: number
+          stock_days_min: number
+          stock_days_target: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_code: string
+          sku_code: string
+          stock_days_max: number
+          stock_days_min: number
+          stock_days_target: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_code?: string
+          sku_code?: string
+          stock_days_max?: number
+          stock_days_min?: number
+          stock_days_target?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_policies_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      substitution_lists: {
+        Row: {
+          cn_code: string | null
+          created_at: string
+          id: string
+          max_depth: number
+          original_sku: string
+          priority: number
+          substitute_sku: string
+          tenant_id: string
+        }
+        Insert: {
+          cn_code?: string | null
+          created_at?: string
+          id?: string
+          max_depth?: number
+          original_sku: string
+          priority: number
+          substitute_sku: string
+          tenant_id: string
+        }
+        Update: {
+          cn_code?: string | null
+          created_at?: string
+          id?: string
+          max_depth?: number
+          original_sku?: string
+          priority?: number
+          substitute_sku?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "substitution_lists_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
