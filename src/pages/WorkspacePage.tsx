@@ -300,6 +300,9 @@ export default function WorkspacePage() {
       </div>
 
       <div className="space-y-5">
+        {/* ─── Chuỗi bước tiếp theo: S&OP → DRP → Đơn hàng ─── */}
+        <NextStepChain />
+
         {/* ─── KPI HERO CARDS ─── */}
         <div className="grid grid-cols-4 gap-4" data-tour="workspace-kpi">
           {kpiCards.map((kpi) => (
