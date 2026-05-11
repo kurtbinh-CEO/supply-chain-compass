@@ -219,13 +219,29 @@ export default function SopPage() {
   }, [consensusData, varianceExplanations]);
 
   // Trigger chain khi khóa (đã pass tất cả check)
-  const lockAndMark = useCallback(() => {
+  const lockAndMark = useCallback(async () => {
     setLocked(true);
     markDone("sop.locked");
     // 1. Cập nhật state machine kỳ kế hoạch
     markStepCompleted("sop");
     // 2. Cập nhật badge sidebar / Workspace
     setSopLock({ locked: true, lockedAt: Date.now() });
+    // 2b. Persist a LOCKED demand_versions row → DRP DQ Gate G2 sẽ PASS.
+    try {
+      const { data: tenants } = await supabase
+        .from("tenants").select("id").eq("code", "UNIS").maybeSingle();
+      if (tenants?.id) {
+        await supabase.from("demand_versions").insert({
+          tenant_id: tenants.id,
+          name: `S&OP ${planCycle.label}`,
+          version_type: "SOP",
+          status: "LOCKED",
+          locked_at: new Date().toISOString(),
+        });
+      }
+    } catch (err) {
+      console.error("demand_versions insert failed:", err);
+    }
     // 3. Notification cho Workspace inbox
     addNotification({
       id: `NTF-SOP-LOCK-${Date.now()}`,
