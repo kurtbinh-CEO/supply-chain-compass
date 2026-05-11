@@ -870,7 +870,8 @@ function BranchesTab() {
             manager: v.manager || null,
             lat: Number(v.lat || 0), lng: Number(v.lng || 0),
             z_factor: Number(v.zFactor || 1.65),
-          });
+            bravo_code: v.bravoCode || null,
+          } as never);
           toast.success(`Đã tạo CN ${v.name}`);
           setAdding(false);
         }}
@@ -883,6 +884,7 @@ function BranchesTab() {
         initialValues={editing ? {
           code: editing.code, name: editing.name, region: editing.region,
           manager: editing.manager, lat: editing.lat, lng: editing.lng, zFactor: editing.zFactor,
+          bravoCode: editing.bravoCode,
         } : undefined}
         onClose={() => setEditing(null)}
         onSave={async (v) => {
@@ -891,11 +893,12 @@ function BranchesTab() {
             manager: v.manager || null,
             lat: Number(v.lat || 0), lng: Number(v.lng || 0),
             z_factor: Number(v.zFactor || 1.65),
+            bravo_code: v.bravoCode || null,
           };
           if (editing?.source === "cloud" && editing.id) {
-            await updateBranch.mutateAsync({ id: editing.id, ...payload });
+            await updateBranch.mutateAsync({ id: editing.id, ...payload } as never);
           } else {
-            await createBranch.mutateAsync({ code: v.code, ...payload });
+            await createBranch.mutateAsync({ code: v.code, ...payload } as never);
           }
           toast.success(`Đã cập nhật CN ${v.name}`);
           setEditing(null);
