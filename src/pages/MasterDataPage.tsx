@@ -708,7 +708,8 @@ const BRANCH_FIELDS: FormField[] = [
   { key: "manager", label: "Quản lý", type: "text", placeholder: "Nguyễn Văn A", span: 1 },
   { key: "lat",     label: "Lat", type: "number", placeholder: "10.7769", span: 1, hint: "Vĩ độ" },
   { key: "lng",     label: "Lng", type: "number", placeholder: "106.7009", span: 1, hint: "Kinh độ" },
-  { key: "zFactor", label: "z-factor", type: "number", placeholder: "1.65", span: 2, hint: "1.65 ≈ 95% mức phục vụ" },
+  { key: "zFactor", label: "z-factor", type: "number", placeholder: "1.65", span: 1, hint: "1.65 ≈ 95% mức phục vụ" },
+  { key: "bravoCode", label: "Mã Bravo", type: "text", mono: true, placeholder: "BR-…", span: 1 },
 ];
 
 const BRANCH_IMPORT_FIELDS: ImportField[] = [
