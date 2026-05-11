@@ -187,6 +187,7 @@ function ValueEditor({
  * Page
  * ────────────────────────────────────────────────────────────────────── */
 export default function ConfigPage() {
+  const { overrides, upsert, remove, loading: regLoading } = useConfigRegistry();
   const [rows, setRows] = useState<RuntimeRow[]>(() =>
     EXT_CONFIG_KEYS.map((k) => ({ ...k, value: String(k.defaultValue) })),
   );
@@ -200,6 +201,19 @@ export default function ConfigPage() {
     return EXT_TABS.find((t) => t.v === p)?.v ?? "planning";
   });
   const fileRef = useRef<HTMLInputElement>(null);
+
+  /* Hydrate rows từ DB overrides (giữ fallback default cho key không có) */
+  useEffect(() => {
+    if (regLoading) return;
+    setRows((prev) =>
+      prev.map((r) => (
+        Object.prototype.hasOwnProperty.call(overrides, r.key)
+          ? { ...r, value: overrides[r.key] }
+          : r
+      )),
+    );
+  }, [overrides, regLoading]);
+
 
   /* Dirty tracking */
   const dirtyKeys = useMemo(() => {
