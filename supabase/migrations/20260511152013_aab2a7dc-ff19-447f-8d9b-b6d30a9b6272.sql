@@ -1,0 +1,1 @@
+UPDATE public.inventory SET reserved_hard = reserved_hard + 100 WHERE tenant='UNIS' AND sku='SKU-001 60x60';
