@@ -1257,6 +1257,8 @@ export default function DrpPage() {
         }}
       />
 
+      <DrpEnginePanel />
+
       {/* ── HEADER ── (step-aware title) */}
       <div className="flex items-center justify-between mb-2">
         <div>
