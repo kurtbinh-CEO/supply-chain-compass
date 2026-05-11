@@ -739,12 +739,14 @@ function BranchesTab() {
       .map((b) => ({
         id: null, code: b.code, name: b.name, region: b.region,
         lat: b.lat, lng: b.lng, zFactor: b.zFactor, manager: b.manager,
+        bravoCode: "",
         source: "hardcode" as const,
       }));
     const fromCloud: MergedBranch[] = cloudBranches.map((c) => ({
       id: c.id, code: c.code, name: c.name, region: c.region,
       lat: Number(c.lat), lng: Number(c.lng), zFactor: Number(c.z_factor),
       manager: c.manager ?? "",
+      bravoCode: (c as { bravo_code?: string | null }).bravo_code ?? "",
       source: "cloud" as const,
     }));
     return [...fromCloud, ...fromHardcode].sort((a, b) => a.code.localeCompare(b.code));
