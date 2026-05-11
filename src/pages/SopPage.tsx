@@ -229,7 +229,7 @@ export default function SopPage() {
     // 2b. Persist a LOCKED demand_versions row → DRP DQ Gate G2 sẽ PASS.
     try {
       const { data: tenants } = await supabase
-        .from("tenants").select("id").eq("code", "UNIS").maybeSingle();
+        .from("tenants").select("id").eq("tenant_code", "UNIS").maybeSingle();
       if (tenants?.id) {
         await supabase.from("demand_versions").insert({
           tenant_id: tenants.id,
