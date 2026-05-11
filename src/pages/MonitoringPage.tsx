@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useFcAccuracy, useNmPerformance } from "@/hooks/useMonitoringData";
+import { useKpiData } from "@/hooks/useKpiData";
 import { AppLayout } from "@/components/AppLayout";
 import { useTenant } from "@/components/TenantContext";
 import { cn } from "@/lib/utils";
@@ -364,6 +365,7 @@ export default function MonitoringPage() {
   const s = tenantScales[tenant] || 1;
   const { summaryData: fcData, weeklyData: fcWeeklyFromDb, loading: fcLoading } = useFcAccuracy();
   const { data: nmPerfData, loading: nmLoading } = useNmPerformance();
+  const kpiData = useKpiData();
 
   const ssBatch = useBatchLock({
     batchType: "SS Recalculation",
@@ -440,7 +442,7 @@ export default function MonitoringPage() {
       )}
 
       {/* M15 — 5 hero KPI cards (always visible above tabs) */}
-      <MonitoringHeroCards onTabChange={(k) => { setActiveTab(k); setDrillCn(null); }} />
+      <MonitoringHeroCards kpis={kpiData} onTabChange={(k) => { setActiveTab(k); setDrillCn(null); }} />
 
       {/* M20-PATCH — Summary thẻ tóm tắt nhỏ (bổ sung dưới hero KPI) */}
       <div className="mt-4 mb-5">
