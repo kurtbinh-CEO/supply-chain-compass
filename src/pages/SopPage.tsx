@@ -508,6 +508,20 @@ export default function SopPage() {
         </>
       )}
 
+      {/* 5-phút grace countdown trước khi khóa cứng */}
+      <LockCountdownDialog
+        open={showCountdown}
+        durationSec={300}
+        otherEditors={cellPresence.onlineUsers
+          .filter((u: any) => u.id !== "u-me")
+          .map((u: any) => ({ name: u.name, role: u.role }))}
+        onCancel={() => setShowCountdown(false)}
+        onComplete={() => {
+          setShowCountdown(false);
+          lockAndMark();
+        }}
+      />
+
       {/* Concurrency: Pre-Lock Dialog */}
       {showPreLock && (
         <PreLockDialog
