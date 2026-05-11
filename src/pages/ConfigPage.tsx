@@ -246,65 +246,95 @@ export default function ConfigPage() {
     return m;
   }, [visibleByTab, dirtyKeys]);
 
-  /* Mutations */
-  const commitValue = (key: string, newValue: string) => {
+  /* Mutations — persist to config_registry */
+  const commitValue = async (key: string, newValue: string) => {
     if (locked) {
       toast.error("Cấu hình đang khóa", { description: "Mở khóa để chỉnh sửa." });
       return;
     }
+    const idx = rows.findIndex((r) => r.key === key);
+    if (idx < 0) return;
+    const cfg = rows[idx];
+    const old = cfg.value;
+    if (old === newValue) return;
+
+    // Optimistic update
     setRows((prev) => {
-      const idx = prev.findIndex((r) => r.key === key);
-      if (idx < 0) return prev;
-      const old = prev[idx].value;
-      if (old === newValue) return prev;
       const next = [...prev];
       next[idx] = { ...next[idx], value: newValue };
-      setAudit((a) =>
-        [
-          {
-            id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            key, oldValue: old, newValue,
-            by: "Bạn (SC Manager)",
-            at: Date.now(),
-          },
-          ...a,
-        ].slice(0, 100),
-      );
-      toast.success(`Đã lưu ${key}`, { description: `Giá trị mới: ${newValue}` });
       return next;
     });
+    setAudit((a) =>
+      [
+        {
+          id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          key, oldValue: old, newValue,
+          by: "Bạn (SC Manager)",
+          at: Date.now(),
+        },
+        ...a,
+      ].slice(0, 100),
+    );
+
+    try {
+      await upsert(key, newValue, cfg.inputType === "toggle" ? "boolean" : cfg.inputType === "number" ? "number" : "string");
+      toast.success(`Đã lưu ${key}`, { description: `Giá trị mới: ${newValue}` });
+    } catch (e) {
+      // Revert on failure
+      setRows((prev) => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], value: old };
+        return next;
+      });
+      toast.error("Lưu cấu hình thất bại", {
+        description: e instanceof Error ? e.message : "Không thể ghi vào config_registry",
+      });
+    }
   };
 
-  const resetOne = (key: string) => {
+  const resetOne = async (key: string) => {
     if (locked) {
       toast.error("Cấu hình đang khóa");
       return;
     }
+    const idx = rows.findIndex((r) => r.key === key);
+    if (idx < 0) return;
+    const def = String(rows[idx].defaultValue);
+    const old = rows[idx].value;
+    if (old === def) {
+      toast.info("Đã ở giá trị mặc định");
+      return;
+    }
     setRows((prev) => {
-      const idx = prev.findIndex((r) => r.key === key);
-      if (idx < 0) return prev;
-      const def = String(prev[idx].defaultValue);
-      const old = prev[idx].value;
-      if (old === def) {
-        toast.info("Đã ở giá trị mặc định");
-        return prev;
-      }
       const next = [...prev];
       next[idx] = { ...next[idx], value: def };
-      setAudit((a) =>
-        [
-          {
-            id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            key, oldValue: old, newValue: def,
-            by: "Bạn (SC Manager) — reset",
-            at: Date.now(),
-          },
-          ...a,
-        ].slice(0, 100),
-      );
-      toast.success(`Đã khôi phục mặc định ${key}`);
       return next;
     });
+    setAudit((a) =>
+      [
+        {
+          id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          key, oldValue: old, newValue: def,
+          by: "Bạn (SC Manager) — reset",
+          at: Date.now(),
+        },
+        ...a,
+      ].slice(0, 100),
+    );
+    try {
+      await remove(key);
+      toast.success(`Đã khôi phục mặc định ${key}`);
+    } catch (e) {
+      // Revert on failure
+      setRows((prev) => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], value: old };
+        return next;
+      });
+      toast.error("Khôi phục thất bại", {
+        description: e instanceof Error ? e.message : "Không xoá được override",
+      });
+    }
   };
 
   /* Import / Export */
