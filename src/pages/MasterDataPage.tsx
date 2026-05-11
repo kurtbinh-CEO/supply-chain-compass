@@ -481,6 +481,7 @@ function SuppliersTab() {
         ltDays: f.ltDays, sigmaLt: f.sigmaLt, moqM2: f.moqM2,
         capacityM2Month: f.capacityM2Month, reliability: f.reliability,
         honoringPct: f.honoringPct, priceTier1: f.priceTier1, priceTier2: f.priceTier2,
+        bravoCode: "",
         source: "hardcode" as const,
       }));
     const fromCloud: MergedFactory[] = cloudFactories.map((c) => ({
@@ -489,6 +490,7 @@ function SuppliersTab() {
       capacityM2Month: Number(c.capacity_m2_month), reliability: Number(c.reliability),
       honoringPct: Number(c.honoring_pct), priceTier1: Number(c.price_tier1),
       priceTier2: Number(c.price_tier2),
+      bravoCode: (c as { bravo_code?: string | null }).bravo_code ?? "",
       source: "cloud" as const,
     }));
     return [...fromCloud, ...fromHardcode].sort((a, b) => a.code.localeCompare(b.code));
