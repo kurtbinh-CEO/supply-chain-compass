@@ -445,6 +445,7 @@ const SUPPLIER_FIELDS: FormField[] = [
   { key: "honoringPct",     label: "Honoring %", type: "number", placeholder: "85", span: 1 },
   { key: "priceTier1",      label: "Giá tier 1 (VND)", type: "number", span: 1 },
   { key: "priceTier2",      label: "Giá tier 2 (VND)", type: "number", span: 1 },
+  { key: "bravoCode",       label: "Mã Bravo", type: "text", mono: true, placeholder: "BR-…", span: 1 },
 ];
 
 const SUPPLIER_IMPORT_FIELDS: ImportField[] = [
