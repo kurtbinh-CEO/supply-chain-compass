@@ -44,6 +44,8 @@ import {
 import { TransitionShell } from "@/components/orders/TransitionShell";
 import type { EvidenceFile } from "@/components/orders/EvidenceFilePicker";
 import { OrderDetailPanel } from "@/components/orders/OrderDetailPanel";
+import { ToPlanTab } from "@/components/orders/ToPlanTab";
+import { ToConTab } from "@/components/orders/ToConTab";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
 import { TimeRangeFilter, HistoryBanner, useTimeRange, defaultTimeRange } from "@/components/TimeRangeFilter";
