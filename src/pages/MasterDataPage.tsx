@@ -918,8 +918,7 @@ function BranchesTab() {
 /* TAB 4 — Tuyến (Transit LT matrix) — editable                              */
 /* ────────────────────────────────────────────────────────────────────────── */
 function RoutesTab() {
-  const [mode, setMode] = useState<"NM_TO_CN" | "CN_TO_CN">("NM_TO_CN");
-  const lanes = TRANSIT_LT.filter((t) => t.mode === mode);
+  const [mode, setMode] = useState<"NM_TO_CN" | "CN_TO_CN" | "DB_LANES">("NM_TO_CN");
 
   return (
     <div className="space-y-3">
@@ -940,17 +939,31 @@ function RoutesTab() {
         >
           CN → CN (LCNB) ({TRANSIT_LT.filter(t => t.mode === "CN_TO_CN").length} tuyến)
         </button>
+        <button
+          onClick={() => setMode("DB_LANES")}
+          className={`h-9 px-3 rounded-button text-table-sm font-medium transition-colors ${
+            mode === "DB_LANES" ? "bg-gradient-primary text-primary-foreground" : "bg-surface-2 border border-surface-3 text-text-2 hover:bg-surface-1"
+          }`}
+        >
+          Lead times (Cloud)
+        </button>
         <div className="ml-auto flex items-center gap-2 text-table-sm text-text-3">
-          <span>Click ô số để chỉnh sửa</span>
-          <TableDownloadButton
-            targetId={mode === "NM_TO_CN" ? "lt-matrix-nm-cn" : "lt-matrix-cn-cn"}
-            filename={mode === "NM_TO_CN" ? "lt-nm-to-cn" : "lt-cn-to-cn"}
-            size="xs"
-          />
+          {mode !== "DB_LANES" && (
+            <>
+              <span>Click ô số để chỉnh sửa</span>
+              <TableDownloadButton
+                targetId={mode === "NM_TO_CN" ? "lt-matrix-nm-cn" : "lt-matrix-cn-cn"}
+                filename={mode === "NM_TO_CN" ? "lt-nm-to-cn" : "lt-cn-to-cn"}
+                size="xs"
+              />
+            </>
+          )}
         </div>
       </div>
 
-      {mode === "NM_TO_CN" ? <NmCnMatrix /> : <CnCnLtMatrix />}
+      {mode === "NM_TO_CN" && <NmCnMatrix />}
+      {mode === "CN_TO_CN" && <CnCnLtMatrix />}
+      {mode === "DB_LANES" && <LeadTimesLanesView />}
     </div>
   );
 }
