@@ -209,6 +209,9 @@ const BADGE_TICK_MS = 30_000;
 
 function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
   const { exceptions, approvals, sopLock, hubCommit, badgeRevision } = useWorkspace();
+  const { user } = useRbac();
+  const cnScope = user.role === "CN_MANAGER" ? user.cn_id! : null;
+  const poApprovalPending = usePoApprovalCount(cnScope);
 
   // ── Tick định kỳ: tăng nonce mỗi BADGE_TICK_MS để hook re-render
   //    ngay cả khi state context không đổi (vd: PO aging warning theo thời gian). ──
