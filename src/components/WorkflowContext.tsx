@@ -1,5 +1,16 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from "react";
 import { useActivityLog } from "@/components/ActivityLogContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useUserTenantId } from "@/hooks/useUserTenantId";
+
+function periodFor(type: "daily" | "monthly") {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  if (type === "monthly") return `monthly:${yyyy}-${mm}`;
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `daily:${yyyy}-${mm}-${dd}`;
+}
 
 export type WorkflowType = "daily" | "monthly" | null;
 
@@ -92,6 +103,58 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+  const { data: tenantId } = useUserTenantId();
+  const [userId, setUserId] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const planningPeriodRef = useRef<string | null>(null);
+
+  // Resolve auth user once
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!cancelled) setUserId(data.user?.id ?? null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      setUserId(s?.user?.id ?? null);
+    });
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+  }, []);
+
+  // Resume the latest active session on mount
+  useEffect(() => {
+    if (hydrated || !tenantId || !userId) return;
+    let cancelled = false;
+    (async () => {
+      const todayDaily = periodFor("daily");
+      const thisMonthly = periodFor("monthly");
+      const { data } = await supabase
+        .from("workflow_sessions")
+        .select("planning_period, current_step, steps_completed, updated_at")
+        .eq("tenant_id", tenantId)
+        .eq("user_id", userId)
+        .in("planning_period", [todayDaily, thisMonthly])
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data && data.current_step != null) {
+        const type: "daily" | "monthly" = data.planning_period.startsWith("monthly") ? "monthly" : "daily";
+        const idx = parseInt(data.current_step, 10);
+        const completed = (data.steps_completed ?? []).map((s: string) => parseInt(s, 10)).filter((n: number) => !Number.isNaN(n));
+        const total = (type === "daily" ? dailySteps : monthlySteps).length;
+        // Skip resume if everything already done
+        if (completed.length < total) {
+          planningPeriodRef.current = data.planning_period;
+          setWorkflowType(type);
+          setCurrentStepIndex(Number.isNaN(idx) ? 0 : idx);
+          setCompletedSteps(completed);
+          setSessionStartTime(Date.now());
+        }
+      }
+      setHydrated(true);
+    })();
+    return () => { cancelled = true; };
+  }, [tenantId, userId, hydrated]);
 
   const rawSteps = workflowType === "daily" ? dailySteps : workflowType === "monthly" ? monthlySteps : [];
 
@@ -116,7 +179,22 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
 
   const isBarVisible = workflowType !== null;
 
+  // Persist on every workflow state change (after hydration)
+  useEffect(() => {
+    if (!hydrated || !tenantId || !userId || !workflowType) return;
+    const period = planningPeriodRef.current ?? periodFor(workflowType);
+    planningPeriodRef.current = period;
+    void supabase.from("workflow_sessions").upsert({
+      tenant_id: tenantId,
+      user_id: userId,
+      planning_period: period,
+      current_step: String(currentStepIndex),
+      steps_completed: completedSteps.map(String),
+    }, { onConflict: "tenant_id,user_id,planning_period" });
+  }, [hydrated, tenantId, userId, workflowType, currentStepIndex, completedSteps]);
+
   const startWorkflow = useCallback((type: "daily" | "monthly") => {
+    planningPeriodRef.current = periodFor(type);
     setWorkflowType(type);
     setCurrentStepIndex(0);
     setCompleted(false);
