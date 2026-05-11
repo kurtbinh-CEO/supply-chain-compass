@@ -1959,6 +1959,110 @@ export type Database = {
         }
         Relationships: []
       }
+      to_cons: {
+        Row: {
+          created_at: string
+          dispatch_date: string | null
+          dispatch_qty: number
+          id: string
+          status: string
+          tenant_id: string
+          to_con_code: string
+          to_plan_id: string
+          trip_id: string | null
+          updated_at: string
+          vehicle_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          dispatch_date?: string | null
+          dispatch_qty?: number
+          id?: string
+          status?: string
+          tenant_id: string
+          to_con_code: string
+          to_plan_id: string
+          trip_id?: string | null
+          updated_at?: string
+          vehicle_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          dispatch_date?: string | null
+          dispatch_qty?: number
+          id?: string
+          status?: string
+          tenant_id?: string
+          to_con_code?: string
+          to_plan_id?: string
+          trip_id?: string | null
+          updated_at?: string
+          vehicle_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "to_cons_to_plan_id_fkey"
+            columns: ["to_plan_id"]
+            isOneToOne: false
+            referencedRelation: "to_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      to_plans: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          dest_cn: string
+          dispatch_date: string | null
+          id: string
+          plan_run_id: string | null
+          planned_qty: number
+          sku_code: string
+          source_nm: string | null
+          status: string
+          tenant_id: string
+          to_code: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          dest_cn: string
+          dispatch_date?: string | null
+          id?: string
+          plan_run_id?: string | null
+          planned_qty?: number
+          sku_code: string
+          source_nm?: string | null
+          status?: string
+          tenant_id: string
+          to_code: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          dest_cn?: string
+          dispatch_date?: string | null
+          id?: string
+          plan_run_id?: string | null
+          planned_qty?: number
+          sku_code?: string
+          source_nm?: string | null
+          status?: string
+          tenant_id?: string
+          to_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       trust_scores: {
         Row: {
           cn_code: string
