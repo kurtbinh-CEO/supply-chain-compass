@@ -44,6 +44,7 @@ import { PivotToggle, usePivotMode } from "@/components/ViewPivotToggle";
 import { PivotChildTable, type PivotChildRow } from "@/components/PivotChildTable";
 import { SkuDetailSheet } from "@/components/SkuDetailSheet";
 import { SummaryCards, type SummaryCard } from "@/components/SummaryCards";
+import { InventoryBucketsCard } from "@/components/inventory/InventoryBucketsCard";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
