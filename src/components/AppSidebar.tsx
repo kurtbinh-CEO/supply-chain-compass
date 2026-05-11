@@ -274,7 +274,9 @@ function useDailyBadges(): Record<DailyBadgeKey, BadgeData | null> {
     executive_risk:    { text: "3 rủi ro", tone: "warning" },
 
     // ── Partners ──
-    cn_portal_pending: { text: "4", tone: "warning" },
+    cn_portal_pending: poApprovalPending > 0
+      ? { text: String(poApprovalPending), tone: poApprovalPending > 5 ? "danger" : "warning" }
+      : { text: "✓", tone: "success" },
   };
 }
 
