@@ -440,7 +440,7 @@ export default function MonitoringPage() {
       )}
 
       {/* M15 — 5 hero KPI cards (always visible above tabs) */}
-      <MonitoringHeroCards onTabChange={(k) => { setActiveTab(k); setDrillCn(null); }} />
+      <MonitoringHeroCards kpis={kpiData} onTabChange={(k) => { setActiveTab(k); setDrillCn(null); }} />
 
       {/* M20-PATCH — Summary thẻ tóm tắt nhỏ (bổ sung dưới hero KPI) */}
       <div className="mt-4 mb-5">
