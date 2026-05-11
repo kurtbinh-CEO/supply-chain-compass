@@ -110,10 +110,12 @@ export type Database = {
           cn_code: string
           created_at: string
           currency: string
+          deleted_at: string | null
           discount_max_pct: number | null
           effective_from: string
           effective_to: string | null
           id: string
+          is_active: boolean
           price_list: number
           price_promo: number | null
           sku_code: string
@@ -124,10 +126,12 @@ export type Database = {
           cn_code: string
           created_at?: string
           currency?: string
+          deleted_at?: string | null
           discount_max_pct?: number | null
           effective_from: string
           effective_to?: string | null
           id?: string
+          is_active?: boolean
           price_list: number
           price_promo?: number | null
           sku_code: string
@@ -138,10 +142,12 @@ export type Database = {
           cn_code?: string
           created_at?: string
           currency?: string
+          deleted_at?: string | null
           discount_max_pct?: number | null
           effective_from?: string
           effective_to?: string | null
           id?: string
+          is_active?: boolean
           price_list?: number
           price_promo?: number | null
           sku_code?: string
@@ -815,7 +821,9 @@ export type Database = {
           code: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           id: string
+          is_active: boolean
           lat: number
           lng: number
           manager: string | null
@@ -831,7 +839,9 @@ export type Database = {
           code: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           id?: string
+          is_active?: boolean
           lat?: number
           lng?: number
           manager?: string | null
@@ -847,7 +857,9 @@ export type Database = {
           code?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           id?: string
+          is_active?: boolean
           lat?: number
           lng?: number
           manager?: string | null
@@ -867,7 +879,9 @@ export type Database = {
           cost_per_km: number
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           id: string
+          is_active: boolean
           name: string
           note: string | null
           pallet_limit: number
@@ -882,7 +896,9 @@ export type Database = {
           cost_per_km?: number
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           id?: string
+          is_active?: boolean
           name: string
           note?: string | null
           pallet_limit?: number
@@ -897,7 +913,9 @@ export type Database = {
           cost_per_km?: number
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           id?: string
+          is_active?: boolean
           name?: string
           note?: string | null
           pallet_limit?: number
@@ -957,8 +975,10 @@ export type Database = {
           code: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           honoring_pct: number
           id: string
+          is_active: boolean
           lt_days: number
           moq_m2: number
           name: string
@@ -977,8 +997,10 @@ export type Database = {
           code: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           honoring_pct?: number
           id?: string
+          is_active?: boolean
           lt_days?: number
           moq_m2?: number
           name: string
@@ -997,8 +1019,10 @@ export type Database = {
           code?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           honoring_pct?: number
           id?: string
+          is_active?: boolean
           lt_days?: number
           moq_m2?: number
           name?: string
@@ -1020,7 +1044,9 @@ export type Database = {
           code: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           id: string
+          is_active: boolean
           name: string
           nm_id: string
           tenant: string
@@ -1035,7 +1061,9 @@ export type Database = {
           code: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           id?: string
+          is_active?: boolean
           name: string
           nm_id: string
           tenant?: string
@@ -1050,7 +1078,9 @@ export type Database = {
           code?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           id?: string
+          is_active?: boolean
           name?: string
           nm_id?: string
           tenant?: string
@@ -1110,7 +1140,9 @@ export type Database = {
         Row: {
           can_produce: boolean
           created_at: string
+          deleted_at: string | null
           id: string
+          is_active: boolean
           moq_base_uom: number
           moq_uom: string
           nm_code: string
@@ -1127,7 +1159,9 @@ export type Database = {
         Insert: {
           can_produce?: boolean
           created_at?: string
+          deleted_at?: string | null
           id?: string
+          is_active?: boolean
           moq_base_uom: number
           moq_uom?: string
           nm_code: string
@@ -1144,7 +1178,9 @@ export type Database = {
         Update: {
           can_produce?: boolean
           created_at?: string
+          deleted_at?: string | null
           id?: string
+          is_active?: boolean
           moq_base_uom?: number
           moq_uom?: string
           nm_code?: string
@@ -1582,8 +1618,10 @@ export type Database = {
           boxes_per_pallet: number | null
           conversion_factor: number
           created_at: string
+          deleted_at: string | null
           from_uom: string
           id: string
+          is_active: boolean
           pcs_per_box: number | null
           sku_code: string
           tenant_id: string
@@ -1593,8 +1631,10 @@ export type Database = {
           boxes_per_pallet?: number | null
           conversion_factor: number
           created_at?: string
+          deleted_at?: string | null
           from_uom: string
           id?: string
+          is_active?: boolean
           pcs_per_box?: number | null
           sku_code: string
           tenant_id: string
@@ -1604,8 +1644,10 @@ export type Database = {
           boxes_per_pallet?: number | null
           conversion_factor?: number
           created_at?: string
+          deleted_at?: string | null
           from_uom?: string
           id?: string
+          is_active?: boolean
           pcs_per_box?: number | null
           sku_code?: string
           tenant_id?: string
@@ -1731,7 +1773,9 @@ export type Database = {
       stock_policies: {
         Row: {
           created_at: string
+          deleted_at: string | null
           id: string
+          is_active: boolean
           location_code: string
           sku_code: string
           stock_days_max: number
@@ -1742,7 +1786,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
+          is_active?: boolean
           location_code: string
           sku_code: string
           stock_days_max: number
@@ -1753,7 +1799,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
           id?: string
+          is_active?: boolean
           location_code?: string
           sku_code?: string
           stock_days_max?: number
@@ -1776,7 +1824,9 @@ export type Database = {
         Row: {
           cn_code: string | null
           created_at: string
+          deleted_at: string | null
           id: string
+          is_active: boolean
           max_depth: number
           original_sku: string
           priority: number
@@ -1786,7 +1836,9 @@ export type Database = {
         Insert: {
           cn_code?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
+          is_active?: boolean
           max_depth?: number
           original_sku: string
           priority: number
@@ -1796,7 +1848,9 @@ export type Database = {
         Update: {
           cn_code?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
+          is_active?: boolean
           max_depth?: number
           original_sku?: string
           priority?: number

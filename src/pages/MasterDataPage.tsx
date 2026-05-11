@@ -9,6 +9,14 @@ import { toast } from "sonner";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PriceListsTab } from "@/components/master/PriceListsTab";
 import { CarriersTab } from "@/components/master/CarriersTab";
+import {
+  CnSkuPricingTab,
+  SkuUnitConversionTab,
+  NmSkuConstraintTab,
+  SubstitutionListsTab,
+  StockPoliciesTab,
+} from "@/components/master/TemplateTabs";
+import { LeadTimesLanesView } from "@/components/master/LeadTimesLanesView";
 import { AopSummaryPanel } from "@/components/AopSummaryPanel";
 import { DataSourceSelector, type DataSource } from "@/components/DataSourceSelector";
 import {
@@ -44,9 +52,9 @@ import {
 /* Merged row types — cloud overrides hardcode                                */
 /* ────────────────────────────────────────────────────────────────────────── */
 type RowSource = "cloud" | "hardcode";
-interface MergedItem      { id: string | null; code: string; name: string; nmId: string; category: string; unit: string; unitPrice: number; source: RowSource }
-interface MergedFactory   { id: string | null; code: string; name: string; region: string; ltDays: number; sigmaLt: number; moqM2: number; capacityM2Month: number; reliability: number; honoringPct: number; priceTier1: number; priceTier2: number; source: RowSource }
-interface MergedBranch    { id: string | null; code: string; name: string; region: string; lat: number; lng: number; zFactor: number; manager: string; source: RowSource }
+interface MergedItem      { id: string | null; code: string; name: string; nmId: string; category: string; unit: string; unitPrice: number; bravoCode: string; source: RowSource }
+interface MergedFactory   { id: string | null; code: string; name: string; region: string; ltDays: number; sigmaLt: number; moqM2: number; capacityM2Month: number; reliability: number; honoringPct: number; priceTier1: number; priceTier2: number; bravoCode: string; source: RowSource }
+interface MergedBranch    { id: string | null; code: string; name: string; region: string; lat: number; lng: number; zFactor: number; manager: string; bravoCode: string; source: RowSource }
 interface MergedContainer { id: string | null; code: string; name: string; capacityM2: number; palletLimit: number; weightLimitKg: number; costPerKm: number; note: string; source: RowSource }
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -76,19 +84,29 @@ type TabKey =
   | "distances"
   | "containers"
   | "aop"
-  | "quality";
+  | "quality"
+  | "cnskupricing"
+  | "skuuom"
+  | "nmskuconstraint"
+  | "substitutions"
+  | "stockpolicies";
 
 const tabDefs: { key: TabKey; label: string }[] = [
-  { key: "items",      label: "Mã hàng" },
-  { key: "suppliers",  label: "NM" },
-  { key: "pricelists", label: "Bảng giá" },
-  { key: "branches",   label: "CN" },
-  { key: "routes",     label: "Tuyến" },
-  { key: "carriers",   label: "Nhà xe" },
-  { key: "distances",  label: "Khoảng cách" },
-  { key: "containers", label: "Container" },
-  { key: "aop",        label: "Kế hoạch năm" },
-  { key: "quality",    label: "Chất lượng dữ liệu" },
+  { key: "items",            label: "Mã hàng" },
+  { key: "suppliers",        label: "NM" },
+  { key: "pricelists",       label: "Bảng giá" },
+  { key: "cnskupricing",     label: "Giá CN×SKU" },
+  { key: "skuuom",           label: "Quy đổi ĐV" },
+  { key: "nmskuconstraint",  label: "NM×SKU" },
+  { key: "substitutions",    label: "Thay thế SKU" },
+  { key: "stockpolicies",    label: "Chính sách tồn" },
+  { key: "branches",         label: "CN" },
+  { key: "routes",           label: "Tuyến" },
+  { key: "carriers",         label: "Nhà xe" },
+  { key: "distances",        label: "Khoảng cách" },
+  { key: "containers",       label: "Container" },
+  { key: "aop",              label: "Kế hoạch năm" },
+  { key: "quality",          label: "Chất lượng dữ liệu" },
 ];
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -147,6 +165,7 @@ const ITEM_FIELDS: FormField[] = [
   { key: "category",  label: "Loại", type: "text", placeholder: "Granite / Ceramic", span: 1 },
   { key: "unit",      label: "Đơn vị", type: "text", placeholder: "m²", span: 1 },
   { key: "unitPrice", label: "Đơn giá (VND/m²)", type: "number", placeholder: "180000", span: 1 },
+  { key: "bravoCode", label: "Mã Bravo", type: "text", mono: true, placeholder: "BR-…", span: 1 },
 ];
 
 const ITEM_IMPORT_FIELDS: ImportField[] = [
@@ -186,6 +205,7 @@ function ItemsTab() {
         category: b.category,
         unit: b.unit,
         unitPrice: b.unitPrice,
+        bravoCode: "",
         source: "hardcode" as const,
       }));
     const fromCloud: MergedItem[] = cloudItems.map((c) => ({
@@ -196,6 +216,7 @@ function ItemsTab() {
       category: c.category ?? "",
       unit: c.unit,
       unitPrice: Number(c.unit_price),
+      bravoCode: (c as { bravo_code?: string | null }).bravo_code ?? "",
       source: "cloud" as const,
     }));
     return [...fromCloud, ...fromHardcode].sort((a, b) => a.code.localeCompare(b.code));
@@ -280,6 +301,7 @@ function ItemsTab() {
           { key: "category", label: "Loại", width: 110, sortable: true, render: (r) => <span className="text-text-2">{r.category}</span> },
           { key: "unit", label: "Đơn vị", width: 80, render: (r) => <span className="text-text-2">{r.unit}</span> },
           { key: "unitPrice", label: "Đơn giá (VND/m²)", width: 150, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.unitPrice.toLocaleString("vi-VN")}</span> },
+          { key: "bravoCode", label: "Mã Bravo", width: 110, render: (r) => <span className="font-mono text-table-sm text-text-3">{r.bravoCode || "—"}</span> },
           {
             key: "variants", label: "Variants", width: 110, align: "center", numeric: true, sortable: true, accessor: (r) => variantCount(r.code),
             render: (r) => (
@@ -326,7 +348,8 @@ function ItemsTab() {
             category: v.category || null,
             unit: v.unit || "m²",
             unit_price: Number(v.unitPrice || 0),
-          });
+            bravo_code: v.bravoCode || null,
+          } as never);
           toast.success(`Đã tạo ${v.code} → ${NM_BY_ID[v.nmId as NmId] ?? v.nmId}`);
           setAdding(false);
         }}
@@ -344,6 +367,7 @@ function ItemsTab() {
           category: editing.category,
           unit: editing.unit,
           unitPrice: editing.unitPrice,
+          bravoCode: editing.bravoCode,
         } : undefined}
         onClose={() => setEditing(null)}
         onSave={async (v) => {
@@ -355,7 +379,8 @@ function ItemsTab() {
               category: v.category || null,
               unit: v.unit || "m²",
               unit_price: Number(v.unitPrice || 0),
-            });
+              bravo_code: v.bravoCode || null,
+            } as never);
           } else {
             // Hardcoded → tạo bản cloud override
             await createItem.mutateAsync({
@@ -365,7 +390,8 @@ function ItemsTab() {
               category: v.category || null,
               unit: v.unit || "m²",
               unit_price: Number(v.unitPrice || 0),
-            });
+              bravo_code: v.bravoCode || null,
+            } as never);
           }
           toast.success(`Đã cập nhật ${v.code}`);
           setEditing(null);
@@ -424,6 +450,7 @@ const SUPPLIER_FIELDS: FormField[] = [
   { key: "honoringPct",     label: "Honoring %", type: "number", placeholder: "85", span: 1 },
   { key: "priceTier1",      label: "Giá tier 1 (VND)", type: "number", span: 1 },
   { key: "priceTier2",      label: "Giá tier 2 (VND)", type: "number", span: 1 },
+  { key: "bravoCode",       label: "Mã Bravo", type: "text", mono: true, placeholder: "BR-…", span: 1 },
 ];
 
 const SUPPLIER_IMPORT_FIELDS: ImportField[] = [
@@ -461,6 +488,7 @@ function SuppliersTab() {
         ltDays: f.ltDays, sigmaLt: f.sigmaLt, moqM2: f.moqM2,
         capacityM2Month: f.capacityM2Month, reliability: f.reliability,
         honoringPct: f.honoringPct, priceTier1: f.priceTier1, priceTier2: f.priceTier2,
+        bravoCode: "",
         source: "hardcode" as const,
       }));
     const fromCloud: MergedFactory[] = cloudFactories.map((c) => ({
@@ -469,6 +497,7 @@ function SuppliersTab() {
       capacityM2Month: Number(c.capacity_m2_month), reliability: Number(c.reliability),
       honoringPct: Number(c.honoring_pct), priceTier1: Number(c.price_tier1),
       priceTier2: Number(c.price_tier2),
+      bravoCode: (c as { bravo_code?: string | null }).bravo_code ?? "",
       source: "cloud" as const,
     }));
     return [...fromCloud, ...fromHardcode].sort((a, b) => a.code.localeCompare(b.code));
@@ -559,6 +588,7 @@ function SuppliersTab() {
           { key: "honoringPct", label: "Honoring", width: 100, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.honoringPct}%</span> },
           { key: "priceTier1", label: "Giá tier 1", width: 110, numeric: true, align: "right", sortable: true, priority: "low", render: (r) => <span className="tabular-nums text-text-2">{fmtVnd(r.priceTier1)}</span> },
           { key: "priceTier2", label: "Giá tier 2", width: 110, numeric: true, align: "right", sortable: true, priority: "low", render: (r) => <span className="tabular-nums text-text-2">{fmtVnd(r.priceTier2)}</span> },
+          { key: "bravoCode", label: "Mã Bravo", width: 110, render: (r) => <span className="font-mono text-table-sm text-text-3">{r.bravoCode || "—"}</span> },
           {
             key: "actions", label: "Thao tác", width: 100, align: "right", hideable: false,
             render: (r) => (
@@ -600,7 +630,8 @@ function SuppliersTab() {
             honoring_pct: Number(v.honoringPct || 80),
             price_tier1: Number(v.priceTier1 || 0),
             price_tier2: Number(v.priceTier2 || 0),
-          });
+            bravo_code: v.bravoCode || null,
+          } as never);
           toast.success(`Đã tạo NM ${v.name}`);
           setAdding(false);
         }}
@@ -616,6 +647,7 @@ function SuppliersTab() {
           moqM2: editing.moqM2, capacityM2Month: editing.capacityM2Month,
           honoringPct: editing.honoringPct,
           priceTier1: editing.priceTier1, priceTier2: editing.priceTier2,
+          bravoCode: editing.bravoCode,
         } : undefined}
         onClose={() => setEditing(null)}
         onSave={async (v) => {
@@ -628,11 +660,12 @@ function SuppliersTab() {
             honoring_pct: Number(v.honoringPct || 80),
             price_tier1: Number(v.priceTier1 || 0),
             price_tier2: Number(v.priceTier2 || 0),
+            bravo_code: v.bravoCode || null,
           };
           if (editing?.source === "cloud" && editing.id) {
-            await updateFactory.mutateAsync({ id: editing.id, ...payload });
+            await updateFactory.mutateAsync({ id: editing.id, ...payload } as never);
           } else {
-            await createFactory.mutateAsync({ code: v.code, ...payload });
+            await createFactory.mutateAsync({ code: v.code, ...payload } as never);
           }
           toast.success(`Đã cập nhật NM ${v.name}`);
           setEditing(null);
@@ -684,7 +717,8 @@ const BRANCH_FIELDS: FormField[] = [
   { key: "manager", label: "Quản lý", type: "text", placeholder: "Nguyễn Văn A", span: 1 },
   { key: "lat",     label: "Lat", type: "number", placeholder: "10.7769", span: 1, hint: "Vĩ độ" },
   { key: "lng",     label: "Lng", type: "number", placeholder: "106.7009", span: 1, hint: "Kinh độ" },
-  { key: "zFactor", label: "z-factor", type: "number", placeholder: "1.65", span: 2, hint: "1.65 ≈ 95% mức phục vụ" },
+  { key: "zFactor", label: "z-factor", type: "number", placeholder: "1.65", span: 1, hint: "1.65 ≈ 95% mức phục vụ" },
+  { key: "bravoCode", label: "Mã Bravo", type: "text", mono: true, placeholder: "BR-…", span: 1 },
 ];
 
 const BRANCH_IMPORT_FIELDS: ImportField[] = [
@@ -717,12 +751,14 @@ function BranchesTab() {
       .map((b) => ({
         id: null, code: b.code, name: b.name, region: b.region,
         lat: b.lat, lng: b.lng, zFactor: b.zFactor, manager: b.manager,
+        bravoCode: "",
         source: "hardcode" as const,
       }));
     const fromCloud: MergedBranch[] = cloudBranches.map((c) => ({
       id: c.id, code: c.code, name: c.name, region: c.region,
       lat: Number(c.lat), lng: Number(c.lng), zFactor: Number(c.z_factor),
       manager: c.manager ?? "",
+      bravoCode: (c as { bravo_code?: string | null }).bravo_code ?? "",
       source: "cloud" as const,
     }));
     return [...fromCloud, ...fromHardcode].sort((a, b) => a.code.localeCompare(b.code));
@@ -797,6 +833,7 @@ function BranchesTab() {
           { key: "zFactor", label: "z-factor", width: 90, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.zFactor.toFixed(2)}</span> },
           { key: "sl", label: "Mức phục vụ", width: 110, accessor: (r) => r.zFactor, render: (r) => <span className="text-text-2">{serviceLevel(r.zFactor)}</span> },
           { key: "manager", label: "Quản lý", width: 140, render: (r) => <span className="text-text-2">{r.manager}</span> },
+          { key: "bravoCode", label: "Mã Bravo", width: 110, render: (r) => <span className="font-mono text-table-sm text-text-3">{r.bravoCode || "—"}</span> },
           {
             key: "actions", label: "Thao tác", width: 100, align: "right", hideable: false,
             render: (r) => (
@@ -833,7 +870,8 @@ function BranchesTab() {
             manager: v.manager || null,
             lat: Number(v.lat || 0), lng: Number(v.lng || 0),
             z_factor: Number(v.zFactor || 1.65),
-          });
+            bravo_code: v.bravoCode || null,
+          } as never);
           toast.success(`Đã tạo CN ${v.name}`);
           setAdding(false);
         }}
@@ -846,6 +884,7 @@ function BranchesTab() {
         initialValues={editing ? {
           code: editing.code, name: editing.name, region: editing.region,
           manager: editing.manager, lat: editing.lat, lng: editing.lng, zFactor: editing.zFactor,
+          bravoCode: editing.bravoCode,
         } : undefined}
         onClose={() => setEditing(null)}
         onSave={async (v) => {
@@ -854,11 +893,12 @@ function BranchesTab() {
             manager: v.manager || null,
             lat: Number(v.lat || 0), lng: Number(v.lng || 0),
             z_factor: Number(v.zFactor || 1.65),
+            bravo_code: v.bravoCode || null,
           };
           if (editing?.source === "cloud" && editing.id) {
-            await updateBranch.mutateAsync({ id: editing.id, ...payload });
+            await updateBranch.mutateAsync({ id: editing.id, ...payload } as never);
           } else {
-            await createBranch.mutateAsync({ code: v.code, ...payload });
+            await createBranch.mutateAsync({ code: v.code, ...payload } as never);
           }
           toast.success(`Đã cập nhật CN ${v.name}`);
           setEditing(null);
@@ -900,8 +940,7 @@ function BranchesTab() {
 /* TAB 4 — Tuyến (Transit LT matrix) — editable                              */
 /* ────────────────────────────────────────────────────────────────────────── */
 function RoutesTab() {
-  const [mode, setMode] = useState<"NM_TO_CN" | "CN_TO_CN">("NM_TO_CN");
-  const lanes = TRANSIT_LT.filter((t) => t.mode === mode);
+  const [mode, setMode] = useState<"NM_TO_CN" | "CN_TO_CN" | "DB_LANES">("NM_TO_CN");
 
   return (
     <div className="space-y-3">
@@ -922,17 +961,31 @@ function RoutesTab() {
         >
           CN → CN (LCNB) ({TRANSIT_LT.filter(t => t.mode === "CN_TO_CN").length} tuyến)
         </button>
+        <button
+          onClick={() => setMode("DB_LANES")}
+          className={`h-9 px-3 rounded-button text-table-sm font-medium transition-colors ${
+            mode === "DB_LANES" ? "bg-gradient-primary text-primary-foreground" : "bg-surface-2 border border-surface-3 text-text-2 hover:bg-surface-1"
+          }`}
+        >
+          Lead times (Cloud)
+        </button>
         <div className="ml-auto flex items-center gap-2 text-table-sm text-text-3">
-          <span>Click ô số để chỉnh sửa</span>
-          <TableDownloadButton
-            targetId={mode === "NM_TO_CN" ? "lt-matrix-nm-cn" : "lt-matrix-cn-cn"}
-            filename={mode === "NM_TO_CN" ? "lt-nm-to-cn" : "lt-cn-to-cn"}
-            size="xs"
-          />
+          {mode !== "DB_LANES" && (
+            <>
+              <span>Click ô số để chỉnh sửa</span>
+              <TableDownloadButton
+                targetId={mode === "NM_TO_CN" ? "lt-matrix-nm-cn" : "lt-matrix-cn-cn"}
+                filename={mode === "NM_TO_CN" ? "lt-nm-to-cn" : "lt-cn-to-cn"}
+                size="xs"
+              />
+            </>
+          )}
         </div>
       </div>
 
-      {mode === "NM_TO_CN" ? <NmCnMatrix /> : <CnCnLtMatrix />}
+      {mode === "NM_TO_CN" && <NmCnMatrix />}
+      {mode === "CN_TO_CN" && <CnCnLtMatrix />}
+      {mode === "DB_LANES" && <LeadTimesLanesView />}
     </div>
   );
 }
@@ -1624,6 +1677,11 @@ export default function MasterDataPage() {
         <TabsContent value="containers"><ContainersTab /></TabsContent>
         <TabsContent value="aop"><AopSummaryPanel /></TabsContent>
         <TabsContent value="quality"><QualityTab /></TabsContent>
+        <TabsContent value="cnskupricing"><CnSkuPricingTab /></TabsContent>
+        <TabsContent value="skuuom"><SkuUnitConversionTab /></TabsContent>
+        <TabsContent value="nmskuconstraint"><NmSkuConstraintTab /></TabsContent>
+        <TabsContent value="substitutions"><SubstitutionListsTab /></TabsContent>
+        <TabsContent value="stockpolicies"><StockPoliciesTab /></TabsContent>
       </Tabs>
 
       <ScreenFooter actionCount={5} />
