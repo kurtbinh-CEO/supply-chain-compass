@@ -531,3 +531,4 @@ function NextStepChain() {
       {ordersDone && <NextStepBanner step="orders.confirmed" />}
     </div>
   );
+}
