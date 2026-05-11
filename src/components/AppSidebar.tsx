@@ -20,6 +20,7 @@ import { useI18n } from "@/components/i18n/I18nContext";
 import { useOnboarding } from "@/components/onboarding/OnboardingContext";
 import { getTourForRoute } from "@/components/onboarding/tours";
 import smartlogIcon from "@/assets/smartlog-icon.png";
+import { usePoApprovalCount } from "@/hooks/usePoApprovals";
 
 /* M1 — Sidebar restructure
  *  - Daily ops: 4 items split bởi 3 phase labels (Chuẩn bị / Kết quả / Thực thi)
