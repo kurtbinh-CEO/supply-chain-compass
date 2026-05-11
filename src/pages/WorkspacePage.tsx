@@ -515,3 +515,19 @@ export default function WorkspacePage() {
     </AppLayout>
   );
 }
+
+/** Chuỗi bước tiếp theo: hiển thị banner kế tiếp dựa vào step nào đã hoàn thành.
+ *  S&OP locked → CTA mở DRP. DRP viewed → CTA mở Đơn hàng. */
+function NextStepChain() {
+  const { isDone } = useNextStep();
+  const sopDone = isDone("sop.locked");
+  const drpDone = isDone("drp.viewed");
+  const ordersDone = isDone("orders.confirmed");
+  if (!sopDone && !drpDone && !ordersDone) return null;
+  return (
+    <div className="space-y-2">
+      {sopDone && !drpDone && <NextStepBanner step="sop.locked" />}
+      {drpDone && !ordersDone && <NextStepBanner step="drp.viewed" />}
+      {ordersDone && <NextStepBanner step="orders.confirmed" />}
+    </div>
+  );
