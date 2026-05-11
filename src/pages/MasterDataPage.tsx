@@ -301,6 +301,7 @@ function ItemsTab() {
           { key: "category", label: "Loại", width: 110, sortable: true, render: (r) => <span className="text-text-2">{r.category}</span> },
           { key: "unit", label: "Đơn vị", width: 80, render: (r) => <span className="text-text-2">{r.unit}</span> },
           { key: "unitPrice", label: "Đơn giá (VND/m²)", width: 150, numeric: true, align: "right", sortable: true, render: (r) => <span className="tabular-nums text-text-2">{r.unitPrice.toLocaleString("vi-VN")}</span> },
+          { key: "bravoCode", label: "Mã Bravo", width: 110, render: (r) => <span className="font-mono text-table-sm text-text-3">{r.bravoCode || "—"}</span> },
           {
             key: "variants", label: "Variants", width: 110, align: "center", numeric: true, sortable: true, accessor: (r) => variantCount(r.code),
             render: (r) => (
