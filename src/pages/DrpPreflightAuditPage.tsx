@@ -60,15 +60,19 @@ export default function DrpPreflightAuditPage() {
   const { current: planCycle } = usePlanningPeriod();
   const { sopLock } = useWorkspace();
 
-  const rows = useMemo<PreflightAuditRow[]>(
-    () =>
-      computePreflightAudit({
+  const [rows, setRows] = useState<PreflightAuditRow[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const r = await computePreflightAudit({
         tenant,
         planCycle,
         sopLockedFromWorkspace: sopLock.locked,
-      }),
-    [tenant, planCycle, sopLock.locked],
-  );
+      });
+      if (!cancelled) setRows(r);
+    })();
+    return () => { cancelled = true; };
+  }, [tenant, planCycle, sopLock.locked]);
 
   const summary = useMemo(() => summarizePreflight(rows), [rows]);
 

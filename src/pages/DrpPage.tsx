@@ -938,15 +938,21 @@ export default function DrpPage() {
     }
   }, [location.pathname, location.key]);
 
-  const preflightItems: PreflightItem[] = useMemo(() => {
-    // Dùng chung computePreflightAudit để 2 màn hình luôn khớp 1:1
-    // (xem src/lib/drp-preflight.ts).
-    // Bỏ field audit-only để khớp PreflightItem.
-    return computePreflightAudit({
-      tenant,
-      planCycle,
-      sopLockedFromWorkspace: sopLock.locked,
-    }).map(({ thresholdText: _t, evidence: _e, ruleText: _r, blocksRun: _b, ...item }) => item);
+  const [preflightItems, setPreflightItems] = useState<PreflightItem[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const rows = await computePreflightAudit({
+        tenant,
+        planCycle,
+        sopLockedFromWorkspace: sopLock.locked,
+      });
+      if (cancelled) return;
+      setPreflightItems(
+        rows.map(({ thresholdText: _t, evidence: _e, ruleText: _r, blocksRun: _b, ...item }) => item),
+      );
+    })();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenant, sopLock.locked, planCycle, preflightRefreshTick]);
 
