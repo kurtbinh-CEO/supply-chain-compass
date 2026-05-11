@@ -20,6 +20,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
 import { VersionHistoryButton } from "@/components/VersionHistoryButton";
+import { DemandVersionSelector } from "@/components/demand/DemandVersionSelector";
+import type { DemandVersion } from "@/hooks/useDemandVersions";
 
 const tabs = [
   { key: "total", label: "Demand tổng" },
@@ -127,6 +129,9 @@ export default function DemandPage() {
   const [actualOpen, setActualOpen] = useState(false);
   const [aopOpen, setAopOpen] = useState(false);
   const [aopPlan, setAopPlan] = useState<AopPlan>(AOP_PLAN);
+  const [activeVersion, setActiveVersion] = useState<DemandVersion | null>(null);
+  const versionLocked = activeVersion?.status !== "DRAFT";
+  const editDisabled = planLocked || versionLocked;
 
   const handleSourceSelect = (key: string) => {
     setImporterOpen(false);
@@ -239,15 +244,25 @@ export default function DemandPage() {
           }
           actions={
             <>
+              <DemandVersionSelector
+                selectedId={activeVersion?.id ?? null}
+                onChange={setActiveVersion}
+              />
               <PlanningPeriodSelector />
               <VersionHistoryButton entityType="FC" entityId="FC-T5" />
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setActualOpen(true)}
-                disabled={planLocked}
+                disabled={editDisabled}
                 className="h-8 gap-1.5 whitespace-nowrap"
-                title={planLocked ? "Kỳ đã khóa — chỉ xem" : "Cập nhật doanh thu thực tế (Bravo / Excel / Tay)"}
+                title={
+                  versionLocked
+                    ? `Phiên bản ${activeVersion?.status} — chỉ xem`
+                    : planLocked
+                    ? "Kỳ đã khóa — chỉ xem"
+                    : "Cập nhật doanh thu thực tế (Bravo / Excel / Tay)"
+                }
               >
                 <Inbox className="h-3.5 w-3.5" />
                 Nhập thực tế
@@ -255,8 +270,9 @@ export default function DemandPage() {
               <Button
                 size="sm"
                 onClick={() => setImporterOpen(true)}
-                disabled={planLocked}
+                disabled={editDisabled}
                 className="h-8 gap-1.5 whitespace-nowrap"
+                title={versionLocked ? `Phiên bản ${activeVersion?.status} — không thể nhập` : undefined}
               >
                 <Inbox className="h-3.5 w-3.5" />
                 {activeTab === "b2b" ? "Nhập B2B" : "Nhập FC"}
