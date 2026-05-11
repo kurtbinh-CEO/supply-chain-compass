@@ -204,6 +204,7 @@ function ItemsTab() {
         category: b.category,
         unit: b.unit,
         unitPrice: b.unitPrice,
+        bravoCode: "",
         source: "hardcode" as const,
       }));
     const fromCloud: MergedItem[] = cloudItems.map((c) => ({
@@ -214,6 +215,7 @@ function ItemsTab() {
       category: c.category ?? "",
       unit: c.unit,
       unitPrice: Number(c.unit_price),
+      bravoCode: (c as { bravo_code?: string | null }).bravo_code ?? "",
       source: "cloud" as const,
     }));
     return [...fromCloud, ...fromHardcode].sort((a, b) => a.code.localeCompare(b.code));
