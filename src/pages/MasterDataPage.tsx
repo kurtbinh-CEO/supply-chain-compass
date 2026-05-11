@@ -1642,6 +1642,11 @@ export default function MasterDataPage() {
         <TabsContent value="containers"><ContainersTab /></TabsContent>
         <TabsContent value="aop"><AopSummaryPanel /></TabsContent>
         <TabsContent value="quality"><QualityTab /></TabsContent>
+        <TabsContent value="cnskupricing"><CnSkuPricingTab /></TabsContent>
+        <TabsContent value="skuuom"><SkuUnitConversionTab /></TabsContent>
+        <TabsContent value="nmskuconstraint"><NmSkuConstraintTab /></TabsContent>
+        <TabsContent value="substitutions"><SubstitutionListsTab /></TabsContent>
+        <TabsContent value="stockpolicies"><StockPoliciesTab /></TabsContent>
       </Tabs>
 
       <ScreenFooter actionCount={5} />
