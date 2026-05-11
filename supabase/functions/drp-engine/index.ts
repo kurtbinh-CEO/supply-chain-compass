@@ -22,11 +22,9 @@ const skuBase = (sku: string) => sku.split(/[-_ ]/)[0] ?? sku;
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const authHeader = req.headers.get("Authorization") ?? "";
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    { global: { headers: { Authorization: authHeader } } },
   );
 
   let body: Body;
