@@ -1,5 +1,16 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef, ReactNode } from "react";
 import { useActivityLog } from "@/components/ActivityLogContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useUserTenantId } from "@/hooks/useUserTenantId";
+
+function periodFor(type: "daily" | "monthly") {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  if (type === "monthly") return `monthly:${yyyy}-${mm}`;
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `daily:${yyyy}-${mm}-${dd}`;
+}
 
 export type WorkflowType = "daily" | "monthly" | null;
 
