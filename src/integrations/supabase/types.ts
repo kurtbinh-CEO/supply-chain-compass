@@ -244,6 +244,53 @@ export type Database = {
         }
         Relationships: []
       }
+      demand_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          locked_at: string | null
+          locked_by: string | null
+          name: string
+          status: string
+          tenant_id: string
+          updated_at: string
+          version_type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          name: string
+          status?: string
+          tenant_id: string
+          updated_at?: string
+          version_type?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          name?: string
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+          version_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demand_versions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       drp_audit_log: {
         Row: {
           action: string
@@ -302,11 +349,17 @@ export type Database = {
           id: string
           kind: string
           message: string | null
+          owner_role: string | null
+          raised_at: string | null
+          resolution_action: string | null
+          resolution_note: string | null
           resolved: boolean
           resolved_at: string | null
           resolved_by: string | null
           severity: string
           sku_code: string
+          sla_hours: number | null
+          suggested_action: string | null
           tenant_id: string
           updated_at: string
         }
@@ -317,11 +370,17 @@ export type Database = {
           id?: string
           kind: string
           message?: string | null
+          owner_role?: string | null
+          raised_at?: string | null
+          resolution_action?: string | null
+          resolution_note?: string | null
           resolved?: boolean
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string
           sku_code: string
+          sla_hours?: number | null
+          suggested_action?: string | null
           tenant_id: string
           updated_at?: string
         }
@@ -332,11 +391,17 @@ export type Database = {
           id?: string
           kind?: string
           message?: string | null
+          owner_role?: string | null
+          raised_at?: string | null
+          resolution_action?: string | null
+          resolution_note?: string | null
           resolved?: boolean
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string
           sku_code?: string
+          sla_hours?: number | null
+          suggested_action?: string | null
           tenant_id?: string
           updated_at?: string
         }
@@ -1029,6 +1094,151 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_run_results: {
+        Row: {
+          allocated_qty: number
+          cn_code: string
+          created_at: string
+          demand_qty: number
+          exception_type: string | null
+          gap_qty: number | null
+          id: string
+          plan_run_id: string
+          sku_base: string
+          sku_code: string
+          source_location: string | null
+          source_type: string | null
+        }
+        Insert: {
+          allocated_qty?: number
+          cn_code: string
+          created_at?: string
+          demand_qty?: number
+          exception_type?: string | null
+          gap_qty?: number | null
+          id?: string
+          plan_run_id: string
+          sku_base: string
+          sku_code: string
+          source_location?: string | null
+          source_type?: string | null
+        }
+        Update: {
+          allocated_qty?: number
+          cn_code?: string
+          created_at?: string
+          demand_qty?: number
+          exception_type?: string | null
+          gap_qty?: number | null
+          id?: string
+          plan_run_id?: string
+          sku_base?: string
+          sku_code?: string
+          source_location?: string | null
+          source_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_run_results_plan_run_id_fkey"
+            columns: ["plan_run_id"]
+            isOneToOne: false
+            referencedRelation: "plan_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_runs: {
+        Row: {
+          alias: string | null
+          allocation_objective: string | null
+          approved_at: string | null
+          approved_by: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          demand_version_id: string | null
+          exception_count: number | null
+          fill_rate: number | null
+          id: string
+          input_hash: string | null
+          input_snapshot_json: Json | null
+          lifecycle: string
+          lost_sales_qty: number | null
+          notes: string | null
+          run_name: string
+          run_type: string
+          solver_version: string | null
+          started_at: string | null
+          supply_snapshot_at: string | null
+          tenant_id: string
+          total_allocated: number | null
+          total_demand: number | null
+          updated_at: string
+        }
+        Insert: {
+          alias?: string | null
+          allocation_objective?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          demand_version_id?: string | null
+          exception_count?: number | null
+          fill_rate?: number | null
+          id?: string
+          input_hash?: string | null
+          input_snapshot_json?: Json | null
+          lifecycle?: string
+          lost_sales_qty?: number | null
+          notes?: string | null
+          run_name: string
+          run_type?: string
+          solver_version?: string | null
+          started_at?: string | null
+          supply_snapshot_at?: string | null
+          tenant_id: string
+          total_allocated?: number | null
+          total_demand?: number | null
+          updated_at?: string
+        }
+        Update: {
+          alias?: string | null
+          allocation_objective?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          demand_version_id?: string | null
+          exception_count?: number | null
+          fill_rate?: number | null
+          id?: string
+          input_hash?: string | null
+          input_snapshot_json?: Json | null
+          lifecycle?: string
+          lost_sales_qty?: number | null
+          notes?: string | null
+          run_name?: string
+          run_type?: string
+          solver_version?: string | null
+          started_at?: string | null
+          supply_snapshot_at?: string | null
+          tenant_id?: string
+          total_allocated?: number | null
+          total_demand?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_runs_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
