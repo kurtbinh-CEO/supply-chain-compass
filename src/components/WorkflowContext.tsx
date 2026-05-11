@@ -156,6 +156,8 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, [tenantId, userId, hydrated]);
 
+  const rawSteps = workflowType === "daily" ? dailySteps : workflowType === "monthly" ? monthlySteps : [];
+
   const isStepUnlocked = useCallback((index: number) => {
     if (index === 0) return true;
     // Step N is unlocked only if step N-1 is completed
