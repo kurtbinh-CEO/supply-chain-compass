@@ -348,7 +348,8 @@ function ItemsTab() {
             category: v.category || null,
             unit: v.unit || "m²",
             unit_price: Number(v.unitPrice || 0),
-          });
+            bravo_code: v.bravoCode || null,
+          } as never);
           toast.success(`Đã tạo ${v.code} → ${NM_BY_ID[v.nmId as NmId] ?? v.nmId}`);
           setAdding(false);
         }}
@@ -366,6 +367,7 @@ function ItemsTab() {
           category: editing.category,
           unit: editing.unit,
           unitPrice: editing.unitPrice,
+          bravoCode: editing.bravoCode,
         } : undefined}
         onClose={() => setEditing(null)}
         onSave={async (v) => {
@@ -377,7 +379,8 @@ function ItemsTab() {
               category: v.category || null,
               unit: v.unit || "m²",
               unit_price: Number(v.unitPrice || 0),
-            });
+              bravo_code: v.bravoCode || null,
+            } as never);
           } else {
             // Hardcoded → tạo bản cloud override
             await createItem.mutateAsync({
@@ -387,7 +390,8 @@ function ItemsTab() {
               category: v.category || null,
               unit: v.unit || "m²",
               unit_price: Number(v.unitPrice || 0),
-            });
+              bravo_code: v.bravoCode || null,
+            } as never);
           }
           toast.success(`Đã cập nhật ${v.code}`);
           setEditing(null);
