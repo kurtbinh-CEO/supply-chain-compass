@@ -25,6 +25,8 @@ import { PlanningPeriodSelector } from "@/components/PlanningPeriodSelector";
 import { useCellPresence } from "@/components/CellPresence";
 import { useVersionConflict, VersionConflictDialog } from "@/components/VersionConflict";
 import { PreLockDialog } from "@/components/BatchLockBanner";
+import { LockCountdownDialog } from "@/components/sop/LockCountdownDialog";
+import { supabase } from "@/integrations/supabase/client";
 import { useSopConsensus } from "@/hooks/useSopConsensus";
 import { BRANCHES, DEMAND_FC, SKU_BASES, SKU_VARIANTS, AOP_PLAN, getAopMonth } from "@/data/unis-enterprise-dataset";
 import { ChangeLogPanel } from "@/components/ChangeLogPanel";
