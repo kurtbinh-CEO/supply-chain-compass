@@ -232,9 +232,15 @@ async function gateLeadTimeCoverage(tenantId: string | null, tenantCode: string)
     supabase.from("master_branches").select("code").eq("tenant", tenantCode).eq("is_active", true),
     supabase.from("lead_times").select("source_code, dest_code").eq("tenant_id", tenantId),
   ]);
-  const nms = (nmRes.data ?? []).map(r => r.code);
-  const cns = (cnRes.data ?? []).map(r => r.code);
-  const ltPairs = new Set((ltRes.data ?? []).map(r => `${r.source_code}|${r.dest_code}`));
+  let nms = (nmRes.data ?? []).map(r => r.code);
+  let cns = (cnRes.data ?? []).map(r => r.code);
+  const ltRows = ltRes.data ?? [];
+  const ltPairs = new Set(ltRows.map(r => `${r.source_code}|${r.dest_code}`));
+
+  // Fallback when master tables are empty: derive NM/CN universe from lead_times
+  // distinct source/dest. This makes the gate verifiable from real data.
+  if (nms.length === 0) nms = Array.from(new Set(ltRows.map(r => r.source_code)));
+  if (cns.length === 0) cns = Array.from(new Set(ltRows.map(r => r.dest_code)));
 
   const required: string[] = [];
   for (const nm of nms) for (const cn of cns) required.push(`${nm}|${cn}`);
