@@ -173,6 +173,8 @@ export type Database = {
           id: string
           tenant_id: string
           updated_at: string
+          updated_by: string | null
+          value_type: string | null
         }
         Insert: {
           config_key: string
@@ -182,6 +184,8 @@ export type Database = {
           id?: string
           tenant_id: string
           updated_at?: string
+          updated_by?: string | null
+          value_type?: string | null
         }
         Update: {
           config_key?: string
@@ -191,6 +195,8 @@ export type Database = {
           id?: string
           tenant_id?: string
           updated_at?: string
+          updated_by?: string | null
+          value_type?: string | null
         }
         Relationships: [
           {
